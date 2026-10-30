@@ -1,5 +1,4 @@
-
-export const PRODUCT_TYPES = [
+﻿export const PRODUCT_TYPES = [
   "username",
   "number",
   "nft",
@@ -20,6 +19,13 @@ export type Product = {
 }
 
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  username: "Usernames",
+  number: "Numbers",
+  nft: "TON NFT",
+  gift: "Gifts",
+}
+
+export const PRODUCT_TYPE_LABELS_ZH: Record<ProductType, string> = {
   username: "收藏用户名",
   number: "+888 号码",
   nft: "TON NFT",

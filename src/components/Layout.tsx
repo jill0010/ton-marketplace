@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from "react-router-dom"
+﻿import { Link, NavLink, Outlet } from "react-router-dom"
+import { useLanguage } from "../lib/language"
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -9,6 +10,8 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
   ].join(" ")
 
 export function Layout() {
+  const { language, setLanguage, t } = useLanguage()
+
   return (
     <div className="min-h-svh bg-[#0b0d12] text-zinc-100">
       <header className="border-b border-white/10">
@@ -16,15 +19,31 @@ export function Layout() {
           <Link to="/" className="text-sm font-semibold tracking-wide">
             TON Market
           </Link>
+
           <nav className="flex min-w-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+              className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label={language === "en" ? "切换到中文" : "Switch to English"}
+            >
+              {language === "en" ? "中文" : "English"}
+            </button>
+
             <NavLink to="/" end className={navClass}>
-              首页
+              {t("Home", "首页")}
             </NavLink>
+
+            <NavLink to="/premium" className={navClass}>
+              {t("Premium", "会员")}
+            </NavLink>
+
             <NavLink to="/catalog" className={navClass}>
-              全部商品
+              {t("All Products", "全部商品")}
             </NavLink>
+
             <span className="rounded-full px-3 py-1.5 text-sm text-zinc-600">
-              连接钱包（未启用）
+              {t("Connect Wallet (Coming Soon)", "连接钱包（暂未启用）")}
             </span>
           </nav>
         </div>
@@ -36,9 +55,13 @@ export function Layout() {
 
       <footer className="border-t border-white/10">
         <p className="mx-auto max-w-6xl px-4 py-6 text-xs text-zinc-500">
-          阶段 1 演示：支持搜索与筛选。商品为假数据，尚未接入钱包支付与数据库。
+          {t(
+            "Marketplace preview: search and filtering are available. Wallet payments are not enabled yet.",
+            "商城演示阶段：支持搜索与筛选，钱包支付暂未启用。"
+          )}
         </p>
       </footer>
     </div>
   )
 }
+
