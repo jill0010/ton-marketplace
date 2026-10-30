@@ -1,4 +1,3 @@
-
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
@@ -136,7 +135,7 @@ get fun `test Order serialization and settlement amounts`() {
     expect(decodedExtra.sellerAmount).toEqual(grams("97"));
 
     expect(
-        decodedExtra.platformFee + decodedExtra.sellerAmount
+        decodedExtra.platformFee + decodedExtra.sellerAmount,
     ).toEqual(decodedExtra.price);
 }
 
@@ -154,7 +153,6 @@ get fun `test Seller serialization`() {
     expect(decoded.productCount).toEqual(25);
     expect(decoded.completedOrders).toEqual(18);
 }
-
 
 // 测试8：商品字典新增、读取、重复保护和更新
 get fun `test Product dictionary operations`() {
@@ -187,16 +185,19 @@ get fun `test Product dictionary operations`() {
     expect(stored.seller).toEqual(seller.address);
 
     // 重复商品 ID 不允许覆盖
-    val duplicateAdded = products.addIfNotExists(1001, Product {
-        id: 1001,
-        seller: seller.address,
-        kind: 1,
-        assetAddress: seller.address,
-        price: grams("200"),
-        deliveryMode: 1,
-        status: 1,
-        createdAt: 1793366400,
-    });
+    val duplicateAdded = products.addIfNotExists(
+        1001,
+        Product {
+            id: 1001,
+            seller: seller.address,
+            kind: 1,
+            assetAddress: seller.address,
+            price: grams("200"),
+            deliveryMode: 1,
+            status: 1,
+            createdAt: 1793366400,
+        },
+    );
 
     expect(duplicateAdded).toEqual(false);
     expect(products.mustGet(1001).price).toEqual(grams("100"));
@@ -208,7 +209,6 @@ get fun `test Product dictionary operations`() {
 
     expect(products.mustGet(1001).price).toEqual(grams("150"));
 }
-
 
 // 测试9：订单字典新增、读取、重复保护和更新
 get fun `test Order dictionary operations`() {
@@ -275,12 +275,12 @@ fun setupMarketplaceTest(): (Marketplace, Treasury, Treasury) {
     val notDeployer = testing.treasury("notDeployer");
 
     val contract = Marketplace.fromStorage({
-    owner: deployer.address,
-    nextProductId: 1,
-    nextOrderId: 1,
-    products: [],
-    orders: [],
-});
+        owner: deployer.address,
+        nextProductId: 1,
+        nextOrderId: 1,
+        products: [],
+        orders: [],
+    });
     val res = contract.deploy(deployer.address, { value: grams("0.05") });
     expect(res).toHaveSuccessfulDeploy({
         to: contract.address,

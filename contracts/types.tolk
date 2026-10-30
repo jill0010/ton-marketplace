@@ -1,4 +1,3 @@
-
 enum Errors {
     NotOwner = 100
     InvalidMessage = 0xFFFF
