@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react"
+import { TonConnectButton, useTonAddress } from "@tonconnect/ui-react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "../lib/language"
 import { supabase } from "../lib/supabase"
@@ -49,6 +50,7 @@ const INITIAL_PLANS: Plan[] = [
 
 export function PremiumPage() {
   const { t } = useLanguage()
+  const walletAddress = useTonAddress()
   const [recipient, setRecipient] = useState<"self" | "other">("self")
   const [username, setUsername] = useState("")
   const [selectedPlan, setSelectedPlan] = useState<Plan["id"]>("year")
@@ -323,9 +325,28 @@ export function PremiumPage() {
           <h2 className="text-lg font-semibold text-white">
             {t("Payment Method", "支付方式")}
           </h2>
-          <span className="text-xs text-amber-300">
-            {t("Not connected", "尚未接通")}
+          <span className={walletAddress ? "text-xs text-emerald-300" : "text-xs text-amber-300"}>
+            {walletAddress ? t("Wallet connected", "钱包已连接") : t("Not connected", "尚未接通")}
           </span>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-white">
+                {t("Connect TON Wallet", "连接 TON 钱包")}
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">
+                {t("Connect your wallet to prepare payment.", "连接钱包以准备支付。")}
+              </p>
+            </div>
+            <TonConnectButton />
+          </div>
+          {walletAddress && (
+            <p className="break-all text-xs text-emerald-300">
+              {walletAddress}
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border border-sky-400 bg-sky-400/10 px-4 py-3 font-medium text-white">
