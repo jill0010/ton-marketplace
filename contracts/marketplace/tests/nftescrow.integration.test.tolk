@@ -256,6 +256,21 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         bounced: true,
     });
 
+    // 首次 CreateEscrow bounce 不能释放 NFT 唯一上架索引。
+    val duplicateAfterInitialBounceRes = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicateAfterInitialBounceRes).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
+    val stillPendingAfterInitialBounce = marketplace.product(1);
+    assert (stillPendingAfterInitialBounce != null) throw Errors.ProductNotFound;
+    expect(stillPendingAfterInitialBounce!!.status).toEqual(1);
+
     // 管理员在 Escrow 仍暂停时重试一次，验证重试消息也保留完整 RichBounce。
     val retryWhilePausedRes = marketplace.sendAny(
         deployer.address,
@@ -274,6 +289,21 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         from: escrow.address,
         to: marketplace.address,
         bounced: true,
+    });
+
+    // 重试请求再次 bounce 后，商品仍为 Pending，NFT 索引仍被原商品占用。
+    val stillPendingAfterRetryBounce = marketplace.product(1);
+    assert (stillPendingAfterRetryBounce != null) throw Errors.ProductNotFound;
+    expect(stillPendingAfterRetryBounce!!.status).toEqual(1);
+    val duplicateAfterRetryBounceRes = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicateAfterRetryBounceRes).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
     });
 
     // 解除暂停后，由管理员按原 query/product identity 重试；不创建第二个商品。
