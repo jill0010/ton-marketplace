@@ -14,6 +14,8 @@ on:
       - "supabase/functions/ton-proof-verify/**"
       - "supabase/functions/ton-proof-status/**"
       - "supabase/functions/create-premium-order/**"
+      - "supabase/migrations/**"
+      - "supabase/tests/canonical-wallet-identity-*.sql"
       - "scripts/audit-legacy-wallet-identities.ts"
       - ".github/workflows/wallet-identity-audit.yml"
   workflow_dispatch:
