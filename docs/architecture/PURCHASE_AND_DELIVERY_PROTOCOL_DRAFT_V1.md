@@ -137,3 +137,13 @@ If platform and seller destinations are ordinary wallets, a successful internal 
 ## Deployment boundary
 
 This is a protocol design step only. Do not deploy or upgrade Marketplace/NFTEscrow, do not enable publishing or checkout, and do not accept buyer funds until the ABI, storage migration strategy, contract tests, code review, and testnet rehearsal all pass.
+
+## Validation checkpoint — 2026-11-02
+
+The Acton 1.2.1 CI run on the pre-format source revision completed all steps successfully:
+- contract build;
+- contract tests, including the new settlement split/conservation cases;
+- Tolk linter;
+- formatter check after applying the formatter.
+
+The same-repository PR workflow applied the formatter output and pushed the resulting formatting-only commit. A fresh CI run is required on that new head before treating the formatted revision as fully validated.
