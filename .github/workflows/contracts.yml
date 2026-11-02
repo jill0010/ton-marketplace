@@ -41,11 +41,11 @@ jobs:
       - name: Build
         run: acton build
 
-      - name: Formatter
-        run: acton fmt --check
+      - name: Test
+        run: acton test
 
       - name: Linter
         run: acton check --output-format github
 
-      - name: Test
-        run: acton test
+      - name: Formatter
+        run: acton fmt --check
