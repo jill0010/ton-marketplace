@@ -42,6 +42,12 @@ fun onInternalMessage(in: InMessage) {
             ) throw Errors.InvalidProductKind;
             assert (msg.price > 0) throw Errors.InvalidProductPrice;
 
+            // Reserve before creating escrow so Pending listings are exclusive too.
+            val existingListing = storage.assetListings.get(msg.nftItem);
+            assert (
+                !existingListing.isFound || existingListing.loadValue() == 0
+            ) throw Errors.AssetAlreadyListed;
+
             val seller = in.senderAddress;
             val productId = storage.nextProductId;
             assert (productId > 0) throw Errors.InvalidQueryId;
@@ -67,6 +73,7 @@ fun onInternalMessage(in: InMessage) {
             val escrowAddress = storage.escrow;
 
             storage.products.set(productId, product);
+            storage.assetListings.set(msg.nftItem, productId);
             storage.nextProductId = productId + 1;
             storage.save();
 
@@ -189,8 +196,16 @@ fun onInternalMessage(in: InMessage) {
             assert (product.status == 2 || product.status == 5) throw Errors.InvalidProductStatus;
 
             if (product.status == 2) {
+                // Release only the exact index owned by this product. Duplicate
+                // callbacks for a cancelled product must not clear a newer listing.
+                val listingResult = storage.assetListings.get(msg.nftItem);
+                assert (
+                    listingResult.isFound && listingResult.loadValue() == msg.productId
+                ) throw Errors.AssetListingIndexMismatch;
+
                 product.status = 5;
                 storage.products.set(msg.productId, product);
+                storage.assetListings.set(msg.nftItem, 0);
                 storage.save();
             }
 
