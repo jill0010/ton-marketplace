@@ -197,8 +197,8 @@ This test exercises failure while decoding the referenced extra cell, not merely
 Added a third malformed-input case: the bounced body contains the RichBounce prefix `0xfffffffe` but omits the remaining envelope fields and original-body reference. This drives failure in `RichBounceBody.fromSlice` itself, before the CreateEscrow parser is reached. The test asserts that the bounced Marketplace transaction still succeeds.
 
 Validation on code commit `5d08d7864efc38aa9cb316c0ad3c8003b9911e11`:
-- Contracts workflow #100: success — build, 94 tests in 7 files, linter, formatter.
-- Frontend Build #42: success.
-- Wallet Identity Audit #89: success — Deno/type checks and PostgreSQL 17 integration tests.
+- Contracts workflow #101: success — build, 94 tests in 7 files, linter, formatter.
+- Frontend Build #43: success.
+- Wallet Identity Audit #90: success — Deno/type checks and PostgreSQL 17 integration tests.
 
 Together, malformed-input tests now cover (1) truncated RichBounce envelope, (2) truncated CreateEscrow root body, and (3) truncated referenced CreateEscrowExtra cell. The test suite also asserts the NFT listing reservation remains held for malformed messages.
