@@ -7,6 +7,10 @@ export type { Language } from "./language-context"
 
 const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
   "zh-TW": {
+    "Default sorting": "預設排序",
+    "Price: Low to High": "價格由低至高",
+    "Price: High to Low": "價格由高至低",
+    "Newest First": "最新上架",
     "Home": "首頁",
     "All Products": "所有商品",
     "View All Products": "瀏覽所有商品",
@@ -38,6 +42,10 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "Gifts": "收藏禮物",
   },
   ru: {
+    "Default sorting": "Сортировка по умолчанию",
+    "Price: Low to High": "Цена: по возрастанию",
+    "Price: High to Low": "Цена: по убыванию",
+    "Newest First": "Сначала новые",
     "Home": "Главная",
     "All Products": "Все товары",
     "View All Products": "Смотреть все товары",
@@ -69,6 +77,10 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "Gifts": "Подарки",
   },
   ar: {
+    "Default sorting": "الفرز الافتراضي",
+    "Price: Low to High": "السعر: من الأقل إلى الأعلى",
+    "Price: High to Low": "السعر: من الأعلى إلى الأقل",
+    "Newest First": "الأحدث أولاً",
     "Home": "الرئيسية",
     "All Products": "جميع المنتجات",
     "View All Products": "عرض جميع المنتجات",
