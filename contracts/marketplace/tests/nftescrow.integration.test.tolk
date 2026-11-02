@@ -256,6 +256,26 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         bounced: true,
     });
 
+    // 管理员在 Escrow 仍暂停时重试一次，验证重试消息也保留完整 RichBounce。
+    val retryWhilePausedRes = marketplace.sendAny(
+        deployer.address,
+        RetryCreateEscrow { productId: 1 }.toCell(),
+        { value: grams("0.1") },
+    );
+    expect(retryWhilePausedRes).toHaveSuccessfulTx<RetryCreateEscrow>({
+        from: deployer.address,
+        to: marketplace.address,
+    });
+    expect(retryWhilePausedRes).toHaveBouncedTx({
+        from: escrow.address,
+        to: marketplace.address,
+    });
+    expect(retryWhilePausedRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
     // 解除暂停后，由管理员按原 query/product identity 重试；不创建第二个商品。
     val unpauseEscrowRes = escrow.sendAny(
         deployer.address,
