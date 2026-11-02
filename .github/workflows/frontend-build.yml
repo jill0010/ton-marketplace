@@ -55,3 +55,8 @@ jobs:
 
       - name: Build production frontend
         run: npm run build
+
+      - name: Audit locked dependency tree
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e "const a=require('./npm-audit.json'); const v=a.vulnerabilities||{}; console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, vulnerabilities:Object.entries(v).map(([name,item])=>({name,severity:item.severity,isDirect:item.isDirect,via:item.via,fixAvailable:item.fixAvailable}))},null,2))"
