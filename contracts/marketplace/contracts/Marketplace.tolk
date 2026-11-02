@@ -44,9 +44,7 @@ fun onInternalMessage(in: InMessage) {
 
             // Reserve before creating escrow so Pending listings are exclusive too.
             val existingListing = storage.assetListings.get(msg.nftItem);
-            assert (
-                !existingListing.isFound || existingListing.loadValue() == 0
-            ) throw Errors.AssetAlreadyListed;
+            assert (!existingListing.isFound) throw Errors.AssetAlreadyListed;
 
             val seller = in.senderAddress;
             val productId = storage.nextProductId;
@@ -205,7 +203,7 @@ fun onInternalMessage(in: InMessage) {
 
                 product.status = 5;
                 storage.products.set(msg.productId, product);
-                storage.assetListings.set(msg.nftItem, 0);
+                storage.assetListings.delete(msg.nftItem);
                 storage.save();
             }
 
