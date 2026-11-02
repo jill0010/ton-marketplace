@@ -86,3 +86,32 @@ Therefore:
 - Keep NFT publishing and buyer checkout fail-closed until the complete custody and purchase protocols are implemented and tested.
 
 No production migration, Edge Function deployment, contract deployment, mainnet transaction, NFT transfer, or fund movement is authorized or performed by this audit.
+
+## Implementation follow-up — RichBounce decode verified (2026-11-02)
+
+The Marketplace implementation now uses `BounceMode.RichBounce` for both the initial `CreateEscrow` request and `RetryCreateEscrow`.
+
+The Marketplace `onBouncedMessage` handler:
+- accepts only bounced messages returned by the currently configured Escrow;
+- accepts only the RichBounce envelope (`0xfffffffe`);
+- parses the complete original `CreateEscrow` body from `RichBounceBody.originalBody`, including the referenced `CreateEscrowExtra` cell;
+- matches the exact pending product ID, NFT Item, seller, kind, collection, query ID, and item index;
+- deliberately performs no persistent state transition and never releases `assetListings`.
+
+The NFT Escrow integration test now:
+1. pauses Escrow before initial publication and verifies the bounced transaction returns to Marketplace;
+2. verifies the bounced Marketplace transaction itself succeeds, exercising the RichBounce parser and referenced extra-cell decoding;
+3. retries while Escrow remains paused and verifies the retry message uses the same full RichBounce format;
+4. unpauses Escrow, retries the same product/query identity, and continues the real NFT deposit/activation/refund test.
+
+Validation on the current PR head:
+- `acton build`: success
+- `acton test`: 94 passed in 7 files
+- `acton check --output-format github`: success
+- `acton fmt --check`: success
+- Frontend Build: success
+- Wallet Identity Audit (both jobs): success
+
+This verifies full RichBounce body decoding and exact identity correlation in the emulator. It does **not** implement a persistent bounce marker, automatic cancellation, refund, or index release. Those remain gated behind a separately designed storage/state transition and adversarial race/replay tests.
+
+No production deployment, migration, mainnet transaction, NFT transfer, or fund movement was performed.
