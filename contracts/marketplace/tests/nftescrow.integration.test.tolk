@@ -201,6 +201,18 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     val deployedStack = deployedGetter.unwrap();
     expect(deployedStack.get(3) as address).toEqual(seller.address);
 
+    // 先暂停 Escrow，制造一次真实的 CreateEscrow bounce。
+    // Marketplace 必须解析 RichBounce，但保持商品 Pending 和 NFT 索引占用。
+    val pauseEscrowRes = escrow.sendAny(
+        deployer.address,
+        SetEscrowPaused { paused: true }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(pauseEscrowRes).toHaveSuccessfulTx<SetEscrowPaused>({
+        from: deployer.address,
+        to: escrow.address,
+    });
+
     // 卖家通过 Marketplace 发布 NFT 商品
     val publishBody = PublishProduct {
         kind: 3,
@@ -232,6 +244,42 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     expect(pendingProduct!!.seller).toEqual(seller.address);
     expect(pendingProduct!!.assetAddress).toEqual(nftItem);
     expect(pendingProduct!!.status).toEqual(1);
+
+    // 断言 Escrow 的拒绝触发了 bounced message，且 Marketplace 的 bounce handler 成功执行。
+    expect(publishRes).toHaveBouncedTx({
+        from: escrow.address,
+        to: marketplace.address,
+    });
+    expect(publishRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
+    // 解除暂停后，由管理员按原 query/product identity 重试；不创建第二个商品。
+    val unpauseEscrowRes = escrow.sendAny(
+        deployer.address,
+        SetEscrowPaused { paused: false }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(unpauseEscrowRes).toHaveSuccessfulTx<SetEscrowPaused>({
+        from: deployer.address,
+        to: escrow.address,
+    });
+
+    val retryCreateEscrowRes = marketplace.sendAny(
+        deployer.address,
+        RetryCreateEscrow { productId: 1 }.toCell(),
+        { value: grams("0.1") },
+    );
+    expect(retryCreateEscrowRes).toHaveSuccessfulTx<RetryCreateEscrow>({
+        from: deployer.address,
+        to: marketplace.address,
+    });
+    expect(retryCreateEscrowRes).toHaveSuccessfulTx<CreateEscrow>({
+        from: marketplace.address,
+        to: escrow.address,
+    });
 
     // 同一 NFT 在首次托管尚未完成时也不能创建第二个商品。
     val duplicatePublishRes = marketplace.sendAny(
