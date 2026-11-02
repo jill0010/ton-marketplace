@@ -1,7 +1,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-import { Buffer } from "npm:buffer";
+import { Buffer } from "node:buffer";
 import { sha256 } from "npm:@ton/crypto";
 
 import type { Slice, StateInit } from "npm:@ton/core";
