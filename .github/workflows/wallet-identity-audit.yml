@@ -49,6 +49,12 @@ jobs:
       - name: Type-check exact TON amount utility
         run: deno check --config supabase/functions/deno.json supabase/functions/_shared/ton-amount.ts supabase/functions/_shared/ton-amount_test.ts
 
+      - name: Type-check shared wallet authentication
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/auth.ts
+
+      - name: Type-check wallet NFT asset endpoint
+        run: deno check --config supabase/functions/deno.json supabase/functions/nft-wallet-assets/index.ts
+
       - name: Type-check TON Proof challenge
         run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-challenge/index.ts
 
