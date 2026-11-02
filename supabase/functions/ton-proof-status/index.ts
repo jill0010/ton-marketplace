@@ -100,14 +100,66 @@ async function getVerifiedWallet(
   serviceKey: string,
   userId: string,
 ) {
+  // Prefer the canonical wallet identity mapping for sessions that have
+  // completed the new atomic TON Proof binding flow.
+  const identityResponse = await fetch(
+    `${supabaseUrl}/rest/v1/rpc/get_current_ton_wallet_identity`,
+    {
+      method: "POST",
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        p_auth_user_id: userId,
+      }),
+    },
+  );
+
+  if (!identityResponse.ok) {
+    console.error(
+      "Canonical wallet identity query failed:",
+      identityResponse.status,
+    );
+    throw new Error("Canonical wallet identity query failed");
+  }
+
+  const identityRows = await identityResponse.json();
+
+  if (!Array.isArray(identityRows)) {
+    throw new Error("Invalid canonical wallet identity response");
+  }
+
+  if (identityRows.length > 0) {
+    const row = identityRows[0];
+
+    if (
+      typeof row.wallet_address !== "string" ||
+      typeof row.network !== "string" ||
+      typeof row.wallet_version !== "string" ||
+      typeof row.verified_at !== "string"
+    ) {
+      throw new Error("Invalid canonical wallet identity record");
+    }
+
+    return {
+      address: row.wallet_address,
+      network: row.network,
+      walletVersion: row.wallet_version,
+      verifiedAt: row.verified_at,
+    };
+  }
+
+  // Compatibility fallback: preserve visibility of previously verified
+  // legacy sessions while the wallet-identity migration is rolled out.
   const query = new URLSearchParams({
-    select:
-      "wallet_address,network,wallet_version,verified_at",
+    select: "wallet_address,network,wallet_version,verified_at",
     user_id: `eq.${userId}`,
     limit: "1",
   });
 
-  const response = await fetch(
+  const legacyResponse = await fetch(
     `${supabaseUrl}/rest/v1/ton_verified_wallets?${query.toString()}`,
     {
       method: "GET",
@@ -119,18 +171,18 @@ async function getVerifiedWallet(
     },
   );
 
-  if (!response.ok) {
+  if (!legacyResponse.ok) {
     console.error(
-      "Verified wallet query failed:",
-      response.status,
+      "Legacy verified wallet query failed:",
+      legacyResponse.status,
     );
-    throw new Error("Verified wallet query failed");
+    throw new Error("Legacy verified wallet query failed");
   }
 
-  const rows = await response.json();
+  const rows = await legacyResponse.json();
 
   if (!Array.isArray(rows)) {
-    throw new Error("Invalid database response");
+    throw new Error("Invalid legacy wallet database response");
   }
 
   if (rows.length === 0) {
@@ -145,7 +197,7 @@ async function getVerifiedWallet(
     typeof row.wallet_version !== "string" ||
     typeof row.verified_at !== "string"
   ) {
-    throw new Error("Invalid verified wallet record");
+    throw new Error("Invalid legacy verified wallet record");
   }
 
   return {
