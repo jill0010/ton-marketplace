@@ -27,13 +27,13 @@ jobs:
         working-directory: contracts/marketplace
 
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
@@ -46,6 +46,23 @@ jobs:
 
       - name: Linter
         run: acton check --output-format github
+
+      - name: Format Tolk sources
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: acton fmt
+
+      - name: Commit formatter output
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- '*.tolk'
+            git commit -m "style(contracts): apply Acton formatter"
+            git push origin "HEAD:${BRANCH_NAME}"
+          fi
 
       - name: Formatter
         run: acton fmt --check
