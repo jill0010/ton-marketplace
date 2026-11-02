@@ -28,3 +28,15 @@ Deno.test("rejects values that cannot be represented as exact TON decimals", () 
   assertThrows(() => parseTonToNanotons("1,000"), Error);
   assertThrows(() => parseTonToNanotons(""), Error);
 });
+
+Deno.test("enforces the PostgreSQL numeric(78, 0) atomic amount limit", () => {
+  const largestWholePart = "9".repeat(69);
+  assertEquals(
+    parseTonToNanotons(largestWholePart).toString().length,
+    78,
+  );
+  assertThrows(
+    () => parseTonToNanotons("1".repeat(70)),
+    Error,
+  );
+});
