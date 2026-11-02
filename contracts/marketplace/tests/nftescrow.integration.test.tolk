@@ -271,6 +271,74 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     assert (stillPendingAfterInitialBounce != null) throw Errors.ProductNotFound;
     expect(stillPendingAfterInitialBounce!!.status).toEqual(1);
 
+    // 使用真实匹配的原始 CreateEscrow 数据构造 RichBounce，但由非 Escrow 地址发送。
+    // 即使攻击者伪造了完整商品身份，Marketplace 也必须只信任配置的 Escrow sender。
+    val forgedOriginalBody = CreateEscrow {
+        nftItem: nftItem,
+        collection: collection.address,
+        seller: seller.address,
+        productId: 1,
+        kind: 3,
+        extra: CreateEscrowExtra {
+            queryId: 1,
+            createdAt: 0,
+            itemIndex: 0,
+        }.toCell(),
+    }.toCell();
+    val forgedRichBounce = RichBounceBody {
+        originalBody: forgedOriginalBody,
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.05"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: Errors.EscrowPaused,
+        computePhase: null,
+    };
+    val forgedBounceMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: forgedRichBounce,
+    }).bounced();
+    val forgedBounceRes = net.send(collection.address, forgedBounceMessage);
+    expect(forgedBounceRes).toHaveSuccessfulTx({
+        from: collection.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
+    // 来自真实 Escrow 地址、但使用错误操作码的 bounced body 必须被忽略。
+    val wrongOpcodeBounceMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: beginCell().storeUint(0x12345678, 32).endCell(),
+    }).bounced();
+    val wrongOpcodeBounceRes = net.send(escrow.address, wrongOpcodeBounceMessage);
+    expect(wrongOpcodeBounceRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
+    // 两类伪造/无关 Bounce 都不得改变商品状态或释放 NFT 唯一上架索引。
+    val pendingAfterAdversarialBounces = marketplace.product(1);
+    assert (pendingAfterAdversarialBounces != null) throw Errors.ProductNotFound;
+    expect(pendingAfterAdversarialBounces!!.status).toEqual(1);
+    val duplicateAfterAdversarialBounces = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicateAfterAdversarialBounces).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
+
     // 管理员在 Escrow 仍暂停时重试一次，验证重试消息也保留完整 RichBounce。
     val retryWhilePausedRes = marketplace.sendAny(
         deployer.address,
