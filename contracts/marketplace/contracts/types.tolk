@@ -273,6 +273,7 @@ struct (0x71a00007) EscrowRefunded {
     nftItem: address
     seller: address
 }
+
 // TEP-62 NFT Transfer：NFT 所有者发起转移
 struct (0x5fcc3d14) NftTransfer {
     queryId: uint64

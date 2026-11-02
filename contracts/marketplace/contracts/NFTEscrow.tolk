@@ -45,9 +45,7 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.owner) throw Errors.NotOwner;
 
             assert (
-                msg.newStatus == 1 ||
-                msg.newStatus == 2 ||
-                msg.newStatus == 3
+                msg.newStatus == 1 || msg.newStatus == 2 || msg.newStatus == 3
             ) throw Errors.InvalidCollectionStatus;
 
             var collectionStorage = storage.collectionStorage.load();
@@ -62,7 +60,8 @@ fun onInternalMessage(in: InMessage) {
 
                 val codeHash = itemCode.code.hash();
                 assert (
-                    codeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
+                    codeHash ==
+                    0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
                     codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
                 ) throw Errors.InvalidCollectionItemCode;
             }
@@ -123,21 +122,24 @@ fun onInternalMessage(in: InMessage) {
                 assert (existingRecordResult.isFound) throw Errors.EscrowAlreadyExists;
 
                 val existingRecord = EscrowRecord.fromCell(
-                    existingRecordResult.loadValue()
+                    existingRecordResult.loadValue(),
                 );
                 val existingExtra = existingRecord.extra.load();
 
                 assert (
-                    existingRecord.status == 1 ||
-                    existingRecord.status == 2
+                    existingRecord.status == 1 || existingRecord.status == 2
                 ) throw Errors.EscrowAlreadyExists;
 
                 assert (existingRecord.nftItem == msg.nftItem) throw Errors.EscrowAlreadyExists;
-                assert (existingRecord.collection == msg.collection) throw Errors.EscrowAlreadyExists;
+                assert (
+                    existingRecord.collection == msg.collection
+                ) throw Errors.EscrowAlreadyExists;
                 assert (existingRecord.seller == msg.seller) throw Errors.EscrowAlreadyExists;
                 assert (existingRecord.productId == msg.productId) throw Errors.EscrowAlreadyExists;
                 assert (existingExtra.queryId == queryId) throw Errors.EscrowAlreadyExists;
-                assert (existingExtra.itemIndex == createExtra.itemIndex) throw Errors.EscrowAlreadyExists;
+                assert (
+                    existingExtra.itemIndex == createExtra.itemIndex
+                ) throw Errors.EscrowAlreadyExists;
                 assert (existingExtra.kind == msg.kind) throw Errors.EscrowAlreadyExists;
             } else {
                 assert (!storage.paused) throw Errors.EscrowPaused;
@@ -160,7 +162,8 @@ fun onInternalMessage(in: InMessage) {
 
                 val codeHash = itemCode.code.hash();
                 assert (
-                    codeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
+                    codeHash ==
+                    0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
                     codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
                 ) throw Errors.InvalidCollectionItemCode;
 
@@ -172,15 +175,9 @@ fun onInternalMessage(in: InMessage) {
                     .storeAddress(msg.collection)
                     .endCell();
 
-                val itemData = beginCell()
-                    .storeRef(itemConfig)
-                    .storeUint(0, 1)
-                    .endCell();
+                val itemData = beginCell().storeRef(itemConfig).storeUint(0, 1).endCell();
 
-                val itemStateInit: ContractState = {
-                    code: itemCode.code,
-                    data: itemData,
-                };
+                val itemStateInit: ContractState = { code: itemCode.code, data: itemData };
 
                 val expectedNftItem = AutoDeployAddress {
                     workchain: 0,
@@ -293,8 +290,7 @@ fun onInternalMessage(in: InMessage) {
             val recordExtra = record.extra.load();
 
             assert (
-                in.senderAddress == record.seller ||
-                in.senderAddress == storage.owner
+                in.senderAddress == record.seller || in.senderAddress == storage.owner
             ) throw Errors.RefundNotAuthorized;
 
             assert (record.status != 6) throw Errors.RefundAlreadyPending;
@@ -357,7 +353,9 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy EscrowStorage.load();
             var callbackStorage = storage.callbackStorage.load();
 
-            assert (in.senderAddress == storage.marketplace) throw Errors.InvalidDepositConfirmation;
+            assert (
+                in.senderAddress == storage.marketplace
+            ) throw Errors.InvalidDepositConfirmation;
 
             val indexResult = storage.queryToEscrow.get(msg.queryId);
             assert (indexResult.isFound) throw Errors.InvalidDepositConfirmation;
@@ -367,7 +365,7 @@ fun onInternalMessage(in: InMessage) {
             assert (callbackResult.isFound) throw Errors.InvalidDepositConfirmation;
 
             val callback = EscrowDepositCallback.fromCell(
-                callbackResult.loadValue()
+                callbackResult.loadValue(),
             );
 
             assert (callback.queryId == msg.queryId) throw Errors.InvalidDepositConfirmation;
@@ -390,7 +388,7 @@ fun onInternalMessage(in: InMessage) {
             assert (callbackResult.isFound) throw Errors.InvalidDepositConfirmation;
 
             val callback = EscrowDepositCallback.fromCell(
-                callbackResult.loadValue()
+                callbackResult.loadValue(),
             );
 
             val retryMessage = createMessage({
@@ -615,7 +613,6 @@ get fun escrowIdByQueryId(queryId: uint64): uint64? {
 
     return result.loadValue();
 }
-
 
 // 查询 NFT Escrow 全局暂停状态
 get fun paused(): bool {

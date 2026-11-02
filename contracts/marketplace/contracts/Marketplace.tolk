@@ -37,7 +37,9 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy MarketplaceStorage.load();
 
             assert (storage.escrowConfigured) throw Errors.EscrowNotConfigured;
-            assert (msg.kind == 1 || msg.kind == 2 || msg.kind == 3) throw Errors.InvalidProductKind;
+            assert (
+                msg.kind == 1 || msg.kind == 2 || msg.kind == 3
+            ) throw Errors.InvalidProductKind;
             assert (msg.price > 0) throw Errors.InvalidProductPrice;
 
             val seller = in.senderAddress;
@@ -143,10 +145,7 @@ fun onInternalMessage(in: InMessage) {
             assert (product.seller == msg.seller) throw Errors.InvalidSeller;
 
             // 首次通知：激活商品；重复通知：保持激活状态并重新 ACK。
-            assert (
-                product.status == 1 ||
-                product.status == 2
-            ) throw Errors.ProductNotPending;
+            assert (product.status == 1 || product.status == 2) throw Errors.ProductNotPending;
 
             if (product.status == 1) {
                 product.status = 2;
@@ -187,10 +186,7 @@ fun onInternalMessage(in: InMessage) {
             assert (product.seller == msg.seller) throw Errors.InvalidRefundConfirmation;
 
             // 首次通知：取消商品；重复通知：保持已取消状态并重新 ACK。
-            assert (
-                product.status == 2 ||
-                product.status == 5
-            ) throw Errors.InvalidProductStatus;
+            assert (product.status == 2 || product.status == 5) throw Errors.InvalidProductStatus;
 
             if (product.status == 2) {
                 product.status = 5;

@@ -88,7 +88,7 @@ get fun `test Product serialization`() {
         extra: ProductExtra {
             collection: seller.address,
             queryId: 1001,
-        itemIndex: 0,
+            itemIndex: 0,
         }.toCell(),
     };
 
@@ -178,7 +178,7 @@ get fun `test Product dictionary operations`() {
         extra: ProductExtra {
             collection: seller.address,
             queryId: 1001,
-        itemIndex: 0,
+            itemIndex: 0,
         }.toCell(),
     };
 
@@ -215,8 +215,8 @@ get fun `test Product dictionary operations`() {
             extra: ProductExtra {
                 collection: seller.address,
                 queryId: 1001,
-            itemIndex: 0,
-        }.toCell(),
+                itemIndex: 0,
+            }.toCell(),
         },
     );
 
@@ -336,8 +336,7 @@ get fun `test refund callback rejected when escrow is not configured`() {
 
 // 测试11：验证退款回调发送者、商品信息、状态及重复回调保护
 get fun `test refund callback validates escrow and product before cancellation`() {
-    val (contract, escrow, attacker, seller, nftItem) =
-        setupActiveMarketplaceTest();
+    val (contract, escrow, attacker, seller, nftItem) = setupActiveMarketplaceTest();
 
     // 非 Escrow 地址伪造退款回调
     val forgedSenderRes = contract.sendAny(
@@ -500,7 +499,7 @@ fun setupActiveMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, Tr
         extra: ProductExtra {
             collection: deployer.address,
             queryId: 1,
-        itemIndex: 0,
+            itemIndex: 0,
         }.toCell(),
     };
 
