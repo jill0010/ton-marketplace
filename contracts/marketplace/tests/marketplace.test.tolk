@@ -937,3 +937,24 @@ get fun `test escrow deposit callback rejected when escrow is not configured`() 
     assert (saved != null) throw Errors.ProductNotFound;
     expect(saved!!.status).toEqual(1);
 }
+
+// Settlement math must stay integer-only and conserve every nanotons unit.
+get fun `test settlement split conserves gross amount and rounds fee down`() {
+    val wholeTon = calculateSettlementAmounts(grams("100"));
+    expect(wholeTon.gross).toEqual(grams("100"));
+    expect(wholeTon.platformFee).toEqual(grams("3"));
+    expect(wholeTon.sellerAmount).toEqual(grams("97"));
+    expect(wholeTon.platformFee + wholeTon.sellerAmount).toEqual(wholeTon.gross);
+
+    val oneTon = calculateSettlementAmounts(grams("1"));
+    expect(oneTon.platformFee).toEqual(grams("0.03"));
+    expect(oneTon.sellerAmount).toEqual(grams("0.97"));
+    expect(oneTon.platformFee + oneTon.sellerAmount).toEqual(oneTon.gross);
+
+    // One nanotons cannot be divided into 3% and 97%; fee rounds down
+    // and the seller receives the full remainder without value creation/loss.
+    val oneNanoton = calculateSettlementAmounts(1);
+    expect(oneNanoton.platformFee).toEqual(0);
+    expect(oneNanoton.sellerAmount).toEqual(1);
+    expect(oneNanoton.platformFee + oneNanoton.sellerAmount).toEqual(1);
+}
