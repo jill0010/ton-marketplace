@@ -44,7 +44,7 @@ The GitHub Contracts workflow runs the contract build, emulation tests, linter a
 
 ## Storage compatibility and deployment safety
 
-- `MarketplaceStorage` now includes `assetListings: map<address, uint64>` between `products` and `orders`. This changes the serialized storage layout; it is not a drop-in compatible update for a contract initialized with the prior structure.
+- `MarketplaceStorage` now includes `assetListings: map<address, uint64>` between `products` and `orders`; an absent key means the NFT is available. This changes the serialized storage layout; it is not a drop-in compatible update for a contract initialized with the prior structure.
 - The current contract has no on-chain migration/upgrade handler that can safely reconstruct this index from existing products. Do not send the new code to an existing Marketplace address.
 - Treat this storage shape as a fresh-deployment schema only. If an older Marketplace was deployed outside this repository workflow, preserve it and design/test a separate migration or deploy a new address with an explicit user-facing cutover. Never assume an empty index for old products.
 - A fresh deployment must initialize `assetListings` as an empty map. The deployment script and test fixtures now do so.
