@@ -1,8 +1,9 @@
-﻿import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
 import { getListedProducts } from "../services/products"
-import { useLanguage } from "../lib/language"
+import { useLanguage } from "../lib/useLanguage"
 import type { Product } from "../types/product"
 
 const HOME_CATEGORIES = [
@@ -13,32 +14,45 @@ const HOME_CATEGORIES = [
 ] as const
 
 export function HomePage() {
-  const { language, t } = useLanguage()
+  const { t } = useLanguage()
+  const walletAddress = useTonAddress()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  async function loadProducts() {
-    setLoading(true)
-    setError("")
-
+  const loadProducts = useCallback(async (isActive: () => boolean = () => true) => {
     try {
       const result = await getListedProducts()
-      setProducts(result)
+      if (isActive()) {
+        setProducts(result)
+      }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("Failed to load products. Please try again.", "读取商品失败，请稍后重试。")
-      )
+      if (isActive()) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : t("Failed to load products. Please try again.", "读取商品失败，请稍后重试。")
+        )
+      }
     } finally {
-      setLoading(false)
+      if (isActive()) {
+        setLoading(false)
+      }
     }
-  }
+  }, [t])
 
   useEffect(() => {
-    void loadProducts()
-  }, [])
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadProducts(() => !cancelled)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [loadProducts])
 
   return (
     <div className="space-y-10">
@@ -58,36 +72,57 @@ export function HomePage() {
             "浏览数据库中的在售商品。钱包支付将在后续阶段接入。"
           )}
         </p>
-        <Link
-          to="/catalog"
-          className="mt-8 inline-flex rounded-full bg-white px-5 py-2 text-sm font-medium text-black"
-        >
-          {t("View All Products", "查看全部商品")}
-        </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          {walletAddress && (
+            <Link
+              to="/publish"
+              className="inline-flex rounded-full border border-white/20 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+            >
+              {t("Publish Product", "发布商品")}
+            </Link>
+          )}
+          <Link
+            to="/catalog"
+            className="inline-flex rounded-full bg-white px-5 py-2 text-sm font-medium text-black"
+          >
+            {t("View All Products", "查看全部商品")}
+          </Link>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {HOME_CATEGORIES.map((category) => {
+          const isPremium = category.type === "premium"
           const count = products.filter(
             (item) => item.type === category.type
           ).length
+          const destination = isPremium
+            ? "/premium"
+            : `/catalog?type=${category.type}`
 
           return (
             <Link
               key={category.type}
-              to={`/catalog?type=${category.type}`}
-              className="rounded-2xl border border-white/10 px-4 py-5 text-sm text-zinc-300 hover:border-white/25"
+              to={destination}
+              className={`rounded-2xl border p-5 transition ${
+                isPremium
+                  ? "border-white/20 bg-white/[0.06] text-white hover:border-white/40"
+                  : "border-white/10 text-zinc-300 hover:border-white/25"
+              }`}
             >
-              {language === "en" ? category.en : category.zh}
-              <span className="mt-2 block text-xs text-zinc-500">
-                {loading
-                  ? t("Loading…", "加载中…")
-                  : t(`${count} listed`, `${count} 件在售`)}
-              </span>
+              <span className="font-medium">{t(category.en, category.zh)}</span>
+              {!isPremium && (
+                <span className="mt-2 block text-xs text-zinc-500">
+                  {loading
+                    ? t("Loading…", "加载中…")
+                    : t(`${count} listed`, `${count} 件在售`)}
+                </span>
+              )}
             </Link>
           )
         })}
       </section>
+
 
       <section>
         <h2 className="mb-4 text-lg font-medium text-white">
@@ -105,7 +140,7 @@ export function HomePage() {
             <p className="text-sm text-red-300">{error}</p>
             <button
               type="button"
-              onClick={() => void loadProducts()}
+              onClick={() => { setLoading(true); setError(""); void loadProducts() }}
               className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
             >
               {t("Retry", "重试")}

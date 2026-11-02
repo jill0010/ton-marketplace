@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react"
-import { useLanguage } from "../lib/language"
+import { useLanguage } from "../lib/useLanguage"
 import { supabase } from "../lib/supabase"
 
 type PricingPlan = {

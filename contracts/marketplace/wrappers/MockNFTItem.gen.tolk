@@ -7,6 +7,7 @@ import "@acton/build"
 import "@acton/emulation/network"
 import "@acton/testing/assert"
 import "@contracts/MockNFTItem"
+import "@contracts/types"
 
 /// Storage `MockNFTItemStorage` is defined in `@contracts/MockNFTItem`
 struct MockNFTItem {
@@ -56,7 +57,7 @@ fun MockNFTItem.sendNftTransfer(
     from: address,
     queryId: uint64,
     newOwner: address,
-    responseDestination: address,
+    responseDestination: address?,
     customPayload: cell?,
     forwardAmount: coins,
     forwardPayload: RemainingBitsAndRefs,

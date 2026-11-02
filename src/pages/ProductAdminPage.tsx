@@ -57,7 +57,6 @@ function getDefaultDescription(
 const TYPE_LABELS: Record<ProductType, string> = {
   username: "Telegram 收藏用户名",
   number: "Telegram +888 收藏号码",
-  nft: "TON NFT",
   gift: "Telegram 收藏礼物",
 }
 

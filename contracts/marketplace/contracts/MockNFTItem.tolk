@@ -20,22 +20,7 @@ fun MockNFTItemStorage.save(self) {
     contract.setData(self.toCell());
 }
 
-struct (0x5fcc3d14) NftTransfer {
-    queryId: uint64
-    newOwner: address
-    responseDestination: address
-    customPayload: cell?
-    forwardAmount: coins
-    forwardPayload: RemainingBitsAndRefs
-}
-
 type MockNFTItemAllowedMessage = NftTransfer
-
-struct (0x05138d91) NftOwnershipAssigned {
-    queryId: uint64
-    prevOwner: address
-    forwardPayload: RemainingBitsAndRefs
-}
 
 fun onInternalMessage(in: InMessage) {
     val msg = lazy MockNFTItemAllowedMessage.fromSlice(in.body);
@@ -48,9 +33,26 @@ fun onInternalMessage(in: InMessage) {
 
             val previousOwner = storage.owner;
 
-            storage.owner = msg.newOwner;
-            storage.save();
+            // Match the official TON NFT reference implementation:
+            // reserve 0.05 TON for contract storage.
+            var restAmount = contract.getOriginalBalance() - grams("0.05");
 
+            // Estimate outgoing forwarding fees using the incoming
+            // message's original forwarding fee.
+            val fwdFees = in.originalForwardFee * 3 / 2;
+
+            if (msg.forwardAmount > 0) {
+                restAmount -= msg.forwardAmount + fwdFees;
+            }
+
+            if (msg.responseDestination != null) {
+                restAmount -= fwdFees;
+            }
+
+            // Official NFT reference error code for insufficient balance.
+            assert (restAmount >= 0) throw 402;
+
+            // Send ownership notification when forward amount is non-zero.
             if (msg.forwardAmount > 0) {
                 val notification = NftOwnershipAssigned {
                     queryId: msg.queryId,
@@ -65,8 +67,28 @@ fun onInternalMessage(in: InMessage) {
                     body: notification,
                 });
 
-                outMsg.send(SEND_MODE_REGULAR);
+                outMsg.send(SEND_MODE_PAY_FEES_SEPARATELY);
             }
+
+            // Return the remaining balance to the response destination.
+            // Do not send Excesses when response destination is addr_none.
+            if (msg.responseDestination != null) {
+                val excesses = NftExcesses {
+                    queryId: msg.queryId,
+                };
+
+                val excessesMessage = createMessage({
+                    bounce: BounceMode.NoBounce,
+                    value: restAmount,
+                    dest: msg.responseDestination!!,
+                    body: excesses,
+                });
+
+                excessesMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
+            }
+
+            storage.owner = msg.newOwner;
+            storage.save();
         }
 
         else => {

@@ -6,7 +6,7 @@ import {
   useTonConnectUI,
 } from "@tonconnect/ui-react"
 import { Link } from "react-router-dom"
-import { useLanguage } from "../lib/language"
+import { useLanguage } from "../lib/useLanguage"
 import {
   anonymousSupabase,
   ensureAnonymousSession,

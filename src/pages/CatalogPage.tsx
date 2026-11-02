@@ -1,8 +1,8 @@
-﻿import { useEffect, useMemo, useState, type ChangeEvent } from "react"
+﻿import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ProductCard } from "../components/ProductCard"
 import { getListedProducts } from "../services/products"
-import { useLanguage } from "../lib/language"
+import { useLanguage } from "../lib/useLanguage"
 import {
   SORT_OPTIONS,
   applyCatalogView,
@@ -43,27 +43,39 @@ export function CatalogPage() {
     ? selectedSort
     : "default"
 
-  async function loadProducts() {
-    setLoading(true)
-    setError("")
-
+  const loadProducts = useCallback(async (isActive: () => boolean = () => true) => {
     try {
       const result = await getListedProducts()
-      setProducts(result)
+      if (isActive()) {
+        setProducts(result)
+      }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("Failed to load products. Please try again.", "读取商品失败，请稍后重试。")
-      )
+      if (isActive()) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : t("Failed to load products. Please try again.", "读取商品失败，请稍后重试。")
+        )
+      }
     } finally {
-      setLoading(false)
+      if (isActive()) {
+        setLoading(false)
+      }
     }
-  }
+  }, [t])
 
   useEffect(() => {
-    void loadProducts()
-  }, [])
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadProducts(() => !cancelled)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [loadProducts])
 
   const visibleProducts = useMemo(() => {
     const filtered = applyCatalogView(products, query, typeFilter, sort)
@@ -223,7 +235,7 @@ export function CatalogPage() {
           <p className="text-sm text-red-300">{error}</p>
           <button
             type="button"
-            onClick={() => void loadProducts()}
+            onClick={() => { setLoading(true); setError(""); void loadProducts() }}
             className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
           >
             {t("Retry", "重试")}

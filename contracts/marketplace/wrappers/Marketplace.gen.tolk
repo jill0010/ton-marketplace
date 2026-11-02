@@ -66,6 +66,101 @@ fun Marketplace.sendChangeOwner(
     return net.send(from, genericMsg);
 }
 
+fun Marketplace.sendSetEscrowAddress(
+    self,
+    from: address,
+    escrow: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetEscrowAddress { escrow },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun Marketplace.sendPublishProduct(
+    self,
+    from: address,
+    kind: uint8,
+    nftItem: address,
+    collection: address,
+    itemIndex: uint256,
+    price: coins,
+    deliveryMode: uint8,
+    createdAt: uint32,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: PublishProduct {
+            kind,
+            nftItem,
+            collection,
+            itemIndex,
+            price,
+            deliveryMode,
+            createdAt,
+        },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun Marketplace.sendRetryCreateEscrow(
+    self,
+    from: address,
+    productId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RetryCreateEscrow { productId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun Marketplace.sendEscrowDeposited(
+    self,
+    from: address,
+    queryId: uint64,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: EscrowDeposited { queryId, productId, nftItem, seller },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun Marketplace.sendEscrowRefunded(
+    self,
+    from: address,
+    queryId: uint64,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: EscrowRefunded { queryId, productId, nftItem, seller },
+    });
+    return net.send(from, genericMsg);
+}
+
 /// Send message to the contract with a custom body cell
 fun Marketplace.sendAny(self, from: address, body: cell, config: SendParams = {}): SendResultList {
     val genericMsg = createMessage({
@@ -79,4 +174,16 @@ fun Marketplace.sendAny(self, from: address, body: cell, config: SendParams = {}
 
 fun Marketplace.owner(self): address {
     return net.runGetMethod(self.address, "owner");
+}
+
+fun Marketplace.escrow(self): address {
+    return net.runGetMethod(self.address, "escrow");
+}
+
+fun Marketplace.escrowConfigured(self): bool {
+    return net.runGetMethod(self.address, "escrowConfigured");
+}
+
+fun Marketplace.product(self, productId: uint64): Product? {
+    return net.runGetMethod(self.address, "product", [productId]);
 }

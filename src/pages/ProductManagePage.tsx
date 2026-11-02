@@ -45,22 +45,26 @@ export function ProductManagePage() {
   const [message, setMessage] = useState("")
   const [isAdmin, setIsAdmin] = useState(false)
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true)
-    setMessage("")
+  const loadProducts = useCallback(async (isActive: () => boolean = () => true) => {
+    if (isActive()) {
+      setLoading(true)
+      setMessage("")
+    }
 
     try {
       const { data: authData, error: authError } =
         await supabase.auth.getUser()
 
       if (authError || authData.user?.id !== ADMIN_UID) {
-        setIsAdmin(false)
-        setProducts([])
-        setMessage("当前账号不是授权管理员，请使用管理员账号登录。")
+        if (isActive()) {
+          setIsAdmin(false)
+          setProducts([])
+          setMessage("当前账号不是授权管理员，请使用管理员账号登录。")
+        }
         return
       }
 
-      setIsAdmin(true)
+      if (isActive()) setIsAdmin(true)
 
       const { data, error } = await supabase
         .from("products")
@@ -69,18 +73,29 @@ export function ProductManagePage() {
 
       if (error) throw new Error(`读取商品失败：${error.message}`)
 
-      setProducts((data ?? []) as ManagedProduct[])
+      if (isActive()) setProducts((data ?? []) as ManagedProduct[])
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "读取商品失败，请稍后重试。"
-      )
+      if (isActive()) {
+        setMessage(
+          error instanceof Error ? error.message : "读取商品失败，请稍后重试。"
+        )
+      }
     } finally {
-      setLoading(false)
+      if (isActive()) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void loadProducts()
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadProducts(() => !cancelled)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [loadProducts])
 
   async function handleDelete(product: ManagedProduct) {

@@ -6,7 +6,6 @@
 import "@acton/build"
 import "@acton/emulation/network"
 import "@acton/testing/assert"
-import "@contracts/NFTEscrow"
 import "@contracts/types"
 
 /// Storage `EscrowStorage` is defined in `@contracts/types`
@@ -67,6 +66,21 @@ fun NFTEscrow.sendChangeOwner(
     return net.send(from, genericMsg);
 }
 
+fun NFTEscrow.sendSetEscrowPaused(
+    self,
+    from: address,
+    paused: bool,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetEscrowPaused { paused },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun NFTEscrow.sendCreateEscrow(
     self,
     from: address,
@@ -74,6 +88,7 @@ fun NFTEscrow.sendCreateEscrow(
     collection: address,
     seller: address,
     productId: uint64,
+    kind: uint8,
     extra: CreateEscrowExtra,
     config: SendParams = {},
 ): SendResultList {
@@ -86,6 +101,7 @@ fun NFTEscrow.sendCreateEscrow(
             collection,
             seller,
             productId,
+            kind,
             extra: extra.toCell(),
         },
     });
@@ -108,7 +124,24 @@ fun NFTEscrow.sendSetCollectionStatus(
     return net.send(from, genericMsg);
 }
 
-fun NFTEscrow.sendOwnershipAssigned(
+fun NFTEscrow.sendSetCollectionItemCode(
+    self,
+    from: address,
+    collection: address,
+    kind: uint8,
+    code: cell,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetCollectionItemCode { collection, kind, code },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendNftOwnershipAssigned(
     self,
     from: address,
     queryId: uint64,
@@ -120,7 +153,103 @@ fun NFTEscrow.sendOwnershipAssigned(
         bounce: config.bounce,
         value: config.value,
         dest: self.address,
-        body: OwnershipAssigned { queryId, prevOwner, forwardPayload },
+        body: NftOwnershipAssigned { queryId, prevOwner, forwardPayload },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendRequestRefund(
+    self,
+    from: address,
+    escrowId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RequestRefund { escrowId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendNftExcesses(
+    self,
+    from: address,
+    queryId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: NftExcesses { queryId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendEscrowRefundAck(
+    self,
+    from: address,
+    queryId: uint64,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: EscrowRefundAck { queryId, productId, nftItem, seller },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendRetryRefundCallback(
+    self,
+    from: address,
+    escrowId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RetryRefundCallback { escrowId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendEscrowDepositAck(
+    self,
+    from: address,
+    queryId: uint64,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: EscrowDepositAck { queryId, productId, nftItem, seller },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrow.sendRetryDepositCallback(
+    self,
+    from: address,
+    escrowId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RetryDepositCallback { escrowId },
     });
     return net.send(from, genericMsg);
 }
@@ -154,4 +283,8 @@ fun NFTEscrow.escrowRecord(self, escrowId: uint64): EscrowRecord? {
 
 fun NFTEscrow.escrowIdByQueryId(self, queryId: uint64): uint64? {
     return net.runGetMethod(self.address, "escrowIdByQueryId", [queryId]);
+}
+
+fun NFTEscrow.paused(self): bool {
+    return net.runGetMethod(self.address, "paused");
 }

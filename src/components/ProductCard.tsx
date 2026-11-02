@@ -1,6 +1,6 @@
 ﻿import { useState } from "react"
 import { Link } from "react-router-dom"
-import { useLanguage } from "../lib/language"
+import { useLanguage } from "../lib/useLanguage"
 import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_TYPE_LABELS_ZH,
@@ -15,7 +15,6 @@ type ProductCardProps = {
 const TYPE_ART: Record<Product["type"], string> = {
   username: "from-sky-500/40 to-indigo-950/80",
   number: "from-emerald-400/40 to-teal-950/80",
-  nft: "from-violet-400/40 to-fuchsia-950/80",
   gift: "from-amber-400/40 to-orange-950/80",
 }
 

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
+    "@ton/core": "^0.63.1",
     "@tonconnect/ui-react": "^5.0.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -18,12 +19,14 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@ton/blueprint": "^0.47.1",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.89.0",
     "sharp": "^0.35.5",
+    "supabase": "^2.122.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~7.0.2",
     "vite": "^8.3.5"

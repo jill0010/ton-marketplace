@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
-import { useLanguage } from "../lib/language"
+import { useLanguage } from "../lib/useLanguage"
 import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_TYPE_LABELS_ZH,
@@ -53,7 +53,7 @@ export function ProductPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, t])
 
   if (loading) {
     return (

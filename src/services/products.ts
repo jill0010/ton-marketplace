@@ -22,7 +22,6 @@ function toProductType(type: string): ProductType | null {
   if (
     type === "username" ||
     type === "number" ||
-    type === "nft" ||
     type === "gift"
   ) {
     return type
