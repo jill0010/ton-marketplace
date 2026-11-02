@@ -1,0 +1,41 @@
+name: Wallet Identity Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/_shared/ton-address.ts"
+      - "supabase/functions/_shared/wallet-identity-migration.ts"
+      - "supabase/functions/_shared/wallet-identity-migration_test.ts"
+      - "scripts/audit-legacy-wallet-identities.ts"
+      - ".github/workflows/wallet-identity-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wallet-identity-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-tests:
+    name: Wallet identity audit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check audit helper and CLI
+        run: deno check scripts/audit-legacy-wallet-identities.ts supabase/functions/_shared/wallet-identity-migration.ts
+
+      - name: Test wallet identity audit
+        run: deno test supabase/functions/_shared/wallet-identity-migration_test.ts
