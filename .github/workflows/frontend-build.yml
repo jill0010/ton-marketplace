@@ -53,18 +53,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Generate removal of unused TON Blueprint dependency
-        run: npm uninstall --save-dev @ton/blueprint
-
-      - name: Upload regenerated dependency manifests
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: dependency-lock-cleanup
-          path: |
-            package.json
-            package-lock.json
-          if-no-files-found: error
-
       - name: Build production frontend
         run: npm run build
 
