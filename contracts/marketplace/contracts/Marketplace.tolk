@@ -275,8 +275,7 @@ fun onBouncedMessage(in: InMessageBounced) {
     // Exact identity correlation only. This first slice intentionally records no state:
     // a bounce does not prove NFT ownership and must never release the listing reservation.
     if (
-        product.status == 1 &&
-        product.id == create.productId &&
+        product.status == 1 && product.id == create.productId &&
         product.assetAddress == create.nftItem &&
         product.seller == create.seller &&
         product.kind == create.kind &&
