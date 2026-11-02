@@ -38,6 +38,7 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         nextProductId: 1,
         nextOrderId: 1,
         products: [],
+        assetListings: [],
         orders: [],
     });
 
@@ -232,6 +233,18 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     expect(pendingProduct!!.assetAddress).toEqual(nftItem);
     expect(pendingProduct!!.status).toEqual(1);
 
+    // 同一 NFT 在首次托管尚未完成时也不能创建第二个商品。
+    val duplicatePublishRes = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicatePublishRes).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
+
     val pendingExtra = pendingProduct!!.extra.load();
 
     expect(pendingExtra.collection).toEqual(collection.address);
@@ -345,4 +358,46 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     assert (cancelledProduct != null) throw Errors.ProductNotFound;
 
     expect(cancelledProduct!!.status).toEqual(5);
+
+    // 确认 NFT 已退回卖家后，允许同一 NFT 重新发布为新商品。
+    val republishRes = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(republishRes).toHaveSuccessfulTx<PublishProduct>({
+        from: seller.address,
+        to: marketplace.address,
+    });
+    val republishedProduct = marketplace.product(2);
+    assert (republishedProduct != null) throw Errors.ProductNotFound;
+    expect(republishedProduct!!.assetAddress).toEqual(nftItem);
+    expect(republishedProduct!!.status).toEqual(1);
+
+    // 旧商品的重复退款通知只能被 ACK，不能释放新商品占用的 NFT 索引。
+    val staleRefundRes = marketplace.sendAny(
+        escrow.address,
+        EscrowRefunded {
+            queryId: 1,
+            productId: 1,
+            nftItem: nftItem,
+            seller: seller.address,
+        }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(staleRefundRes).toHaveSuccessfulTx<EscrowRefunded>({
+        from: escrow.address,
+        to: marketplace.address,
+    });
+
+    val thirdPublishRes = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(thirdPublishRes).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
 }
