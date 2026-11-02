@@ -324,6 +324,21 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         bounced: true,
     });
 
+    // RichBounce prefix 存在，但 envelope 的其余字段缺失。
+    // RichBounceBody.fromSlice 必须在 try/catch 中失败并被安全忽略。
+    val truncatedEnvelopeMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: beginCell().storeUint(0xfffffffe, 32).endCell(),
+    }).bounced();
+    val truncatedEnvelopeRes = net.send(escrow.address, truncatedEnvelopeMessage);
+    expect(truncatedEnvelopeRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
     // RichBounce envelope 本身有效，但原始 CreateEscrow body 被截断（只有 opcode）。
     // 解析缺字段时必须由 handler 捕获异常，不能让 bounced transaction 失败。
     val truncatedOriginalBody = beginCell().storeUint(0x71a00001, 32).endCell();
