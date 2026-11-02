@@ -61,6 +61,8 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -- '*.tolk'
             git commit -m "style(contracts): apply Acton formatter"
+            git fetch origin "${BRANCH_NAME}"
+            git rebase FETCH_HEAD
             git push origin "HEAD:${BRANCH_NAME}"
           fi
 
