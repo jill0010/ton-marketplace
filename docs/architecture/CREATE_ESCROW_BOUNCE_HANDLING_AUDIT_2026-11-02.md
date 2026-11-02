@@ -142,3 +142,20 @@ Validation on commit `0ec3d3ddb747bb36662eccde8a6abfc627d5aa9a`:
 - Wallet Identity Audit #79 was still running at the time of this documentation update.
 
 These tests cover a forged sender with a valid RichBounce body and an unexpected opcode. They do not yet cover malformed/truncated RichBounce serialization, a delayed valid bounce after product activation, or a spoofed sender whose body is valid but delivered through a lower-level chain simulation. No persistent bounce marker or bounce-driven state transition was added.
+
+
+## Late-bounce regression coverage — Active state is monotonic
+
+The integration test now replays a fully matching RichBounce from the configured Escrow after a later retry has successfully deposited the NFT and the Marketplace product is Active:
+
+- The delayed bounce transaction is accepted by the Marketplace handler.
+- Product status remains Active (2); it is not reverted to Pending.
+- A duplicate publication still fails with `AssetAlreadyListed`, proving the NFT Item reservation remains held.
+- The test then continues through the existing authenticated refund path.
+
+Validation on commit `f656a953f7ee5a164be0d32dfe774ebe69c2ff9a`:
+- Contracts workflow #92: success — Acton build, integration/unit tests, linter and formatter.
+- Frontend Build #34: success.
+- Wallet Identity Audit #81: both Deno/type-check and PostgreSQL 17 integration jobs succeeded.
+
+The bounce handler remains informational and state-neutral. No persistent bounce marker, cancellation, ownership inference, or index release is introduced. No production or mainnet deployment was performed.
