@@ -3,6 +3,7 @@ import { normalizeTonAddress } from "./ton-address.ts";
 
 export type VerifiedWalletContext = {
   userId: string;
+  walletIdentityId: string | null;
   walletAddress: string;
   network: "-239";
 };
@@ -46,6 +47,37 @@ export async function authenticateVerifiedWallet(
     throw new Error("Invalid or unauthorized user session");
   }
 
+  // Prefer the canonical wallet identity shared by multiple anonymous
+  // Auth sessions. The legacy lookup remains as a temporary migration
+  // fallback for users who have not completed a post-migration proof.
+  const { data: identityRows, error: identityError } = await supabase.rpc(
+    "get_current_ton_wallet_identity",
+    { p_auth_user_id: user.id },
+  );
+
+  if (identityError && identityError.code !== "PGRST202") {
+    throw new Error("Unable to resolve canonical wallet identity");
+  }
+
+  const identity = Array.isArray(identityRows) ? identityRows[0] : null;
+
+  if (identity) {
+    if (
+      typeof identity.wallet_identity_id !== "string" ||
+      typeof identity.wallet_address !== "string" ||
+      identity.network !== "-239"
+    ) {
+      throw new Error("Canonical wallet identity mismatch");
+    }
+
+    return {
+      userId: user.id,
+      walletIdentityId: identity.wallet_identity_id,
+      walletAddress: normalizeTonAddress(identity.wallet_address),
+      network: "-239",
+    };
+  }
+
   const { data: wallet, error: walletError } = await supabase
     .from("ton_verified_wallets")
     .select("user_id, wallet_address, network")
@@ -63,6 +95,7 @@ export async function authenticateVerifiedWallet(
 
   return {
     userId: user.id,
+    walletIdentityId: null,
     walletAddress: normalizeTonAddress(wallet.wallet_address),
     network: "-239",
   };
