@@ -1,89 +1,49 @@
-# Empty Template
+# TON Marketplace Contracts
 
-This project was generated from Acton's `empty` template. It gives you a
-minimal but fully working contract starter with storage, one message, a wrapper,
-tests, and a deployment script you can extend.
+This directory contains an experimental Tolk/Acton implementation of the TON marketplace escrow prototype.
 
-## What Is Included
+## Contracts
 
-- `contracts/Empty.tolk` implements a small ownable contract.
-- `contracts/types.tolk` defines storage, messages, and starter error codes.
-- `wrappers/Empty.gen.tolk` is the generated wrapper used by tests and scripts.
-- `tests/contract.test.tolk` covers deployment and ownership transfer.
-- `scripts/deploy.tolk` deploys the contract with `deployer` as the initial
-  owner and reads the owner back after deployment.
-- `.github/workflows/contracts.yml` runs build, format, lint, and test checks
-  on GitHub Actions.
+- `contracts/Marketplace.tolk` — product publication, pending/active/cancelled state, and callbacks from the escrow contract.
+- `contracts/NFTEscrow.tolk` — official collection/item-code allowlisting, NFT deposit verification, seller refunds, and retryable callbacks.
+- `contracts/types.tolk` — storage structures, message ABI and error codes.
+- `wrappers/` — generated contract wrappers.
+- `tests/` — emulation tests, including NFT deposit and refund integration.
 
-## Build
+## Current functionality
+
+The current prototype supports:
+1. seller submits a listing request;
+2. Marketplace creates a pending product and asks Escrow to prepare a record;
+3. seller transfers the NFT to Escrow using the TEP-62 ownership transfer flow;
+4. Escrow verifies the NFT sender, previous owner, query ID and forward payload;
+5. Marketplace marks the product active after the authenticated Escrow callback;
+6. seller or Escrow owner can request a refund;
+7. refund is marked complete only after the NFT transfer response, and Marketplace cancels the product after its callback.
+
+## Important: buying and settlement are not implemented
+
+This is **not yet a complete marketplace**. There is no buyer purchase message, payment/order state machine, NFT delivery to buyer, seller payout, or 97% / 3% fee split. The `Order` structures currently present in the types are not wired into a purchase flow.
+
+The frontend NFT publish endpoint remains fail-closed until escrow is fully integrated. Do not accept real buyer funds or list real NFTs using this prototype.
+
+See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_CONTRACT_READINESS_AUDIT_2026-11-02.md) for the full blockers and required implementation order.
+
+## Build and test
+
+Install the Acton toolchain described by the official Acton documentation, then run from this directory:
 
 ```bash
 acton build
-```
-
-## Test
-
-```bash
 acton test
+acton fmt --check
 ```
 
-## Try It In Emulation
+The repository Contracts workflow currently has a separate formatter failure. Do not treat the contract suite as green until the formatter and full build/test workflow pass.
 
-```bash
-acton run deploy-emulation
-```
+## Deployment safety
 
-## Customize The Starter
-
-1. Extend `contracts/types.tolk` with your storage and messages.
-2. Update `contracts/Empty.tolk` with your contract logic.
-3. Adjust `wrappers/Empty.gen.tolk` to match the new ABI, or regenerate it
-   with `acton wrapper Empty`.
-4. Extend `tests/contract.test.tolk` with the scenarios you care about.
-5. Update `scripts/deploy.tolk` with the storage and deployment flow you want.
-
-## Deploy To Testnet
-
-1. Create a local wallet named `deployer` and fund it on testnet:
-
-```bash
-acton wallet new --name deployer --local --airdrop
-```
-
-2. Update the starter contract, wrapper, and deploy script for your use case.
-3. Run the deployment script against testnet:
-
-```bash
-acton script scripts/deploy.tolk --net testnet
-```
-
-The starter script waits for the transaction and then reads the deployed owner
-back from testnet. You do not need a separate `--fork-net` for that check.
-
-The generated `Acton.toml` also includes shortcut scripts:
-
-```bash
-acton run deploy-emulation
-acton run deploy-testnet
-```
-
-If you hit rate limits while talking to Toncenter, copy `.env.example` to
-`.env` and put `TONCENTER_MAINNET_API_KEY` or `TONCENTER_TESTNET_API_KEY` there,
-depending on the network you use. Acton loads `.env` automatically.
-
-## CI
-
-The generated project includes `.github/workflows/contracts.yml`, which runs:
-
-- `acton build`
-- `acton fmt --check`
-- `acton check --output-format github`
-- `acton test`
-
-## Documentation
-
-- Quickstart: https://ton-blockchain.github.io/acton/docs/quickstart
-- Testing: https://ton-blockchain.github.io/acton/docs/commands/test
-- Scripts and deployment: https://ton-blockchain.github.io/acton/docs/commands/script
-- Wrappers: https://ton-blockchain.github.io/acton/docs/commands/wrapper
-- Wallets: https://ton-blockchain.github.io/acton/docs/commands/wallet
+- Current source review does not authorize mainnet deployment.
+- Use a testnet rehearsal only after the contract ABI, storage layout, upgrade plan and security tests are reviewed.
+- Never put signing keys or mnemonic phrases in this repository.
+- Mainnet deployment or upgrade requires a separate explicit operational approval.
