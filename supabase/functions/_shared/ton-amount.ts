@@ -11,7 +11,7 @@ export function parseTonToNanotons(input: string): bigint {
   }
 
   const value = input.trim();
-  const match = /^(0|[1-9]\\d*)(?:\\.(\\d{1,9}))?$/.exec(value);
+  const match = /^(0|[1-9]\d*)(?:\.(\d{1,9}))?$/.exec(value);
 
   if (!match) {
     throw new Error("Invalid TON amount");
