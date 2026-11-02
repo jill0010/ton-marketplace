@@ -82,7 +82,9 @@ fun onInternalMessage(in: InMessage) {
             };
 
             val escrowMessage = createMessage({
-                bounce: BounceMode.Only256BitsOfBody,
+                // Preserve the complete CreateEscrow body (including its referenced identity cell)
+                // so the bounce handler can correlate the exact failed request.
+                bounce: BounceMode.RichBounce,
                 value: grams("0.05"),
                 dest: escrowAddress,
                 body: CreateEscrow {
@@ -118,7 +120,8 @@ fun onInternalMessage(in: InMessage) {
             };
 
             val retryMessage = createMessage({
-                bounce: BounceMode.Only256BitsOfBody,
+                // Retry uses the same complete identity and needs the same full bounce envelope.
+                bounce: BounceMode.RichBounce,
                 value: grams("0.05"),
                 dest: storage.escrow,
                 body: CreateEscrow {
@@ -230,7 +233,60 @@ fun onInternalMessage(in: InMessage) {
     }
 }
 
-fun onBouncedMessage(_in: InMessageBounced) {}
+fun onBouncedMessage(in: InMessageBounced) {
+    val storage = lazy MarketplaceStorage.load();
+
+    // A bounced message is useful here only when it came back from the configured Escrow.
+    if (in.senderAddress != storage.escrow) {
+        return;
+    }
+
+    // Marketplace CreateEscrow messages must use RichBounce. Ignore other bounce formats.
+    if (in.bouncedBody.remainingBitsCount() < 32) {
+        return;
+    }
+    if (in.bouncedBody.preloadUint(32) != 0xfffffffe) {
+        return;
+    }
+
+    val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
+    val originalBody = rich.originalBody;
+    var originalSlice = originalBody.beginParse();
+
+    if (originalSlice.remainingBitsCount() < 32) {
+        return;
+    }
+    if (originalSlice.loadUint(32) != 0x71a00001) {
+        return;
+    }
+
+    // RichBounce must preserve the entire original CreateEscrow body, including its ref.
+    val create = lazy CreateEscrow.fromCell(originalBody);
+    val createExtra = create.extra.load();
+
+    val productResult = storage.products.get(create.productId);
+    if (!productResult.isFound) {
+        return;
+    }
+
+    val product = productResult.loadValue();
+    val productExtra = product.extra.load();
+
+    // Exact identity correlation only. This first slice intentionally records no state:
+    // a bounce does not prove NFT ownership and must never release the listing reservation.
+    if (
+        product.status == 1 &&
+        product.id == create.productId &&
+        product.assetAddress == create.nftItem &&
+        product.seller == create.seller &&
+        product.kind == create.kind &&
+        productExtra.collection == create.collection &&
+        productExtra.queryId == createExtra.queryId &&
+        productExtra.itemIndex == createExtra.itemIndex
+    ) {
+        return;
+    }
+}
 
 get fun owner(): address {
     val storage = lazy MarketplaceStorage.load();
