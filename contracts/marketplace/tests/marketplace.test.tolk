@@ -302,6 +302,7 @@ fun setupMarketplaceTest(): (Marketplace, Treasury, Treasury) {
         nextProductId: 1,
         nextOrderId: 1,
         products: [],
+        assetListings: [],
         orders: [],
     });
     val res = contract.deploy(deployer.address, { value: grams("0.05") });
@@ -504,6 +505,8 @@ fun setupActiveMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, Tr
     };
 
     products.set(1, product);
+    var assetListings: map<address, uint64> = [];
+    assetListings.set(nftItem.address, 1);
 
     val contract = Marketplace.fromStorage({
         owner: deployer.address,
@@ -512,6 +515,7 @@ fun setupActiveMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, Tr
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: assetListings,
         orders: [],
     });
 
@@ -567,6 +571,8 @@ fun setupPendingMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, T
         }.toCell(),
     };
     products.set(1, product);
+    var assetListings: map<address, uint64> = [];
+    assetListings.set(nftItem.address, 1);
 
     val contract = Marketplace.fromStorage({
         owner: deployer.address,
@@ -575,6 +581,7 @@ fun setupPendingMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, T
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: assetListings,
         orders: [],
     });
 
@@ -823,6 +830,7 @@ get fun `test escrow deposit callback rejects paused product`() {
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: [],
         orders: [],
     });
 
@@ -907,6 +915,7 @@ get fun `test escrow deposit callback rejected when escrow is not configured`() 
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: [],
         orders: [],
     });
 
