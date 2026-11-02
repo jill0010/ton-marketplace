@@ -2,24 +2,24 @@
 
 ## Scope and result
 
-The lockfile was audited with `npm audit --json` on Node.js 22.23.4 / npm 10.9.9.
+The root npm lockfile was audited with Node.js 22.23.4 / npm 10.9.9.
 
-Observed dependency tree:
-- 6 advisories total: 3 low, 3 high; no critical advisories.
-- The 3 high findings are the development toolchain path `@ton/blueprint@0.47.1 -> @ton/ton@16.3.0 -> zod@3.25.76`.
-- The 3 low findings are the production TON Connect dependency path `@tonconnect/ui-react@5.0.1 -> @tonconnect/ui@5.0.1 -> deepmerge@4.3.1`.
+Initial findings:
+- 6 advisories total: 3 low and 3 high.
+- The high findings came from the unused development-only `@ton/blueprint@0.47.1 -> @ton/ton@16.3.0 -> zod@3.25.76` dependency chain.
+- The low findings came from the production TON Connect dependency path `@tonconnect/ui-react@5.0.1 -> @tonconnect/ui@5.0.1 -> deepmerge@4.3.1`.
 
-## High severity: development-only Zod path
+## Completed remediation: remove unused Blueprint toolchain
 
-The current Zod version is below 4.6.6 and is affected by GHSA-mrhx-c7xc-m3w5, an uncontrolled memory-consumption issue when validating oversized arrays without a length bound.
+A repository-wide source check found no imports or scripts using `@ton/blueprint`. The contract project uses Acton, not TON Blueprint. The unused dev dependency was removed from `package.json` and `package-lock.json`.
 
-The affected path is pulled in by the development dependency `@ton/blueprint`; it is not part of the production Vite bundle or production dependency set. The npm audit output indicates the automated fix requires a semver-major change to the Blueprint toolchain. Do not apply `npm audit fix --force` blindly: first verify the supported Blueprint/TON package compatibility, generated wrappers, build scripts, and contract tests.
+This also removed the unused transitive `@ton/ton` and `zod` packages from the root application lockfile, eliminating the three high-severity development dependency findings without introducing a major toolchain upgrade.
 
-Advisory: https://github.com/advisories/GHSA-mrhx-c7xc-m3w5
+The generated lockfile was tested by reinstalling dependencies, building the frontend, and running the dependency audit.
 
-## Low severity: production TON Connect deepmerge path
+## Remaining low severity: TON Connect deepmerge path
 
-`deepmerge@4.3.1` is affected by GHSA-gcqx-w48m-w2h4 (prototype poisoning). The advisory currently lists no patched versions. The issue enters the production dependency graph through TON Connect UI. No safe upstream upgrade is presently available from the locked dependency tree.
+`deepmerge@4.3.1` remains in the production dependency tree through TON Connect UI and is affected by GHSA-gcqx-w48m-w2h4 (prototype poisoning). The advisory currently lists no patched versions.
 
 Advisory: https://github.com/advisories/GHSA-gcqx-w48m-w2h4
 
@@ -31,9 +31,10 @@ Mitigations:
 
 ## CI policy
 
-The Frontend Build workflow now:
-1. Builds the TypeScript/Vite production bundle.
-2. Prints a complete locked-tree advisory summary for review.
-3. Enforces `npm audit --omit=dev --audit-level=high`, so high/critical production dependencies fail CI while the known low-severity, currently unpatched TON Connect advisory remains visible.
+The Frontend Build workflow:
+1. Installs exactly from the committed lockfile.
+2. Builds the TypeScript/Vite production bundle.
+3. Prints a complete locked-tree advisory summary for review.
+4. Enforces `npm audit --omit=dev --audit-level=high`, so high/critical production dependency advisories fail CI.
 
-This report does not claim that all dependency advisories are resolved. The development-only high finding and unpatched production low finding remain tracked.
+The known unpatched low-severity TON Connect advisory remains visible in audit output. It is not silently suppressed.
