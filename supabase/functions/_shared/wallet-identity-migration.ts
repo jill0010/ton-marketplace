@@ -8,9 +8,9 @@ import { normalizeTonAddress } from "./ton-address.ts";
  * resolved manually; it is never silently assigned to one user.
  */
 export type LegacyWalletRecord = {
-  userId: string;
-  walletAddress: string;
-  network: string;
+  userId: unknown;
+  walletAddress: unknown;
+  network: unknown;
 };
 
 export type WalletIdentityCandidate = {
