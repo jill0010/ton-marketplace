@@ -324,6 +324,49 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         bounced: true,
     });
 
+    // RichBounce envelope 本身有效，但原始 CreateEscrow body 被截断（只有 opcode）。
+    // 解析缺字段时必须由 handler 捕获异常，不能让 bounced transaction 失败。
+    val truncatedOriginalBody = beginCell().storeUint(0x71a00001, 32).endCell();
+    val truncatedRichBounce = RichBounceBody {
+        originalBody: truncatedOriginalBody,
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.05"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: Errors.EscrowPaused,
+        computePhase: null,
+    };
+    val truncatedBounceMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: truncatedRichBounce,
+    }).bounced();
+    val truncatedBounceRes = net.send(escrow.address, truncatedBounceMessage);
+    expect(truncatedBounceRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
+    // 畸形/无关 Bounce 处理后，Pending 商品及 NFT 唯一索引必须保持不变。
+    val pendingAfterMalformedBounce = marketplace.product(1);
+    assert (pendingAfterMalformedBounce != null) throw Errors.ProductNotFound;
+    expect(pendingAfterMalformedBounce!!.status).toEqual(1);
+    val duplicateAfterMalformedBounce = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicateAfterMalformedBounce).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
+
     // 两类伪造/无关 Bounce 都不得改变商品状态或释放 NFT 唯一上架索引。
     val pendingAfterAdversarialBounces = marketplace.product(1);
     assert (pendingAfterAdversarialBounces != null) throw Errors.ProductNotFound;
