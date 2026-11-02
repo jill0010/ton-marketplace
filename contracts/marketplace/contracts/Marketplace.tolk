@@ -256,10 +256,7 @@ fun onBouncedMessage(in: InMessageBounced) {
         val originalBody = rich.originalBody;
         var originalSlice = originalBody.beginParse();
 
-        if (
-            originalSlice.remainingBitsCount() >= 32 &&
-            originalSlice.loadUint(32) == 0x71a00001
-        ) {
+        if (originalSlice.remainingBitsCount() >= 32 && originalSlice.loadUint(32) == 0x71a00001) {
             // RichBounce must preserve the entire original CreateEscrow body, including its ref.
             val create = lazy CreateEscrow.fromCell(originalBody);
             val createExtra = create.extra.load();
@@ -271,8 +268,7 @@ fun onBouncedMessage(in: InMessageBounced) {
 
                 // Exact identity correlation only. This handler intentionally records no state:
                 // a bounce does not prove NFT ownership and must never release the reservation.
-                val isExactPendingMatch =
-                    product.status == 1 && product.id == create.productId &&
+                val isExactPendingMatch = product.status == 1 && product.id == create.productId &&
                     product.assetAddress == create.nftItem &&
                     product.seller == create.seller &&
                     product.kind == create.kind &&
