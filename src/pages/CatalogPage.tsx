@@ -29,7 +29,7 @@ const SORT_LABELS_BI: Record<CatalogSort, { en: string; zh: string }> = {
 
 
 export function CatalogPage() {
-  const { language, t } = useLanguage()
+  const { t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -185,7 +185,7 @@ export function CatalogPage() {
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option} value={option}>
-              {SORT_LABELS_BI[option][language]}
+              {t(SORT_LABELS_BI[option].en, SORT_LABELS_BI[option].zh)}
             </option>
           ))}
         </select>
@@ -221,7 +221,7 @@ export function CatalogPage() {
                 : "border-white/10 bg-white/[0.02] text-zinc-300 hover:border-white/25 hover:bg-white/[0.05]"
             }`}
           >
-            {category[language]}
+            {t(category.en, category.zh)}
           </button>
         ))}
       </div>
