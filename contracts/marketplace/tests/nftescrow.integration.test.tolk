@@ -352,6 +352,43 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         bounced: true,
     });
 
+    // CreateEscrow 的字段完整，但 extra 引用单元缺少必需字段。
+    // 这会在 create.extra.load() 阶段触发解析错误，也必须被 try/catch 吞掉。
+    val truncatedExtraCell = beginCell().storeUint(1, 64).endCell();
+    val createEscrowWithTruncatedExtra = beginCell()
+        .storeUint(0x71a00001, 32)
+        .storeAddress(nftItem.address)
+        .storeAddress(collection.address)
+        .storeAddress(seller.address)
+        .storeUint(1, 64)
+        .storeUint(3, 8)
+        .storeRef(truncatedExtraCell)
+        .endCell();
+    val truncatedExtraRichBounce = RichBounceBody {
+        originalBody: createEscrowWithTruncatedExtra,
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.05"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: Errors.EscrowPaused,
+        computePhase: null,
+    };
+    val truncatedExtraBounceMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: truncatedExtraRichBounce,
+    }).bounced();
+    val truncatedExtraBounceRes = net.send(escrow.address, truncatedExtraBounceMessage);
+    expect(truncatedExtraBounceRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+
     // 畸形/无关 Bounce 处理后，Pending 商品及 NFT 唯一索引必须保持不变。
     val pendingAfterMalformedBounce = marketplace.product(1);
     assert (pendingAfterMalformedBounce != null) throw Errors.ProductNotFound;
