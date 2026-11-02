@@ -330,3 +330,20 @@ struct (0x71a0000D) RetryDepositCallback {
 struct (0x71a0000E) RetryCreateEscrow {
     productId: uint64
 }
+
+/// Integer-only settlement split. Fee rounds down; seller receives the remainder,
+/// so platformFee + sellerAmount always equals the exact gross price.
+struct SettlementAmounts {
+    gross: coins
+    platformFee: coins
+    sellerAmount: coins
+}
+
+fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
+    val platformFee = gross * 3 / 100;
+    return SettlementAmounts {
+        gross: gross,
+        platformFee: platformFee,
+        sellerAmount: gross - platformFee,
+    };
+}
