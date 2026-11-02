@@ -34,6 +34,9 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Install package dependencies
+        run: deno install
+
       - name: Type-check audit helper and CLI
         run: deno check scripts/audit-legacy-wallet-identities.ts supabase/functions/_shared/wallet-identity-migration.ts
 
