@@ -550,18 +550,17 @@ export function PublishPage() {
               <button
                 type="button"
                 onClick={() => void handlePublish()}
-                disabled={!isWalletVerified || !validPrice || publishing}
+                disabled
+
                 className="w-full rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {publishing
-                  ? t("Publishing...", "正在发布...")
-                  : t("Publish Now", "立即发布")}
+                {t("Temporarily Unavailable", "暂未开放发布")}
               </button>
 
               <p className="text-xs leading-5 text-zinc-500">
                 {t(
-                  "The server will recheck NFT ownership and official collection eligibility before publishing. No NFT transfer or payment is initiated.",
-                  "发布前服务器会重新核验 NFT 所有权及官方集合资格。本操作不会转移 NFT，也不会发起付款。",
+                  "NFT listing is paused until escrow deposit and on-chain confirmation are implemented.",
+                  "NFT 发布功能暂时关闭，待 NFT 托管入库及链上确认流程完成后开放。",
                 )}
               </p>
             </section>
