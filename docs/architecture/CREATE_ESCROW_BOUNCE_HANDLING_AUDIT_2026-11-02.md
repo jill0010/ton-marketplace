@@ -178,3 +178,15 @@ Validation on formatted commit `170d7a5b6941bfd7b54d5e21055b17609523db62`:
 - Wallet Identity Audit #85: success — Deno/type checks and PostgreSQL 17 disposable-database integration tests.
 
 No storage layout change, persistent bounce marker, cancellation, index release, production migration/deployment, mainnet deployment, NFT transfer, or fund movement was performed.
+
+
+### Referenced extra-cell truncation regression (2026-11-03)
+
+Extended the malformed-message coverage beyond a body truncated immediately after the CreateEscrow opcode. A second adversarial case now supplies all CreateEscrow root fields and a referenced extra cell containing only the first 64-bit field; decoding `CreateEscrowExtra` therefore fails when the handler attempts to load the missing timestamp and item index. The bounced transaction is required to succeed and the Pending product/NFT reservation must remain unchanged.
+
+Validation on commit `a5f2fc64f5e78255c7256f698afcb96f35473caf`:
+- Contracts workflow #99: success — build, 94 tests in 7 files, linter, formatter.
+- Frontend Build #41: success.
+- Wallet Identity Audit #88: success — Deno/type checks and PostgreSQL 17 integration tests.
+
+This test exercises failure while decoding the referenced extra cell, not merely missing root fields. No storage layout or production state changed.
