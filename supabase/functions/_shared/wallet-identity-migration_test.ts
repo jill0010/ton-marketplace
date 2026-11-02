@@ -19,7 +19,7 @@ Deno.test("friendly and raw address rows resolve to one canonical candidate", ()
   assertEquals(result.rejected, []);
   assertEquals(result.candidates, [{
     network: "-239",
-    rawAddress,
+    rawAddress: rawAddress.toLowerCase(),
     userIds: ["user-b"],
     sourceRows: 2,
     status: "ready",
