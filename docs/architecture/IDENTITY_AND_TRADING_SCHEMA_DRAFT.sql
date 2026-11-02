@@ -263,6 +263,109 @@ BEGIN
 END
 $$;
 
+
+-- Double-entry ledger invariants.
+-- A journal must contain at least one debit and one credit and balance exactly
+-- in atomic units. This is deferred until transaction commit so a trusted
+-- transaction can insert both sides without an intermediate false failure.
+CREATE OR REPLACE FUNCTION private.assert_ledger_journal_balanced()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, private
+AS $
+DECLARE
+  target_journal_id uuid;
+  debit_total numeric(78, 0);
+  credit_total numeric(78, 0);
+BEGIN
+  IF TG_TABLE_NAME = 'ledger_journals' THEN
+    target_journal_id := NEW.id;
+  ELSE
+    target_journal_id := COALESCE(NEW.journal_id, OLD.journal_id);
+  END IF;
+
+  SELECT
+    COALESCE(sum(amount_atomic) FILTER (WHERE direction = 'debit'), 0),
+    COALESCE(sum(amount_atomic) FILTER (WHERE direction = 'credit'), 0)
+  INTO debit_total, credit_total
+  FROM private.ledger_entries
+  WHERE journal_id = target_journal_id;
+
+  IF debit_total <= 0 OR credit_total <= 0 OR debit_total <> credit_total THEN
+    RAISE EXCEPTION
+      'Unbalanced ledger journal %: debits %, credits %',
+      target_journal_id, debit_total, credit_total
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NULL;
+END;
+$;
+
+DROP TRIGGER IF EXISTS ledger_journals_balance_check
+  ON private.ledger_journals;
+CREATE CONSTRAINT TRIGGER ledger_journals_balance_check
+  AFTER INSERT ON private.ledger_journals
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW
+  EXECUTE FUNCTION private.assert_ledger_journal_balanced();
+
+DROP TRIGGER IF EXISTS ledger_entries_balance_check
+  ON private.ledger_entries;
+CREATE CONSTRAINT TRIGGER ledger_entries_balance_check
+  AFTER INSERT ON private.ledger_entries
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW
+  EXECUTE FUNCTION private.assert_ledger_journal_balanced();
+
+-- Financial evidence is append-only. Corrections must be represented by
+-- compensating journals/events, never by rewriting or deleting history.
+CREATE OR REPLACE FUNCTION private.reject_financial_history_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, private
+AS $
+BEGIN
+  RAISE EXCEPTION 'Financial history is append-only: %.% cannot be changed',
+    TG_TABLE_SCHEMA, TG_TABLE_NAME
+    USING ERRCODE = '55000';
+END;
+$;
+
+DO $
+DECLARE
+  table_name text;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY[
+    'ledger_journals',
+    'ledger_entries',
+    'chain_events'
+  ]
+  LOOP
+    EXECUTE format(
+      'DROP TRIGGER IF EXISTS %I ON private.%I',
+      table_name || '_append_only',
+      table_name
+    );
+    EXECUTE format(
+      'CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON private.%I FOR EACH ROW EXECUTE FUNCTION private.reject_financial_history_mutation()',
+      table_name || '_append_only',
+      table_name
+    );
+  END LOOP;
+END
+$;
+
+-- Functions are not callable by browser roles. The trusted service role invokes
+-- only through server-side transactions after chain evidence is independently
+-- verified.
+REVOKE ALL ON FUNCTION private.assert_ledger_journal_balanced()
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.reject_financial_history_mutation()
+  FROM PUBLIC, anon, authenticated;
+
 COMMIT;
 
 -- IMPORTANT IMPLEMENTATION GATES:
