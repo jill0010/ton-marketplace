@@ -659,89 +659,54 @@ Deno.serve(async (req: Request) => {
     // 4. 验证 TON 钱包签名
     const verified = await verifyTonProof(input);
 
-    // 5. 原子消费一次性挑战值
-    const consumeResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/consume_ton_proof_challenge`,
+    // 5. 在同一个数据库事务中消费挑战并绑定规范化钱包身份
+    const now = new Date().toISOString();
+    const bindResponse = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/bind_verified_ton_wallet_identity`,
       {
         method: "POST",
         headers: {
           apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           p_payload: input.payload,
           p_attempt_id: userId,
           p_now: Math.floor(Date.now() / 1000),
+          p_network: EXPECTED_NETWORK,
+          p_raw_address: verified.address,
+          p_wallet_version: verified.walletVersion,
+          p_verified_at: now,
         }),
       },
     );
 
-    if (!consumeResponse.ok) {
+    if (!bindResponse.ok) {
       console.error(
-        "Challenge consumption failed:",
-        consumeResponse.status,
+        "Atomic TON wallet identity binding failed:",
+        bindResponse.status,
       );
 
       return jsonResponse(
         {
           success: false,
-          error: "Challenge verification unavailable",
+          error: "Wallet identity binding unavailable",
         },
         503,
         origin,
       );
     }
 
-    const consumed = await consumeResponse.json();
+    const bound = await bindResponse.json();
 
-    if (consumed !== true) {
+    if (bound !== true) {
       return jsonResponse(
         {
           success: false,
-          error:
-            "Challenge expired, already used, or belongs to another buyer",
+          error: "Challenge expired, already used, or belongs to another buyer",
         },
         401,
-        origin,
-      );
-    }
-
-    // 6. 保存服务端验证通过的钱包身份
-    const now = new Date().toISOString();
-
-    const saveResponse = await fetch(
-      `${supabaseUrl}/rest/v1/ton_verified_wallets`,
-      {
-        method: "POST",
-        headers: {
-          apikey: serviceKey,
-          "Content-Type": "application/json",
-          Prefer:
-            "resolution=merge-duplicates,return=minimal",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          wallet_address: verified.address,
-          network: EXPECTED_NETWORK,
-          wallet_version: verified.walletVersion,
-          verified_at: now,
-          updated_at: now,
-        }),
-      },
-    );
-
-    if (!saveResponse.ok) {
-      console.error(
-        "Verified wallet storage failed:",
-        saveResponse.status,
-      );
-
-      return jsonResponse(
-        {
-          success: false,
-          error: "Unable to save verified wallet",
-        },
-        500,
         origin,
       );
     }
