@@ -172,4 +172,9 @@ The NFT Escrow integration test now constructs a structurally valid RichBounce e
 
 The implementation uses the Tolk `try { ... } catch { ... }` language construct. This does not catch out-of-gas conditions, and it is not a substitute for protocol-level validation; the test specifically covers a truncated original CreateEscrow body that causes typed parsing to fail.
 
-Validation is pending for the new code commits. No storage layout change, persistent bounce marker, cancellation, index release, production migration/deployment, mainnet deployment, NFT transfer, or fund movement was performed.
+Validation on formatted commit `170d7a5b6941bfd7b54d5e21055b17609523db62`:
+- Contracts workflow #96: success — Acton build, 94 tests in 7 files, linter, and formatter.
+- Frontend Build #38: success — TypeScript and Vite production build.
+- Wallet Identity Audit #85: success — Deno/type checks and PostgreSQL 17 disposable-database integration tests.
+
+No storage layout change, persistent bounce marker, cancellation, index release, production migration/deployment, mainnet deployment, NFT transfer, or fund movement was performed.
