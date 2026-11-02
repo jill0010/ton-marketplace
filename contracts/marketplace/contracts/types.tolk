@@ -107,7 +107,7 @@ struct MarketplaceStorage {
     nextProductId: uint64
     nextOrderId: uint64
     products: map<uint64, Product>
-    // NFT Item address -> pending/active product ID; 0 means available.
+    // NFT Item address -> pending/active product ID; absent means available.
     assetListings: map<address, uint64>
     orders: map<uint64, Order>
 }
