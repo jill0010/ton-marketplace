@@ -41,28 +41,28 @@ jobs:
           deno-version: v2.x
 
       - name: Install repository package dependencies
-        run: deno install
+        run: deno install --config supabase/functions/deno.json
 
       - name: Type-check wallet identity audit helper and CLI
-        run: deno check scripts/audit-legacy-wallet-identities.ts supabase/functions/_shared/wallet-identity-migration.ts
+        run: deno check --config supabase/functions/deno.json scripts/audit-legacy-wallet-identities.ts supabase/functions/_shared/wallet-identity-migration.ts
 
       - name: Type-check exact TON amount utility
-        run: deno check supabase/functions/_shared/ton-amount.ts supabase/functions/_shared/ton-amount_test.ts
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/ton-amount.ts supabase/functions/_shared/ton-amount_test.ts
 
       - name: Type-check TON Proof challenge
-        run: deno check supabase/functions/ton-proof-challenge/index.ts
+        run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-challenge/index.ts
 
       - name: Type-check TON Proof verifier
-        run: deno check supabase/functions/ton-proof-verify/index.ts
+        run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-verify/index.ts
 
       - name: Type-check TON Proof status
-        run: deno check supabase/functions/ton-proof-status/index.ts
+        run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-status/index.ts
 
       - name: Type-check fail-closed premium order endpoint
-        run: deno check supabase/functions/create-premium-order/index.ts
+        run: deno check --config supabase/functions/deno.json supabase/functions/create-premium-order/index.ts
 
       - name: Test wallet identity audit
-        run: deno test supabase/functions/_shared/wallet-identity-migration_test.ts
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/wallet-identity-migration_test.ts
 
       - name: Test exact TON amount conversion
-        run: deno test supabase/functions/_shared/ton-amount_test.ts
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/ton-amount_test.ts
