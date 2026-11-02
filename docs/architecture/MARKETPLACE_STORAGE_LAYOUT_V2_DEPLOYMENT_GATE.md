@@ -14,10 +14,10 @@ The map is serialized as part of `MarketplaceStorage`, between `products` and `o
 
 - Key: canonical TON NFT Item address.
 - Value: product ID reserved by that NFT.
-- Missing key or value `0`: available for a new listing.
+- Missing key: available for a new listing.
 - Nonzero value: reserved by a Pending or Active product.
 - Reservation is written atomically with creation of a Pending product.
-- Reservation is released only when the configured Escrow's authenticated refund callback matches the product's query ID, NFT Item and seller, and the map still points to that exact product ID.
+- Reservation is deleted only when the configured Escrow's authenticated refund callback matches the product's query ID, NFT Item and seller, and the map still points to that exact product ID.
 - A replayed refund callback for an already-cancelled product is ACKed without changing the map. It cannot clear a newer product's reservation.
 
 ## Compatibility rule
