@@ -357,7 +357,7 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     val truncatedExtraCell = beginCell().storeUint(1, 64).endCell();
     val createEscrowWithTruncatedExtra = beginCell()
         .storeUint(0x71a00001, 32)
-        .storeAddress(nftItem.address)
+        .storeAddress(nftItem)
         .storeAddress(collection.address)
         .storeAddress(seller.address)
         .storeUint(1, 64)
