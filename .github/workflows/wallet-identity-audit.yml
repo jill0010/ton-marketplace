@@ -40,8 +40,7 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Install package dependencies
-        working-directory: supabase/functions
+      - name: Install repository package dependencies
         run: deno install
 
       - name: Type-check wallet identity audit helper and CLI
