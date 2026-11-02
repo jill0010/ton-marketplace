@@ -44,7 +44,7 @@ The current contract does **not** implement:
 - seller proceeds payout;
 - platform fee accounting or the agreed 97% / 3% split;
 - seller settlement retry/reconciliation;
-- a unique active-listing index by NFT item address;
+
 - cancellation/expiry handling for pending escrow deposits beyond administrative retry/refund paths.
 
 Although `Order`, `OrderExtra`, `nextOrderId`, and `orders` exist in storage types, the current `Marketplace.tolk` message union has no buy/purchase message and does not create orders.
@@ -57,17 +57,23 @@ The current `nft-wallet-assets` function reads NFTs from the connected wallet an
 
 Do not re-enable NFT publishing until the chain escrow flow and DB mirror are implemented together.
 
+## Implemented NFT listing uniqueness
+
+- `MarketplaceStorage.assetListings` maps NFT Item addresses to pending/active product IDs; `0` is the released/available sentinel.
+- `PublishProduct` reserves the address in the same transaction that creates the Pending product, preventing concurrent duplicate listings before escrow deposit completes.
+- A matching authenticated refund callback releases the reservation. A duplicate callback for an already-cancelled old product does not clear a newer product's reservation.
+- Regression coverage includes duplicate publication while Pending, publication after confirmed refund, and stale refund callback replay after re-listing.
+
 ## Required next implementation sequence
 
-1. Freeze the escrow message ABI and storage version; add explicit versioning/migration strategy before changing deployed storage.
-2. Add NFT-address uniqueness in Marketplace storage so one NFT cannot create multiple pending/active listings.
-3. Implement a purchase state machine with a unique order ID and replay-protected query ID.
-4. Specify payment semantics: buyer wallet, exact nanotons, order payload, expiry, finality, and over/underpayment handling.
-5. Implement escrow release to the buyer wallet only after payment is confirmed by the contract state machine.
-6. Verify the NFT item's authenticated ownership notification to the buyer and make delivery idempotent.
-7. Implement seller 97% and platform 3% settlement using integer arithmetic, explicit rounding, and retry-safe payout records.
-8. Add exhaustive emulation tests: duplicate listing, fake NFT callback, wrong seller, wrong item, replayed payment, wrong amount, expired order, bounced release, duplicate delivery, payout bounce, pause/unpause, owner rotation, and refund/purchase races.
-9. Only after all tests pass, review bytecode, deployment configuration, admin key custody, and testnet rehearsal. Mainnet deployment requires a separate explicit operational approval.
+1. Freeze the escrow message ABI and storage version; keep the new `assetListings` layout restricted to a fresh deployment until a migration is designed and tested.
+2. Implement a purchase state machine with a unique order ID and replay-protected query ID.
+3. Specify payment semantics: buyer wallet, exact nanotons, order payload, expiry, finality, and over/underpayment handling.
+4. Implement escrow release to the buyer wallet only after payment is confirmed by the contract state machine.
+5. Verify the NFT item's authenticated ownership notification to the buyer and make delivery idempotent.
+6. Implement seller 97% and platform 3% settlement using integer arithmetic, explicit rounding, and retry-safe payout records.
+7. Add exhaustive emulation tests: fake NFT callback, wrong seller, wrong item, replayed payment, wrong amount, expired order, bounced release, duplicate delivery, payout bounce, pause/unpause, owner rotation, and refund/purchase races.
+8. Only after all tests pass, review bytecode, deployment configuration, admin key custody, and testnet rehearsal. Mainnet deployment requires a separate explicit operational approval.
 
 ## Deployment status
 
