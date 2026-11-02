@@ -126,3 +126,19 @@ The integration test now checks the listing invariant immediately after each fai
 - The existing successful retry, NFT deposit, activation, and refund path then continues unchanged.
 
 This directly verifies that neither the initial nor retry RichBounce path releases the NFT reservation or changes the Pending state. It does not simulate forged/malformed bounced envelopes or a delayed bounce delivered after activation; those remain separate adversarial test gaps and must not be claimed as covered.
+
+
+## Adversarial regression coverage — forged sender and unexpected opcode
+
+The integration test now constructs an explicit bounced-message envelope using Acton's emulator API:
+
+- A forged RichBounce envelope contains an exact, otherwise matching CreateEscrow identity, but is delivered from a non-Escrow treasury. The Marketplace accepts the bounced transaction without treating that sender as the configured Escrow.
+- A bounced body delivered from the configured Escrow address with an unrelated opcode is ignored safely.
+- After both cases, product 1 remains Pending and a duplicate publication of the same NFT Item still fails with AssetAlreadyListed.
+
+Validation on commit `0ec3d3ddb747bb36662eccde8a6abfc627d5aa9a`:
+- Contracts workflow #90: success — Acton build, all 94 tests in 7 files, linter, formatter.
+- Frontend Build #32: success.
+- Wallet Identity Audit #79 was still running at the time of this documentation update.
+
+These tests cover a forged sender with a valid RichBounce body and an unexpected opcode. They do not yet cover malformed/truncated RichBounce serialization, a delayed valid bounce after product activation, or a spoofed sender whose body is valid but delivered through a lower-level chain simulation. No persistent bounce marker or bounce-driven state transition was added.
