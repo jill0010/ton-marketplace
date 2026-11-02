@@ -26,6 +26,8 @@ enum Errors {
     InvalidCollectionItemCode = 123
     InvalidItemIndex = 124
     InvalidDepositConfirmation = 125
+    AssetAlreadyListed = 126
+    AssetListingIndexMismatch = 127
 }
 
 struct Storage {
@@ -105,6 +107,8 @@ struct MarketplaceStorage {
     nextProductId: uint64
     nextOrderId: uint64
     products: map<uint64, Product>
+    // NFT Item address -> pending/active product ID; 0 means available.
+    assetListings: map<address, uint64>
     orders: map<uint64, Order>
 }
 
