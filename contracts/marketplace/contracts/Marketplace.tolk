@@ -249,41 +249,44 @@ fun onBouncedMessage(in: InMessageBounced) {
         return;
     }
 
-    val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
-    val originalBody = rich.originalBody;
-    var originalSlice = originalBody.beginParse();
+    // Any parser operation may fail on a truncated envelope, body, or referenced extra cell.
+    // Catch malformed data at this boundary so it cannot make the bounce transaction fail.
+    try {
+        val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
+        val originalBody = rich.originalBody;
+        var originalSlice = originalBody.beginParse();
 
-    if (originalSlice.remainingBitsCount() < 32) {
-        return;
-    }
-    if (originalSlice.loadUint(32) != 0x71a00001) {
-        return;
-    }
+        if (
+            originalSlice.remainingBitsCount() >= 32 &&
+            originalSlice.loadUint(32) == 0x71a00001
+        ) {
+            // RichBounce must preserve the entire original CreateEscrow body, including its ref.
+            val create = lazy CreateEscrow.fromCell(originalBody);
+            val createExtra = create.extra.load();
 
-    // RichBounce must preserve the entire original CreateEscrow body, including its ref.
-    val create = lazy CreateEscrow.fromCell(originalBody);
-    val createExtra = create.extra.load();
+            val productResult = storage.products.get(create.productId);
+            if (productResult.isFound) {
+                val product = productResult.loadValue();
+                val productExtra = product.extra.load();
 
-    val productResult = storage.products.get(create.productId);
-    if (!productResult.isFound) {
-        return;
-    }
+                // Exact identity correlation only. This handler intentionally records no state:
+                // a bounce does not prove NFT ownership and must never release the reservation.
+                val isExactPendingMatch =
+                    product.status == 1 && product.id == create.productId &&
+                    product.assetAddress == create.nftItem &&
+                    product.seller == create.seller &&
+                    product.kind == create.kind &&
+                    productExtra.collection == create.collection &&
+                    productExtra.queryId == createExtra.queryId &&
+                    productExtra.itemIndex == createExtra.itemIndex;
 
-    val product = productResult.loadValue();
-    val productExtra = product.extra.load();
-
-    // Exact identity correlation only. This first slice intentionally records no state:
-    // a bounce does not prove NFT ownership and must never release the listing reservation.
-    if (
-        product.status == 1 && product.id == create.productId &&
-        product.assetAddress == create.nftItem &&
-        product.seller == create.seller &&
-        product.kind == create.kind &&
-        productExtra.collection == create.collection &&
-        productExtra.queryId == createExtra.queryId &&
-        productExtra.itemIndex == createExtra.itemIndex
-    ) {
-        return;
+                if (isExactPendingMatch) {
+                    // Informational no-op by design.
+                }
+            }
+        }
+    } catch {
+        // Ignore malformed RichBounce data. Never infer ownership or mutate listing state.
     }
 }
 
