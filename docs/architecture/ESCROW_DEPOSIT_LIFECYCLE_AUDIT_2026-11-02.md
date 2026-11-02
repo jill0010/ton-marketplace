@@ -93,3 +93,7 @@ Do not implement buyer purchase/release/payout handlers on top of an unresolved 
 - No payment verification, NFT release to buyers, seller payout, or platform payout is implemented.
 - No mainnet deployment, production database migration, or live NFT/TON transfer is performed.
 - The PR must remain Draft until the complete protocol, storage strategy, tests, and testnet rehearsal are reviewed.
+
+## Follow-up recovery protocol
+
+The detailed fail-closed recovery decision and implementation gates are maintained in [`ESCROW_PENDING_RECOVERY_PROTOCOL_V1.md`](./ESCROW_PENDING_RECOVERY_PROTOCOL_V1.md). In particular, a timeout, missing notification, or CreateEscrow bounce is not proof of seller ownership and must never release the NFT listing index.
