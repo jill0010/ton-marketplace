@@ -1,6 +1,8 @@
 {
   "imports": {
     "@ton/core": "npm:@ton/core@0.63.1",
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.118.0"
-  }
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.118.0",
+    "openai": "npm:openai@^4.52.5"
+  },
+  "nodeModulesDir": "auto"
 }
