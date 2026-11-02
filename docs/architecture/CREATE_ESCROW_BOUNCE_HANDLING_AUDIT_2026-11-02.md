@@ -115,3 +115,14 @@ Validation on the current PR head:
 This verifies full RichBounce body decoding and exact identity correlation in the emulator. It does **not** implement a persistent bounce marker, automatic cancellation, refund, or index release. Those remain gated behind a separately designed storage/state transition and adversarial race/replay tests.
 
 No production deployment, migration, mainnet transaction, NFT transfer, or fund movement was performed.
+
+
+## Follow-up regression coverage — reservation survives repeated bounces
+
+The integration test now checks the listing invariant immediately after each failed request, not only after a later successful retry:
+
+- After the initial CreateEscrow bounce, a second PublishProduct for the same NFT Item fails with `AssetAlreadyListed`, and product 1 remains Pending.
+- After the retry request also bounces, product 1 is still Pending and a further duplicate publication again fails with `AssetAlreadyListed`.
+- The existing successful retry, NFT deposit, activation, and refund path then continues unchanged.
+
+This directly verifies that neither the initial nor retry RichBounce path releases the NFT reservation or changes the Pending state. It does not simulate forged/malformed bounced envelopes or a delayed bounce delivered after activation; those remain separate adversarial test gaps and must not be claimed as covered.
