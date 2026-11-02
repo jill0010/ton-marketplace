@@ -159,3 +159,17 @@ Validation on commit `f656a953f7ee5a164be0d32dfe774ebe69c2ff9a`:
 - Wallet Identity Audit #81: both Deno/type-check and PostgreSQL 17 integration jobs succeeded.
 
 The bounce handler remains informational and state-neutral. No persistent bounce marker, cancellation, ownership inference, or index release is introduced. No production or mainnet deployment was performed.
+
+
+## Malformed RichBounce defensive parsing — implementation added (2026-11-03)
+
+The Marketplace bounce handler now wraps RichBounce envelope decoding, original-body parsing, and referenced CreateEscrowExtra decoding in Tolk `try/catch`. A malformed or truncated body is ignored rather than allowed to abort the bounced-message transaction. The handler remains read-only/state-neutral; the catch path does not update product status or the NFT reservation map.
+
+The NFT Escrow integration test now constructs a structurally valid RichBounce envelope whose original body contains only the CreateEscrow opcode and omits all required fields/references. It asserts:
+- the bounced transaction to Marketplace succeeds (the malformed CreateEscrow parser failure is caught);
+- the Pending product remains Pending;
+- duplicate publication of the same NFT Item remains rejected with `AssetAlreadyListed`.
+
+The implementation uses the Tolk `try { ... } catch { ... }` language construct. This does not catch out-of-gas conditions, and it is not a substitute for protocol-level validation; the test specifically covers a truncated original CreateEscrow body that causes typed parsing to fail.
+
+Validation is pending for the new code commits. No storage layout change, persistent bounce marker, cancellation, index release, production migration/deployment, mainnet deployment, NFT transfer, or fund movement was performed.
