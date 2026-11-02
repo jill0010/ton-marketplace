@@ -19,7 +19,8 @@ The current prototype supports:
 4. Escrow verifies the NFT sender, previous owner, query ID and forward payload;
 5. Marketplace marks the product active after the authenticated Escrow callback;
 6. seller or Escrow owner can request a refund;
-7. refund is marked complete only after the NFT transfer response, and Marketplace cancels the product after its callback.
+7. refund is marked complete only after the NFT transfer response, and Marketplace cancels the product after its callback;
+8. Marketplace reserves each NFT Item address across Pending and Active listings, and releases that reservation only after the matching refund callback.
 
 ## Important: buying and settlement are not implemented
 
@@ -39,10 +40,14 @@ acton test
 acton fmt --check
 ```
 
-The repository Contracts workflow currently has a separate formatter failure. Do not treat the contract suite as green until the formatter and full build/test workflow pass.
+The GitHub Contracts workflow runs the contract build, emulation tests, linter and formatter. Check the latest workflow result for the exact commit before treating a change as verified.
 
-## Deployment safety
+## Storage compatibility and deployment safety
 
+- `MarketplaceStorage` now includes `assetListings: map<address, uint64>` between `products` and `orders`. This changes the serialized storage layout; it is not a drop-in compatible update for a contract initialized with the prior structure.
+- The current contract has no on-chain migration/upgrade handler that can safely reconstruct this index from existing products. Do not send the new code to an existing Marketplace address.
+- Treat this storage shape as a fresh-deployment schema only. If an older Marketplace was deployed outside this repository workflow, preserve it and design/test a separate migration or deploy a new address with an explicit user-facing cutover. Never assume an empty index for old products.
+- A fresh deployment must initialize `assetListings` as an empty map. The deployment script and test fixtures now do so.
 - Current source review does not authorize mainnet deployment.
 - Use a testnet rehearsal only after the contract ABI, storage layout, upgrade plan and security tests are reviewed.
 - Never put signing keys or mnemonic phrases in this repository.
