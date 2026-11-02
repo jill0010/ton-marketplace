@@ -10,6 +10,10 @@ on:
       - "supabase/functions/_shared/ton-amount_test.ts"
       - "supabase/functions/_shared/wallet-identity-migration.ts"
       - "supabase/functions/_shared/wallet-identity-migration_test.ts"
+      - "supabase/functions/ton-proof-challenge/**"
+      - "supabase/functions/ton-proof-verify/**"
+      - "supabase/functions/ton-proof-status/**"
+      - "supabase/functions/create-premium-order/**"
       - "scripts/audit-legacy-wallet-identities.ts"
       - ".github/workflows/wallet-identity-audit.yml"
   workflow_dispatch:
@@ -23,7 +27,7 @@ concurrency:
 
 jobs:
   audit-tests:
-    name: Wallet identity audit tests
+    name: Wallet identity and TON Proof checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,13 +41,26 @@ jobs:
           deno-version: v2.x
 
       - name: Install package dependencies
+        working-directory: supabase/functions
         run: deno install
 
-      - name: Type-check audit helper and CLI
+      - name: Type-check wallet identity audit helper and CLI
         run: deno check scripts/audit-legacy-wallet-identities.ts supabase/functions/_shared/wallet-identity-migration.ts
 
       - name: Type-check exact TON amount utility
         run: deno check supabase/functions/_shared/ton-amount.ts supabase/functions/_shared/ton-amount_test.ts
+
+      - name: Type-check TON Proof challenge
+        run: deno check supabase/functions/ton-proof-challenge/index.ts
+
+      - name: Type-check TON Proof verifier
+        run: deno check supabase/functions/ton-proof-verify/index.ts
+
+      - name: Type-check TON Proof status
+        run: deno check supabase/functions/ton-proof-status/index.ts
+
+      - name: Type-check fail-closed premium order endpoint
+        run: deno check supabase/functions/create-premium-order/index.ts
 
       - name: Test wallet identity audit
         run: deno test supabase/functions/_shared/wallet-identity-migration_test.ts
