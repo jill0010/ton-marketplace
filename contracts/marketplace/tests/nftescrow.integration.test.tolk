@@ -487,6 +487,34 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     expect(activeExtra.collection).toEqual(collection.address);
     expect(activeExtra.queryId).toEqual(1);
 
+    // 模拟旧的、身份完全匹配的 CreateEscrow Bounce 在商品已激活后迟到。
+    // 迟到 Bounce 不能把 Active 商品回滚为 Pending，也不能释放 NFT 索引。
+    val lateBounceMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: forgedRichBounce,
+    }).bounced();
+    val lateBounceRes = net.send(escrow.address, lateBounceMessage);
+    expect(lateBounceRes).toHaveSuccessfulTx({
+        from: escrow.address,
+        to: marketplace.address,
+        bounced: true,
+    });
+    val productAfterLateBounce = marketplace.product(1);
+    assert (productAfterLateBounce != null) throw Errors.ProductNotFound;
+    expect(productAfterLateBounce!!.status).toEqual(2);
+    val duplicateAfterLateBounce = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicateAfterLateBounce).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
+
     // 卖家申请退款，由 Emulator 递归处理 Escrow 与真实 NFT 的交易。
     val refundMessage = createMessage({
         bounce: false,
