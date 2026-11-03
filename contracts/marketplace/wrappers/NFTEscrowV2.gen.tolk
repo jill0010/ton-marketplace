@@ -44,15 +44,52 @@ fun NFTEscrowV2.sendCreateEscrowV2(
     from: address,
     productId: uint64,
     nftItem: address,
+    collection: address,
     seller: address,
     queryId: uint64,
+    itemIndex: uint256,
+    kind: uint8,
     config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
         bounce: config.bounce,
         value: config.value,
         dest: self.address,
-        body: CreateEscrowV2 { productId, nftItem, seller, queryId },
+        body: CreateEscrowV2 { productId, nftItem, collection, seller, queryId, itemIndex, kind },
+    });
+    return net.send(from, genericMsg);
+}
+
+
+fun NFTEscrowV2.sendSetCollectionStatusV2(
+    self,
+    from: address,
+    collection: address,
+    newStatus: uint8,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetCollectionStatusV2 { collection, newStatus },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrowV2.sendSetCollectionItemCodeV2(
+    self,
+    from: address,
+    collection: address,
+    kind: uint8,
+    code: cell,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetCollectionItemCodeV2 { collection, kind, code },
     });
     return net.send(from, genericMsg);
 }
