@@ -33,7 +33,7 @@ function toProductType(type: string): ProductType | null {
 }
 
 function tonToNano(value: string | number): string | null {
-  const match = /^(\\d+)(?:\\.(\\d{1,9}))?$/.exec(String(value).trim())
+  const match = /^(\d+)(?:\\.(\d{1,9}))?$/.exec(String(value).trim())
   if (!match) return null
   const whole = BigInt(match[1])
   const fraction = BigInt((match[2] ?? "").padEnd(9, "0") || "0")
