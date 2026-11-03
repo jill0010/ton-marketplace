@@ -27,6 +27,12 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         rejectOwner: buyer.address,
         rejectReturn: true,
     });
+    val refundNftItem = RejectingNFTItem.fromStorage({
+        owner: seller.address,
+        controller: seller.address,
+        rejectOwner: seller.address,
+        rejectReturn: true,
+    });
 
     var seededRecords: map<uint64, Cell<NFTEscrowV2Record>> = [];
     seededRecords.set(
@@ -45,10 +51,29 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
             }.toCell(),
         }.toCell(),
     );
+    val refundDepositQueryId = 72010;
+    seededRecords.set(
+        2,
+        NFTEscrowV2Record {
+            escrowId: 2,
+            nftItem: refundNftItem.address,
+            seller: seller.address,
+            productId: 7002,
+            status: 0,
+            queryId: refundDepositQueryId,
+            extra: NFTEscrowV2RecordExtra {
+                collection: owner.address,
+                itemIndex: 1,
+                kind: 3,
+            }.toCell(),
+        }.toCell(),
+    );
     var seededAssets: map<address, uint64> = [];
     seededAssets.set(nftItem.address, 1);
+    seededAssets.set(refundNftItem.address, 2);
     var seededQueries: map<uint64, uint64> = [];
     seededQueries.set(depositQueryId, 1);
+    seededQueries.set(refundDepositQueryId, 2);
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
         owner: owner.address,
@@ -72,6 +97,8 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
 
     val nftDeploy = nftItem.deploy(seller.address, { value: grams("0.1") });
     expect(nftDeploy).toHaveSuccessfulDeploy({ to: nftItem.address });
+    val refundNftDeploy = refundNftItem.deploy(seller.address, { value: grams("0.1") });
+    expect(refundNftDeploy).toHaveSuccessfulDeploy({ to: refundNftItem.address });
 
     val escrowDeploy = escrow.deploy(owner.address, { value: grams("0.1") });
     expect(escrowDeploy).toHaveSuccessfulDeploy({ to: escrow.address });
