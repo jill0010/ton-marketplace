@@ -241,3 +241,20 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - Contracts CI #169 on commit `fbb0f10`: success — opcode registry check (27 declarations, no collisions), build, 96 tests in 9 files, linter, formatter.
 - This is an injected bounce regression, not a full action-phase failure against a rejecting Marketplace contract. A dedicated rejecting callback recipient and end-to-end action-phase bounce test remain a follow-up.
 - No purchase entrypoint, fund acceptance, payout handler, deployment, migration, NFT transfer outside emulation, or production transaction was enabled.
+
+## V2 real Marketplace callback Action-phase bounce verification — 2026-11-03
+
+- Added a test-only Marketplace callback receiver that deliberately attempts an unaffordable outgoing message while processing `EscrowReleasedV2`.
+- The rejecting action uses `SEND_MODE_BOUNCE_ON_ACTION_FAIL` in addition to regular send mode. This is required to make an Action-phase send failure bounce the inbound callback transaction; merely setting the inbound message's `BounceMode` is not sufficient for this case.
+- The integration test verifies all of the following in one real emulator trace:
+  - NFT ownership changes from Escrow to the buyer;
+  - the callback receiver's transaction fails in Action phase with `noFunds`;
+  - the failed callback produces a real bounced child transaction from the Marketplace fixture back to NFTEscrowV2;
+  - the durable release callback remains stored after the bounce;
+  - an owner-authorized retry succeeds after the receiver stops rejecting;
+  - only the exact Marketplace `EscrowReleaseAckV2` clears the durable callback.
+- The test does not decode the optional TLB bounce-phase field directly; it asserts the actual bounced transaction in the emulator trace, avoiding a brittle optional-field parser dependency.
+- Contracts workflow #191 on commit `c3e1e368cd34a4ff5e2854b74dd3a263af159b6d`: success — opcode registry check, build, **97 tests in 10 files**, linter, and formatter.
+- The test-only rejecting callback contract and its generated wrapper are registered in Acton. The production NFTEscrowV2 callback amount remains unchanged; no additional fixed-fee sufficiency claim is made.
+
+This proves the isolated V2 release callback's Action-phase bounce/retry behavior in emulation only. It does not implement MarketplaceV2 purchase/payment, seller/platform payout, buyer refund, or production deployment. No production database migration, Edge Function deployment, testnet/mainnet contract deployment, NFT transfer, or fund movement occurred.
