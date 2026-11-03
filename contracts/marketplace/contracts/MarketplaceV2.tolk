@@ -162,7 +162,8 @@ fun onBouncedMessage(in: InMessageBounced) {
         var product = MarketplaceV2Product.fromCell(productResult.loadValue());
         if (
             product.status == 1 && product.id == create.productId &&
-            product.queryId == create.queryId && product.nftItem == create.nftItem &&
+            product.queryId == create.queryId &&
+            product.nftItem == create.nftItem &&
             product.seller == create.seller
         ) {
             product.status = 5;
