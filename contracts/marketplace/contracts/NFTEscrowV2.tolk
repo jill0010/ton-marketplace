@@ -350,7 +350,9 @@ fun onInternalMessage(in: InMessage) {
             var callbacks = storage.callbacks.load();
             var refundCallbacks = callbacks.refundStorage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
-            assert (msg.escrowId > 0 && msg.productId > 0 && msg.queryId > 0) throw ErrorsV2.InvalidRefund;
+            assert (
+                msg.escrowId > 0 && msg.productId > 0 && msg.queryId > 0
+            ) throw ErrorsV2.InvalidRefund;
 
             val recordResult = storage.records.get(msg.escrowId);
             assert (recordResult.isFound) throw ErrorsV2.InvalidRefund;
@@ -371,7 +373,9 @@ fun onInternalMessage(in: InMessage) {
                 val pendingResult = refundCallbacks.pendingRefunds.get(msg.escrowId);
                 assert (pendingResult.isFound) throw ErrorsV2.InvalidRefund;
                 val pending = EscrowRefundCallbackV2.fromCell(pendingResult.loadValue());
-                assert (pending.toCell().hash() == callback.toCell().hash()) throw ErrorsV2.InvalidRefund;
+                assert (
+                    pending.toCell().hash() == callback.toCell().hash()
+                ) throw ErrorsV2.InvalidRefund;
                 return;
             }
 
@@ -422,9 +426,13 @@ fun onInternalMessage(in: InMessage) {
                 assert (pendingResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
                 val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
                 assert (pending.queryId == msg.queryId) throw ErrorsV2.InvalidReleaseConfirmation;
-                assert (pending.productId == record.productId) throw ErrorsV2.InvalidReleaseConfirmation;
+                assert (
+                    pending.productId == record.productId
+                ) throw ErrorsV2.InvalidReleaseConfirmation;
                 assert (pending.escrowId == escrowId) throw ErrorsV2.InvalidReleaseConfirmation;
-                assert (pending.nftItem == record.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
+                assert (
+                    pending.nftItem == record.nftItem
+                ) throw ErrorsV2.InvalidReleaseConfirmation;
 
                 record.status = 3;
                 storage.records.set(escrowId, record.toCell());
@@ -637,8 +645,10 @@ fun onBouncedMessage(in: InMessageBounced) {
                 val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
                 if (
                     in.senderAddress == record.nftItem && pending.queryId == transfer.queryId &&
-                    pending.buyer == transfer.newOwner && pending.nftItem == record.nftItem &&
-                    pending.escrowId == escrowId && pending.productId == record.productId
+                    pending.buyer == transfer.newOwner &&
+                    pending.nftItem == record.nftItem &&
+                    pending.escrowId == escrowId &&
+                    pending.productId == record.productId
                 ) {
                     record.status = 1;
                     storage.records.set(escrowId, record.toCell());
@@ -656,8 +666,10 @@ fun onBouncedMessage(in: InMessageBounced) {
                 val pending = EscrowRefundCallbackV2.fromCell(pendingResult.loadValue());
                 if (
                     in.senderAddress == record.nftItem && pending.queryId == transfer.queryId &&
-                    pending.seller == transfer.newOwner && pending.nftItem == record.nftItem &&
-                    pending.escrowId == escrowId && pending.productId == record.productId &&
+                    pending.seller == transfer.newOwner &&
+                    pending.nftItem == record.nftItem &&
+                    pending.escrowId == escrowId &&
+                    pending.productId == record.productId &&
                     pending.seller == record.seller
                 ) {
                     record.status = 1;
