@@ -101,10 +101,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         beginCell()
             .storeUint(1, 1)
             .storeRef(
-                beginCell()
-                    .storeUint(0x53564950, 32)
-                    .storeUint(depositQueryId, 64)
-                    .endCell(),
+                beginCell().storeUint(0x53564950, 32).storeUint(depositQueryId, 64).endCell(),
             )
             .endCell()
             .beginParse(),
