@@ -649,17 +649,18 @@ fun onInternalMessage(in: InMessage) {
                     if (listingResult.isFound && listingResult.loadValue() == product.id) {
                         listingMaps.assetListings.delete(product.nftItem);
                     }
+                    order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.Confirmed;
                     if (order.refundStatus == MarketplaceV2RefundStatus.Dispatched) {
                         order.status = MarketplaceV2OrderStatus.RefundDispatched;
                     }
                     orderMaps.orders.set(order.id, order.toCell());
                     storage.listingMaps = listingMaps.toCell();
-            storage.orderMaps = orderMaps.toCell();
-            storage.save();
+                    storage.orderMaps = orderMaps.toCell();
+                    storage.save();
                 } else {
                     assert (product.status == 5) throw ErrorsV2.InvalidRefund;
                     order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.Confirmed;
-                    storage.orders.set(order.id, order.toCell());
+                    orderMaps.orders.set(order.id, order.toCell());
                     storage.listingMaps = listingMaps.toCell();
                     storage.orderMaps = orderMaps.toCell();
                     storage.save();
