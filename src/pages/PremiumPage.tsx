@@ -288,7 +288,7 @@ export function PremiumPage() {
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       aria-hidden="true"
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-zinc-500 bg-transparent"
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 bg-transparent ${active ? "border-sky-400" : "border-zinc-500"}`}
                     >
                       {active && <span className="h-2 w-2 rounded-full bg-sky-400" />}
                     </span>
