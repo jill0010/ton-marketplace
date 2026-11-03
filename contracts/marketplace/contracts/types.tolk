@@ -392,13 +392,44 @@ enum ErrorsV2 {
     ReleaseAlreadyPending = 202
     InvalidReleaseConfirmation = 203
     AssetAlreadyEscrowed = 204
+    CollectionNotApproved = 205
+    InvalidCollectionStatus = 206
+    CollectionItemCodeNotConfigured = 207
+    InvalidCollectionItemCode = 208
+    InvalidNftItem = 209
+    InvalidProductKind = 210
 }
 
 struct (0x71b00001) CreateEscrowV2 {
     productId: uint64
     nftItem: address
+    collection: address
     seller: address
     queryId: uint64
+    itemIndex: uint256
+    kind: uint8
+}
+
+// V2 collection policy is isolated from V1 serialized storage.
+struct (0x71b0000C) SetCollectionStatusV2 {
+    collection: address
+    newStatus: uint8
+}
+
+struct (0x71b0000D) SetCollectionItemCodeV2 {
+    collection: address
+    kind: uint8
+    code: cell
+}
+
+struct NFTEscrowV2CollectionItemCode {
+    kind: uint8
+    code: cell
+}
+
+struct NFTEscrowV2CollectionStorage {
+    collections: map<address, uint8>
+    collectionItemCodes: map<address, Cell<NFTEscrowV2CollectionItemCode>>
 }
 
 struct (0x71b00004) EscrowDepositedV2 {
@@ -432,10 +463,13 @@ struct EscrowDepositCallbackV2 {
 struct NFTEscrowV2Record {
     escrowId: uint64
     nftItem: address
+    collection: address
     seller: address
     productId: uint64
     status: uint8
     queryId: uint64
+    itemIndex: uint256
+    kind: uint8
 }
 
 struct NFTEscrowV2CallbackStorage {
@@ -450,6 +484,7 @@ struct NFTEscrowV2Storage {
     records: map<uint64, Cell<NFTEscrowV2Record>>
     // NFT Item -> current custody escrow ID; released items become available again.
     assetToEscrow: map<address, uint64>
+    collectionStorage: Cell<NFTEscrowV2CollectionStorage>
     nextEscrowId: uint64
     queryToEscrow: map<uint64, uint64>
     callbacks: Cell<NFTEscrowV2CallbackStorage>
@@ -489,6 +524,9 @@ fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
 // Isolated Marketplace V2 listing integration. Purchase/payment opcodes remain reserved.
 struct (0x71b0000A) PublishProductV2 {
     nftItem: address
+    collection: address
+    itemIndex: uint256
+    kind: uint8
     price: coins
 }
 
@@ -500,6 +538,9 @@ struct MarketplaceV2Product {
     id: uint64
     seller: address
     nftItem: address
+    collection: address
+    itemIndex: uint256
+    kind: uint8
     price: coins
     escrowId: uint64
     queryId: uint64
