@@ -1252,21 +1252,12 @@ get fun `test Marketplace V2 immutable order snapshot and independent payout lia
 get fun `test Marketplace V2 versioned purchase storage round-trips`() {
     val owner = testing.treasury("v2StorageOwner");
     val treasury = testing.treasury("v2StorageTreasury");
-    val storage = MarketplaceV2Storage {
+    val purchaseStorage = MarketplaceV2PurchaseStorage {
         schemaVersion: 2,
-        owner: owner.address,
-        escrow: treasury.address,
-        escrowConfigured: true,
         treasury: treasury.address,
         treasuryConfigured: true,
-        nextProductId: 11,
-        nextQueryId: 21,
         nextOrderId: 31,
         nextOperationId: 41,
-        products: [],
-        assetListings: [],
-        queryToProduct: [],
-        refundQueryToProduct: [],
         orders: [],
         productToOrder: [],
         paymentQueryToOrder: [],
@@ -1274,15 +1265,28 @@ get fun `test Marketplace V2 versioned purchase storage round-trips`() {
         payoutQueryToOperation: [],
         refundQueryToOrder: [],
     };
+    val storage = MarketplaceV2Storage {
+        owner: owner.address,
+        escrow: treasury.address,
+        escrowConfigured: true,
+        nextProductId: 11,
+        nextQueryId: 21,
+        products: [],
+        assetListings: [],
+        queryToProduct: [],
+        refundQueryToProduct: [],
+        purchaseStorage: purchaseStorage.toCell(),
+    };
     val decoded = MarketplaceV2Storage.fromCell(storage.toCell());
-    expect(decoded.schemaVersion).toEqual(2);
+    val decodedPurchase = decoded.purchaseStorage.load();
     expect(decoded.owner).toEqual(owner.address);
     expect(decoded.escrow).toEqual(treasury.address);
     expect(decoded.escrowConfigured).toEqual(true);
-    expect(decoded.treasury).toEqual(treasury.address);
-    expect(decoded.treasuryConfigured).toEqual(true);
     expect(decoded.nextProductId).toEqual(11);
     expect(decoded.nextQueryId).toEqual(21);
-    expect(decoded.nextOrderId).toEqual(31);
-    expect(decoded.nextOperationId).toEqual(41);
+    expect(decodedPurchase.schemaVersion).toEqual(2);
+    expect(decodedPurchase.treasury).toEqual(treasury.address);
+    expect(decodedPurchase.treasuryConfigured).toEqual(true);
+    expect(decodedPurchase.nextOrderId).toEqual(31);
+    expect(decodedPurchase.nextOperationId).toEqual(41);
 }
