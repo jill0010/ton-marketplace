@@ -87,6 +87,17 @@ The following assignments replace the conflicting provisional assignments in the
 The source scan of `contracts/marketplace/contracts/types.tolk` found the provisional purchase-design collision: `0x71b00001` is already `CreateEscrowV2`. The design table previously proposed the same opcode for `BuyProductV2`. The purchase design has been corrected to use `0x71b00100` and the settlement family above. No existing contract ABI was changed by this registry update.
 
 
+## V2 seller refund messages
+
+These messages are implemented in NFTEscrowV2. MarketplaceV2 does not yet expose seller cancellation or send these messages, so the refund path is not reachable through the current MarketplaceV2 contract.
+
+| Opcode | Message | Direction | Status |
+|---|---|---|---|
+| `0x71b0000E` | `RefundEscrowV2` | MarketplaceV2 → NFTEscrowV2 | Implemented in Escrow |
+| `0x71b0000F` | `EscrowRefundedV2` | NFTEscrowV2 → MarketplaceV2 | Implemented in Escrow |
+| `0x71b00010` | `EscrowRefundAckV2` | MarketplaceV2 → NFTEscrowV2 | Implemented in Escrow |
+| `0x71b00011` | `RetryRefundCallbackV2` | Operator → NFTEscrowV2 | Implemented in Escrow |
+
 ## V2 official collection provenance policy
 
 - `NFTEscrowV2` now has isolated collection status and Item Code storage.
@@ -100,3 +111,8 @@ The source scan of `contracts/marketplace/contracts/types.tolk` found the provis
 ## V2 purchase schema checkpoint
 
 The shared type module now includes serialization-only V2 order snapshot and independent payout-liability structs. No new opcode was allocated, no generated purchase wrapper was introduced, and MarketplaceV2 does not yet accept buyer funds. Contracts workflow #297 passed with 35 declarations, no opcode collisions, build, 100 tests in 12 files, linter, and formatter.
+
+
+## V2 seller refund lifecycle checkpoint
+
+NFTEscrowV2 now supports seller-directed NFT refund from a deposited record, RichBounce restoration to Deposited, authenticated NFT Item excesses confirmation, durable callback, owner retry, and exact Marketplace ACK cleanup. This is the Escrow half only: MarketplaceV2 seller cancellation/callback handling is not yet implemented, so no user-facing V2 cancel/refund action is available. The refund messages do not accept buyer funds.
