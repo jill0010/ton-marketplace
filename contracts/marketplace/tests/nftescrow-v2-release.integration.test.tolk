@@ -266,7 +266,6 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
             queryId: releaseQueryId,
             nftItem: nftItem.address,
             buyer: buyer.address,
-            seller: seller.address,
         },
     }).bounced();
     val failureCallbackBounceResult = net.send(marketplace.address, bouncedFailureCallback);
@@ -323,7 +322,6 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         releaseQueryId,
         nftItem.address,
         buyer.address,
-        seller.address,
         { value: grams("0.05") },
     );
     expect(validFailureAck).toHaveSuccessfulTx();
