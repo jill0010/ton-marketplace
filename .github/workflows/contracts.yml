@@ -53,3 +53,9 @@ jobs:
 
       - name: Formatter
         run: acton fmt --check
+
+      - name: Show formatter output for review
+        if: always()
+        run: |
+          acton fmt
+          git --no-pager diff --no-ext-diff --unified=2
