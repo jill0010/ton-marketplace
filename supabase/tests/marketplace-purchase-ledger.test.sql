@@ -3,9 +3,9 @@ BEGIN;
 
 DO $security$
 DECLARE
-  table_name text;
+  v_table_name text;
 BEGIN
-  FOREACH table_name IN ARRAY ARRAY[
+  FOREACH v_table_name IN ARRAY ARRAY[
     'marketplace_orders',
     'marketplace_payouts',
     'marketplace_chain_observations',
@@ -15,16 +15,16 @@ BEGIN
       SELECT relrowsecurity
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND c.relname = table_name
+      WHERE n.nspname = 'public' AND c.relname = v_table_name
     ) THEN
-      RAISE EXCEPTION 'RLS is not enabled on %', table_name;
+      RAISE EXCEPTION 'RLS is not enabled on %', v_table_name;
     END IF;
-    IF has_table_privilege('anon', format('public.%I', table_name), 'SELECT')
+    IF has_table_privilege('anon', format('public.%I', v_table_name), 'SELECT')
       OR has_table_privilege('authenticated', format('public.%I', table_name), 'SELECT') THEN
-      RAISE EXCEPTION 'Public roles must not read %', table_name;
+      RAISE EXCEPTION 'Public roles must not read %', v_table_name;
     END IF;
     IF NOT has_table_privilege('service_role', format('public.%I', table_name), 'SELECT') THEN
-      RAISE EXCEPTION 'service_role cannot read %', table_name;
+      RAISE EXCEPTION 'service_role cannot read %', v_table_name;
     END IF;
   END LOOP;
 
