@@ -138,9 +138,15 @@ async function getVerifiedWallet(
       typeof row.wallet_address !== "string" ||
       typeof row.network !== "string" ||
       typeof row.wallet_version !== "string" ||
-      typeof row.verified_at !== "string"
+      typeof row.verified_at !== "string" ||
+      typeof row.proof_expires_at !== "string"
     ) {
       throw new Error("Invalid canonical wallet identity record");
+    }
+
+    const proofExpiresAt = Date.parse(row.proof_expires_at);
+    if (!Number.isFinite(proofExpiresAt) || proofExpiresAt <= Date.now()) {
+      return null;
     }
 
     return {
