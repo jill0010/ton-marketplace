@@ -98,7 +98,16 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         null,
         null,
         grams("0.01"),
-        beginCell().endCell().beginParse(),
+        beginCell()
+            .storeUint(1, 1)
+            .storeRef(
+                beginCell()
+                    .storeUint(0x53564950, 32)
+                    .storeUint(depositQueryId, 64)
+                    .endCell(),
+            )
+            .endCell()
+            .beginParse(),
         { value: grams("0.1") },
     );
     expect(deposit).toHaveSuccessfulTx();
