@@ -227,11 +227,14 @@ export function PremiumPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <header className="flex items-center gap-3">
+      <header className="flex items-center gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+          {t("Buy Telegram Premium", "购买 Telegram Premium")}
+        </h1>
         <svg
           aria-hidden="true"
           viewBox="0 0 48 48"
-          className="h-12 w-12 shrink-0"
+          className="h-7 w-7 shrink-0"
           fill="none"
         >
           <rect width="48" height="48" rx="14" fill="#229ED9" />
@@ -241,9 +244,6 @@ export function PremiumPage() {
           />
           <path d="m35.4 8.2 1.2 3.1 3.1 1.2-3.1 1.2-1.2 3.1-1.2-3.1-3.1-1.2 3.1-1.2 1.2-3.1Z" fill="white" />
         </svg>
-        <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          {t("Buy Telegram Premium", "购买 Telegram Premium")}
-        </h1>
       </header>
 
       <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
