@@ -264,7 +264,6 @@ fun NFTEscrowV2.sendEscrowReleaseFailureAckV2(
     queryId: uint64,
     nftItem: address,
     buyer: address,
-    seller: address,
     config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
@@ -278,7 +277,6 @@ fun NFTEscrowV2.sendEscrowReleaseFailureAckV2(
             queryId,
             nftItem,
             buyer,
-            seller,
         },
     });
     return net.send(from, genericMsg);
