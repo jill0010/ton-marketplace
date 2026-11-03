@@ -74,3 +74,8 @@ Latest observed Contracts CI for the architecture branch: workflow #282 succeede
 
 
 Latest observed Contracts CI for the architecture branch: workflow #297 succeeded on commit `5f13f31a613905cd399f9f7878e5635d0022a3e1` — opcode registry check (35 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. The additional test round-trips the V2 immutable order snapshot and separate seller/platform payout liability records. These are serialization-only types; MarketplaceV2 still has no buyer purchase entrypoint and accepts no buyer funds.
+
+
+NFTEscrowV2 now also has an emulator-tested seller refund primitive: a Marketplace-authorized request transfers the NFT back to its recorded seller, only authenticated NFT Item `excesses` marks it Refunded, a correlated transfer bounce restores Deposited, and the durable callback remains until exact ACK. This is not yet wired to a MarketplaceV2 seller-cancel action; users cannot cancel V2 listings through the Marketplace contract yet.
+
+Latest observed Contracts CI: workflow #322 succeeded on commit `cbc1306c0ba70dd3577b069a1bceeb3d76a8fb1c` — opcode registry check (39 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. This validates emulator/source behavior only; no deployment or real-asset use is authorized.
