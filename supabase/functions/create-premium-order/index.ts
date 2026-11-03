@@ -56,8 +56,18 @@ Deno.serve(async (req: Request) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ??
       JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}").default;
     const serviceKey = getSecretKey();
+    const tronGridKey = Deno.env.get("TRONGRID_API_KEY");
+    const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const telegramAdminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
     if (!supabaseUrl || !anonKey || !serviceKey) {
       return response({ success: false, error: "Checkout service is not configured" }, 503, origin);
+    }
+    if (!tronGridKey || !telegramBotToken || !telegramAdminChatId) {
+      return response({
+        success: false,
+        code: "PAYMENT_NOT_CONFIGURED",
+        error: "USDT checkout is not enabled yet. The administrator must finish TRON verification and Telegram notification setup before any funds are sent.",
+      }, 503, origin);
     }
 
     const authClient = createClient(supabaseUrl, anonKey, {
