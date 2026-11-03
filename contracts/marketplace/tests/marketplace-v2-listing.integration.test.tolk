@@ -36,6 +36,10 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
         marketplace: marketplace.address,
         records: [],
         assetToEscrow: [],
+        collectionStorage: NFTEscrowV2CollectionStorage {
+            collections: [],
+            collectionItemCodes: [],
+        }.toCell(),
         nextEscrowId: 1,
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
@@ -93,6 +97,9 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
     val publish = marketplace.sendPublishProductV2(
         seller.address,
         nftItem.address,
+        owner.address,
+        0,
+        3,
         grams("2"),
         { value: grams("0.2") },
     );
