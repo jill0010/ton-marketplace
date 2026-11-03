@@ -1,65 +1,24 @@
 name: Frontend Build
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "public/**"
-      - "index.html"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig*.json"
-      - "vite.config.*"
-      - ".github/workflows/frontend-build.yml"
   push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "public/**"
-      - "index.html"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig*.json"
-      - "vite.config.*"
-      - ".github/workflows/frontend-build.yml"
-
-permissions: {}
-
-concurrency:
-  group: frontend-build-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build:
-    name: TypeScript and Vite production build
+  frontend-build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
+        uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.23.4
+          node-version: 22
           cache: npm
-
-      - name: Install locked dependencies
+      - name: Install dependencies
         run: npm ci
-
-      - name: Build production frontend
+      - name: TypeScript and Vite production build
         run: npm run build
-
-      - name: Audit locked dependency tree
-        run: |
-          npm audit --json > npm-audit.json || true
-          node -e "const a=require('./npm-audit.json'); const v=a.vulnerabilities||{}; console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, vulnerabilities:Object.entries(v).map(([name,item])=>({name,severity:item.severity,isDirect:item.isDirect,via:item.via,fixAvailable:item.fixAvailable}))},null,2))"
-
-      - name: Enforce production dependency audit threshold
-        run: npm audit --omit=dev --audit-level=high

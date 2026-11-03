@@ -1,20 +1,21 @@
-import { lazy, Suspense } from "react"
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
-import { THEME, TonConnectUIProvider } from "@tonconnect/ui-react"
+﻿import { lazy, Suspense } from "react"
+import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { TonConnectUIProvider } from "@tonconnect/ui-react"
 import { Layout } from "./components/Layout"
 import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
 import { LanguageProvider } from "./lib/language"
 
+const CatalogPage = lazy(() => import("./pages/CatalogPage").then((module) => ({ default: module.CatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
-const AssetsPage = lazy(() => import("./pages/AssetsPage").then((module) => ({ default: module.AssetsPage })))
-const MyBidsPage = lazy(() => import("./pages/MyBidsPage").then((module) => ({ default: module.MyBidsPage })))
+const ProductPage = lazy(() => import("./pages/ProductPage").then((module) => ({ default: module.ProductPage })))
+const PublishPage = lazy(() => import("./pages/PublishPage").then((module) => ({ default: module.PublishPage })))
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
 const PremiumRoute = lazy(() => import("./components/PremiumRoute").then((module) => ({ default: module.PremiumRoute })))
-const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage })))
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
+const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
 
 export default function App() {
   return (
@@ -22,7 +23,6 @@ export default function App() {
       <TonConnectUIProvider
         manifestUrl="https://ton-marketplace-cvj.pages.dev/tonconnect-manifest.json"
         language="en"
-        uiPreferences={{ theme: THEME.DARK }}
       >
         <TonConnectLanguageSync />
         <BrowserRouter>
@@ -35,15 +35,15 @@ export default function App() {
           >
             <Routes>
               <Route path="/admin/login" element={<AdminLoginPage />} />
+
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/assets" element={<AssetsPage />} />
-                <Route path="/my-bids" element={<MyBidsPage />} />
-                <Route path="/catalog" element={<Navigate to="/" replace />} />
-                <Route path="/product/:id" element={<Navigate to="/" replace />} />
+                <Route path="/catalog" element={<CatalogPage />} />
                 <Route path="/premium" element={<PremiumRoute />} />
                 <Route path="/premium/history" element={<PremiumHistoryPage />} />
-                <Route path="/publish" element={<Navigate to="/assets" replace />} />
+                <Route path="/product/:id" element={<ProductPage />} />
+                <Route path="/publish" element={<PublishPage />} />
+
                 <Route element={<AdminRoute />}>
                   <Route path="/admin/products" element={<ProductAdminPage />} />
                   <Route path="/admin/manage-products" element={<ProductManagePage />} />
@@ -57,3 +57,4 @@ export default function App() {
     </LanguageProvider>
   )
 }
+
