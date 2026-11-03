@@ -879,7 +879,7 @@ fun handleReleaseRequestBounce(msg: ReleaseEscrowV2, sender: address) {
     if (order.status == MarketplaceV2OrderStatus.DeliveryPending) {
         order.status = MarketplaceV2OrderStatus.RefundPending;
         order.deliveryStatus = MarketplaceV2DeliveryStatus.Bounced;
-        order.refundStatus = MarketplaceV2RefundStatus.Pending;
+        order.refundStatus = MarketplaceV2RefundStatus.Dispatched;
         order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.Pending;
 
         val buyerRefund = MarketplaceV2Payout {
@@ -889,7 +889,7 @@ fun handleReleaseRequestBounce(msg: ReleaseEscrowV2, sender: address) {
             beneficiary: parties.buyer,
             amount: settlement.gross,
             kind: 3,
-            status: MarketplaceV2PayoutStatus.Pending,
+            status: MarketplaceV2PayoutStatus.Dispatched,
             createdAt: order.createdAt,
         };
         orderMaps.payouts.set(buyerRefund.operationId, buyerRefund.toCell());
@@ -903,6 +903,20 @@ fun handleReleaseRequestBounce(msg: ReleaseEscrowV2, sender: address) {
         storage.listingMaps = listingMaps.toCell();
     storage.orderMaps = orderMaps.toCell();
     storage.save();
+
+        val buyerRefundTransfer = createMessage({
+            bounce: BounceMode.RichBounce,
+            value: settlement.gross,
+            dest: parties.buyer,
+            body: BuyerRefundV2 {
+                orderId: msg.orderId,
+                operationId: operations.buyerRefundOperationId,
+                queryId: operations.buyerRefundQueryId,
+                beneficiary: parties.buyer,
+                amount: settlement.gross,
+            },
+        });
+        buyerRefundTransfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
     } else if (
         order.status != MarketplaceV2OrderStatus.RefundPending &&
         order.status != MarketplaceV2OrderStatus.RefundDispatched
