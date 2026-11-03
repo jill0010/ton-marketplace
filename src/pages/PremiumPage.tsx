@@ -445,9 +445,9 @@ export function PremiumPage() {
       )}
 
       <div className="text-center">
-        <a href="https://fragment.com/premium/history" target="_blank" rel="noreferrer" className="text-sm text-sky-300 hover:underline">
-          {t("View transaction history", "查看交易历史")}
-        </a>
+        <Link to="/premium/history" className="text-sm text-sky-300 hover:underline">
+          {t("View transaction history", "查看交易记录")}
+        </Link>
         <div className="mt-3">
           <Link to="/catalog" className="text-xs text-zinc-500 hover:text-zinc-300">{t("Back to marketplace", "返回商城")}</Link>
         </div>
