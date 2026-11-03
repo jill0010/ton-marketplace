@@ -1194,7 +1194,7 @@ get fun `test Marketplace V2 immutable order snapshot and independent payout lia
 
     expect(decoded.id).toEqual(9);
     expect(decoded.productId).toEqual(7);
-    expect(decoded.status).toEqual(MarketplaceV2OrderStatus.DeliveryPending);
+    expect(decoded.status).toEqual(2);
     expect(decoded.deliveryStatus).toEqual(MarketplaceV2DeliveryStatus.Pending);
     expect(decodedParties.buyer).toEqual(buyer.address);
     expect(decodedParties.seller).toEqual(seller.address);
