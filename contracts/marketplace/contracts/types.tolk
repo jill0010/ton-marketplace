@@ -526,12 +526,20 @@ enum NFTEscrowV2RecordStatus {
     Refunded = 5
 }
 
-struct NFTEscrowV2CallbackStorage {
-    depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
+struct NFTEscrowV2ReleaseCallbackStorage {
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
     releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+}
+
+struct NFTEscrowV2RefundCallbackStorage {
     pendingRefunds: map<uint64, Cell<EscrowRefundCallbackV2>>
     refundCallbacks: map<uint64, Cell<EscrowRefundCallbackV2>>
+}
+
+struct NFTEscrowV2CallbackStorage {
+    depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
+    releaseStorage: Cell<NFTEscrowV2ReleaseCallbackStorage>
+    refundStorage: Cell<NFTEscrowV2RefundCallbackStorage>
     collectionStorage: Cell<NFTEscrowV2CollectionStorage>
 }
 
