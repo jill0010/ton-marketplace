@@ -35,6 +35,10 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         marketplace: marketplace.address,
         records: [],
         assetToEscrow: [],
+        collectionStorage: NFTEscrowV2CollectionStorage {
+            collections: [],
+            collectionItemCodes: [],
+        }.toCell(),
         nextEscrowId: 1,
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
