@@ -192,10 +192,12 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - No MarketplaceV2 purchase/payment/settlement handlers, production migration, Edge Function deployment, contract deployment, testnet/mainnet transaction, NFT transfer, or fund movement was added.
 
 
-## V2 release low-balance regression — 2026-11-03
+## V2 release bounce recovery regression — 2026-11-03
 
-- The Contracts #150 failure log identified a stale test initializer that supplied `depositCallbacks` as a direct `NFTEscrowV2Storage` field. The actual storage schema nests callback maps under `callbacks: Cell<NFTEscrowV2CallbackStorage>`; the test initializer was corrected to explicitly construct both structs.
-- Added a low-balance release attempt to the V2 integration test. It asserts the failed outbound NFT transfer rolls back atomically: escrow record remains Deposited and the NFT Item custody index remains reserved. The normal release then reuses the same query ID.
-- Latest code commits: `8cbf17a` (typed storage initializer) and `881f398` (underfunded release regression).
-- The latest observed Actions run remains Contracts #150 on the earlier `f30bfb1` revision; it failed on the old initializer. No Actions run for the newer commits was visible at the time of this update, so this patch is not claimed to pass CI.
+- The Contracts #150 failure log identified a stale test initializer that supplied `depositCallbacks` as a direct `NFTEscrowV2Storage` field. The actual storage schema nests callback maps under `callbacks: Cell<NFTEscrowV2CallbackStorage>`; the test initializer now explicitly constructs both structs.
+- Replaced the inconclusive low-balance experiment with a real NFT Item compute-phase rejection test using the test-only `RejectingNFTItem`.
+- The NFT Item rejects transfer to the buyer and emits a real RichBounce to V2 Escrow. The test asserts the NFT remains owned by Escrow, the record returns to Deposited, and the NFT custody index remains reserved.
+- The test controller then disables rejection and retries the exact same release query ID. The retry transfers the NFT to the buyer, authenticated excesses marks the record Released, and the custody index is cleared only after that confirmation. The exact Marketplace acknowledgement still gates callback cleanup.
+- CI Contracts #159 on commit `565bc9d`: success — build, 96 tests in 9 files, linter, and formatter.
+- The workflow now also runs on pushes to `architecture/unified-trading-v1`, so branch commits receive direct contract validation.
 - No contract deployment, production migration, or NFT/fund movement was performed.
