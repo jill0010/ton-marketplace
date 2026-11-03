@@ -381,7 +381,9 @@ fun onInternalMessage(in: InMessage) {
                 order.deliveryStatus = MarketplaceV2DeliveryStatus.Confirmed;
                 order.status = MarketplaceV2OrderStatus.SettlementPending;
                 order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Pending;
-                order.platformPayoutStatus = MarketplaceV2PayoutStatus.Pending;
+                order.platformPayoutStatus = settlement.platformFee > 0
+                    ? MarketplaceV2PayoutStatus.Pending
+                    : MarketplaceV2PayoutStatus.Dispatched;
 
                 val sellerPayout = MarketplaceV2Payout {
                     orderId,
@@ -404,10 +406,11 @@ fun onInternalMessage(in: InMessage) {
                     createdAt: in.createdAt,
                 };
                 assert (settlement.sellerProceeds > 0) throw ErrorsV2.InvalidPayout;
-                assert (settlement.platformFee > 0) throw ErrorsV2.InvalidPayout;
 
                 storage.payouts.set(sellerPayout.operationId, sellerPayout.toCell());
-                storage.payouts.set(platformPayout.operationId, platformPayout.toCell());
+                if (settlement.platformFee > 0) {
+                    storage.payouts.set(platformPayout.operationId, platformPayout.toCell());
+                }
 
                 val productResult = storage.products.get(order.productId);
                 assert (productResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
@@ -977,6 +980,30 @@ fun onBouncedMessage(in: InMessageBounced) {
     } catch {
         // Malformed, stale, or uncorrelated bounces must never mutate liabilities.
     }
+}
+
+get fun treasuryV2(): address {
+    return MarketplaceV2Storage.load().treasury;
+}
+
+get fun treasuryConfiguredV2(): bool {
+    return MarketplaceV2Storage.load().treasuryConfigured;
+}
+
+get fun orderV2(orderId: uint64): MarketplaceV2Order? {
+    val result = MarketplaceV2Storage.load().orders.get(orderId);
+    if (!result.isFound) {
+        return null;
+    }
+    return MarketplaceV2Order.fromCell(result.loadValue());
+}
+
+get fun payoutV2(operationId: uint64): MarketplaceV2Payout? {
+    val result = MarketplaceV2Storage.load().payouts.get(operationId);
+    if (!result.isFound) {
+        return null;
+    }
+    return MarketplaceV2Payout.fromCell(result.loadValue());
 }
 
 get fun ownerV2(): address {
