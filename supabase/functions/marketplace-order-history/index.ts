@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { authenticateVerifiedWallet } from "./shared/auth.ts";
-import { handleCors } from "./shared/http.ts";
 
 const ALLOWED_ORIGINS = [
   "https://ton-marketplace-cvj.pages.dev",
