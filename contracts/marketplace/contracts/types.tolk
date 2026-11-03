@@ -618,6 +618,47 @@ fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
 }
 
 // Isolated Marketplace V2 listing integration. Purchase/payment opcodes remain reserved.
+
+struct (0x71b00107) SetMarketplaceV2Treasury {
+    treasury: address
+}
+
+// Buyer payment is the exact inbound TON value: gross listing price plus the
+// immutable processing reserve. Buyer identity is always in.senderAddress.
+struct (0x71b00100) BuyProductV2 {
+    productId: uint64
+}
+
+// The payout body repeats its immutable liability identity so a RichBounce
+// can be matched against the exact stored leg before it is made retryable.
+struct (0x71b00101) SellerPayoutV2 {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+    beneficiary: address
+    amount: coins
+}
+
+struct (0x71b00102) PlatformPayoutV2 {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+    beneficiary: address
+    amount: coins
+}
+
+struct (0x71b00104) BuyerRefundV2 {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+    beneficiary: address
+    amount: coins
+}
+
+struct (0x71b00106) DispatchPayoutV2 {
+    operationId: uint64
+}
+
 struct (0x71b0000A) PublishProductV2 {
     nftItem: address
     collection: address
@@ -723,6 +764,7 @@ struct MarketplaceV2OrderOperations {
     sellerPayoutQueryId: uint64
     platformPayoutQueryId: uint64
     buyerRefundQueryId: uint64
+    sellerReturnQueryId: uint64
 }
 
 struct MarketplaceV2OrderExtra {
@@ -761,14 +803,22 @@ struct MarketplaceV2Storage {
     owner: address
     escrow: address
     escrowConfigured: bool
+    treasury: address
+    treasuryConfigured: bool
     nextProductId: uint64
     nextQueryId: uint64
+    nextOrderId: uint64
+    nextOperationId: uint64
     products: map<uint64, Cell<MarketplaceV2Product>>
     // NFT Item address -> pending/active Marketplace V2 product ID.
     assetListings: map<address, uint64>
     queryToProduct: map<uint64, uint64>
     // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
     refundQueryToProduct: map<uint64, uint64>
+    orders: map<uint64, Cell<MarketplaceV2Order>>
+    payouts: map<uint64, Cell<MarketplaceV2Payout>>
+    releaseQueryToOrder: map<uint64, uint64>
+    refundQueryToOrder: map<uint64, uint64>
 }
 
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
