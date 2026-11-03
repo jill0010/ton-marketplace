@@ -226,6 +226,55 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     expect(callback.queryId).toEqual(releaseQueryId);
     expect(callback.buyer).toEqual(buyer.address);
 
+    // Simulate a failed Marketplace callback delivery. A bounce from the
+    // configured Marketplace must not clear the durable release callback.
+    val bouncedCallback = createMessage({
+        bounce: false,
+        value: grams("0.03"),
+        dest: escrow.address,
+        body: EscrowReleasedV2 {
+            orderId: 8000,
+            productId: 7001,
+            escrowId: 1,
+            queryId: releaseQueryId,
+            nftItem: nftItem.address,
+            buyer: buyer.address,
+        },
+    }).bounced();
+    val callbackBounceResult = net.send(marketplace.address, bouncedCallback);
+    expect(callbackBounceResult).toHaveSuccessfulTx({
+        from: marketplace.address,
+        to: escrow.address,
+        bounced: true,
+    });
+
+    val callbackAfterBounce = escrow.releaseCallbackV2(1);
+    assert (callbackAfterBounce != null) throw ErrorsV2.InvalidReleaseConfirmation;
+    expect(callbackAfterBounce!!.orderId).toEqual(8000);
+    expect(callbackAfterBounce.queryId).toEqual(releaseQueryId);
+    expect(callbackAfterBounce.buyer).toEqual(buyer.address);
+
+    // Only the Escrow owner may retry a durable callback.
+    val forgedRetry = escrow.sendRetryReleaseCallbackV2(
+        attacker.address,
+        1,
+        { value: grams("0.05") },
+    );
+    expect(forgedRetry).toHaveFailedTx({
+        from: attacker.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.NotOwner,
+    });
+
+    val retryCallback = escrow.sendRetryReleaseCallbackV2(
+        owner.address,
+        1,
+        { value: grams("0.05") },
+    );
+    expect(retryCallback).toHaveSuccessfulTx();
+    // Dispatching a retry does not clear the callback; only exact ACK does.
+    expect(escrow.releaseCallbackV2(1) != null).toEqual(true);
+
     val wrongAck = escrow.sendEscrowReleaseAckV2(
         attacker.address,
         8000,
