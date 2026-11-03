@@ -4,9 +4,9 @@ import "@acton/testing/expect"
 import "@acton/tlb/maybe"
 import "@acton/types/transaction"
 
-import "@contracts/MockNFTItem"
+import "@contracts/RejectingNFTItem"
 import "@contracts/types"
-import "@wrappers/MockNFTItem.gen"
+import "@wrappers/RejectingNFTItem.gen"
 import "@wrappers/NFTEscrowV2.gen"
 
 get fun `test V2 escrow confirms NFT deposit release callback and exact acknowledgement`() {
@@ -18,8 +18,11 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
 
     val depositQueryId = 72001;
     val releaseQueryId = 72002;
-    val nftItem = MockNFTItem.fromStorage({
+    val nftItem = RejectingNFTItem.fromStorage({
         owner: seller.address,
+        controller: seller.address,
+        rejectOwner: buyer.address,
+        rejectReturn: true,
     });
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
@@ -118,36 +121,42 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         exitCode: ErrorsV2.InvalidRelease,
     });
 
-    // A release whose outbound action fails must roll back atomically: no pending
-    // state, query reservation, or NFT custody index may be lost.
-    val underfundedRelease = escrow.sendReleaseEscrowV2(
+    // Force the NFT Item to reject delivery to this buyer. This is a real
+    // compute-phase failure and must bounce back to the Escrow using RichBounce.
+    val rejectedRelease = escrow.sendReleaseEscrowV2(
         marketplace.address,
         8000,
         7001,
         1,
         releaseQueryId,
         buyer.address,
-        { value: grams("0.01") },
+        { value: grams("0.1") },
     );
-    val underfundedTxResult = underfundedRelease.findTransaction({
+    expect(rejectedRelease).toHaveBouncedTx({
+        from: nftItem.address,
         to: escrow.address,
     });
-    expect(underfundedTxResult).toBeNotNull();
-    val underfundedTx = underfundedTxResult!!;
-    val underfundedDescription = underfundedTx.description.load();
-    assert (underfundedDescription is TlbTransOrd) throw 402;
-    expect(underfundedDescription.aborted).toEqual(true);
-    assert (underfundedDescription.action is TlbJust) throw 402;
-    val underfundedAction = underfundedDescription.action.value.load();
-    expect(underfundedAction.resultCode != 0).toEqual(true);
     expect(nftItem.owner()).toEqual(escrow.address);
 
-    val afterUnderfunded = escrow.escrowRecordV2(1);
-    assert (afterUnderfunded != null) throw ErrorsV2.InvalidRelease;
-    expect(afterUnderfunded!!.status).toEqual(1);
+    val afterRejectedRelease = escrow.escrowRecordV2(1);
+    assert (afterRejectedRelease != null) throw ErrorsV2.InvalidRelease;
+    expect(afterRejectedRelease!!.status).toEqual(1);
     expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
 
-    // A funded retry uses the same query ID; the failed attempt left no stale reservation.
+    // The test controller permits delivery again. A retry with the same query ID
+    // proves the failed attempt did not leave a stale query reservation.
+    val allowDelivery = createMessage({
+        bounce: false,
+        value: grams("0.02"),
+        dest: nftItem.address,
+        body: SetRejectReturn { rejectReturn: false },
+    });
+    val allowDeliveryResult = net.send(seller.address, allowDelivery);
+    expect(allowDeliveryResult).toHaveSuccessfulTx({
+        from: seller.address,
+        to: nftItem.address,
+    });
+
     // Marketplace requests delivery. The NFT Item itself performs the ownership change.
     val release = escrow.sendReleaseEscrowV2(
         marketplace.address,
