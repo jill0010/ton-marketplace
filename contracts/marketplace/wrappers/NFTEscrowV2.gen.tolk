@@ -39,6 +39,58 @@ fun NFTEscrowV2.deploy(self, from: address, config: SendParams = {}): SendResult
     return net.send(from, genericMsg);
 }
 
+fun NFTEscrowV2.sendCreateEscrowV2(
+    self,
+    from: address,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    queryId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: CreateEscrowV2 { productId, nftItem, seller, queryId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrowV2.sendEscrowDepositAckV2(
+    self,
+    from: address,
+    escrowId: uint64,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    queryId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: EscrowDepositAckV2 { escrowId, productId, nftItem, seller, queryId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrowV2.sendRetryDepositCallbackV2(
+    self,
+    from: address,
+    escrowId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RetryDepositCallbackV2 { escrowId },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun NFTEscrowV2.sendReleaseEscrowV2(
     self,
     from: address,
@@ -118,6 +170,10 @@ fun NFTEscrowV2.marketplace(self): address {
 
 fun NFTEscrowV2.escrowRecordV2(self, escrowId: uint64): NFTEscrowV2Record? {
     return net.runGetMethod(self.address, "escrowRecordV2", [escrowId]);
+}
+
+fun NFTEscrowV2.depositCallbackV2(self, escrowId: uint64): EscrowDepositCallbackV2? {
+    return net.runGetMethod(self.address, "depositCallbackV2", [escrowId]);
 }
 
 fun NFTEscrowV2.releaseCallbackV2(self, escrowId: uint64): EscrowReleaseCallbackV2? {
