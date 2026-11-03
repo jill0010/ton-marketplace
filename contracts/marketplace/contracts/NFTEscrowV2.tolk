@@ -83,12 +83,35 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy NFTEscrowV2Storage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
             assert (msg.productId > 0 && msg.queryId > 0) throw ErrorsV2.InvalidRelease;
-            assert (!storage.queryToEscrow.get(msg.queryId).isFound) throw ErrorsV2.InvalidRelease;
+            val createExtra = msg.extra.load();
+
+            // Exact retries are idempotent only while the original custody record
+            // is still pending/deposited and every identity field matches.
+            val existingQuery = storage.queryToEscrow.get(msg.queryId);
+            if (existingQuery.isFound) {
+                val existingEscrowId = existingQuery.loadValue();
+                val existingRecordResult = storage.records.get(existingEscrowId);
+                assert (existingRecordResult.isFound) throw ErrorsV2.InvalidRelease;
+                val existingRecord = NFTEscrowV2Record.fromCell(existingRecordResult.loadValue());
+                val existingExtra = existingRecord.extra.load();
+                assert (
+                    existingRecord.status == 0 || existingRecord.status == 1
+                ) throw ErrorsV2.InvalidRelease;
+                assert (existingRecord.productId == msg.productId) throw ErrorsV2.InvalidRelease;
+                assert (existingRecord.nftItem == msg.nftItem) throw ErrorsV2.InvalidRelease;
+                assert (existingRecord.seller == msg.seller) throw ErrorsV2.InvalidRelease;
+                assert (existingRecord.queryId == msg.queryId) throw ErrorsV2.InvalidRelease;
+                assert (existingExtra.collection == msg.collection) throw ErrorsV2.InvalidRelease;
+                assert (existingExtra.itemIndex == createExtra.itemIndex) throw ErrorsV2.InvalidRelease;
+                assert (existingExtra.kind == createExtra.kind) throw ErrorsV2.InvalidRelease;
+                return;
+            }
+
             assert (
                 !storage.assetToEscrow.get(msg.nftItem).isFound
             ) throw ErrorsV2.AssetAlreadyEscrowed;
 
-            val createExtra = msg.extra.load();
+            assert (createExtra.kind == 3) throw ErrorsV2.InvalidProductKind;
             val callbacks = storage.callbacks.load();
             val collectionStorage = callbacks.collectionStorage.load();
             val collectionResult = collectionStorage.collections.get(msg.collection);
