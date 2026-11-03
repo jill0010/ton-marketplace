@@ -39,7 +39,7 @@ This is a listing/custody integration milestone only. V2 checks the approved Fra
 
 This is **not yet a complete marketplace**. There is no buyer purchase message, payment/order state machine, NFT delivery to buyer, seller payout, or 97% / 3% fee split. The `Order` structures currently present in the types are not wired into a purchase flow.
 
-The frontend NFT publish endpoint remains fail-closed. MarketplaceV2 is source/emulator-only and must not be exposed to real users until official collection verification, deployment, cancellation/recovery, purchase, delivery, refund, and settlement controls are complete. Do not accept real buyer funds or list real NFTs using this prototype.
+The frontend NFT publish endpoint remains fail-closed. MarketplaceV2 is source/emulator-only and must not be exposed to real users until testnet rehearsal against current live official collections, deployment, cancellation/recovery, purchase, delivery, refund, and settlement controls are complete. Do not accept real buyer funds or list real NFTs using this prototype.
 
 See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_CONTRACT_READINESS_AUDIT_2026-11-02.md) for the full blockers and required implementation order.
 
@@ -65,3 +65,6 @@ The GitHub Contracts workflow runs the contract build, emulation tests, linter a
 - Use a testnet rehearsal only after the contract ABI, storage layout, upgrade plan and security tests are reviewed.
 - Never put signing keys or mnemonic phrases in this repository.
 - Mainnet deployment or upgrade requires a separate explicit operational approval.
+
+
+Latest observed Contracts CI for the architecture branch: workflow #281 succeeded on commit `661aed983cdd0d173e7b4bd3d4e9f474bf0b3766` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
