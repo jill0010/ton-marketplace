@@ -40,7 +40,8 @@ fun onInternalMessage(in: InMessage) {
             // exists would redirect already-created platform liabilities.
             assert (!purchase.treasuryConfigured) throw ErrorsV2.InvalidRelease;
             assert (purchase.nextOrderId == 1) throw ErrorsV2.InvalidRelease;
-            assert (!purchase.orders.get(1).isFound) throw ErrorsV2.InvalidRelease;
+            val orderStorage = purchase.orders.load();
+            assert (!orderStorage.orders.get(1).isFound) throw ErrorsV2.InvalidRelease;
             assert (msg.treasury != contract.getAddress()) throw ErrorsV2.InvalidRelease;
             assert (msg.treasury != storage.escrow) throw ErrorsV2.InvalidRelease;
             purchase.treasury = msg.treasury;
@@ -108,6 +109,7 @@ fun onInternalMessage(in: InMessage) {
 
         CancelProductV2 => {
             var storage = lazy MarketplaceV2Storage.load();
+            var purchase = storage.purchaseStorage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
             val productResult = storage.products.get(msg.productId);
             assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
@@ -120,13 +122,14 @@ fun onInternalMessage(in: InMessage) {
             if (product.status == 2) {
                 queryId = storage.nextQueryId;
                 assert (queryId > 0) throw ErrorsV2.InvalidRefund;
-                val existingQuery = storage.refundQueryToProduct.get(queryId);
+                val existingQuery = purchase.refundQueryToProduct.get(queryId);
                 assert (!existingQuery.isFound) throw ErrorsV2.InvalidRefund;
 
                 product.status = 6;
                 product.refundQueryId = queryId;
                 storage.products.set(msg.productId, product.toCell());
-                storage.refundQueryToProduct.set(queryId, msg.productId);
+                purchase.refundQueryToProduct.set(queryId, msg.productId);
+                purchase.save();
                 storage.nextQueryId = queryId + 1;
                 storage.save();
             } else {
@@ -135,7 +138,7 @@ fun onInternalMessage(in: InMessage) {
                 assert (product.status == 6) throw ErrorsV2.InvalidRefund;
                 queryId = product.refundQueryId;
                 assert (queryId > 0) throw ErrorsV2.InvalidRefund;
-                val queryResult = storage.refundQueryToProduct.get(queryId);
+                val queryResult = purchase.refundQueryToProduct.get(queryId);
                 assert (
                     queryResult.isFound && queryResult.loadValue() == msg.productId
                 ) throw ErrorsV2.InvalidRefund;
@@ -203,10 +206,11 @@ fun onInternalMessage(in: InMessage) {
 
         EscrowRefundedV2 => {
             var storage = lazy MarketplaceV2Storage.load();
+            var purchase = storage.purchaseStorage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
             assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidRefund;
 
-            val queryResult = storage.refundQueryToProduct.get(msg.queryId);
+            val queryResult = purchase.refundQueryToProduct.get(msg.queryId);
             assert (queryResult.isFound) throw ErrorsV2.InvalidRefund;
             val productId = queryResult.loadValue();
             assert (productId == msg.productId) throw ErrorsV2.InvalidRefund;
