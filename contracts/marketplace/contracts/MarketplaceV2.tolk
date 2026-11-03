@@ -381,9 +381,10 @@ fun onInternalMessage(in: InMessage) {
                 order.deliveryStatus = MarketplaceV2DeliveryStatus.Confirmed;
                 order.status = MarketplaceV2OrderStatus.SettlementPending;
                 order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Pending;
-                order.platformPayoutStatus = settlement.platformFee > 0
-                    ? MarketplaceV2PayoutStatus.Pending
-                    : MarketplaceV2PayoutStatus.Dispatched;
+                order.platformPayoutStatus = MarketplaceV2PayoutStatus.Pending;
+                if (settlement.platformFee == 0) {
+                    order.platformPayoutStatus = MarketplaceV2PayoutStatus.Dispatched;
+                }
 
                 val sellerPayout = MarketplaceV2Payout {
                     orderId,
