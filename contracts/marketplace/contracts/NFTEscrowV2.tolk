@@ -360,6 +360,14 @@ get fun escrowRecordV2(escrowId: uint64): NFTEscrowV2Record? {
     return NFTEscrowV2Record.fromCell(result.loadValue());
 }
 
+get fun depositCallbackV2(escrowId: uint64): EscrowDepositCallbackV2? {
+    val result = NFTEscrowV2Storage.load().depositCallbacks.get(escrowId);
+    if (!result.isFound) {
+        return null;
+    }
+    return EscrowDepositCallbackV2.fromCell(result.loadValue());
+}
+
 get fun releaseCallbackV2(escrowId: uint64): EscrowReleaseCallbackV2? {
     val result = NFTEscrowV2Storage.load().releaseCallbacks.get(escrowId);
     if (!result.isFound) {
