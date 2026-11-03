@@ -26,7 +26,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     });
     val marketplace = RejectingMarketplaceCallback.fromStorage({
         controller: controller.address,
-        escrow: address("0:" + "0".repeat(64)),
+        escrow: controller.address,
         rejectAction: true,
     });
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
@@ -43,24 +43,19 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         }.toCell(),
     });
 
-    // The fixture needs the final Escrow address, so derive it before deploying
-    // and recreate the fixture at the same deterministic controller/escrow tuple.
-    val marketplaceWithEscrow = RejectingMarketplaceCallback.fromStorage({
-        controller: controller.address,
-        escrow: escrow.address,
-        rejectAction: true,
-    });
-    assert (marketplaceWithEscrow.address == marketplace.address) throw 73010;
-
     expect(nftItem.deploy(seller.address, { value: grams("0.1") }))
         .toHaveSuccessfulDeploy({ to: nftItem.address });
     expect(escrow.deploy(owner.address, { value: grams("0.1") }))
         .toHaveSuccessfulDeploy({ to: escrow.address });
-    expect(marketplaceWithEscrow.deploy(controller.address, { value: grams("0.1") }))
-        .toHaveSuccessfulDeploy({ to: marketplaceWithEscrow.address });
+    expect(marketplace.deploy(controller.address, { value: grams("0.1") }))
+        .toHaveSuccessfulDeploy({ to: marketplace.address });
+
+    expect(marketplace.sendSetTestEscrowAddressV2(
+        controller.address, escrow.address, { value: grams("0.02") },
+    )).toHaveSuccessfulTx();
 
     // The Marketplace fixture is the only sender authorized to create the escrow.
-    val create = marketplaceWithEscrow.sendStartTestEscrowV2(
+    val create = marketplace.sendStartTestEscrowV2(
         controller.address, 7301, nftItem.address, seller.address, depositQueryId,
         { value: grams("0.1") },
     );
@@ -77,7 +72,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     // The fixture receives EscrowDepositedV2 and sends the exact deposit ACK.
     expect(escrow.depositCallbackV2(1) == null).toEqual(true);
 
-    val startRelease = marketplaceWithEscrow.sendStartTestReleaseV2(
+    val startRelease = marketplace.sendStartTestReleaseV2(
         controller.address, 8301, 7301, 1, releaseQueryId, buyer.address,
         { value: grams("0.1") },
     );
@@ -86,7 +81,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     expect(escrow.escrowRecordV2(1)!!.status).toEqual(3);
 
     // NFT delivery succeeded, but Marketplace callback processing fails in ACTION phase.
-    val failedReceiverTxResult = startRelease.findTransaction({ to: marketplaceWithEscrow.address });
+    val failedReceiverTxResult = startRelease.findTransaction({ to: marketplace.address });
     expect(failedReceiverTxResult).toBeNotNull();
     val failedReceiverTx = failedReceiverTxResult!!;
     val failedReceiverDescription = failedReceiverTx.description.load();
@@ -102,7 +97,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
 
     // The real bounce from the Marketplace contract must arrive back at Escrow.
     expect(startRelease).toHaveBouncedTx({
-        from: marketplaceWithEscrow.address,
+        from: marketplace.address,
         to: escrow.address,
     });
     val durableCallback = escrow.releaseCallbackV2(1);
@@ -112,10 +107,10 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     expect(durableCallback.buyer).toEqual(buyer.address);
 
     // Turn off the action failure, then retry from the Escrow owner.
-    expect(marketplaceWithEscrow.sendSetRejectCallbackV2(
+    expect(marketplace.sendSetRejectCallbackV2(
         controller.address, false, { value: grams("0.02") },
     )).toHaveSuccessfulTx();
-    expect(marketplaceWithEscrow.rejectAction()).toEqual(false);
+    expect(marketplace.rejectAction()).toEqual(false);
 
     val retry = escrow.sendRetryReleaseCallbackV2(
         owner.address, 1, { value: grams("0.05") },
