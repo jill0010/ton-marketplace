@@ -1041,6 +1041,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
         sellerPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
         platformPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
         refundStatus: MarketplaceV2RefundStatus.None,
+        sellerReturnStatus: MarketplaceV2SellerReturnStatus.NotStarted,
         createdAt: 1793366400,
         extra: orderExtra.toCell(),
     };
