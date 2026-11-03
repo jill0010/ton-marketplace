@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { TonConnectButton, useTonAddress } from "@tonconnect/ui-react"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
 
@@ -49,12 +50,20 @@ function formatDate(value: string | null, language: string) {
 
 export function PremiumHistoryPage() {
   const { t, language } = useLanguage()
+  const walletAddress = useTonAddress()
   const [orders, setOrders] = useState<PremiumOrder[]>([])
   const [payments, setPayments] = useState<PremiumPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   const loadHistory = useCallback(async () => {
+    if (!walletAddress) {
+      setOrders([])
+      setPayments([])
+      setLoading(false)
+      setError("")
+      return
+    }
     setLoading(true)
     setError("")
     try {
@@ -84,7 +93,7 @@ export function PremiumHistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [t, walletAddress])
 
   useEffect(() => {
     void loadHistory()
@@ -94,6 +103,21 @@ export function PremiumHistoryPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {!walletAddress ? (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-12 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sky-400/10 text-sky-300">
+            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <rect x="3.5" y="6" width="17" height="12" rx="2.5" />
+              <path d="M3.5 10h17M7 14h3" />
+            </svg>
+          </div>
+          <h2 className="mt-4 text-lg font-semibold text-white">{t("Connect your wallet to view transaction history", "连接钱包后查看交易记录")}</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-400">{t("Connect the TON wallet you use on this marketplace to continue.", "请连接你在本商城使用的 TON 钱包后继续查看。")}</p>
+          <div className="mt-5 flex justify-center"><TonConnectButton /></div>
+          <Link to="/premium" className="mt-5 inline-block text-sm text-sky-300 hover:underline">{t("Back to Premium", "返回会员购买")}</Link>
+        </div>
+      ) : (
+      <>
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
@@ -188,6 +212,8 @@ export function PremiumHistoryPage() {
       <div className="text-center">
         <Link to="/premium" className="text-sm text-sky-300 hover:underline">← {t("Back to Premium", "返回会员购买")}</Link>
       </div>
+      </>
+      )}
     </div>
   )
 }
