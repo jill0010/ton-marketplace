@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { authenticateVerifiedWallet } from "./shared/auth.ts";
-import { handleCors } from "./shared/http.ts";
 
 const ALLOWED_ORIGINS = [
   "https://ton-marketplace-cvj.pages.dev",
@@ -59,7 +58,7 @@ Deno.serve(async (request: Request) => {
 
     const [buyerResult, sellerResult] = await Promise.all([
       admin.from("marketplace_orders")
-        .select("id, chain_order_id, product_id, escrow_id, buyer_wallet_raw, seller_wallet_raw, nft_item_raw, gross_nano, platform_fee_nano, seller_proceeds_nano, status, delivery_status, seller_payout_status, platform_payout_status, buyer_refund_status, payment_tx_hash, delivery_tx_hash, created_at, updated_at")
+        .select("id, chain_order_id, product_id, escrow_id, buyer_wallet_raw, seller_wallet_raw, nft_item_raw, gross_nano, platform_fee_nano, seller_proceeds_nano, status, delivery_status, seller_payout_status, platform_payout_status, buyer_refund_status, seller_nft_return_status, payment_tx_hash, delivery_tx_hash, created_at, updated_at")
         .eq("buyer_wallet_raw", wallet.walletAddress)
         .order("created_at", { ascending: false })
         .limit(50),

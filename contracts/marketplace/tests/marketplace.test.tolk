@@ -1027,16 +1027,21 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
             sellerPayoutQueryId: 9003,
             platformPayoutQueryId: 9004,
             buyerRefundQueryId: 9005,
+            sellerReturnQueryId: 9006,
+            sellerPayoutOperationId: 9007,
+            platformPayoutOperationId: 9008,
+            buyerRefundOperationId: 9009,
         }.toCell(),
     };
     val order = MarketplaceV2Order {
         id: 7001,
         productId: 3001,
-        status: 1,
-        deliveryStatus: 1,
-        sellerPayoutStatus: 0,
-        platformPayoutStatus: 0,
-        refundStatus: 0,
+        status: MarketplaceV2OrderStatus.PaymentAccepted,
+        deliveryStatus: MarketplaceV2DeliveryStatus.Pending,
+        sellerPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+        platformPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+        refundStatus: MarketplaceV2RefundStatus.None,
+        sellerReturnStatus: MarketplaceV2SellerReturnStatus.NotStarted,
         createdAt: 1793366400,
         extra: orderExtra.toCell(),
     };
@@ -1045,11 +1050,12 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     val decodedExtra = decodedOrder.extra.load();
     expect(decodedOrder.id).toEqual(7001);
     expect(decodedOrder.productId).toEqual(3001);
-    expect(decodedOrder.status).toEqual(1);
-    expect(decodedOrder.deliveryStatus).toEqual(1);
-    expect(decodedOrder.sellerPayoutStatus).toEqual(0);
-    expect(decodedOrder.platformPayoutStatus).toEqual(0);
-    expect(decodedOrder.refundStatus).toEqual(0);
+    expect(decodedOrder.status).toEqual(MarketplaceV2OrderStatus.PaymentAccepted);
+    expect(decodedOrder.deliveryStatus).toEqual(MarketplaceV2DeliveryStatus.Pending);
+    expect(decodedOrder.sellerPayoutStatus).toEqual(MarketplaceV2PayoutStatus.NotCreated);
+    expect(decodedOrder.platformPayoutStatus).toEqual(MarketplaceV2PayoutStatus.NotCreated);
+    expect(decodedOrder.refundStatus).toEqual(MarketplaceV2RefundStatus.None);
+    expect(decodedOrder.sellerReturnStatus).toEqual(MarketplaceV2SellerReturnStatus.NotStarted);
     val decodedParties = decodedExtra.parties.load();
     val decodedAsset = decodedExtra.asset.load();
     val decodedSettlement = decodedExtra.settlement.load();
@@ -1083,7 +1089,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
         beneficiary: decodedParties.seller,
         amount: decodedSettlement.sellerProceeds,
         kind: 1,
-        status: 1,
+        status: MarketplaceV2PayoutStatus.Pending,
         createdAt: decodedOrder.createdAt,
     };
     val platformPayout = MarketplaceV2Payout {
@@ -1093,7 +1099,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
         beneficiary: decodedParties.treasury,
         amount: decodedSettlement.platformFee,
         kind: 2,
-        status: 1,
+        status: MarketplaceV2PayoutStatus.Pending,
         createdAt: decodedOrder.createdAt,
     };
     val decodedSellerPayout = MarketplaceV2Payout.fromCell(sellerPayout.toCell());

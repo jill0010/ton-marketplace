@@ -11,6 +11,11 @@ type DatabaseProduct = {
   image_url: string | null
   status: string
   created_at: string
+  chain_product_id: string | number | null
+  chain_escrow_id: string | number | null
+  chain_marketplace_address: string | null
+  chain_escrow_address: string | null
+  chain_status: Product["chainStatus"]
 }
 
 function toProductType(type: string): ProductType | null {
@@ -27,6 +32,14 @@ function toProductType(type: string): ProductType | null {
   return null
 }
 
+function tonToNano(value: string | number): string | null {
+  const match = /^(\d+)(?:\\.(\d{1,9}))?$/.exec(String(value).trim())
+  if (!match) return null
+  const whole = BigInt(match[1])
+  const fraction = BigInt((match[2] ?? "").padEnd(9, "0") || "0")
+  return (whole * 1_000_000_000n + fraction).toString()
+}
+
 function toProduct(item: DatabaseProduct): Product | null {
   const productType = toProductType(item.type)
   if (!productType || item.currency !== "TON") {
@@ -34,7 +47,8 @@ function toProduct(item: DatabaseProduct): Product | null {
   }
 
   const priceTon = Number(item.price)
-  if (!Number.isFinite(priceTon) || priceTon < 0) {
+  const priceNano = tonToNano(item.price)
+  if (!Number.isFinite(priceTon) || priceTon < 0 || priceNano === null) {
     return null
   }
 
@@ -44,6 +58,12 @@ function toProduct(item: DatabaseProduct): Product | null {
     title: item.name,
     subtitle: item.description ?? "",
     priceTon,
+    priceNano,
+    chainProductId: item.chain_product_id === null ? null : String(item.chain_product_id),
+    chainEscrowId: item.chain_escrow_id === null ? null : String(item.chain_escrow_id),
+    chainMarketplaceAddress: item.chain_marketplace_address,
+    chainEscrowAddress: item.chain_escrow_address,
+    chainStatus: item.chain_status ?? "offchain",
     imageUrl: item.image_url,
     status: "listed",
     // The current products table stores fixed-price listings only.
@@ -57,7 +77,7 @@ export async function getListedProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, name, type, description, price, currency, image_url, status, created_at"
+      "id, name, type, description, price, currency, image_url, status, created_at, chain_product_id, chain_escrow_id, chain_marketplace_address, chain_escrow_address, chain_status"
     )
     .eq("status", "listed")
     .order("created_at", { ascending: false })

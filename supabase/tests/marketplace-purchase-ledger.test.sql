@@ -3,9 +3,9 @@ BEGIN;
 
 DO $security$
 DECLARE
-  table_name text;
+  v_table_name text;
 BEGIN
-  FOREACH table_name IN ARRAY ARRAY[
+  FOREACH v_table_name IN ARRAY ARRAY[
     'marketplace_orders',
     'marketplace_payouts',
     'marketplace_chain_observations',
@@ -15,20 +15,63 @@ BEGIN
       SELECT relrowsecurity
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND c.relname = table_name
+      WHERE n.nspname = 'public' AND c.relname = v_table_name
     ) THEN
-      RAISE EXCEPTION 'RLS is not enabled on %', table_name;
+      RAISE EXCEPTION 'RLS is not enabled on %', v_table_name;
     END IF;
-    IF has_table_privilege('anon', format('public.%I', table_name), 'SELECT')
-      OR has_table_privilege('authenticated', format('public.%I', table_name), 'SELECT') THEN
-      RAISE EXCEPTION 'Public roles must not read %', table_name;
+    IF has_table_privilege('anon', format('public.%I', v_table_name), 'SELECT')
+      OR has_table_privilege('authenticated', format('public.%I', v_table_name), 'SELECT') THEN
+      RAISE EXCEPTION 'Public roles must not read %', v_table_name;
     END IF;
-    IF NOT has_table_privilege('service_role', format('public.%I', table_name), 'SELECT') THEN
-      RAISE EXCEPTION 'service_role cannot read %', table_name;
+    IF NOT has_table_privilege('service_role', format('public.%I', v_table_name), 'SELECT') THEN
+      RAISE EXCEPTION 'service_role cannot read %', v_table_name;
     END IF;
   END LOOP;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'marketplace_orders'
+      AND column_name = 'seller_nft_return_status'
+  ) THEN
+    RAISE EXCEPTION 'seller_nft_return_status column is missing';
+  END IF;
 END
 $security$;
+
+DO $product_chain_metadata$
+DECLARE
+  product_uuid uuid;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'products'
+      AND column_name = 'chain_product_id'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'products'
+      AND column_name = 'chain_escrow_id'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'products'
+      AND column_name = 'chain_status'
+  ) THEN
+    RAISE EXCEPTION 'Product chain metadata columns are missing';
+  END IF;
+
+  INSERT INTO public.products (name, type, price, currency, status)
+  VALUES ('ledger-test-offchain-product', 'gift', 1, 'TON', 'listed')
+  RETURNING id INTO product_uuid;
+
+  IF (SELECT chain_status FROM public.products WHERE id = product_uuid) <> 'offchain' THEN
+    RAISE EXCEPTION 'Products must default to offchain and remain non-purchasable';
+  END IF;
+  IF (SELECT chain_product_id FROM public.products WHERE id = product_uuid) IS NOT NULL
+    OR (SELECT chain_escrow_id FROM public.products WHERE id = product_uuid) IS NOT NULL THEN
+    RAISE EXCEPTION 'Off-chain products unexpectedly received chain identifiers';
+  END IF;
+END
+$product_chain_metadata$;
 
 DO $settlement$
 DECLARE
@@ -67,6 +110,10 @@ BEGIN
     10000, 300, 9700, 100000000,
     11, 12, 13, 14, 15, 'payment_confirmed'
   ) RETURNING id INTO order_uuid;
+
+  IF (SELECT seller_nft_return_status FROM public.marketplace_orders WHERE id = order_uuid) <> 'not_started' THEN
+    RAISE EXCEPTION 'Seller NFT return status default is incorrect';
+  END IF;
 
   INSERT INTO public.marketplace_payouts (
     order_id, payout_kind, operation_id, query_id,

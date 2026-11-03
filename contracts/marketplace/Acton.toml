@@ -60,6 +60,11 @@ src = "contracts/RejectingMarketplaceCallback.tolk"
 depends = []
 
 [contracts.MarketplaceV2]
-display-name = "Marketplace V2 (isolated listing integration)"
+display-name = "Marketplace V2 (purchase, delivery, refund and settlement)"
 src = "contracts/MarketplaceV2.tolk"
+depends = []
+
+[contracts.MockMarketplaceEscrowV2]
+display-name = "Test-only Marketplace V2 escrow state-machine adapter"
+src = "contracts/MockMarketplaceEscrowV2.tolk"
 depends = []

@@ -59,6 +59,51 @@ fun MarketplaceV2.sendSetMarketplaceV2Escrow(
     return net.send(from, genericMsg);
 }
 
+fun MarketplaceV2.sendSetMarketplaceV2Treasury(
+    self,
+    from: address,
+    treasury: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetMarketplaceV2Treasury { treasury },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun MarketplaceV2.sendBuyProductV2(
+    self,
+    from: address,
+    productId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: BuyProductV2 { productId },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun MarketplaceV2.sendDispatchPayoutV2(
+    self,
+    from: address,
+    operationId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: DispatchPayoutV2 { operationId },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun MarketplaceV2.sendPublishProductV2(
     self,
     from: address,
@@ -91,6 +136,22 @@ fun MarketplaceV2.sendCancelProductV2(
         body: CancelProductV2 { productId },
     });
     return net.send(from, genericMsg);
+}
+
+fun MarketplaceV2.treasuryV2(self): address {
+    return net.runGetMethod(self.address, "treasuryV2");
+}
+
+fun MarketplaceV2.treasuryConfiguredV2(self): bool {
+    return net.runGetMethod(self.address, "treasuryConfiguredV2");
+}
+
+fun MarketplaceV2.orderV2(self, orderId: uint64): MarketplaceV2Order? {
+    return net.runGetMethod(self.address, "orderV2", [orderId]);
+}
+
+fun MarketplaceV2.payoutV2(self, operationId: uint64): MarketplaceV2Payout? {
+    return net.runGetMethod(self.address, "payoutV2", [operationId]);
 }
 
 fun MarketplaceV2.ownerV2(self): address {
