@@ -266,7 +266,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val wrongIndex = escrow.sendCreateEscrowV2(
         marketplace.address,
         999,
-        validNftItem,
+        nftItem.address,
         owner.address,
         seller.address,
         999,
