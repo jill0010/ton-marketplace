@@ -323,7 +323,6 @@ struct (0x71a0000C) EscrowDepositAck {
     queryId: uint64
     productId: uint64
     nftItem: address
-    seller: address
 }
 
 // Escrow 管理员重试发送尚未确认的 NFT 入库回调
@@ -377,8 +376,7 @@ struct (0x71b00013) EscrowReleaseFailedV2 {
     queryId: uint64
     nftItem: address
     buyer: address
-    seller: address
-}
+
 
 struct (0x71b00014) EscrowReleaseFailureAckV2 {
     orderId: uint64
@@ -388,7 +386,7 @@ struct (0x71b00014) EscrowReleaseFailureAckV2 {
     nftItem: address
     buyer: address
     seller: address
-}
+
 
 struct (0x71b00015) RetryReleaseFailureCallbackV2 {
     escrowId: uint64
@@ -534,7 +532,6 @@ struct NFTEscrowV2RecordExtra {
 struct NFTEscrowV2Record {
     escrowId: uint64
     nftItem: address
-    seller: address
     productId: uint64
     status: uint8
     queryId: uint64
@@ -558,7 +555,7 @@ struct EscrowReleaseFailureCallbackV2 {
     nftItem: address
     buyer: address
     seller: address
-}
+
 
 struct NFTEscrowV2ReleaseCallbackStorage {
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
