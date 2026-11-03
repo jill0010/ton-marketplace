@@ -183,6 +183,22 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.prevOwner == record.seller) throw ErrorsV2.InvalidRelease;
             assert (record.queryId == msg.queryId) throw ErrorsV2.InvalidRelease;
             assert (record.status == 0) throw ErrorsV2.InvalidRelease;
+
+            // Require the exact seller-authorized listing payload. A valid NFT
+            // Item must not activate a listing from an unrelated transfer that
+            // happens to reuse a pending query ID.
+            var payload = msg.forwardPayload;
+            val payloadType = payload.loadUint(1);
+            assert (payloadType == 1) throw ErrorsV2.InvalidRelease;
+            val payloadCell = payload.loadRef();
+            var payloadData = payloadCell.beginParse();
+            val payloadMarker = payloadData.loadUint(32);
+            assert (payloadMarker == 0x53564950) throw ErrorsV2.InvalidRelease;
+            val payloadQueryId = payloadData.loadUint(64);
+            assert (payloadQueryId == record.queryId) throw ErrorsV2.InvalidRelease;
+            payloadData.assertEnd();
+            payload.assertEnd();
+
             record.status = 1;
             storage.records.set(escrowId, record.toCell());
 
