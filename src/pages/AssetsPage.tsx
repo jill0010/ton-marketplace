@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
-import { useTonAddress } from "@tonconnect/ui-react"
-import { useVerifiedTonWallet } from "../hooks/useVerifiedTonWallet"
+import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
 
@@ -22,7 +21,7 @@ const ESCROW_ADDRESS = "UQC5nJds9rVxaDKAT-lQeJOzBlVXRj79xqUJ2k1eN4cLdWph"
 export function AssetsPage() {
   const { t } = useLanguage()
   const walletAddress = useTonAddress()
-  const { isWalletVerified, connecting, verifying, proofMessage, connectAndVerifyWallet } = useVerifiedTonWallet()
+  const [tonConnectUI] = useTonConnectUI()
   const [searchParams, setSearchParams] = useSearchParams()
   const [assets, setAssets] = useState<NftAsset[]>([])
   const [loading, setLoading] = useState(false)
@@ -46,7 +45,7 @@ export function AssetsPage() {
   )
 
   async function loadAssets() {
-    if (!isWalletVerified || !walletAddress) {
+    if (!walletAddress) {
       setAssets([])
       return
     }
@@ -58,7 +57,7 @@ export function AssetsPage() {
       await ensureAnonymousSession()
       const { data, error: invokeError } = await anonymousSupabase.functions.invoke(
         "nft-wallet-assets",
-        { body: {} },
+        { body: { wallet_address: walletAddress } },
       )
       if (invokeError) throw new Error(invokeError.message || "读取钱包资产失败")
       if (data?.success !== true || !Array.isArray(data.items)) {
@@ -80,9 +79,9 @@ export function AssetsPage() {
 
   useEffect(() => {
     void loadAssets()
-    // Wallet verification changes are the only automatic reload trigger.
+    // Load public on-chain NFT holdings as soon as TON Connect provides the wallet address.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isWalletVerified, walletAddress])
+  }, [walletAddress])
 
   function openListing(asset: NftAsset, nextMode: ListingMode) {
     setSelected(asset)
@@ -123,9 +122,9 @@ export function AssetsPage() {
         <div>
           <p className="text-sm text-zinc-500">{t("Wallet portfolio", "钱包资产")}</p>
           <h1 className="mt-1 text-3xl font-semibold text-white">{t("My Assets", "我的资产")}</h1>
-          <p className="mt-2 text-sm text-zinc-400">{t("Official Telegram collectibles held by your verified TON wallet.", "读取已验证 TON 钱包持有的 Telegram 官方收藏品。")}</p>
+          <p className="mt-2 text-sm text-zinc-400">{t("Official Telegram collectibles held by your connected TON wallet.", "自动读取当前连接 TON 钱包持有的 Telegram 官方收藏品。")}</p>
         </div>
-        {isWalletVerified && (
+        {walletAddress && (
           <button type="button" onClick={() => void loadAssets()} disabled={loading} className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">
             {loading ? t("Refreshing…", "正在刷新…") : t("Refresh assets", "刷新资产")}
           </button>
@@ -135,24 +134,14 @@ export function AssetsPage() {
       {!walletAddress && (
         <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
           <h2 className="text-lg font-medium text-white">{t("Connect your TON wallet", "连接 TON 钱包")}</h2>
-          <p className="mt-2 text-sm text-zinc-400">{t("Connect and complete TON Proof verification to load your assets.", "连接钱包并完成 TON Proof 身份验证后即可读取资产。")}</p>
-          <button type="button" onClick={() => void connectAndVerifyWallet()} disabled={connecting || verifying} className="mt-5 rounded-full bg-sky-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
-            {connecting || verifying ? t("Connecting…", "正在连接…") : t("Connect and verify", "连接并验证钱包")}
+          <p className="mt-2 text-sm text-zinc-400">{t("Connect your TON wallet to automatically load its public NFT assets.", "连接 TON 钱包后，系统将自动读取该地址的公开 NFT 资产。")}</p>
+          <button type="button" onClick={() => void tonConnectUI.openModal()} className="mt-5 rounded-full bg-sky-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
+            {t("Connect wallet", "连接钱包")}
           </button>
         </section>
       )}
 
-      {walletAddress && !isWalletVerified && (
-        <section className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5">
-          <p className="text-sm text-amber-200">{t("Wallet identity verification is required before assets can be displayed.", "读取资产前必须完成钱包身份验证。")}</p>
-          <button type="button" onClick={() => void connectAndVerifyWallet()} disabled={connecting || verifying} className="mt-4 rounded-full border border-amber-300/30 px-4 py-2 text-sm text-amber-100 disabled:opacity-50">
-            {t("Verify wallet", "验证钱包")}
-          </button>
-          {proofMessage && <p className="mt-3 break-words text-xs text-zinc-400">{proofMessage}</p>}
-        </section>
-      )}
-
-      {isWalletVerified && (
+      {walletAddress && (
         <>
           <div className="grid grid-cols-3 gap-2 sm:max-w-xl">
             {([
