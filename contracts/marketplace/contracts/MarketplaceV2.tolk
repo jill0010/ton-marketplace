@@ -1,4 +1,5 @@
 fun onInternalMessage(in: InMessage) {
+    var storage = lazy MarketplaceV2Storage.load();
     var listingMaps = storage.listingMaps.load();
     var orderMaps = storage.orderMaps.load();
     val msg = lazy MarketplaceV2AllowedMessage.fromSlice(in.body);
