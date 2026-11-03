@@ -283,14 +283,16 @@ export function PremiumPage() {
                 onClick={() => setSelectedPlanId(plan.id)}
                 className={`rounded-2xl border p-4 text-left transition ${active ? "border-sky-400 bg-white/[0.03]" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}
               >
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 whitespace-nowrap">
-                  <span className="min-w-0 truncate text-sm font-semibold text-white">{t(plan.period, plan.periodZh)}</span>
-                  <span className="shrink-0 rounded-full bg-sky-500 px-2 py-1 text-xs font-semibold text-white">{plan.discount}</span>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-nowrap">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-white">{t(plan.period, plan.periodZh)}</span>
+                    <span className="shrink-0 rounded-full bg-sky-500 px-2 py-1 text-xs font-semibold text-white">{plan.discount}</span>
+                  </div>
                   <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-white">
                     <span aria-hidden="true" className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-400 text-[11px] font-black text-slate-950">G</span>
                     {gramAmount ? gramAmount.toFixed(2) : "—"}
                   </span>
-                  <span className="shrink-0 text-sm font-semibold text-zinc-300">${plan.marketUsd.toFixed(2)}</span>
+                  <span className="shrink-0 text-sm font-semibold text-zinc-400">${plan.marketUsd.toFixed(2)}</span>
                 </div>
               </button>
             )
