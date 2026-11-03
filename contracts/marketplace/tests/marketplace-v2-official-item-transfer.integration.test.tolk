@@ -16,6 +16,7 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
 
     val seller = testing.treasury("marketplaceV2OfficialItemSeller");
     val owner = testing.treasury("marketplaceV2OfficialItemOwner");
+    val attacker = testing.treasury("marketplaceV2OfficialItemAttacker");
 
     val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
         owner: owner.address,
@@ -245,12 +246,12 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
 
     // Only the seller or Marketplace owner may cancel a deposited listing.
     val forgedCancel = marketplace.sendCancelProductV2(
-        owner.address,
+        attacker.address,
         1,
         { value: grams("0.1") },
     );
     expect(forgedCancel).toHaveFailedTx({
-        from: owner.address,
+        from: attacker.address,
         to: marketplace.address,
         exitCode: ErrorsV2.InvalidRefund,
     });
