@@ -14,6 +14,7 @@ const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((mod
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
 const PremiumRoute = lazy(() => import("./components/PremiumRoute").then((module) => ({ default: module.PremiumRoute })))
+const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
 const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/catalog" element={<CatalogPage />} />
                 <Route path="/premium" element={<PremiumRoute />} />
+                <Route path="/premium/history" element={<PremiumHistoryPage />} />
                 <Route path="/product/:id" element={<ProductPage />} />
                 <Route path="/publish" element={<PublishPage />} />
 
