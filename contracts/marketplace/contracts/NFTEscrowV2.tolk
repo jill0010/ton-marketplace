@@ -283,6 +283,12 @@ fun onInternalMessage(in: InMessage) {
             var record = NFTEscrowV2Record.fromCell(recordResult.loadValue());
             assert (record.escrowId == msg.escrowId) throw ErrorsV2.InvalidRelease;
             assert (record.productId == msg.productId) throw ErrorsV2.InvalidRelease;
+            // Never "deliver" an NFT to the Escrow itself or to the NFT Item
+            // contract. Either destination could leave the asset effectively
+            // trapped while the release state machine records it as Released.
+            assert (msg.buyer != contract.getAddress()) throw ErrorsV2.InvalidRelease;
+            assert (msg.buyer != record.nftItem) throw ErrorsV2.InvalidRelease;
+            assert (msg.buyer != record.seller) throw ErrorsV2.InvalidRelease;
 
             val callback = EscrowReleaseCallbackV2 {
                 orderId: msg.orderId,
