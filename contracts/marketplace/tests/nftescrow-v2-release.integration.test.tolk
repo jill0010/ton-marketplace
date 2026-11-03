@@ -1,3 +1,4 @@
+import "@acton/fmt"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
@@ -308,7 +309,35 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     expect(cleared == null).toEqual(true);
     expect(escrow.assetEscrowIdV2(nftItem.address) == null).toEqual(true);
 
-    // Once authenticated NFT excesses confirms delivery, the new owner can list it again.
+    // Once authenticated NFT excesses confirms delivery, the custody reservation is cleared.
+    // This test fixture is intentionally not a Fragment NFT Item, so it must still fail
+    // the official code-derived address check rather than being relisted.
+    val relistCollectionPaused = escrow.sendSetCollectionStatusV2(
+        owner.address,
+        owner.address,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(relistCollectionPaused).toHaveSuccessfulTx();
+    val relistItemCode = parseCellFromHex(
+        "b5ee9c72010101010023000842022498bd63f3e9cc2c20c79abe58899a4816ea156855b8d4fcd47cda4bae9e911a",
+    );
+    val relistCodeConfig = escrow.sendSetCollectionItemCodeV2(
+        owner.address,
+        owner.address,
+        3,
+        relistItemCode,
+        { value: grams("0.05") },
+    );
+    expect(relistCodeConfig).toHaveSuccessfulTx();
+    val relistCollectionActive = escrow.sendSetCollectionStatusV2(
+        owner.address,
+        owner.address,
+        1,
+        { value: grams("0.05") },
+    );
+    expect(relistCollectionActive).toHaveSuccessfulTx();
+
     val relist = escrow.sendCreateEscrowV2(
         marketplace.address,
         7002,
@@ -320,6 +349,10 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         3,
         { value: grams("0.05") },
     );
-    expect(relist).toHaveSuccessfulTx();
-    expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(2);
+    expect(relist).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidNftItem,
+    });
+    expect(escrow.assetEscrowIdV2(nftItem.address) == null).toEqual(true);
 }
