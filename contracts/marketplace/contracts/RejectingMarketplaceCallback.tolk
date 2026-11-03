@@ -83,7 +83,10 @@ fun onInternalMessage(in: InMessage) {
                     collection: storage.controller,
                     seller: msg.seller,
                     queryId: msg.queryId,
-                    extra: CreateEscrowV2Extra { itemIndex: 0, kind: 3 }.toCell(),
+                    extra: CreateEscrowV2Extra {
+                        itemIndex: 0,
+                        kind: 3,
+                    }.toCell(),
                 },
             }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
