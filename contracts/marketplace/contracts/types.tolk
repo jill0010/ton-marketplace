@@ -633,6 +633,8 @@ enum MarketplaceV2OrderStatus {
     PayoutsDispatched = 5
     RefundPending = 6
     ManualReview = 7
+    // Buyer refund and seller NFT return were dispatched after a proven delivery failure.
+    RefundDispatched = 8
 }
 
 enum MarketplaceV2DeliveryStatus {
