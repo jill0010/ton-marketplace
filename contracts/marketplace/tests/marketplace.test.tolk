@@ -1134,3 +1134,117 @@ get fun `test Marketplace V2 settlement split is exact for boundary and fraction
     expect(fractional.sellerAmount).toEqual(grams("9.700000001"));
     expect(fractional.platformFee + fractional.sellerAmount).toEqual(fractional.gross);
 }
+
+
+// V2 order snapshots and payout liabilities must round-trip independently.
+// The buyer/seller/asset/price are immutable inputs to every later transition.
+get fun `test Marketplace V2 immutable order snapshot and independent payout liabilities serialize`() {
+    val buyer = testing.treasury("v2SnapshotBuyer");
+    val seller = testing.treasury("v2SnapshotSeller");
+    val treasury = testing.treasury("v2SnapshotTreasury");
+
+    val parties = MarketplaceV2OrderParties {
+        buyer: buyer.address,
+        seller: seller.address,
+        treasury: treasury.address,
+    };
+    val asset = MarketplaceV2OrderAsset {
+        nftItem: seller.address,
+        collection: treasury.address,
+        itemIndex: 4242,
+        escrowId: 7,
+    };
+    val settlement = MarketplaceV2OrderSettlement {
+        gross: grams("10"),
+        feeBps: 300,
+        feeRoundingVersion: 1,
+        platformFee: grams("0.3"),
+        sellerProceeds: grams("9.7"),
+        processingReserve: grams("0.05"),
+    };
+    val operations = MarketplaceV2OrderOperations {
+        paymentQueryId: 101,
+        releaseQueryId: 102,
+        sellerPayoutQueryId: 103,
+        platformPayoutQueryId: 104,
+        buyerRefundQueryId: 105,
+    };
+    val extra = MarketplaceV2OrderExtra {
+        parties: parties.toCell(),
+        asset: asset.toCell(),
+        settlement: settlement.toCell(),
+        operations: operations.toCell(),
+    };
+    val order = MarketplaceV2Order {
+        id: 9,
+        productId: 7,
+        status: MarketplaceV2OrderStatus.DeliveryPending,
+        deliveryStatus: MarketplaceV2DeliveryStatus.Pending,
+        sellerPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+        platformPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+        refundStatus: MarketplaceV2RefundStatus.None,
+        createdAt: 1793700000,
+        extra: extra.toCell(),
+    };
+
+    val decoded = MarketplaceV2Order.fromCell(order.toCell());
+    val decodedExtra = decoded.extra.load();
+    val decodedParties = decodedExtra.parties.load();
+    val decodedAsset = decodedExtra.asset.load();
+    val decodedSettlement = decodedExtra.settlement.load();
+    val decodedOperations = decodedExtra.operations.load();
+
+    expect(decoded.id).toEqual(9);
+    expect(decoded.productId).toEqual(7);
+    expect(decoded.status).toEqual(MarketplaceV2OrderStatus.DeliveryPending);
+    expect(decoded.deliveryStatus).toEqual(MarketplaceV2DeliveryStatus.Pending);
+    expect(decodedParties.buyer).toEqual(buyer.address);
+    expect(decodedParties.seller).toEqual(seller.address);
+    expect(decodedParties.treasury).toEqual(treasury.address);
+    expect(decodedAsset.nftItem).toEqual(seller.address);
+    expect(decodedAsset.collection).toEqual(treasury.address);
+    expect(decodedAsset.itemIndex).toEqual(4242);
+    expect(decodedAsset.escrowId).toEqual(7);
+    expect(decodedSettlement.gross).toEqual(grams("10"));
+    expect(decodedSettlement.platformFee).toEqual(grams("0.3"));
+    expect(decodedSettlement.sellerProceeds).toEqual(grams("9.7"));
+    expect(decodedSettlement.platformFee + decodedSettlement.sellerProceeds).toEqual(
+        decodedSettlement.gross,
+    );
+    expect(decodedOperations.paymentQueryId).toEqual(101);
+    expect(decodedOperations.releaseQueryId).toEqual(102);
+    expect(decodedOperations.sellerPayoutQueryId).toEqual(103);
+    expect(decodedOperations.platformPayoutQueryId).toEqual(104);
+    expect(decodedOperations.buyerRefundQueryId).toEqual(105);
+
+    val sellerPayout = MarketplaceV2Payout {
+        orderId: 9,
+        operationId: 201,
+        queryId: 103,
+        beneficiary: seller.address,
+        amount: grams("9.7"),
+        kind: 1,
+        status: MarketplaceV2PayoutStatus.Pending,
+        createdAt: 1793700000,
+    };
+    val platformPayout = MarketplaceV2Payout {
+        orderId: 9,
+        operationId: 202,
+        queryId: 104,
+        beneficiary: treasury.address,
+        amount: grams("0.3"),
+        kind: 2,
+        status: MarketplaceV2PayoutStatus.Pending,
+        createdAt: 1793700000,
+    };
+    val decodedSellerPayout = MarketplaceV2Payout.fromCell(sellerPayout.toCell());
+    val decodedPlatformPayout = MarketplaceV2Payout.fromCell(platformPayout.toCell());
+    expect(decodedSellerPayout.beneficiary).toEqual(seller.address);
+    expect(decodedSellerPayout.amount).toEqual(grams("9.7"));
+    expect(decodedSellerPayout.operationId).toEqual(201);
+    expect(decodedPlatformPayout.beneficiary).toEqual(treasury.address);
+    expect(decodedPlatformPayout.amount).toEqual(grams("0.3"));
+    expect(decodedPlatformPayout.operationId).toEqual(202);
+    expect(decodedSellerPayout.operationId == decodedPlatformPayout.operationId).toEqual(false);
+    expect(decodedSellerPayout.queryId == decodedPlatformPayout.queryId).toEqual(false);
+}
