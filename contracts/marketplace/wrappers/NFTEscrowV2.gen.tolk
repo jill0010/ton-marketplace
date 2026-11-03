@@ -270,14 +270,7 @@ fun NFTEscrowV2.sendEscrowReleaseFailureAckV2(
         bounce: config.bounce,
         value: config.value,
         dest: self.address,
-        body: EscrowReleaseFailureAckV2 {
-            orderId,
-            productId,
-            escrowId,
-            queryId,
-            nftItem,
-            buyer,
-        },
+        body: EscrowReleaseFailureAckV2 { orderId, productId, escrowId, queryId, nftItem, buyer },
     });
     return net.send(from, genericMsg);
 }
