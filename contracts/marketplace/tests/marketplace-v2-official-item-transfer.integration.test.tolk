@@ -145,6 +145,30 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(beforeTransfer.isSuccess()).toEqual(true);
     expect(beforeTransfer.unwrap().get(3) as address).toEqual(seller.address);
 
+    // A different wallet cannot transfer the seller's NFT into custody.
+    val forgedTransfer = createMessage({
+        bounce: true,
+        value: grams("0.2"),
+        dest: nftItem,
+        body: NftTransfer {
+            queryId: 99,
+            newOwner: escrow.address,
+            responseDestination: owner.address,
+            customPayload: null,
+            forwardAmount: grams("0.05"),
+            forwardPayload: beginCell().endCell().beginParse(),
+        },
+    });
+    val forgedTransferResult = net.send(owner.address, forgedTransfer);
+    expect(forgedTransferResult).toHaveFailedTx({
+        from: owner.address,
+        to: nftItem,
+        exitCode: Errors.NotOwner,
+    });
+    val afterForgedTransfer = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
+    expect(afterForgedTransfer.isSuccess()).toEqual(true);
+    expect(afterForgedTransfer.unwrap().get(3) as address).toEqual(seller.address);
+
     // Publish from the real seller wallet; Marketplace reserves the item and
     // Escrow creates the pending custody record before the NFT transfer.
     expect(marketplace.sendPublishProductV2(
