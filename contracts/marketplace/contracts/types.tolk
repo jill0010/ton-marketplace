@@ -336,6 +336,56 @@ struct (0x71a0000E) RetryCreateEscrow {
     productId: uint64
 }
 
+ // Marketplace V2 isolated NFT release ABI. These declarations do not alter
+// V1 serialized storage and do not enable any V2 entrypoint.
+struct (0x71b00002) ReleaseEscrowV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    buyer: address
+}
+
+// Emitted only after the NFT Item's authenticated TEP-62 excesses confirmation.
+struct (0x71b00003) EscrowReleasedV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+// Exact acknowledgement lets Escrow clear its durable callback record.
+struct (0x71b00008) EscrowReleaseAckV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+struct (0x71b00009) RetryReleaseCallbackV2 {
+    escrowId: uint64
+}
+
+struct EscrowReleaseCallbackV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+enum EscrowReleaseStatusV2 {
+    Deposited = 1
+    ReleasePending = 2
+    Released = 3
+}
+
+
 /// Integer-only settlement split. Fee rounds down; seller receives the remainder,
 /// so platformFee + sellerAmount always equals the exact gross price.
 struct SettlementAmounts {
