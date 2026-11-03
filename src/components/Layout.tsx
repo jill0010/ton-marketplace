@@ -6,7 +6,7 @@ import { useLanguage } from "../lib/useLanguage"
 function TonMark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
-      <path d="M4.2 6.2A2.2 2.2 0 0 1 6.1 5h11.8a2.2 2.2 0 0 1 1.9 3.3l-6.1 10.2a2 2 0 0 1-3.4 0L4.2 8.3a2.2 2.2 0 0 1 0-2.1Zm3.1 1.2 4.7 8 4.7-8H7.3Z" />
+      <path d="M3.2 5.2h17.6L12 20.1 3.2 5.2Z" /><path d="M12 5.2v11.1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
@@ -73,13 +73,13 @@ export function Layout() {
                 value={language}
                 onChange={(event) => setLanguage(event.target.value as typeof language)}
                 aria-label="Select language"
-                className="h-10 cursor-pointer appearance-none rounded-xl border border-sky-400/20 bg-gradient-to-b from-[#202c3b] to-[#17212e] py-2 pl-9 pr-9 text-sm font-medium text-zinc-100 shadow-inner shadow-white/5 outline-none transition hover:border-sky-300/50 focus:border-sky-300 focus:ring-2 focus:ring-sky-400/20"
+                className="h-10 cursor-pointer appearance-none rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] py-2 pl-9 pr-9 text-sm font-medium text-zinc-100 shadow-inner shadow-white/5 outline-none transition focus:ring-0"
               >
-                <option value="en">English</option>
-                <option value="zh">简体中文</option>
-                <option value="zh-TW">繁體中文</option>
-                <option value="ru">Русский</option>
-                <option value="ar">العربية</option>
+                <option value="en" className="bg-[#202c3b] text-zinc-100">English</option>
+                <option value="zh" className="bg-[#202c3b] text-zinc-100">简体中文</option>
+                <option value="zh-TW" className="bg-[#202c3b] text-zinc-100">繁體中文</option>
+                <option value="ru" className="bg-[#202c3b] text-zinc-100">Русский</option>
+                <option value="ar" className="bg-[#202c3b] text-zinc-100">العربية</option>
               </select>
               <svg viewBox="0 0 20 20" aria-hidden="true" className="pointer-events-none absolute right-3 h-4 w-4 text-zinc-400">
                 <path d="m5 7 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -88,7 +88,7 @@ export function Layout() {
 
             {walletAddress ? (
               <div className="relative" ref={accountMenuRef}>
-                <button type="button" aria-expanded={accountMenuOpen} aria-haspopup="menu" onClick={() => setAccountMenuOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-950/20 transition hover:bg-sky-400">
+                <button type="button" aria-expanded={accountMenuOpen} aria-haspopup="menu" onClick={() => setAccountMenuOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] px-4 py-2.5 text-sm font-semibold text-white shadow-inner shadow-white/5 transition hover:from-[#29394d] hover:to-[#1c2a3b]">
                   <TonMark />
                   <span>{shortAddress}</span>
                   <svg viewBox="0 0 20 20" aria-hidden="true" className={`h-4 w-4 transition ${accountMenuOpen ? "rotate-180" : ""}`}>
@@ -107,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <button type="button" onClick={() => void tonConnectUI.openModal()} className="rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-400">
+              <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] px-4 py-2.5 text-sm font-semibold text-white shadow-inner shadow-white/5 transition hover:from-[#29394d] hover:to-[#1c2a3b]"><TonMark />>
                 {t("Connect wallet", "连接钱包")}
               </button>
             )}
