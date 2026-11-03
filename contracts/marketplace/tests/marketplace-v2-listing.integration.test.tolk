@@ -351,4 +351,41 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         exitCode: ErrorsV2.CollectionNotApproved,
     });
 
+    val revokeCollection = escrow.sendSetCollectionStatusV2(
+        owner.address,
+        owner.address,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(revokeCollection).toHaveSuccessfulTx();
+
+    val revokedCreate = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        1003,
+        nftItem.address,
+        owner.address,
+        seller.address,
+        1003,
+        validItemIndex,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(revokedCreate).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.CollectionNotApproved,
+    });
+
+    val forgedPause = escrow.sendSetCollectionStatusV2(
+        attacker.address,
+        owner.address,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(forgedPause).toHaveFailedTx({
+        from: attacker.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.NotOwner,
+    });
+
 }
