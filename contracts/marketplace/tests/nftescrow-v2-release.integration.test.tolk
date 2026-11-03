@@ -20,27 +20,13 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         owner: seller.address,
     });
 
-    var records: map<uint64, Cell<NFTEscrowV2Record>> = [];
-    records.set(
-        1,
-        NFTEscrowV2Record {
-            escrowId: 1,
-            nftItem: nftItem.address,
-            seller: seller.address,
-            productId: 7001,
-            status: 0,
-            queryId: depositQueryId,
-        }.toCell(),
-    );
-
-    var queryToEscrow: map<uint64, uint64> = [];
-    queryToEscrow.set(depositQueryId, 1);
-
     val escrow = NFTEscrowV2.fromStorage({
         owner: owner.address,
         marketplace: marketplace.address,
-        records,
-        queryToEscrow,
+        nextEscrowId: 1,
+        records: [],
+        queryToEscrow: [],
+        depositCallbacks: [],
         pendingReleases: [],
         releaseCallbacks: [],
     });
@@ -50,6 +36,16 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
 
     val escrowDeploy = escrow.deploy(owner.address, { value: grams("0.1") });
     expect(escrowDeploy).toHaveSuccessfulDeploy({ to: escrow.address });
+
+    val create = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        7001,
+        nftItem.address,
+        seller.address,
+        depositQueryId,
+        { value: grams("0.05") },
+    );
+    expect(create).toHaveSuccessfulTx();
 
     // Deposit through a real TEP-62 transfer and authenticated ownership notification.
     val deposit = nftItem.sendNftTransfer(
@@ -68,6 +64,22 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     val deposited = escrow.escrowRecordV2(1);
     assert (deposited != null) throw ErrorsV2.InvalidRelease;
     expect(deposited!!.status).toEqual(1);
+
+    val depositCallback = escrow.depositCallbackV2(1);
+    assert (depositCallback != null) throw ErrorsV2.InvalidReleaseConfirmation;
+    expect(depositCallback!!.queryId).toEqual(depositQueryId);
+
+    val depositAck = escrow.sendEscrowDepositAckV2(
+        marketplace.address,
+        1,
+        7001,
+        nftItem.address,
+        seller.address,
+        depositQueryId,
+        { value: grams("0.05") },
+    );
+    expect(depositAck).toHaveSuccessfulTx();
+    expect(escrow.depositCallbackV2(1) == null).toEqual(true);
 
     // Only the configured Marketplace can request delivery.
     val forged = escrow.sendReleaseEscrowV2(
