@@ -27,6 +27,15 @@ BEGIN
       RAISE EXCEPTION 'service_role cannot read %', table_name;
     END IF;
   END LOOP;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'marketplace_orders'
+      AND column_name = 'seller_nft_return_status'
+  ) THEN
+    RAISE EXCEPTION 'seller_nft_return_status column is missing';
+  END IF;
 END
 $security$;
 
@@ -67,6 +76,10 @@ BEGIN
     10000, 300, 9700, 100000000,
     11, 12, 13, 14, 15, 'payment_confirmed'
   ) RETURNING id INTO order_uuid;
+
+  IF (SELECT seller_nft_return_status FROM public.marketplace_orders WHERE id = order_uuid) <> 'not_started' THEN
+    RAISE EXCEPTION 'Seller NFT return status default is incorrect';
+  END IF;
 
   INSERT INTO public.marketplace_payouts (
     order_id, payout_kind, operation_id, query_id,
