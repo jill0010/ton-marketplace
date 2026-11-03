@@ -160,3 +160,16 @@ Before enabling the buyer entrypoint:
 ## Current status and safety boundary
 
 This document is a design artifact, not a deployed contract or authorization to receive funds. The current production/prototype Marketplace and NFTEscrow contracts remain unchanged. No purchase, release, payout, or refund V2 handler is enabled. No database migration, Edge Function deployment, testnet/mainnet deployment, NFT transfer, or fund movement occurred.
+
+
+## ABI implementation checkpoint — 2026-11-03
+
+The shared Tolk type module now defines the first V2 release messages:
+- `ReleaseEscrowV2` (`0x71b00002`)
+- `EscrowReleasedV2` (`0x71b00003`)
+- `EscrowReleaseAckV2` (`0x71b00008`)
+- `RetryReleaseCallbackV2` (`0x71b00009`)
+- `EscrowReleaseCallbackV2` durable callback snapshot
+- `EscrowReleaseStatusV2` isolated V2 lifecycle enum
+
+These are message/data declarations only. No contract currently accepts or emits them. They do not modify V1 serialized storage. The remaining proposed V2 opcode assignments are not frozen. A complete ABI collision scan, wrapper review, and serialization tests remain mandatory before ABI freeze.
