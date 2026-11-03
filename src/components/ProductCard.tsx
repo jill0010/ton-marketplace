@@ -1,5 +1,4 @@
-﻿import { useState } from "react"
-import { Link } from "react-router-dom"
+import { useState } from "react"
 import { useLanguage } from "../lib/useLanguage"
 import {
   PRODUCT_TYPE_LABELS,
@@ -19,7 +18,7 @@ const TYPE_ART: Record<Product["type"], string> = {
 }
 
 export function ProductCard({ product, compact = false }: ProductCardProps) {
-  const { language, t } = useLanguage()
+  const { language } = useLanguage()
   const [imageFailed, setImageFailed] = useState(false)
 
   const showImage = Boolean(product.imageUrl) && !imageFailed
@@ -29,10 +28,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
       : PRODUCT_TYPE_LABELS_ZH[product.type]
 
   return (
-    <Link
-      to={`/product/${product.id}`}
-      className="block min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/25 hover:bg-white/[0.06]"
-    >
+    <article className="block min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
       <div
         className={`relative aspect-square overflow-hidden bg-gradient-to-br ${TYPE_ART[product.type]}`}
       >
@@ -48,7 +44,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
       </div>
 
       <div className={compact ? "p-3" : "p-4"}>
-        {!compact && (<p className="text-xs tracking-wider text-zinc-500">{typeLabel}</p>)}
+        {!compact && <p className="text-xs tracking-wider text-zinc-500">{typeLabel}</p>}
 
         <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>
           {product.title}
@@ -58,18 +54,12 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
           {product.subtitle}
         </p>
 
-        <div className={compact ? "mt-2 flex items-center justify-between gap-2" : "mt-4 flex items-end justify-between gap-3"}>
+        <div className={compact ? "mt-2" : "mt-4"}>
           <p className={compact ? "text-sm font-semibold text-emerald-300" : "text-lg font-semibold text-emerald-300"}>
             {product.priceTon} TON
           </p>
-
-          <span className={compact ? "text-xs text-zinc-400" : "text-sm text-zinc-400"}>
-            {t("View Details", "查看详情")}
-          </span>
         </div>
       </div>
-    </Link>
+    </article>
   )
 }
-
-
