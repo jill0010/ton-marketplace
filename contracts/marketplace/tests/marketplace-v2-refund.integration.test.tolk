@@ -95,7 +95,7 @@ get fun `test Marketplace V2 refunds buyer and retries seller NFT return indepen
         marketplace.sendBuyProductV2(
             buyer.address,
             1,
-            { value: grams("4.5") },
+            { value: grams("4") },
         ),
     ).toHaveSuccessfulTx();
 
@@ -113,14 +113,7 @@ get fun `test Marketplace V2 refunds buyer and retries seller NFT return indepen
     expect(refundPayout.amount).toEqual(grams("4"));
     expect(refundPayout.status).toEqual(MarketplaceV2PayoutStatus.Pending);
 
-    // Buyer refund dispatch is not blocked by the seller NFT-return retry.
-    expect(
-        marketplace.sendDispatchPayoutV2(
-            buyer.address,
-            operations.buyerRefundOperationId,
-            { value: grams("0.05") },
-        ),
-    ).toHaveSuccessfulTx();
+    // Buyer refund is dispatched automatically and independently of seller NFT return.
     expect(
         marketplace.orderV2(1)!!.refundStatus,
     ).toEqual(MarketplaceV2RefundStatus.Dispatched);
