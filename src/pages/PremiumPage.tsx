@@ -1,4 +1,4 @@
-﻿
+
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "../lib/useLanguage"
@@ -9,7 +9,7 @@ import {
 } from "../lib/supabase"
 
 type Plan = {
-  id: "year" | "half-year" | "quarter"
+  id: "month" | "quarter" | "half-year" | "year"
   period: string
   periodZh: string
   marketUsd: number
@@ -37,9 +37,10 @@ type TelegramProfile = {
 }
 
 const INITIAL_PLANS: Plan[] = [
-  { id: "year", period: "12 months", periodZh: "1 年", marketUsd: 28.99, discount: "-52%" },
-  { id: "half-year", period: "6 months", periodZh: "6 个月", marketUsd: 15.99, discount: "-47%" },
-  { id: "quarter", period: "3 months", periodZh: "3 个月", marketUsd: 11.99, discount: "-20%" },
+  { id: "month", period: "1 month", periodZh: "1 个月", marketUsd: 4.29, discount: "-10%" },
+  { id: "quarter", period: "3 months", periodZh: "3 个月", marketUsd: 10.99, discount: "-30%" },
+  { id: "half-year", period: "6 months", periodZh: "6 个月", marketUsd: 14.99, discount: "-57%" },
+  { id: "year", period: "12 months", periodZh: "12 个月", marketUsd: 27.99, discount: "-62%" },
 ]
 
 export function PremiumPage() {
@@ -145,7 +146,7 @@ export function PremiumPage() {
       const { data, error } = await supabase
         .from("premium_pricing")
         .select("id, period, market_usd")
-        .in("id", ["year", "half-year", "quarter"])
+        .in("id", ["month", "quarter", "half-year", "year"])
       if (!active) return
       if (error) {
         setLoadError(error.message)
@@ -271,7 +272,7 @@ export function PremiumPage() {
         <h2 className="text-lg font-semibold text-white">{t("Choose duration", "选择持续时间")}</h2>
         {loading && <p className="text-sm text-zinc-400">{t("Loading prices…", "正在读取价格……")}</p>}
         {loadError && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-300">{loadError}</p>}
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3">
           {plans.map((plan) => {
             const gramAmount = marketQuote ? plan.marketUsd / marketQuote.priceUsd : null
             const active = selected?.id === plan.id
@@ -280,7 +281,7 @@ export function PremiumPage() {
                 key={plan.id}
                 type="button"
                 onClick={() => setSelectedPlanId(plan.id)}
-                className={`rounded-2xl border p-4 text-left transition ${active ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}
+                className={`rounded-2xl border p-4 text-left transition ${active ? "border-sky-400 bg-white/[0.03]" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold text-white">{t(plan.period, plan.periodZh)}</span>
@@ -298,11 +299,11 @@ export function PremiumPage() {
       <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-white">{t("Payment method", "付款方式")}</h2>
         <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={() => setPaymentMethod("GRAM")} className={`rounded-xl border p-4 text-left ${paymentMethod === "GRAM" ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-black/20"}`}>
+          <button type="button" onClick={() => setPaymentMethod("GRAM")} className={`rounded-xl border p-4 text-left ${paymentMethod === "GRAM" ? "border-sky-400 bg-black/20" : "border-white/10 bg-black/20"}`}>
             <span className="block font-semibold text-white">GRAM</span>
             <span className="mt-1 block text-xs text-zinc-400">{t("TON network", "TON 网络")}</span>
           </button>
-          <button type="button" onClick={() => setPaymentMethod("USDT_TRC20")} className={`rounded-xl border p-4 text-left ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-black/20"}`}>
+          <button type="button" onClick={() => setPaymentMethod("USDT_TRC20")} className={`rounded-xl border p-4 text-left ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-black/20" : "border-white/10 bg-black/20"}`}>
             <span className="block font-semibold text-white">USDT</span>
             <span className="mt-1 block text-xs text-zinc-400">TRC20</span>
           </button>
