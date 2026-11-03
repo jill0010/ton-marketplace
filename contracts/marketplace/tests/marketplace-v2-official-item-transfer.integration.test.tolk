@@ -1,3 +1,4 @@
+import "@acton/fmt"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
