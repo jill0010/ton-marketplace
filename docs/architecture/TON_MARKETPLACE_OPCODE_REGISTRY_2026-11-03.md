@@ -62,7 +62,7 @@ These opcodes are already implemented and must not be reassigned.
 
 ## Reserved purchase and settlement messages
 
-The following assignments replace the conflicting provisional assignments in the purchase design. They are reserved only: no contract currently accepts or emits these messages.
+The following assignments are reserved only: no contract currently accepts or emits these messages. `PayoutSettledV2` is not part of the default arbitrary-wallet payout model; the beneficiary wallet does not automatically send an acknowledgement. `DispatchPayoutV2` is reserved for permissionless dispatch of a stored payout liability.
 
 | Opcode | Message | Direction | Status |
 |---|---|---|---|
@@ -72,6 +72,7 @@ The following assignments replace the conflicting provisional assignments in the
 | `0x71b00103` | `RetryPayoutV2` | Operator → MarketplaceV2 | Reserved |
 | `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer | Reserved |
 | `0x71b00105` | `PayoutSettledV2` | Beneficiary → MarketplaceV2 | Reserved |
+| `0x71b00106` | `DispatchPayoutV2` | Permissionless caller → MarketplaceV2 | Reserved |
 
 ## Allocation rules
 
