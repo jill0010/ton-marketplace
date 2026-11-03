@@ -185,7 +185,7 @@ export function CatalogPage() {
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option} value={option}>
-              {SORT_LABELS_BI[option][language]}
+              {SORT_LABELS_BI[option][language === "zh" || language === "zh-TW" ? "zh" : "en"]}
             </option>
           ))}
         </select>
@@ -221,7 +221,7 @@ export function CatalogPage() {
                 : "border-white/10 bg-white/[0.02] text-zinc-300 hover:border-white/25 hover:bg-white/[0.05]"
             }`}
           >
-            {category[language]}
+            {category[language === "zh" || language === "zh-TW" ? "zh" : "en"]}
           </button>
         ))}
       </div>
