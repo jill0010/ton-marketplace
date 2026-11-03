@@ -248,7 +248,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val changedIndexReplay = escrow.sendCreateEscrowV2(
         marketplace.address,
         3,
-        validNftItem,
+        nftItem.address,
         owner.address,
         seller.address,
         3,
@@ -283,7 +283,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val wrongKind = escrow.sendCreateEscrowV2(
         marketplace.address,
         1000,
-        validNftItem,
+        nftItem.address,
         owner.address,
         seller.address,
         1000,
@@ -300,7 +300,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val unapprovedCollection = escrow.sendCreateEscrowV2(
         marketplace.address,
         1001,
-        validNftItem,
+        nftItem.address,
         attacker.address,
         seller.address,
         1001,
@@ -337,7 +337,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val pausedCreate = escrow.sendCreateEscrowV2(
         marketplace.address,
         1002,
-        validNftItem,
+        nftItem.address,
         owner.address,
         seller.address,
         1002,
