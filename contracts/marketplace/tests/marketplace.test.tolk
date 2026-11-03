@@ -1027,6 +1027,10 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
             sellerPayoutQueryId: 9003,
             platformPayoutQueryId: 9004,
             buyerRefundQueryId: 9005,
+            sellerReturnQueryId: 9006,
+            sellerPayoutOperationId: 9007,
+            platformPayoutOperationId: 9008,
+            buyerRefundOperationId: 9009,
         }.toCell(),
     };
     val order = MarketplaceV2Order {
