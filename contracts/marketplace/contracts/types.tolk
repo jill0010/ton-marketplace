@@ -813,6 +813,22 @@ struct MarketplaceV2Config {
     treasuryConfigured: bool
 }
 
+struct MarketplaceV2ListingMaps {
+    products: map<uint64, Cell<MarketplaceV2Product>>
+    // NFT Item address -> pending/active Marketplace V2 product ID.
+    assetListings: map<address, uint64>
+    queryToProduct: map<uint64, uint64>
+    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
+    refundQueryToProduct: map<uint64, uint64>
+}
+
+struct MarketplaceV2OrderMaps {
+    orders: map<uint64, Cell<MarketplaceV2Order>>
+    payouts: map<uint64, Cell<MarketplaceV2Payout>>
+    releaseQueryToOrder: map<uint64, uint64>
+    refundQueryToOrder: map<uint64, uint64>
+}
+
 struct MarketplaceV2Storage {
     owner: address
     escrow: address
@@ -822,16 +838,8 @@ struct MarketplaceV2Storage {
     nextQueryId: uint64
     nextOrderId: uint64
     nextOperationId: uint64
-    products: map<uint64, Cell<MarketplaceV2Product>>
-    // NFT Item address -> pending/active Marketplace V2 product ID.
-    assetListings: map<address, uint64>
-    queryToProduct: map<uint64, uint64>
-    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
-    refundQueryToProduct: map<uint64, uint64>
-    orders: map<uint64, Cell<MarketplaceV2Order>>
-    payouts: map<uint64, Cell<MarketplaceV2Payout>>
-    releaseQueryToOrder: map<uint64, uint64>
-    refundQueryToOrder: map<uint64, uint64>
+    listingMaps: Cell<MarketplaceV2ListingMaps>
+    orderMaps: Cell<MarketplaceV2OrderMaps>
 }
 
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
