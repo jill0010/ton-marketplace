@@ -28,6 +28,6 @@ Code commit `82f766c5635cd2f2a6cf27b323101b1b1dcac85c`:
 
 - Contracts workflow #109: success — Acton build, 94 tests in 7 files, linter, formatter.
 - Frontend Build #51: success.
-- Wallet Identity Audit #98: pending at the time this audit was authored; do not treat as passed until its workflow reports success.
+- Wallet Identity Audit #99: success — Deno/type checks and PostgreSQL 17 integration tests.
 
 No contract implementation, ABI, serialized storage layout, production database, Edge Function deployment, contract deployment, mainnet transaction, NFT transfer outside the emulator, or funds were changed or moved.
