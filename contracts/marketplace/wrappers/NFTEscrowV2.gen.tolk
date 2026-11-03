@@ -67,7 +67,6 @@ fun NFTEscrowV2.sendCreateEscrowV2(
     return net.send(from, genericMsg);
 }
 
-
 fun NFTEscrowV2.sendSetCollectionStatusV2(
     self,
     from: address,
