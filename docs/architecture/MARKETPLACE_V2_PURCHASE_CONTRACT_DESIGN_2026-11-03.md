@@ -300,3 +300,13 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 - The release integration test asserts all three invalid destinations fail and that the NFT remains owned by Escrow, the record remains Deposited, and the NFT custody index remains reserved.
 - Contracts workflow #282 on commit `a122ed2ba9081b7d35d13d09ee8dbf4f732af4f8`: success — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter.
 - This closes a destination-validation edge case in the isolated escrow release handler. It does not implement MarketplaceV2 purchase/payment, payout/refund, or authorize testnet/mainnet deployment.
+
+
+## V2 immutable order and payout snapshot schema — 2026-11-03
+
+- Added serialization-only types for `MarketplaceV2Order`, its immutable snapshot, and independent `MarketplaceV2Payout` liabilities. No purchase message handler or buyer-fund acceptance was added.
+- The order snapshot captures buyer/seller/treasury, NFT Item/collection/index/Escrow ID, gross amount, fee basis points and rounding version, platform fee, seller proceeds, processing reserve, and distinct payment/release/seller-payout/platform-payout/buyer-refund query IDs.
+- The seller and platform payout legs each have their own operation ID, query ID, beneficiary, amount, kind, and status; a retry of one leg can be modeled without resending the other.
+- The snapshot is split into bounded nested cells (parties, asset, settlement, operations) so each serialized cell remains below TON's 1023-bit cell limit. A round-trip test verifies every field and conservation of gross = seller proceeds + platform fee.
+- These declarations are not yet wired into `MarketplaceV2Storage`, and no order map, purchase entrypoint, payout handler, or refund handler is enabled. This intentionally keeps the current listing storage and behavior unchanged while the schema is reviewed.
+- Contracts workflow #297 on commit `5f13f31a613905cd399f9f7878e5635d0022a3e1`: success — opcode registry check (35 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter.
