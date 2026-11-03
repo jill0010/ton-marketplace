@@ -73,7 +73,7 @@ export function Layout() {
                 value={language}
                 onChange={(event) => setLanguage(event.target.value as typeof language)}
                 aria-label="Select language"
-                className="h-10 cursor-pointer appearance-none rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] py-2 pl-9 pr-9 text-sm font-medium text-zinc-100 shadow-inner shadow-white/5 outline-none transition focus:ring-0"
+                className="h-10 cursor-pointer appearance-none rounded-xl border-0 bg-gradient-to-b from-[#202c3b] to-[#17212e] py-2 pl-9 pr-9 text-sm font-medium text-zinc-100 shadow-inner shadow-white/5 outline-none ring-0 transition focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
               >
                 <option value="en" className="bg-[#202c3b] text-zinc-100">English</option>
                 <option value="zh" className="bg-[#202c3b] text-zinc-100">简体中文</option>
