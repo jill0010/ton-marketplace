@@ -1088,7 +1088,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
         beneficiary: decodedParties.seller,
         amount: decodedSettlement.sellerProceeds,
         kind: 1,
-        status: 1,
+        status: MarketplaceV2PayoutStatus.Pending,
         createdAt: decodedOrder.createdAt,
     };
     val platformPayout = MarketplaceV2Payout {
@@ -1098,7 +1098,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
         beneficiary: decodedParties.treasury,
         amount: decodedSettlement.platformFee,
         kind: 2,
-        status: 1,
+        status: MarketplaceV2PayoutStatus.Pending,
         createdAt: decodedOrder.createdAt,
     };
     val decodedSellerPayout = MarketplaceV2Payout.fromCell(sellerPayout.toCell());
