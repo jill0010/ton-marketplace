@@ -41,6 +41,7 @@ This registry is the canonical opcode allocation record for contract messages in
 | `0x71b0000B` | `SetMarketplaceV2Escrow` | Owner → MarketplaceV2 | Implemented (configuration) |
 | `0x71b0000C` | `SetCollectionStatusV2` | Owner → NFTEscrowV2 | Implemented (V2 collection policy) |
 | `0x71b0000D` | `SetCollectionItemCodeV2` | Owner → NFTEscrowV2 | Implemented (official Gift Item Code only) |
+| `0x71b00012` | `CancelProductV2` | Seller or owner → MarketplaceV2 | Implemented (seller NFT return request) |
 
 ## Existing Marketplace V2 escrow messages
 
