@@ -301,55 +301,61 @@ fun onBouncedMessage(in: InMessageBounced) {
 
     val bouncePrefix = in.bouncedBody.preloadUint(32);
     if (bouncePrefix == 0xfffffffe) {
-        val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
-        val originalBody = rich.originalBody;
-        if (originalBody.beginParse().remainingBitsCount() < 32) {
-            return;
-        }
+        // A malformed RichBounce envelope or truncated TEP-62 body must never
+        // make the bounce transaction fail or mutate custody state.
+        try {
+            val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
+            val originalBody = rich.originalBody;
+            if (originalBody.beginParse().remainingBitsCount() < 32) {
+                return;
+            }
 
-        val opcode = originalBody.beginParse().preloadUint(32);
-        if (opcode != 0x5fcc3d14) {
-            return;
-        }
+            val opcode = originalBody.beginParse().preloadUint(32);
+            if (opcode != 0x5fcc3d14) {
+                return;
+            }
 
-        val transfer = lazy NftTransfer.fromSlice(originalBody.beginParse());
-        if (
-            transfer.responseDestination == null ||
-            transfer.responseDestination!! != contract.getAddress()
-        ) {
-            return;
-        }
+            val transfer = lazy NftTransfer.fromSlice(originalBody.beginParse());
+            if (
+                transfer.responseDestination == null ||
+                transfer.responseDestination!! != contract.getAddress()
+            ) {
+                return;
+            }
 
-        var storage = lazy NFTEscrowV2Storage.load();
-        var callbacks = storage.callbacks.load();
-        val indexResult = storage.queryToEscrow.get(transfer.queryId);
-        if (!indexResult.isFound) {
-            return;
-        }
-        val escrowId = indexResult.loadValue();
-        val recordResult = storage.records.get(escrowId);
-        if (!recordResult.isFound) {
-            return;
-        }
-        var record = NFTEscrowV2Record.fromCell(recordResult.loadValue());
-        val pendingResult = callbacks.pendingReleases.get(escrowId);
-        if (!pendingResult.isFound) {
-            return;
-        }
-        val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
+            var storage = lazy NFTEscrowV2Storage.load();
+            var callbacks = storage.callbacks.load();
+            val indexResult = storage.queryToEscrow.get(transfer.queryId);
+            if (!indexResult.isFound) {
+                return;
+            }
+            val escrowId = indexResult.loadValue();
+            val recordResult = storage.records.get(escrowId);
+            if (!recordResult.isFound) {
+                return;
+            }
+            var record = NFTEscrowV2Record.fromCell(recordResult.loadValue());
+            val pendingResult = callbacks.pendingReleases.get(escrowId);
+            if (!pendingResult.isFound) {
+                return;
+            }
+            val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
 
-        if (
-            in.senderAddress == record.nftItem && pending.queryId == transfer.queryId &&
-            pending.buyer == transfer.newOwner &&
-            pending.nftItem == record.nftItem &&
-            record.status == 2
-        ) {
-            record.status = 1;
-            storage.records.set(escrowId, record.toCell());
-            callbacks.pendingReleases.delete(escrowId);
-            storage.queryToEscrow.delete(transfer.queryId);
-            storage.callbacks = callbacks.toCell();
-            storage.save();
+            if (
+                in.senderAddress == record.nftItem && pending.queryId == transfer.queryId &&
+                pending.buyer == transfer.newOwner &&
+                pending.nftItem == record.nftItem &&
+                record.status == 2
+            ) {
+                record.status = 1;
+                storage.records.set(escrowId, record.toCell());
+                callbacks.pendingReleases.delete(escrowId);
+                storage.queryToEscrow.delete(transfer.queryId);
+                storage.callbacks = callbacks.toCell();
+                storage.save();
+            }
+        } catch {
+            // Ignore malformed bounce data; only a fully correlated bounce can restore Deposited.
         }
     } else if (bouncePrefix == 0xffffffff) {
         var bodySlice = in.bouncedBody;
@@ -360,7 +366,9 @@ fun onBouncedMessage(in: InMessageBounced) {
         val opcode = bodySlice.loadUint(32);
         if (opcode == 0x71b00003 || opcode == 0x71b00004) {
             val storage = lazy NFTEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidMessage;
+            if (in.senderAddress != storage.marketplace) {
+                return;
+            }
             // Callback remains persisted for an owner-authorized retry.
         }
     }
