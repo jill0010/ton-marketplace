@@ -230,3 +230,14 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - Kept every existing V1, TEP-62, and V2 escrow opcode unchanged. Reserved purchase and settlement messages in the non-overlapping `0x71b00100–0x71b00105` range.
 - This is a protocol/documentation correction only. No purchase entrypoint, payment receiver, payout handler, or refund handler was implemented or enabled.
 - A full pre-implementation scan of generated wrappers and deployment artifacts remains a required gate before ABI code generation.
+
+
+## V2 release callback bounce and retry regression — 2026-11-03
+
+- Extended the V2 release integration test to inject a bounced `EscrowReleasedV2` callback from the configured Marketplace address after NFT delivery.
+- Verified the callback snapshot remains readable after the bounce and is not cleared by the bounce handler.
+- Verified a non-owner cannot trigger `RetryReleaseCallbackV2`; the configured Escrow owner can retry it.
+- Verified a successful retry dispatch still does not clear the durable callback. The exact Marketplace `EscrowReleaseAckV2` remains the only cleanup path.
+- Contracts CI #169 on commit `fbb0f10`: success — opcode registry check (27 declarations, no collisions), build, 96 tests in 9 files, linter, formatter.
+- This is an injected bounce regression, not a full action-phase failure against a rejecting Marketplace contract. A dedicated rejecting callback recipient and end-to-end action-phase bounce test remain a follow-up.
+- No purchase entrypoint, fund acceptance, payout handler, deployment, migration, NFT transfer outside emulation, or production transaction was enabled.
