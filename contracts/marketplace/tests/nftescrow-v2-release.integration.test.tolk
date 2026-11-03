@@ -488,6 +488,21 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     );
     expect(refundDepositAck).toHaveSuccessfulTx();
 
+    // Only the configured Marketplace may request a seller refund.
+    val forgedRefund = escrow.sendRefundEscrowV2(
+        attacker.address,
+        2,
+        7002,
+        72011,
+        seller.address,
+        { value: grams("0.1") },
+    );
+    expect(forgedRefund).toHaveFailedTx({
+        from: attacker.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRefund,
+    });
+
     // A rejected transfer back to the seller must bounce and restore Deposited.
     val refundQueryId = 72011;
     val rejectedRefund = escrow.sendRefundEscrowV2(
