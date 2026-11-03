@@ -25,7 +25,9 @@ fun RejectingMarketplaceCallback.fromStorage(
 }
 
 fun RejectingMarketplaceCallback.deploy(self, from: address, config: SendParams = {}): SendResultList {
-    if (self.stateInit == null) Assert.fail("Missing state init");
+    if (self.stateInit == null) {
+        Assert.fail("Missing state init");
+    }
     val genericMsg = createMessage({
         bounce: config.bounce,
         value: config.value,
