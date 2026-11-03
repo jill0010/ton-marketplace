@@ -95,3 +95,8 @@ The source scan of `contracts/marketplace/contracts/types.tolk` found the provis
 - Before allocating an escrow record, V2 derives the expected Item address from `itemIndex:uint256 + collection`, the configured Item Code, the Fragment Gift initial data layout, and workchain 0; the derived address must exactly equal the requested NFT Item.
 - `CreateEscrowV2` now includes collection, item index, and kind. This is an ABI/storage-breaking change for the not-yet-deployed V2 contracts; use fresh V2 addresses.
 - Positive end-to-end official Item deployment/TEP-62 transfer and adversarial notification tests now pass in emulator CI. Contracts workflow #282 on commit `a122ed2`: success — opcode registry check (35 declarations, no collisions), build, 99 tests in 12 files, linter, and formatter. This is emulator/source verification only; it is not a live testnet rehearsal and does not approve public listings.
+
+
+## V2 purchase schema checkpoint
+
+The shared type module now includes serialization-only V2 order snapshot and independent payout-liability structs. No new opcode was allocated, no generated purchase wrapper was introduced, and MarketplaceV2 does not yet accept buyer funds. Contracts workflow #297 passed with 35 declarations, no opcode collisions, build, 100 tests in 12 files, linter, and formatter.
