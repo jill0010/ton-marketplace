@@ -15,7 +15,7 @@ export type Product = {
   priceTon: number
   imageUrl?: string | null
   status: "listed"
-  listingMode: ListingMode
+  listingMode?: ListingMode
   createdAt: string
 }
 
