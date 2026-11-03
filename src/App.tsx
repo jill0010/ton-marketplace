@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
-import { TonConnectUIProvider } from "@tonconnect/ui-react"
+import { THEME, TonConnectUIProvider } from "@tonconnect/ui-react"
 import { Layout } from "./components/Layout"
 import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
@@ -21,6 +21,7 @@ export default function App() {
       <TonConnectUIProvider
         manifestUrl="https://ton-marketplace-cvj.pages.dev/tonconnect-manifest.json"
         language="en"
+        uiPreferences={{ theme: THEME.DARK }}
       >
         <TonConnectLanguageSync />
         <BrowserRouter>
