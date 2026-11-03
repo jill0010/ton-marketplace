@@ -15,11 +15,11 @@ function FragmentBrand() {
   const { language } = useLanguage()
   const chinese = language === "zh" || language === "zh-TW"
   return (
-    <Link to="/" aria-label={chinese ? "NFT 市场首页" : "NFT MARKET home"} className="inline-flex items-center gap-2.5 text-white">
-      <svg viewBox="0 0 32 32" aria-hidden="true" className="h-8 w-8 shrink-0 fill-current">
+    <Link to="/" aria-label={chinese ? "NFT 市场首页" : "NFT MARKET home"} className="inline-flex shrink-0 items-center gap-3 text-white">
+      <svg viewBox="0 0 32 32" aria-hidden="true" className="h-10 w-10 shrink-0 fill-current">
         <path d="M2.2 5.2h27.6L16 13.1 2.2 5.2Zm-.2 2.4 12.6 7.2L16 29 2 7.6Zm28 0L18 14.8 16 29 30 7.6Z" />
       </svg>
-      <span className="font-[Arial,sans-serif] text-xl font-black uppercase leading-none tracking-tight">
+      <span className="font-[Arial,sans-serif] text-2xl font-black uppercase leading-none tracking-tight">
         {chinese ? "NFT 市场" : "NFT MARKET"}
       </span>
     </Link>
@@ -60,10 +60,10 @@ export function Layout() {
   return (
     <div className="min-h-svh bg-[#0b0d12] text-zinc-100">
       <header className="border-b border-white/10 bg-[#111720]/95">
-        <div className="mx-auto flex max-w-6xl min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-6 py-4">
           <FragmentBrand />
 
-          <nav className="flex min-w-0 flex-wrap items-center gap-3">
+          <nav className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-3">
             <label className="relative inline-flex items-center">
               <svg viewBox="0 0 24 24" aria-hidden="true" className="pointer-events-none absolute left-3 h-4 w-4 text-sky-300">
                 <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.6" />
