@@ -560,6 +560,87 @@ struct MarketplaceV2Product {
     extra: Cell<MarketplaceV2ProductExtra>
 }
 
+// Order lifecycle is separate from delivery and each payout leg. A partially
+// settled order must never be represented as Completed.
+enum MarketplaceV2OrderStatus {
+    PaymentAccepted = 1
+    DeliveryPending = 2
+    DeliveryConfirmed = 3
+    SettlementPending = 4
+    Completed = 5
+    RefundPending = 6
+    ManualReview = 7
+}
+
+enum MarketplaceV2DeliveryStatus {
+    NotStarted = 0
+    Pending = 1
+    Confirmed = 2
+    Bounced = 3
+}
+
+enum MarketplaceV2PayoutStatus {
+    NotCreated = 0
+    Pending = 1
+    Confirmed = 2
+    Bounced = 3
+    ManualReview = 4
+}
+
+enum MarketplaceV2RefundStatus {
+    None = 0
+    Pending = 1
+    Confirmed = 2
+    ManualReview = 3
+}
+
+// Immutable order snapshot. All operation IDs are distinct uint64 values;
+// none is inferred from the order ID or NFT Escrow ID.
+struct MarketplaceV2OrderExtra {
+    buyer: address
+    seller: address
+    nftItem: address
+    collection: address
+    itemIndex: uint256
+    escrowId: uint64
+    gross: coins
+    feeBps: uint16
+    feeRoundingVersion: uint8
+    platformFee: coins
+    sellerProceeds: coins
+    treasury: address
+    processingReserve: coins
+    paymentQueryId: uint64
+    releaseQueryId: uint64
+    sellerPayoutQueryId: uint64
+    platformPayoutQueryId: uint64
+}
+
+struct MarketplaceV2Order {
+    id: uint64
+    productId: uint64
+    status: uint8
+    deliveryStatus: uint8
+    sellerPayoutStatus: uint8
+    platformPayoutStatus: uint8
+    refundStatus: uint8
+    createdAt: uint32
+    extra: Cell<MarketplaceV2OrderExtra>
+}
+
+// Independent payout liability snapshot. Seller and platform legs are
+// persisted separately so a retry of one can never duplicate the other.
+struct MarketplaceV2Payout {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+    beneficiary: address
+    amount: coins
+    kind: uint8
+    status: uint8
+    createdAt: uint32
+}
+
 struct MarketplaceV2Storage {
     owner: address
     escrow: address
