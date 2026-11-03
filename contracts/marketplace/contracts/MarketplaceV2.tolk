@@ -247,8 +247,8 @@ fun onBouncedMessage(in: InMessageBounced) {
         return;
     }
 
-    // Only an exact bounced CreateEscrowV2 request may release a pending listing.
-    // Malformed envelopes and stale bounces are safe no-ops.
+    // Only exact RichBounce envelopes for our two Marketplace -> Escrow
+    // requests may restore local product state. Malformed/stale bounces no-op.
     try {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
         val originalBody = rich.originalBody;
@@ -256,45 +256,73 @@ fun onBouncedMessage(in: InMessageBounced) {
         if (originalSlice.remainingBitsCount() < 32) {
             return;
         }
-        if (originalSlice.loadUint(32) != 0x71b00001) {
-            return;
-        }
+        val opcode = originalSlice.loadUint(32);
 
-        val create = lazy CreateEscrowV2.fromCell(originalBody);
-        val queryResult = storage.queryToProduct.get(create.queryId);
-        if (!queryResult.isFound) {
-            return;
-        }
-        val productId = queryResult.loadValue();
-        val productResult = storage.products.get(productId);
-        if (!productResult.isFound) {
-            return;
-        }
-
-        var product = MarketplaceV2Product.fromCell(productResult.loadValue());
-        val productExtra = product.extra.load();
-        val createExtra = create.extra.load();
-        if (
-            product.status == 1 && product.id == create.productId &&
-            product.queryId == create.queryId &&
-            product.nftItem == create.nftItem &&
-            productExtra.collection == create.collection &&
-            productExtra.itemIndex == createExtra.itemIndex &&
-            productExtra.kind == createExtra.kind &&
-            product.seller == create.seller
-        ) {
-            product.status = 5;
-            storage.products.set(productId, product.toCell());
-
-            val listingResult = storage.assetListings.get(product.nftItem);
-            if (listingResult.isFound && listingResult.loadValue() == productId) {
-                storage.assetListings.delete(product.nftItem);
+        if (opcode == 0x71b00001) {
+            val create = lazy CreateEscrowV2.fromCell(originalBody);
+            val queryResult = storage.queryToProduct.get(create.queryId);
+            if (!queryResult.isFound) {
+                return;
             }
-            storage.queryToProduct.delete(create.queryId);
-            storage.save();
+            val productId = queryResult.loadValue();
+            val productResult = storage.products.get(productId);
+            if (!productResult.isFound) {
+                return;
+            }
+
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+            val productExtra = product.extra.load();
+            val createExtra = create.extra.load();
+            if (
+                product.status == 1 && product.id == create.productId &&
+                product.queryId == create.queryId &&
+                product.nftItem == create.nftItem &&
+                productExtra.collection == create.collection &&
+                productExtra.itemIndex == createExtra.itemIndex &&
+                productExtra.kind == createExtra.kind &&
+                product.seller == create.seller
+            ) {
+                product.status = 5;
+                storage.products.set(productId, product.toCell());
+
+                val listingResult = storage.assetListings.get(product.nftItem);
+                if (listingResult.isFound && listingResult.loadValue() == productId) {
+                    storage.assetListings.delete(product.nftItem);
+                }
+                storage.queryToProduct.delete(create.queryId);
+                storage.save();
+            }
+        } else if (opcode == 0x71b0000E) {
+            val refund = lazy RefundEscrowV2.fromCell(originalBody);
+            val queryResult = storage.refundQueryToProduct.get(refund.queryId);
+            if (!queryResult.isFound) {
+                return;
+            }
+            val productId = queryResult.loadValue();
+            if (productId != refund.productId) {
+                return;
+            }
+            val productResult = storage.products.get(productId);
+            if (!productResult.isFound) {
+                return;
+            }
+
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+            if (
+                product.status == 6 && product.id == refund.productId &&
+                product.refundQueryId == refund.queryId &&
+                product.escrowId == refund.escrowId &&
+                product.seller == refund.seller
+            ) {
+                product.status = 2;
+                product.refundQueryId = 0;
+                storage.products.set(productId, product.toCell());
+                storage.refundQueryToProduct.delete(refund.queryId);
+                storage.save();
+            }
         }
     } catch {
-        // A malformed bounce must never mutate product or NFT reservation state.
+        // A malformed or mismatched bounce must not mutate product or NFT indexes.
     }
 }
 
