@@ -307,11 +307,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val trailingPayload = beginCell()
         .storeUint(1, 1)
         .storeRef(
-            beginCell()
-                .storeUint(0x53564950, 32)
-                .storeUint(3, 64)
-                .storeUint(1, 1)
-                .endCell(),
+            beginCell().storeUint(0x53564950, 32).storeUint(3, 64).storeUint(1, 1).endCell(),
         )
         .endCell();
     val trailingNotification = createMessage({
