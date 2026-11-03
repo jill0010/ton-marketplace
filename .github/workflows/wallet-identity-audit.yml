@@ -1,6 +1,15 @@
 name: Wallet Identity Audit
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/_shared/auth.ts"
+      - "supabase/functions/ton-proof-status/**"
+      - "supabase/migrations/**"
+      - "supabase/tests/canonical-wallet-identity-*.sql"
+      - ".github/workflows/wallet-identity-audit.yml"
   pull_request:
     branches:
       - main
