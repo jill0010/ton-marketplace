@@ -47,6 +47,8 @@ See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_C
 
 The planned arbitrary-wallet payout model is documented in [Payout Finality and Bounce Recovery Decision](../../docs/architecture/TON_MARKETPLACE_PAYOUT_FINALITY_DECISION_2026-11-03.md). It does not require ordinary TON wallets to send custom acknowledgements; recipient transaction finality is verified from the chain trace.
 
+The required NFT release failure callback and buyer compensation protocol is documented in [NFT Delivery Failure and Buyer Compensation Decision](../../docs/architecture/TON_MARKETPLACE_DELIVERY_FAILURE_COMPENSATION_2026-11-03.md). MarketplaceV2 must not accept buyer funds until the Escrow failure callback, seller NFT return, and buyer refund paths are implemented and tested.
+
 ## Build and test
 
 Install the Acton toolchain described by the official Acton documentation, then run from this directory:
