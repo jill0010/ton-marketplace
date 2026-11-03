@@ -331,6 +331,14 @@ get fun escrowConfiguredV2(): bool {
     return MarketplaceV2Storage.load().escrowConfigured;
 }
 
+get fun treasuryV2(): address {
+    return MarketplaceV2Storage.load().purchaseStorage.load().treasury;
+}
+
+get fun treasuryConfiguredV2(): bool {
+    return MarketplaceV2Storage.load().purchaseStorage.load().treasuryConfigured;
+}
+
 get fun productV2(productId: uint64): MarketplaceV2Product? {
     val result = MarketplaceV2Storage.load().products.get(productId);
     if (!result.isFound) {
