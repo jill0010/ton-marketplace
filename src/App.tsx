@@ -1,20 +1,18 @@
-﻿import { lazy, Suspense } from "react"
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { lazy, Suspense } from "react"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { TonConnectUIProvider } from "@tonconnect/ui-react"
 import { Layout } from "./components/Layout"
 import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
 import { LanguageProvider } from "./lib/language"
 
-const CatalogPage = lazy(() => import("./pages/CatalogPage").then((module) => ({ default: module.CatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
-const ProductPage = lazy(() => import("./pages/ProductPage").then((module) => ({ default: module.ProductPage })))
 const PublishPage = lazy(() => import("./pages/PublishPage").then((module) => ({ default: module.PublishPage })))
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
 const PremiumRoute = lazy(() => import("./components/PremiumRoute").then((module) => ({ default: module.PremiumRoute })))
-const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
+const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage })))
 
 export default function App() {
   return (
@@ -37,9 +35,9 @@ export default function App() {
 
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/catalog" element={<CatalogPage />} />
+                <Route path="/catalog" element={<Navigate to="/" replace />} />
+                <Route path="/product/:id" element={<Navigate to="/" replace />} />
                 <Route path="/premium" element={<PremiumRoute />} />
-                <Route path="/product/:id" element={<ProductPage />} />
                 <Route path="/publish" element={<PublishPage />} />
 
                 <Route element={<AdminRoute />}>
@@ -55,4 +53,3 @@ export default function App() {
     </LanguageProvider>
   )
 }
-
