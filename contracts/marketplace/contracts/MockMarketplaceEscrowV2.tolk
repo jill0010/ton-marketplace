@@ -111,7 +111,6 @@ fun onInternalMessage(in: InMessage) {
             val storage = lazy MockMarketplaceEscrowV2Storage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
             assert (msg.escrowId == storage.escrowId) throw ErrorsV2.InvalidRefund;
-            assert (msg.nothing == null) throw ErrorsV2.InvalidRefund;
             if (storage.rejectRefund) {
                 throw ErrorsV2.InvalidRefund;
             }
