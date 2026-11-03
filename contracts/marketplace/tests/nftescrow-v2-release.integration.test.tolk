@@ -127,7 +127,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         1,
         releaseQueryId,
         buyer.address,
-        { value: grams("0.001") },
+        { value: grams("0.01") },
     );
     val underfundedTxResult = underfundedRelease.findTransaction({
         to: escrow.address,
