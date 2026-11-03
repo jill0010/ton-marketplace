@@ -62,9 +62,8 @@ fun onInternalMessage(in: InMessage) {
             assert (product.status == 2) throw ErrorsV2.InvalidPurchase;
             assert (in.senderAddress != product.seller) throw ErrorsV2.InvalidPurchase;
 
-            // The buyer must attach the exact listing price plus a fixed processing
-            // reserve. This prevents underfunded delivery/refund/payout actions and
-            // avoids silently retaining arbitrary overpayments.
+            // Buyer payment is exactly the listing price. The Marketplace's
+            // separately funded operational reserve pays escrow and payout fees.
             val processingReserve = grams("0");
             assert (in.valueCoins == product.price) throw ErrorsV2.InsufficientPayment;
 
