@@ -41,7 +41,8 @@ Purchase and settlement messages use a separate range to avoid colliding with th
 | `0x71b00102` | `PlatformPayoutV2` | MarketplaceV2 → Treasury |
 | `0x71b00103` | `RetryPayoutV2` | Operator → MarketplaceV2 |
 | `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer |
-| `0x71b00105` | `PayoutSettledV2` | Beneficiary → MarketplaceV2 |
+| `0x71b00105` | `PayoutSettledV2` | Reserved only; not used for ordinary wallets |
+| `0x71b00106` | `DispatchPayoutV2` | Permissionless caller → MarketplaceV2 |
 
 These values are proposed, not yet frozen. Do not release an ABI or deploy until a repository-wide opcode scan and generated-wrapper review are complete.
 
@@ -71,7 +72,9 @@ or, only after a conclusive and compensated failure,
 `Reserved → Active`.
 
 Order:
-`PaymentAccepted → DeliveryPending → DeliveryConfirmed → SettlementPending → Completed`.
+`PaymentAccepted → DeliveryPending → DeliveryConfirmed → SettlementPending → PayoutsDispatched`.
+
+`PayoutsDispatched` means both independent outbound payout message actions succeeded. A later exact recipient bounce can move the affected leg back to Pending and the order back to SettlementPending. It is not an assertion that the recipient transaction has already reached finality. The application/indexer displays Completed only after it follows both message traces and verifies successful finalized recipient transactions.
 
 Independent exceptional states:
 - `ReleaseBounced` (recoverable only after exact authenticated bounce);
@@ -108,9 +111,10 @@ Rounding remainder belongs to seller. Assert exact conservation before persistin
 4. Escrow persists ReleasePending before sending TEP-62 NFT transfer.
 5. NFT Item sends ownership notification to buyer and `excesses` to Escrow. Escrow authenticates exact NFT Item, query ID, and pending release snapshot.
 6. Escrow persists Released and sends EscrowReleasedV2 callback.
-7. MarketplaceV2 authenticates callback and marks delivery confirmed. It creates two independent payout liabilities.
-8. Seller and platform payouts are separate outgoing messages with unique IDs and exact amounts. Each leg has its own success acknowledgement, bounce recovery, and retry.
-9. Mark Completed only after both payout legs are confirmed.
+7. MarketplaceV2 authenticates the callback and marks delivery confirmed. It creates two independent payout liabilities.
+8. Each payout leg is dispatched in a separate transaction using its snapshotted beneficiary and exact amount. A permissionless dispatcher cannot change either field.
+9. A bounce handler restores only the exact matching liability after checking beneficiary sender, opcode, order ID, operation ID, query ID, amount, and current Dispatched state. Retry reuses the same operation/query IDs.
+10. On-chain status becomes PayoutsDispatched when both outbound actions succeed. The indexer follows each message to its recipient transaction and reports user-facing completion only after both recipient transactions are successful and finalized. No beneficiary acknowledgement is required.
 
 No transaction should mark delivery or payout complete merely because an outgoing action was queued.
 
@@ -119,11 +123,12 @@ No transaction should mark delivery or payout complete merely because an outgoin
 - A bounced MarketplaceV2 → Escrow request must not imply NFT release.
 - A bounced Escrow → NFT Item transfer restores Deposited only for exact NFT Item sender, release query, new owner, response destination, and current ReleasePending state.
 - A duplicate EscrowReleasedV2 callback may re-ACK but must never create another payout.
-- Seller payout and platform payout have distinct operation IDs and state. Retrying one leg cannot resend the other.
-- A bounced payout remains unpaid. A retry must inspect persisted state and use the same operation identity; it must not create a second liability.
+- Seller payout and platform payout have distinct operation IDs and state. Dispatch each leg in a separate transaction; retrying one leg cannot resend the other.
+- Ordinary TON wallets do not automatically send a custom `PayoutSettledV2` acknowledgement. Do not require one.
+- A bounced payout remains unpaid. Restore only the exact matching Dispatched liability and retry with the same operation/query identity; never create a second liability.
+- The on-chain contract records Dispatched and bounce recovery. The indexer must follow the sender → outgoing message → recipient transaction trace and check recipient compute/action success and finality before showing Completed.
 - An ambiguous transaction outcome goes to ManualReview. No timeout-only automatic product reactivation or buyer refund.
-- All beneficiary acknowledgements must be authenticated. A beneficiary cannot claim a payout for another address or operation.
-- Payout completion must be based on a carefully specified on-chain confirmation model; mere message dispatch is insufficient.
+- A future design requiring cryptographic beneficiary acknowledgement must restrict beneficiaries to wallets/contracts implementing a documented callback interface; that is not compatible with arbitrary standard wallet addresses.
 
 ## Gas and solvency model
 
@@ -162,7 +167,7 @@ Before enabling the buyer entrypoint:
 - Phase A: freeze opcode table, V2 storage structs, exact payment mode, query-ID allocation, and versioned deployment manifest.
 - Phase B: implement NFTEscrowV2 release lifecycle and official NFT Item release/bounce tests.
 - Phase C: implement MarketplaceV2 purchase reservation and payment accounting, still without payout enablement.
-- Phase D: implement independent payout liabilities and acknowledgement/bounce/retry logic.
+- Phase D: implement independent payout liabilities, permissionless per-leg dispatch, exact RichBounce recovery, and indexer trace finality. Do not require ordinary wallet acknowledgements.
 - Phase E: adversarial cross-contract integration tests and measured fee matrix.
 - Phase F: fresh-address testnet deployment, code/hash verification, owner/treasury configuration rehearsal, and security review.
 - Only after these gates may a separate explicit production deployment decision be considered.
@@ -325,3 +330,8 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 - The real official Item integration test now rejects cancellation from an unrelated wallet, executes seller cancellation, verifies `get_nft_data` reports the seller as the new owner, checks Escrow status Refunded and both custody/listing indexes cleared, and confirms the durable refund callback was ACKed.
 - Contracts workflow #336 on commit `4a0261879a0d3be5de4a1bab5859a90dfce82d7d`: success — opcode registry check (**40 declarations, no collisions**), build, **100 tests in 12 files**, linter, and formatter.
 - Scope boundary: seller cancellation and seller NFT return are now implemented and emulator-tested. Buyer purchase/payment, buyer refund, seller/platform payment settlement, testnet rehearsal, and production deployment remain unimplemented. The refund messages do not accept buyer funds.
+
+
+## Payout finality decision — ordinary TON wallets
+
+The payout confirmation model has been corrected in [TON Marketplace V2 — Payout Finality and Bounce Recovery Decision](TON_MARKETPLACE_PAYOUT_FINALITY_DECISION_2026-11-03.md). Ordinary wallet beneficiaries do not automatically send a custom acknowledgement. Each payout leg is independently dispatched to its immutable beneficiary, and an exact RichBounce restores only that leg. On-chain state records `Dispatched`; an indexer verifies the recipient transaction and finality before displaying user-facing completion. `PayoutSettledV2` remains reserved but is not used in the arbitrary-wallet model. The order enum uses `PayoutsDispatched`, not a false on-chain claim of beneficiary-acknowledged completion.
