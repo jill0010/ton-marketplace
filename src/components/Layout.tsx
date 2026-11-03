@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
-import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
+import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { useLanguage } from "../lib/useLanguage"
-import { ConnectTonButton } from "./ConnectTonButton"
 
 function TonMark() {
   return (
@@ -108,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <ConnectTonButton />
+              <TonConnectButton />
             )}
           </nav>
         </div>
