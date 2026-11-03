@@ -487,5 +487,4 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         to: escrow.address,
         exitCode: ErrorsV2.NotOwner,
     });
-
 }
