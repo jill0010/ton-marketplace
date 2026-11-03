@@ -180,3 +180,13 @@ These are message/data declarations only. No contract currently accepts or emits
 The isolated contract now includes Marketplace-authorized escrow record creation, TEP-62 deposit notification handling, durable deposit callback + ACK/retry, Marketplace-authorized NFT release, authenticated NFT Item excesses confirmation, durable release callback + ACK/retry, and RichBounce recovery to the deposited state. The integration test uses the repository's MockNFTItem and exercises deposit, release to buyer, forged Marketplace request rejection, callback persistence, and ACK identity checks.
 
 This implementation remains a first contract slice, not an end-to-end marketplace: MarketplaceV2 purchase/payment/order settlement handlers are not implemented, collection authenticity must be enforced by the trusted Marketplace before creating records, and official Fragment NFT Item/testnet rehearsals plus bounce/low-gas adversarial coverage remain required. No V2 deployment or funds/NFT movement has occurred.
+
+
+## V2 NFT Item custody uniqueness hardening — 2026-11-03
+
+- Added `assetToEscrow: map<address, uint64>` to the isolated `NFTEscrowV2Storage`; a NFT Item cannot be registered under a second query ID while a custody record is active.
+- The exact authenticated `NftExcesses` confirmation for the pending release deletes the NFT Item index only when it still points to that escrow ID. A failed release Bounce keeps the reservation because it restores the record to Deposited.
+- Added an integration regression for duplicate registration with a different query ID, and for re-registration by the buyer after confirmed delivery.
+- Added a read-only getter for test assertions. This changes only the not-yet-deployed V2 storage layout; it is not compatible with any previously serialized V2 state and requires a fresh V2 address if an earlier V2 deployment ever exists.
+- The latest observed Contracts workflow run #150 failed in the pre-existing V2 integration-test initializer before this uniqueness patch was present. The latest source revision still requires a fresh Contracts CI run; no pass is claimed here.
+- No MarketplaceV2 purchase/payment/settlement handlers, production migration, Edge Function deployment, contract deployment, testnet/mainnet transaction, NFT transfer, or fund movement was added.
