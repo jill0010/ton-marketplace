@@ -44,7 +44,7 @@ export function Layout() {
             </NavLink>
 
             <div className="flex items-center">
-              <TonConnectButton />
+              <TonConnectButton className="wallet-connect-button" />
             </div>
           </nav>
         </div>
