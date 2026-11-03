@@ -1112,7 +1112,6 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     expect(decodedPlatformPayout.kind).toEqual(2);
 }
 
-
 // Marketplace V2 settlement arithmetic: exact 3% fee, floor rounding,
 // seller receives the remainder, and the two liabilities always sum to gross.
 get fun `test Marketplace V2 settlement split is exact for boundary and fractional amounts`() {
@@ -1134,7 +1133,6 @@ get fun `test Marketplace V2 settlement split is exact for boundary and fraction
     expect(fractional.sellerAmount).toEqual(grams("9.700000001"));
     expect(fractional.platformFee + fractional.sellerAmount).toEqual(fractional.gross);
 }
-
 
 // V2 order snapshots and payout liabilities must round-trip independently.
 // The buyer/seller/asset/price are immutable inputs to every later transition.
