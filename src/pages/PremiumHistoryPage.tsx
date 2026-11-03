@@ -115,7 +115,7 @@ export function PremiumHistoryPage() {
           <h2 className="mt-4 text-lg font-semibold text-white">{t("Connect your wallet to view transaction history", "连接钱包后查看交易记录")}</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-400">{t("Connect the TON wallet you use on this marketplace to continue.", "请连接你在本商城使用的 TON 钱包后继续查看。")}</p>
           <div className="mt-5 flex justify-center">
-            <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#2588f5] to-[#1264d8] px-4 text-sm font-semibold text-white shadow-md shadow-blue-950/30 transition hover:from-[#3b98ff] hover:to-[#2478ed]">
+            <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-[#0098EA] px-4 text-sm font-semibold text-white shadow-md shadow-blue-950/30 transition hover:bg-[#17A8F5]">
               <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
                 <path d="M3.2 5.2h17.6L12 20.1 3.2 5.2Z" />
                 <path d="M12 5.2v11.1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
