@@ -310,3 +310,14 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 - The snapshot is split into bounded nested cells (parties, asset, settlement, operations) so each serialized cell remains below TON's 1023-bit cell limit. A round-trip test verifies every field and conservation of gross = seller proceeds + platform fee.
 - These declarations are not yet wired into `MarketplaceV2Storage`, and no order map, purchase entrypoint, payout handler, or refund handler is enabled. This intentionally keeps the current listing storage and behavior unchanged while the schema is reviewed.
 - Contracts workflow #297 on commit `5f13f31a613905cd399f9f7878e5635d0022a3e1`: success — opcode registry check (35 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter.
+
+
+## NFTEscrowV2 seller refund lifecycle — 2026-11-03
+
+- Added `RefundEscrowV2`, `EscrowRefundedV2`, `EscrowRefundAckV2`, and `RetryRefundCallbackV2` messages in the registered V2 opcode range.
+- The refund request is accepted only from the configured Marketplace and must match the existing escrow ID, product ID, and recorded seller. The Escrow sends a standard TEP-62 transfer back to that seller.
+- The NFT Item's authenticated `excesses` confirmation is the only success signal: the record becomes Refunded and the NFT custody index is cleared only after that confirmation. A correlated RichBounce restores Deposited and retains the index, allowing retry with the same query ID.
+- Refund callbacks persist until an exact Marketplace ACK. A bounced callback remains retryable by the Escrow owner; forged callers and mismatched ACK fields are rejected.
+- Callback storage is split into nested release/refund cells to stay within TON's maximum four references per cell. The V2 storage layout changed and requires fresh deployment addresses if ever deployed; no V2 deployment exists.
+- Contracts workflow #322 on commit `cbc1306c0ba70dd3577b069a1bceeb3d76a8fb1c`: success — opcode registry check (**39 declarations, no collisions**), build, **100 tests in 12 files**, linter, and formatter.
+- Scope boundary: this implements the NFTEscrowV2 refund half only. MarketplaceV2 seller cancellation, authenticated refund callback handling, product cancellation, and asset-index release are still not implemented. The new refund messages do not accept buyer funds.
