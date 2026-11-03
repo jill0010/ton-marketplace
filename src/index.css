@@ -17,15 +17,15 @@ body {
 }
 
 /* Homepage TON Connect button: keep the provider's icon and colors unchanged. */
-.home-wallet-connect .tc-button {
+.wallet-connect-button .tc-button {
   border-radius: 10px !important;
 }
 
-.home-wallet-connect .tc-button__text {
+.wallet-connect-button .tc-button__text {
   font-size: 0 !important;
 }
 
-.home-wallet-connect .tc-button__text::after {
+.wallet-connect-button .tc-button__text::after {
   content: "Connect TON";
   font-size: 14px;
 }
