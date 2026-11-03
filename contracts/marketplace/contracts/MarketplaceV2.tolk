@@ -65,8 +65,8 @@ fun onInternalMessage(in: InMessage) {
             // The buyer must attach the exact listing price plus a fixed processing
             // reserve. This prevents underfunded delivery/refund/payout actions and
             // avoids silently retaining arbitrary overpayments.
-            val processingReserve = grams("0.5");
-            assert (in.valueCoins == product.price + processingReserve) throw ErrorsV2.InsufficientPayment;
+            val processingReserve = grams("0");
+            assert (in.valueCoins == product.price) throw ErrorsV2.InsufficientPayment;
 
             val orderId = storage.nextOrderId;
             val queryBase = storage.nextQueryId;
@@ -395,12 +395,9 @@ fun onInternalMessage(in: InMessage) {
 
             if (order.status == MarketplaceV2OrderStatus.DeliveryPending) {
                 order.deliveryStatus = MarketplaceV2DeliveryStatus.Confirmed;
-                order.status = MarketplaceV2OrderStatus.SettlementPending;
-                order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Pending;
-                order.platformPayoutStatus = MarketplaceV2PayoutStatus.Pending;
-                if (settlement.platformFee == 0) {
-                    order.platformPayoutStatus = MarketplaceV2PayoutStatus.Dispatched;
-                }
+                order.status = MarketplaceV2OrderStatus.PayoutsDispatched;
+                order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Dispatched;
+                order.platformPayoutStatus = MarketplaceV2PayoutStatus.Dispatched;
 
                 val sellerPayout = MarketplaceV2Payout {
                     orderId,
@@ -409,7 +406,7 @@ fun onInternalMessage(in: InMessage) {
                     beneficiary: parties.seller,
                     amount: settlement.sellerProceeds,
                     kind: 1,
-                    status: MarketplaceV2PayoutStatus.Pending,
+                    status: MarketplaceV2PayoutStatus.Dispatched,
                     createdAt: in.createdAt,
                 };
                 val platformPayout = MarketplaceV2Payout {
@@ -419,7 +416,7 @@ fun onInternalMessage(in: InMessage) {
                     beneficiary: parties.treasury,
                     amount: settlement.platformFee,
                     kind: 2,
-                    status: MarketplaceV2PayoutStatus.Pending,
+                    status: MarketplaceV2PayoutStatus.Dispatched,
                     createdAt: in.createdAt,
                 };
                 assert (settlement.sellerProceeds > 0) throw ErrorsV2.InvalidPayout;
@@ -439,8 +436,38 @@ fun onInternalMessage(in: InMessage) {
                 listingMaps.products.set(product.id, product.toCell());
                 orderMaps.orders.set(orderId, order.toCell());
                 storage.listingMaps = listingMaps.toCell();
-            storage.orderMaps = orderMaps.toCell();
-            storage.save();
+                storage.orderMaps = orderMaps.toCell();
+                storage.save();
+
+                val sellerTransfer = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: settlement.sellerProceeds,
+                    dest: parties.seller,
+                    body: SellerPayoutV2 {
+                        orderId,
+                        operationId: operations.sellerPayoutOperationId,
+                        queryId: operations.sellerPayoutQueryId,
+                        beneficiary: parties.seller,
+                        amount: settlement.sellerProceeds,
+                    },
+                });
+                sellerTransfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
+
+                if (settlement.platformFee > 0) {
+                    val platformTransfer = createMessage({
+                        bounce: BounceMode.RichBounce,
+                        value: settlement.platformFee,
+                        dest: parties.treasury,
+                        body: PlatformPayoutV2 {
+                            orderId,
+                            operationId: operations.platformPayoutOperationId,
+                            queryId: operations.platformPayoutQueryId,
+                            beneficiary: parties.treasury,
+                            amount: settlement.platformFee,
+                        },
+                    });
+                    platformTransfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
+                }
             } else {
                 // An exact duplicate success callback is re-ACKed, but it never
                 // creates another payout liability or repeats the NFT transfer.
