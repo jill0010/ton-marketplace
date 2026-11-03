@@ -24,7 +24,11 @@ fun RejectingMarketplaceCallback.fromStorage(
     return RejectingMarketplaceCallback { address, stateInit, toShard };
 }
 
-fun RejectingMarketplaceCallback.deploy(self, from: address, config: SendParams = {}): SendResultList {
+fun RejectingMarketplaceCallback.deploy(
+    self,
+    from: address,
+    config: SendParams = {},
+): SendResultList {
     if (self.stateInit == null) {
         Assert.fail("Missing state init");
     }
@@ -41,42 +45,67 @@ fun RejectingMarketplaceCallback.deploy(self, from: address, config: SendParams 
 }
 
 fun RejectingMarketplaceCallback.sendSetTestEscrowAddressV2(
-    self, from: address, escrow: address, config: SendParams = {},
+    self,
+    from: address,
+    escrow: address,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: SetTestEscrowAddressV2 { escrow },
     });
     return net.send(from, genericMsg);
 }
 
 fun RejectingMarketplaceCallback.sendSetRejectCallbackV2(
-    self, from: address, rejectAction: bool, config: SendParams = {},
+    self,
+    from: address,
+    rejectAction: bool,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: SetRejectCallbackV2 { rejectAction },
     });
     return net.send(from, genericMsg);
 }
 
 fun RejectingMarketplaceCallback.sendStartTestEscrowV2(
-    self, from: address, productId: uint64, nftItem: address, seller: address,
-    queryId: uint64, config: SendParams = {},
+    self,
+    from: address,
+    productId: uint64,
+    nftItem: address,
+    seller: address,
+    queryId: uint64,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: StartTestEscrowV2 { productId, nftItem, seller, queryId },
     });
     return net.send(from, genericMsg);
 }
 
 fun RejectingMarketplaceCallback.sendStartTestReleaseV2(
-    self, from: address, orderId: uint64, productId: uint64, escrowId: uint64,
-    queryId: uint64, buyer: address, config: SendParams = {},
+    self,
+    from: address,
+    orderId: uint64,
+    productId: uint64,
+    escrowId: uint64,
+    queryId: uint64,
+    buyer: address,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: StartTestReleaseV2 { orderId, productId, escrowId, queryId, buyer },
     });
     return net.send(from, genericMsg);
