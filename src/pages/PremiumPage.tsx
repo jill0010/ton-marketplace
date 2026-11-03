@@ -37,7 +37,7 @@ type TelegramProfile = {
 }
 
 const INITIAL_PLANS: Plan[] = [
-  { id: "year", period: "12 months", periodZh: "12 个月", marketUsd: 27.99, discount: "-52%" },
+  { id: "year", period: "12 months", periodZh: "12 个月", marketUsd: 27.99, discount: "-72%" },
   { id: "half-year", period: "6 months", periodZh: "6 个月", marketUsd: 14.99, discount: "-57%" },
   { id: "quarter", period: "3 months", periodZh: "3 个月", marketUsd: 10.99, discount: "-35%" },
   { id: "month", period: "1 month", periodZh: "1 个月", marketUsd: 4.29, discount: "-18%" },
