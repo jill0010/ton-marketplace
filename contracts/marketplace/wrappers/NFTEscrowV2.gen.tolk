@@ -55,7 +55,14 @@ fun NFTEscrowV2.sendCreateEscrowV2(
         bounce: config.bounce,
         value: config.value,
         dest: self.address,
-        body: CreateEscrowV2 { productId, nftItem, collection, seller, queryId, itemIndex, kind },
+        body: CreateEscrowV2 {
+            productId,
+            nftItem,
+            collection,
+            seller,
+            queryId,
+            extra: CreateEscrowV2Extra { itemIndex, kind }.toCell(),
+        },
     });
     return net.send(from, genericMsg);
 }
