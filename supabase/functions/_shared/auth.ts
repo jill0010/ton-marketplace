@@ -65,9 +65,15 @@ export async function authenticateVerifiedWallet(
     if (
       typeof identity.wallet_identity_id !== "string" ||
       typeof identity.wallet_address !== "string" ||
-      identity.network !== "-239"
+      identity.network !== "-239" ||
+      typeof identity.proof_expires_at !== "string"
     ) {
       throw new Error("Canonical wallet identity mismatch");
+    }
+
+    const proofExpiresAt = Date.parse(identity.proof_expires_at);
+    if (!Number.isFinite(proofExpiresAt) || proofExpiresAt <= Date.now()) {
+      throw new Error("TON wallet proof expired; reconnect and verify the wallet");
     }
 
     return {
