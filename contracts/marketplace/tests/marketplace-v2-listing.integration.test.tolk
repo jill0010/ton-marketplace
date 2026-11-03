@@ -35,19 +35,23 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         products: [],
         assetListings: [],
         queryToProduct: [],
-        refundQueryToProduct: [],
         purchaseStorage: MarketplaceV2PurchaseStorage {
             schemaVersion: 2,
             treasury: owner.address,
             treasuryConfigured: false,
             nextOrderId: 1,
             nextOperationId: 1,
-            orders: [],
-            productToOrder: [],
-            paymentQueryToOrder: [],
-            payouts: [],
-            payoutQueryToOperation: [],
-            refundQueryToOrder: [],
+            refundQueryToProduct: [],
+            orders: MarketplaceV2OrderStorage {
+                orders: [],
+                productToOrder: [],
+                paymentQueryToOrder: [],
+                refundQueryToOrder: [],
+            }.toCell(),
+            payoutStorage: MarketplaceV2PayoutStorage {
+                payouts: [],
+                payoutQueryToOperation: [],
+            }.toCell(),
         }.toCell(),
     });
 
