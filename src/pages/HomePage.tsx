@@ -95,7 +95,7 @@ export function HomePage() {
     setListingMode("sale")
   }
 
-  const selectedTitle = selectedType && selectedType !== "premium"
+  const selectedTitle = selectedType
     ? t(...POPULAR_TITLES[selectedType])
     : t("Popular Listings", "热门商品")
 
