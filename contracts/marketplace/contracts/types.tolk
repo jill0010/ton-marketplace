@@ -780,6 +780,20 @@ struct MarketplaceV2Payout {
     createdAt: uint32
 }
 
+// Split nested dictionaries into separate referenced cells: TON cells allow at
+// most four references, independently of the 1023-bit data limit.
+struct MarketplaceV2OrderStorage {
+    orders: map<uint64, Cell<MarketplaceV2Order>>
+    productToOrder: map<uint64, uint64>
+    paymentQueryToOrder: map<uint64, uint64>
+    refundQueryToOrder: map<uint64, uint64>
+}
+
+struct MarketplaceV2PayoutStorage {
+    payouts: map<uint64, Cell<MarketplaceV2Payout>>
+    payoutQueryToOperation: map<uint64, uint64>
+}
+
 // Purchase state is nested in one referenced cell so the root storage cell
 // remains safely below TON's 1023-bit limit as the listing indexes grow.
 struct MarketplaceV2PurchaseStorage {
@@ -788,12 +802,10 @@ struct MarketplaceV2PurchaseStorage {
     treasuryConfigured: bool
     nextOrderId: uint64
     nextOperationId: uint64
-    orders: map<uint64, Cell<MarketplaceV2Order>>
-    productToOrder: map<uint64, uint64>
-    paymentQueryToOrder: map<uint64, uint64>
-    payouts: map<uint64, Cell<MarketplaceV2Payout>>
-    payoutQueryToOperation: map<uint64, uint64>
-    refundQueryToOrder: map<uint64, uint64>
+    // Listing refund query correlation lives here to keep the root to four refs.
+    refundQueryToProduct: map<uint64, uint64>
+    orders: Cell<MarketplaceV2OrderStorage>
+    payoutStorage: Cell<MarketplaceV2PayoutStorage>
 }
 
 struct MarketplaceV2Storage {
@@ -806,8 +818,6 @@ struct MarketplaceV2Storage {
     // NFT Item address -> pending/active Marketplace V2 product ID.
     assetListings: map<address, uint64>
     queryToProduct: map<uint64, uint64>
-    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
-    refundQueryToProduct: map<uint64, uint64>
     purchaseStorage: Cell<MarketplaceV2PurchaseStorage>
 }
 
