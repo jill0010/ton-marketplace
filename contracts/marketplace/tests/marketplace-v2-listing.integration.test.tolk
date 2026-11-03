@@ -1,3 +1,4 @@
+import "@acton/fmt"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
@@ -221,9 +222,10 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val validEscrowRecord = escrow.escrowRecordV2(1);
     assert (validEscrowRecord != null) throw ErrorsV2.InvalidRelease;
     expect(validEscrowRecord!!.nftItem).toEqual(validNftItem);
-    expect(validEscrowRecord.collection).toEqual(owner.address);
-    expect(validEscrowRecord.itemIndex).toEqual(validItemIndex);
-    expect(validEscrowRecord.kind).toEqual(3);
+    val validEscrowExtra = validEscrowRecord.extra.load();
+    expect(validEscrowExtra.collection).toEqual(owner.address);
+    expect(validEscrowExtra.itemIndex).toEqual(validItemIndex);
+    expect(validEscrowExtra.kind).toEqual(3);
 
     // The same official code and collection cannot authorize a mismatched index.
     val wrongIndex = escrow.sendCreateEscrowV2(
