@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { normalizeTonAddress } from "../_shared/ton-address.ts";
+import { normalizeTonAddress } from "./shared/ton-address.ts";
 import {
   type AddressBookEntry,
   type AddressMetadata,
@@ -10,9 +10,9 @@ import {
   isVerifiedMetadata,
   isWalletOwner,
   type TokenInfo,
-} from "../_shared/telegram-nft-validation.ts";
-import { tonCenterGet } from "../_shared/toncenter.ts";
-import { handleCors, jsonResponse } from "../_shared/http.ts";
+} from "./shared/telegram-nft-validation.ts";
+import { tonCenterGet } from "./shared/toncenter.ts";
+import { handleCors, jsonResponse } from "./shared/http.ts";
 
 type TonCenterNft = {
   address?: string;
