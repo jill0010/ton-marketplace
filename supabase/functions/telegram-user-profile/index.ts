@@ -26,8 +26,12 @@ function decodeHtml(value: string): string {
 }
 
 function getAttribute(tag: string, name: string): string | null {
-  const match = tag.match(new RegExp("\\\\b" + name + "\\\\s*=\\\\s*(?:"([^"]*)"|'([^']*)'|([^\\\\s>]+))", "i"));
-  return match ? decodeHtml(match[1] ?? match[2] ?? match[3] ?? "") : null;
+  for (const match of tag.matchAll(/([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g)) {
+    if (match[1].toLowerCase() === name.toLowerCase()) {
+      return decodeHtml(match[2] ?? match[3] ?? match[4] ?? "");
+    }
+  }
+  return null;
 }
 
 function getMeta(html: string, key: string): string | null {
@@ -41,10 +45,10 @@ function getMeta(html: string, key: string): string | null {
 }
 
 function getElementText(html: string, className: string): string | null {
-  for (const match of html.matchAll(/<([a-z0-9]+)\\b([^>]*)>([\\s\\S]*?)<\\/\\1>/gi)) {
+  for (const match of html.matchAll(/<([a-z0-9]+)\b([^>]*)>([\s\S]*?)<\/\1>/gi)) {
     const classes = getAttribute(match[2], "class") ?? "";
-    if (!classes.split(/\\s+/).includes(className)) continue;
-    return decodeHtml(match[3].replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ")).slice(0, 1000);
+    if (!classes.split(/\s+/).includes(className)) continue;
+    return decodeHtml(match[3].replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).slice(0, 1000);
   }
   return null;
 }
@@ -103,7 +107,7 @@ Deno.serve(async (request: Request) => {
       return json({ success: false, code: "USER_NOT_FOUND", error: "未找到该 Telegram 用户名。" });
     }
     if (!response.ok) {
-      return json({ success: false, code: "PROFILE_UNAVAILABLE", error: "Telegram 暂时无法提供该用户的公开资料，请稍后重试。" }, 200);
+      return json({ success: false, code: "PROFILE_UNAVAILABLE", error: "Telegram 暂时无法提供该用户的公开资料，请稍后重试。" });
     }
 
     const html = (await response.text()).slice(0, 1_000_000);
@@ -112,7 +116,7 @@ Deno.serve(async (request: Request) => {
     const extra = getElementText(html, "tgme_page_extra");
     const avatarUrl = getAvatar(html);
 
-    const normalizedTitle = title?.replace(/^Telegram:\\s*(Contact|View)\\s*/i, "").trim();
+    const normalizedTitle = title?.replace(/^Telegram:\s*(Contact|View)\s*/i, "").trim();
     const genericTitle = !normalizedTitle ||
       normalizedTitle.toLowerCase() === "telegram" ||
       normalizedTitle.toLowerCase() === "contact @" + username.toLowerCase();
@@ -139,6 +143,6 @@ Deno.serve(async (request: Request) => {
       success: false,
       code: aborted ? "LOOKUP_TIMEOUT" : "LOOKUP_FAILED",
       error: aborted ? "查询 Telegram 用户资料超时，请稍后重试。" : "查询 Telegram 用户资料失败，请稍后重试。",
-    }, 200);
+    });
   }
 });
