@@ -2,6 +2,7 @@ import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
 import "@acton/types/message"
+import "@acton/types/transaction"
 
 import "@contracts/RejectingNFTItem"
 import "@contracts/types"
@@ -96,6 +97,39 @@ get fun `test real NFT Item compute failure automatically bounces refund transfe
     assert (depositedRecord != null) throw Errors.InvalidEscrow;
     expect(depositedRecord!!.status).toEqual(2);
 
+    // Escrow 余额不足时，退款出站消息不能被创建；必须保持 Deposited，不能卡在 RefundPending。
+    val underfundedRefundRes = escrow.sendRequestRefund(
+        seller.address,
+        1,
+        { value: grams("0.001") },
+    );
+    val underfundedTxResult = underfundedRefundRes.findTransaction({ to: escrow.address });
+    expect(underfundedTxResult).toBeNotNull();
+    val underfundedTx = underfundedTxResult!!.tx.load();
+    val underfundedDescription = underfundedTx.description.load();
+    assert (underfundedDescription is TlbTransOrd) throw 402;
+    expect(underfundedDescription.aborted).toEqual(true);
+    assert (underfundedDescription.action is TlbJust) throw 402;
+    val underfundedAction = underfundedDescription.action.value.load();
+    expect(underfundedAction.noFunds).toEqual(true);
+
+    val stillDeposited = escrow.escrowRecord(1);
+    assert (stillDeposited != null) throw Errors.InvalidEscrow;
+    expect(stillDeposited!!.status).toEqual(2);
+
+    // 管理员通过合法消息补充 Escrow Gas 储备，然后重试。
+    val replenish = createMessage({
+        bounce: false,
+        value: grams("0.1"),
+        dest: escrow.address,
+        body: SetEscrowPaused { paused: false },
+    });
+    val replenishRes = net.send(deployer.address, replenish);
+    expect(replenishRes).toHaveSuccessfulTx({
+        from: deployer.address,
+        to: escrow.address,
+    });
+
     // NFT Item 对 Escrow 发出的退款 Transfer 执行真实 compute-phase 拒绝。
     // 因 Escrow 使用 RichBounce，Emulator 应自动生成 bounce 并交回 Escrow。
     val failedRefundRes = escrow.sendRequestRefund(
@@ -107,6 +141,19 @@ get fun `test real NFT Item compute failure automatically bounces refund transfe
         from: nftItem.address,
         to: escrow.address,
     });
+
+    // 检查 NFT Item 交易的 Bounce phase：必须实际成功生成 Bounce，且费用确实被扣除。
+    val failedItemTxResult = failedRefundRes.findTransaction({ to: nftItem.address });
+    expect(failedItemTxResult).toBeNotNull();
+    val failedItemTx = failedItemTxResult!!.tx.load();
+    val failedItemDescription = failedItemTx.description.load();
+    assert (failedItemDescription is TlbTransOrd) throw 402;
+    assert (failedItemDescription.bounce is TlbJust) throw 402;
+    val bouncePhase = failedItemDescription.bounce.value;
+    assert (bouncePhase is TlbTrBounceOk) throw 402;
+    expect(bouncePhase.msgFees > 0).toEqual(true);
+    expect(bouncePhase.fwdFees > 0).toEqual(true);
+
     expect(nftItem.owner()).toEqual(escrow.address);
 
     // 只有真实 bounce 被处理后，RefundPending 才能恢复为 Deposited。
