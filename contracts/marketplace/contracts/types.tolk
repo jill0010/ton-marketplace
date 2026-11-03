@@ -628,7 +628,9 @@ enum MarketplaceV2OrderStatus {
     DeliveryPending = 2
     DeliveryConfirmed = 3
     SettlementPending = 4
-    Completed = 5
+    // Both payout messages were dispatched. A later exact bounce can return
+    // the order to SettlementPending; recipient finality is observed by indexers.
+    PayoutsDispatched = 5
     RefundPending = 6
     ManualReview = 7
 }
@@ -643,7 +645,7 @@ enum MarketplaceV2DeliveryStatus {
 enum MarketplaceV2PayoutStatus {
     NotCreated = 0
     Pending = 1
-    Confirmed = 2
+    Dispatched = 2
     Bounced = 3
     ManualReview = 4
 }
@@ -651,8 +653,9 @@ enum MarketplaceV2PayoutStatus {
 enum MarketplaceV2RefundStatus {
     None = 0
     Pending = 1
-    Confirmed = 2
-    ManualReview = 3
+    Dispatched = 2
+    Bounced = 3
+    ManualReview = 4
 }
 
 // Immutable order snapshot. All operation IDs are distinct uint64 values;
