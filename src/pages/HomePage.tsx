@@ -4,8 +4,7 @@ import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
 import { getListedProducts } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
-import { filterProducts } from "../lib/catalog"
-import type { Product, ProductType } from "../types/product"
+import type { Product, ProductType, ListingMode } from "../types/product"
 
 const HOME_CATEGORIES = [
   { type: "number", en: "Numbers", zh: "匿名号码" },
@@ -13,6 +12,16 @@ const HOME_CATEGORIES = [
   { type: "gift", en: "Gifts", zh: "收藏礼物" },
   { type: "premium", en: "Telegram Premium", zh: "Telegram 高级版" },
 ] as const
+
+const POPULAR_TITLES: Record<"number" | "username" | "gift", [string, string]> = {
+  number: ["Popular Numbers", "热门号码"],
+  username: ["Popular Usernames", "热门用户名"],
+  gift: ["Popular Gifts", "热门礼物"],
+}
+
+function getGiftSeries(title: string): string {
+  return title.replace(/\s*#\d+\s*$/, "").trim() || title
+}
 
 export function HomePage() {
   const { t } = useLanguage()
@@ -22,13 +31,15 @@ export function HomePage() {
   const [error, setError] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<ProductType | null>(null)
+  const [listingMode, setListingMode] = useState<ListingMode>("sale")
+  const [priceDescending, setPriceDescending] = useState(true)
+  const [selectedGiftSeries, setSelectedGiftSeries] = useState<string | null>(null)
+  const [giftSeriesQuery, setGiftSeriesQuery] = useState("")
 
   const loadProducts = useCallback(async (isActive: () => boolean = () => true) => {
     try {
       const result = await getListedProducts()
-      if (isActive()) {
-        setProducts(result)
-      }
+      if (isActive()) setProducts(result)
     } catch (err) {
       if (isActive()) {
         setError(
@@ -38,29 +49,55 @@ export function HomePage() {
         )
       }
     } finally {
-      if (isActive()) {
-        setLoading(false)
-      }
+      if (isActive()) setLoading(false)
     }
   }, [t])
 
   useEffect(() => {
     let cancelled = false
     queueMicrotask(() => {
-      if (!cancelled) {
-        void loadProducts(() => !cancelled)
-      }
+      if (!cancelled) void loadProducts(() => !cancelled)
     })
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [loadProducts])
 
-  const visibleProducts = useMemo(
-    () => filterProducts(products, searchQuery, selectedType),
-    [products, searchQuery, selectedType]
-  )
+  const giftSeries = useMemo(() => {
+    const names = products
+      .filter((product) => product.type === "gift")
+      .map((product) => getGiftSeries(product.title))
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b))
+  }, [products])
+
+  const visibleGiftSeries = useMemo(() => {
+    const query = giftSeriesQuery.trim().toLowerCase()
+    return giftSeries.filter((name) => !query || name.toLowerCase().includes(query))
+  }, [giftSeries, giftSeriesQuery])
+
+  const visibleProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    const result = products.filter((product) => {
+      if (selectedType && product.type !== selectedType) return false
+      if (product.listingMode !== listingMode) return false
+      if (selectedType === "gift" && selectedGiftSeries &&
+        getGiftSeries(product.title) !== selectedGiftSeries) return false
+      if (!query) return true
+      return [product.title, product.subtitle, product.id]
+        .some((field) => field.toLowerCase().includes(query))
+    })
+    return result.sort((a, b) =>
+      priceDescending ? b.priceTon - a.priceTon : a.priceTon - b.priceTon
+    )
+  }, [products, searchQuery, selectedType, listingMode, selectedGiftSeries, priceDescending])
+
+  function selectCategory(type: ProductType) {
+    setSelectedType((current) => current === type ? null : type)
+    setSelectedGiftSeries(null)
+    setListingMode("sale")
+  }
+
+  const selectedTitle = selectedType && selectedType !== "premium"
+    ? t(...POPULAR_TITLES[selectedType])
+    : t("Popular Listings", "热门商品")
 
   return (
     <div className="space-y-10">
@@ -82,10 +119,7 @@ export function HomePage() {
         </p>
         {walletAddress && (
           <div className="mt-8">
-            <Link
-              to="/publish"
-              className="inline-flex rounded-full border border-white/20 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-            >
+            <Link to="/publish" className="inline-flex rounded-full border border-white/20 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10">
               {t("Publish Product", "发布商品")}
             </Link>
           </div>
@@ -94,26 +128,17 @@ export function HomePage() {
 
       <section className="space-y-4">
         <div className="relative">
-          <label htmlFor="home-product-search" className="sr-only">
-            {t("Search products", "搜索商品")}
-          </label>
+          <label htmlFor="home-product-search" className="sr-only">{t("Search products", "搜索商品")}</label>
           <input
             id="home-product-search"
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={t(
-              "Enter a username, number, gift or product ID...",
-              "请输入用户名、匿名号码、收藏礼物或商品编号..."
-            )}
+            placeholder={t("Enter a username, number, gift or product ID...", "请输入用户名、匿名号码、收藏礼物或商品编号...")}
             className="w-full rounded-full border border-white/15 bg-white/[0.03] py-3 pr-20 pl-5 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/40"
           />
           {searchQuery.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10"
-            >
+            <button type="button" onClick={() => setSearchQuery("")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10">
               {t("Clear", "清除")}
             </button>
           )}
@@ -127,11 +152,7 @@ export function HomePage() {
 
             if (isPremium) {
               return (
-                <Link
-                  key={category.type}
-                  to="/premium"
-                  className="rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-white transition hover:border-white/40"
-                >
+                <Link key={category.type} to="/premium" className="rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-white transition hover:border-white/40">
                   <span className="font-medium">{t(category.en, category.zh)}</span>
                 </Link>
               )
@@ -142,10 +163,8 @@ export function HomePage() {
                 key={category.type}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setSelectedType(isSelected ? null : category.type)}
-                className={`rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 ${
-                  isSelected ? "border-white/40" : ""
-                }`}
+                onClick={() => selectCategory(category.type)}
+                className={`rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 ${isSelected ? "border-white/50 bg-white/10" : ""}`}
               >
                 <span className="font-medium">{t(category.en, category.zh)}</span>
                 <span className="mt-2 block text-xs text-zinc-500">
@@ -158,56 +177,96 @@ export function HomePage() {
       </section>
 
       <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium text-white">
-            {selectedType
-              ? t(
-                  HOME_CATEGORIES.find((category) => category.type === selectedType)?.en ?? "Listed Products",
-                  HOME_CATEGORIES.find((category) => category.type === selectedType)?.zh ?? "在售商品"
-                )
-              : t("Listed Products", "在售商品")}
-          </h2>
-          {(selectedType || searchQuery) && (
-            <button
-              type="button"
-              onClick={() => { setSelectedType(null); setSearchQuery("") }}
-              className="text-sm text-zinc-400 hover:text-white"
-            >
-              {t("Clear filters", "清除筛选")}
-            </button>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold tracking-tight text-white">{selectedTitle}</h2>
+          {selectedType && (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+                <button
+                  type="button"
+                  aria-pressed={listingMode === "auction"}
+                  onClick={() => setListingMode("auction")}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listingMode === "auction" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"}`}
+                >
+                  {t("Auction", "拍卖")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={listingMode === "sale"}
+                  onClick={() => setListingMode("sale")}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listingMode === "sale" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"}`}
+                >
+                  {t("For Sale", "出售")}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPriceDescending((current) => !current)}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
+                aria-label={t("Toggle price ranking order", "切换价格排行顺序")}
+              >
+                {t("Price Ranking", "价格排行")}
+                <span className="text-sky-300">{priceDescending ? "↓" : "↑"}</span>
+              </button>
+            </div>
           )}
         </div>
 
-        {loading && (
-          <p className="text-sm text-zinc-400">
-            {t("Loading products…", "正在加载商品…")}
-          </p>
-        )}
+        {loading && <p className="text-sm text-zinc-400">{t("Loading products…", "正在加载商品…")}</p>}
 
         {!loading && error && (
           <div className="rounded-2xl border border-red-500/30 p-5">
             <p className="text-sm text-red-300">{error}</p>
-            <button
-              type="button"
-              onClick={() => { setLoading(true); setError(""); void loadProducts() }}
-              className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
-            >
+            <button type="button" onClick={() => { setLoading(true); setError(""); void loadProducts() }} className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white">
               {t("Retry", "重试")}
             </button>
           </div>
         )}
 
-        {!loading && !error && visibleProducts.length === 0 && (
-          <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
-            {t("No matching products. Try another keyword or category.", "没有找到匹配商品，请更换关键词或分类。")}
-          </p>
-        )}
+        {!loading && !error && (
+          <div className={selectedType === "gift" ? "grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]" : "block"}>
+            {selectedType === "gift" && (
+              <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                <h3 className="mb-3 text-sm font-semibold text-white">{t("Gift Collections", "礼物系列")}</h3>
+                <input
+                  type="search"
+                  value={giftSeriesQuery}
+                  onChange={(event) => setGiftSeriesQuery(event.target.value)}
+                  placeholder={t("Search collections", "搜索系列")}
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-white/25"
+                />
+                <div className="max-h-[560px] space-y-1 overflow-y-auto pr-1">
+                  <button type="button" onClick={() => setSelectedGiftSeries(null)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedGiftSeries === null ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}>
+                    <span>{t("All collections", "全部系列")}</span>
+                    <span className="text-xs text-zinc-500">{products.filter((p) => p.type === "gift").length}</span>
+                  </button>
+                  {visibleGiftSeries.map((series) => {
+                    const count = products.filter((p) => p.type === "gift" && getGiftSeries(p.title) === series).length
+                    return (
+                      <button key={series} type="button" onClick={() => setSelectedGiftSeries(series)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedGiftSeries === series ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}>
+                        <span className="truncate pr-2">{series}</span>
+                        <span className="shrink-0 text-xs text-zinc-500">{count}</span>
+                      </button>
+                    )
+                  })}
+                  {visibleGiftSeries.length === 0 && <p className="px-3 py-2 text-xs text-zinc-500">{t("No collections found", "没有找到系列")}</p>}
+                </div>
+              </aside>
+            )}
 
-        {!loading && !error && visibleProducts.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {visibleProducts.slice(0, 8).map((product) => (
-              <ProductCard key={product.id} product={product} compact />
-            ))}
+            <div className="min-w-0">
+              {!error && visibleProducts.length === 0 ? (
+                <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
+                  {listingMode === "auction"
+                    ? t("No auctions are listed yet.", "目前暂无拍卖商品。")
+                    : t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
+                </p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
