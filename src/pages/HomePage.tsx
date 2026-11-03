@@ -143,10 +143,8 @@ export function HomePage() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setSelectedType(isSelected ? null : category.type)}
-                className={`rounded-2xl border p-5 text-left transition ${
-                  isSelected
-                    ? "border-white/40 bg-white/10 text-white"
-                    : "border-white/10 text-zinc-300 hover:border-white/25"
+                className={`rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 ${
+                  isSelected ? "border-white/40" : ""
                 }`}
               >
                 <span className="font-medium">{t(category.en, category.zh)}</span>
