@@ -243,6 +243,94 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     expect(afterRejectedRelease!!.status).toEqual(1);
     expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
 
+    // A correlated NFT Item bounce must notify MarketplaceV2 through a
+    // durable failure callback; custody recovery alone is not enough for orders.
+    val releaseFailure = escrow.releaseFailureCallbackV2(1);
+    assert (releaseFailure != null) throw ErrorsV2.InvalidReleaseConfirmation;
+    expect(releaseFailure!!.orderId).toEqual(8000);
+    expect(releaseFailure.productId).toEqual(7001);
+    expect(releaseFailure.escrowId).toEqual(1);
+    expect(releaseFailure.queryId).toEqual(releaseQueryId);
+    expect(releaseFailure.nftItem).toEqual(nftItem.address);
+    expect(releaseFailure.buyer).toEqual(buyer.address);
+    expect(releaseFailure.seller).toEqual(seller.address);
+
+    // A bounced callback delivery leaves the durable failure snapshot intact.
+    val bouncedFailureCallback = createMessage({
+        bounce: false,
+        value: grams("0.03"),
+        dest: escrow.address,
+        body: EscrowReleaseFailedV2 {
+            orderId: 8000,
+            productId: 7001,
+            escrowId: 1,
+            queryId: releaseQueryId,
+            nftItem: nftItem.address,
+            buyer: buyer.address,
+            seller: seller.address,
+        },
+    }).bounced();
+    val failureCallbackBounceResult = net.send(marketplace.address, bouncedFailureCallback);
+    expect(failureCallbackBounceResult).toHaveSuccessfulTx({
+        from: marketplace.address,
+        to: escrow.address,
+        bounced: true,
+    });
+    expect(escrow.releaseFailureCallbackV2(1) != null).toEqual(true);
+
+    // Only the Escrow owner may retry the durable failure callback.
+    val forgedFailureRetry = escrow.sendRetryReleaseFailureCallbackV2(
+        attacker.address,
+        1,
+        { value: grams("0.05") },
+    );
+    expect(forgedFailureRetry).toHaveFailedTx({
+        from: attacker.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.NotOwner,
+    });
+
+    val retryFailureCallback = escrow.sendRetryReleaseFailureCallbackV2(
+        owner.address,
+        1,
+        { value: grams("0.05") },
+    );
+    expect(retryFailureCallback).toHaveSuccessfulTx();
+    expect(escrow.releaseFailureCallbackV2(1) != null).toEqual(true);
+
+    // A forged ACK cannot clear the durable failure callback.
+    val forgedFailureAck = escrow.sendEscrowReleaseFailureAckV2(
+        attacker.address,
+        8000,
+        7001,
+        1,
+        releaseQueryId,
+        nftItem.address,
+        buyer.address,
+        seller.address,
+        { value: grams("0.05") },
+    );
+    expect(forgedFailureAck).toHaveFailedTx({
+        from: attacker.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidReleaseConfirmation,
+    });
+    expect(escrow.releaseFailureCallbackV2(1) != null).toEqual(true);
+
+    val validFailureAck = escrow.sendEscrowReleaseFailureAckV2(
+        marketplace.address,
+        8000,
+        7001,
+        1,
+        releaseQueryId,
+        nftItem.address,
+        buyer.address,
+        seller.address,
+        { value: grams("0.05") },
+    );
+    expect(validFailureAck).toHaveSuccessfulTx();
+    expect(escrow.releaseFailureCallbackV2(1) == null).toEqual(true);
+
     // Malformed RichBounce envelope and truncated original TEP-62 body are ignored.
     // Neither may fail the bounce transaction or alter the reserved custody state.
     val truncatedEnvelopeMessage = createMessage({
