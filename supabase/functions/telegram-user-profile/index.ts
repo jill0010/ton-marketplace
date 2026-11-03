@@ -26,7 +26,7 @@ function decodeHtml(value: string): string {
 }
 
 function getAttribute(tag: string, name: string): string | null {
-  const match = tag.match(new RegExp('(?:^|\\s)' + name + '\\s*=\\s*(?:"([^"]*)"|\\'([^\\']*)\\'|([^\\s>]+))', "i"));
+  const match = tag.match(new RegExp("\\\\b" + name + "\\\\s*=\\\\s*(?:"([^"]*)"|'([^']*)'|([^\\\\s>]+))", "i"));
   return match ? decodeHtml(match[1] ?? match[2] ?? match[3] ?? "") : null;
 }
 
@@ -41,10 +41,12 @@ function getMeta(html: string, key: string): string | null {
 }
 
 function getElementText(html: string, className: string): string | null {
-  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = html.match(new RegExp('<[^>]+class=["\\'][^"\\']*\\b' + escaped + '\\b[^"\\']*["\\'][^>]*>([\\s\\S]*?)<\\/[^>]+>', "i"));
-  if (!match) return null;
-  return decodeHtml(match[1].replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ")).slice(0, 1000);
+  for (const match of html.matchAll(/<([a-z0-9]+)\\b([^>]*)>([\\s\\S]*?)<\\/\\1>/gi)) {
+    const classes = getAttribute(match[2], "class") ?? "";
+    if (!classes.split(/\\s+/).includes(className)) continue;
+    return decodeHtml(match[3].replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ")).slice(0, 1000);
+  }
+  return null;
 }
 
 function getAvatar(html: string): string | null {
