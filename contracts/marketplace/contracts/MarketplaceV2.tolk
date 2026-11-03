@@ -117,8 +117,9 @@ fun onInternalMessage(in: InMessage) {
                 queryId = product.refundQueryId;
                 assert (queryId > 0) throw ErrorsV2.InvalidRefund;
                 val queryResult = storage.refundQueryToProduct.get(queryId);
-                assert (queryResult.isFound && queryResult.loadValue() == msg.productId)
-                    throw ErrorsV2.InvalidRefund;
+                assert (
+                    queryResult.isFound && queryResult.loadValue() == msg.productId
+                ) throw ErrorsV2.InvalidRefund;
             }
 
             val refundMessage = createMessage({
