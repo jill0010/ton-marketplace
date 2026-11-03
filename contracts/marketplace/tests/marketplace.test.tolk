@@ -1109,4 +1109,3 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     expect(decodedSellerPayout.kind).toEqual(1);
     expect(decodedPlatformPayout.kind).toEqual(2);
 }
-
