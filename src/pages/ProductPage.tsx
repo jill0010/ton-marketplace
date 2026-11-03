@@ -11,7 +11,7 @@ import {
 } from "../types/product"
 import type { Product } from "../types/product"
 
-const PROCESSING_RESERVE_NANO = 500_000_000n
+const PROCESSING_RESERVE_NANO = 0n
 const MARKETPLACE_V2_ADDRESS = import.meta.env.VITE_MARKETPLACE_V2_ADDRESS ?? ""
 
 function toFriendlyAddress(value: string): string | null {
@@ -270,18 +270,14 @@ export function ProductPage() {
           <span className="text-zinc-400">{t("Listing price", "商品价格")}</span>
           <span className="text-white">{product.priceTon} TON</span>
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-zinc-400">{t("Processing reserve", "交易处理储备金")}</span>
-          <span className="text-white">0.5 TON</span>
-        </div>
         <div className="flex items-center justify-between border-t border-white/10 pt-3 text-sm font-semibold">
           <span className="text-zinc-300">{t("Total wallet amount", "钱包实际支付总额")}</span>
           <span className="text-emerald-300">{formatTonNano(totalDueNano)} TON</span>
         </div>
         <p className="text-xs text-zinc-500">
           {t(
-            "The 97% seller / 3% platform split applies to the listing price. The additional 0.5 TON is retained by the Marketplace contract as an operational reserve and is not included in a purchase refund.",
-            "卖家 97% / 平台 3% 按商品价格计算。额外 0.5 TON 留在商城合约作为运营储备金，买家退款仅退还商品价格，不包含该储备金。",
+            "The seller receives 97% and the platform receives 3% of the listing price. Escrow and payout network costs are paid from the Marketplace's funded operational reserve; no extra reserve is added to your purchase amount.",
+            "卖家获得商品价格的 97%，平台获得 3%。托管及结算网络费用由商城预先注资的运营储备金承担，买家无需额外支付储备金。",
           )}
         </p>
       </div>
