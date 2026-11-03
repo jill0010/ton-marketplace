@@ -32,6 +32,7 @@ This registry is the canonical opcode allocation record for contract messages in
 | `0x7f000003` | `StartTestEscrowV2` | Test-only RejectingMarketplaceCallback fixture |
 | `0x7f000004` | `StartTestReleaseV2` | Test-only RejectingMarketplaceCallback fixture |
 | `0x7f000005` | `SetTestEscrowAddressV2` | Test-only RejectingMarketplaceCallback fixture |
+| `0x7f000006` | `SetMockRejectRefundV2` | Test-only MockMarketplaceEscrowV2 fixture |
 
 ## Marketplace V2 listing messages
 
