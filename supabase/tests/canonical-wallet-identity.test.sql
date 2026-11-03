@@ -1,4 +1,4 @@
--- Integration tests for 20261102140000_add_canonical_ton_wallet_identity.sql
+-- Integration tests for 20261103152324_add_canonical_ton_wallet_identity.sql
 \set ON_ERROR_STOP on
 
 INSERT INTO auth.users (id) VALUES
