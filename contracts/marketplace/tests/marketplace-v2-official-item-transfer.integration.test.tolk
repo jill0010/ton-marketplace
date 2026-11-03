@@ -30,14 +30,18 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         nextQueryId: 1,
         nextOrderId: 1,
         nextOperationId: 1,
-        products: [],
-        assetListings: [],
-        queryToProduct: [],
-        refundQueryToProduct: [],
-        orders: [],
-        payouts: [],
-        releaseQueryToOrder: [],
-        refundQueryToOrder: [],
+        listingMaps: MarketplaceV2ListingMaps {
+            products: [],
+            assetListings: [],
+            queryToProduct: [],
+            refundQueryToProduct: [],
+        }.toCell(),
+        orderMaps: MarketplaceV2OrderMaps {
+            orders: [],
+            payouts: [],
+            releaseQueryToOrder: [],
+            refundQueryToOrder: [],
+        }.toCell(),
     });
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
