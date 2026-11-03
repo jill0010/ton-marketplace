@@ -68,3 +68,6 @@ The GitHub Contracts workflow runs the contract build, emulation tests, linter a
 
 
 Latest observed Contracts CI for the architecture branch: workflow #281 succeeded on commit `661aed983cdd0d173e7b4bd3d4e9f474bf0b3766` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
+
+
+Latest observed Contracts CI for the architecture branch: workflow #282 succeeded on commit `a122ed2ba9081b7d35d13d09ee8dbf4f732af4f8` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This includes regressions rejecting release destinations equal to the seller, Escrow itself, and the NFT Item contract. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
