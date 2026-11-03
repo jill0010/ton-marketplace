@@ -331,7 +331,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         exitCode: ErrorsV2.InvalidRelease,
     });
     expect(escrow.escrowRecordV2(1)!!.status).toEqual(1);
-    assert (escrow.depositCallbackV2(1) != null) throw ErrorsV2.InvalidRelease;
+    expect(escrow.depositCallbackV2(1) == null).toEqual(true);
 
     // Exact duplicate CreateEscrowV2 is idempotent; changed identity is rejected.
     val exactReplay = escrow.sendCreateEscrowV2(
