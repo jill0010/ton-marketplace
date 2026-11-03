@@ -45,6 +45,8 @@ The frontend NFT publish endpoint remains fail-closed. MarketplaceV2 is source/e
 
 See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_CONTRACT_READINESS_AUDIT_2026-11-02.md) for the full blockers and required implementation order.
 
+The planned arbitrary-wallet payout model is documented in [Payout Finality and Bounce Recovery Decision](../../docs/architecture/TON_MARKETPLACE_PAYOUT_FINALITY_DECISION_2026-11-03.md). It does not require ordinary TON wallets to send custom acknowledgements; recipient transaction finality is verified from the chain trace.
+
 ## Build and test
 
 Install the Acton toolchain described by the official Acton documentation, then run from this directory:
