@@ -30,16 +30,29 @@ A separate integration test now uses a dedicated test-only contract:
 
 The earlier synthetic-message test remains useful for isolating exact sender/query/recipient/status matching. The new test complements it by exercising a genuine failed NFT Item transaction and automatically generated Bounce in the emulator.
 
+
+## Refund gas and low-balance regression
+
+The automatic-Bounce integration test now also exercises the Escrow's low-balance action-phase boundary:
+
+- It sends `RequestRefund` with only `0.001 TON` to an Escrow whose available balance cannot cover the configured `0.05 TON` NFT transfer plus separately paid forwarding/action fees.
+- The test inspects the actual Escrow transaction: the action phase reports `noFunds = true` and the transaction is aborted.
+- Crucially, the Escrow record remains `Deposited` (2), rather than persisting `RefundPending` (6) without an outgoing transfer.
+- The test replenishes the Escrow through a valid owner-authorized message and retries; the refund transfer is then emitted and the deliberately rejecting NFT Item generates an automatic Bounce.
+- The failed NFT Item transaction is inspected directly. Its bounce phase must be `TlbTrBounceOk`, with both `msgFees` and `fwdFees` greater than zero. The bounced transaction is delivered to Escrow and the record returns to `Deposited` (2).
+
+This is a regression for the emulator's current fee configuration, not a universal mainnet minimum. The Escrow still uses a fixed `0.05 TON` transfer value and `SEND_MODE_PAY_FEES_SEPARATELY`; real-network sufficiency depends on current chain configuration, message size, account storage balance, and forwarding fees. Do not treat 0.05 TON as a guaranteed production gas quote. A production fee policy needs network-config-aware estimation and an explicit operational reserve/top-up strategy before enabling public refunds.
+
 ## Remaining limitations
 
 This validates the Escrow refund Bounce path against a deliberately rejecting TEP-62 test contract, not every official Fragment NFT Item implementation or every possible compute/action-phase failure. The test deliberately seeds the Escrow record because the production CreateEscrow path only accepts the configured official Item code hashes; the test-only code is not trusted by production. It does not prove mainnet bounce-fee sufficiency, network timing under load, or all message-order permutations. Production recovery still relies on exact sender/query/identity/status validation.
 
 ## Validation
 
-Latest code commit `c0a74257766bd0a5055c38bd07b2588891ea9e56`:
+Latest code commit `e58c70999cdc15873b86182698046d776c97e08b`:
 
-- Contracts workflow #41553409712: success — build, all contract tests including the new automatic-bounce test, linter, formatter.
-- Frontend Build #41553409710: success.
-- Wallet Identity Audit #41553409717: success — Deno/type checks and PostgreSQL 17 integration tests.
+- Contracts workflow #41554354898: success — build, 95 tests in 8 files, linter, formatter. Includes low-balance action-phase rollback and successful Bounce-fee phase assertions.
+- Frontend Build #41554354895: success.
+- Wallet Identity Audit #41554354911: success — Deno/type checks and PostgreSQL 17 integration tests.
 
 No production Collection allowlist, production ABI, serialized Escrow/Marketplace storage layout, production database, Edge Function deployment, deployed contract, mainnet transaction, real NFT, or funds were changed or moved.
