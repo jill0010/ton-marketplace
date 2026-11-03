@@ -28,6 +28,10 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         marketplace: marketplace.address,
         records: [],
         assetToEscrow: [],
+        collectionStorage: NFTEscrowV2CollectionStorage {
+            collections: [],
+            collectionItemCodes: [],
+        }.toCell(),
         nextEscrowId: 1,
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
@@ -47,8 +51,11 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         marketplace.address,
         7001,
         nftItem.address,
+        owner.address,
         seller.address,
         depositQueryId,
+        0,
+        3,
         { value: grams("0.05") },
     );
     expect(create).toHaveSuccessfulTx();
@@ -58,8 +65,11 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         marketplace.address,
         7002,
         nftItem.address,
+        owner.address,
         seller.address,
         72003,
+        0,
+        3,
         { value: grams("0.05") },
     );
     expect(duplicateCreate).toHaveFailedTx({
@@ -312,8 +322,11 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         marketplace.address,
         7002,
         nftItem.address,
+        owner.address,
         buyer.address,
         72003,
+        0,
+        3,
         { value: grams("0.05") },
     );
     expect(relist).toHaveSuccessfulTx();
