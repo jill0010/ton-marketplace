@@ -10,6 +10,7 @@ contract NFTEscrowV2 {
 
 type NFTEscrowV2AllowedMessage =
     | ReleaseEscrowV2
+    | NftOwnershipAssigned
     | NftExcesses
     | EscrowReleaseAckV2
     | RetryReleaseCallbackV2
@@ -18,6 +19,23 @@ fun onInternalMessage(in: InMessage) {
     val msg = lazy NFTEscrowV2AllowedMessage.fromSlice(in.body);
 
     match (msg) {
+        NftOwnershipAssigned => {
+            var storage = lazy NFTEscrowV2Storage.load();
+            val indexResult = storage.queryToEscrow.get(msg.queryId);
+            assert (indexResult.isFound) throw ErrorsV2.InvalidRelease;
+            val escrowId = indexResult.loadValue();
+            val recordResult = storage.records.get(escrowId);
+            assert (recordResult.isFound) throw ErrorsV2.InvalidRelease;
+            var record = NFTEscrowV2Record.fromCell(recordResult.loadValue());
+            assert (in.senderAddress == record.nftItem) throw ErrorsV2.InvalidRelease;
+            assert (msg.prevOwner == record.seller) throw ErrorsV2.InvalidRelease;
+            assert (record.queryId == msg.queryId) throw ErrorsV2.InvalidRelease;
+            assert (record.status == 0) throw ErrorsV2.InvalidRelease;
+            record.status = 1;
+            storage.records.set(escrowId, record.toCell());
+            storage.save();
+        }
+
         ReleaseEscrowV2 => {
             var storage = lazy NFTEscrowV2Storage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
