@@ -291,3 +291,12 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 - Contracts workflow #281 on commit `661aed9`: success — opcode registry check (**35 declarations, no collisions**), build, **99 tests in 12 files**, linter, and formatter.
 - The emulator test uses the recognized Item Code fixture; a testnet rehearsal against live Fragment Collection deployments and explicit allowlist operations remain required.
 - No buyer purchase/payment entrypoint, payout/refund handler, database migration, Edge Function deployment, testnet/mainnet deployment, NFT transfer outside emulation, or fund movement was enabled.
+
+
+## Escrow release destination hardening — 2026-11-03
+
+- During release-path review, identified that a trusted Marketplace request could still name the Escrow contract or the NFT Item contract itself as the buyer. Either destination could leave the NFT trapped while the release state machine marked the record Released.
+- `NFTEscrowV2` now rejects buyer addresses equal to the Escrow's own address, the NFT Item address, or the original seller before it persists ReleasePending or sends a TEP-62 transfer.
+- The release integration test asserts all three invalid destinations fail and that the NFT remains owned by Escrow, the record remains Deposited, and the NFT custody index remains reserved.
+- Contracts workflow #282 on commit `a122ed2ba9081b7d35d13d09ee8dbf4f732af4f8`: success — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter.
+- This closes a destination-validation edge case in the isolated escrow release handler. It does not implement MarketplaceV2 purchase/payment, payout/refund, or authorize testnet/mainnet deployment.
