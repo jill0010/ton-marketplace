@@ -634,6 +634,29 @@ struct (0x71b00012) CancelProductV2 {
     productId: uint64
 }
 
+// Buyer purchase request. The buyer identity is always in.senderAddress;
+// expectedPrice and deadline are replay/price protection, never payment proof.
+struct (0x71b00100) BuyProductV2 {
+    productId: uint64
+    expectedPrice: coins
+    queryId: uint64
+    deadline: uint32
+}
+
+// One-time treasury configuration before any order exists.
+struct (0x71b00107) SetMarketplaceV2Treasury {
+    treasury: address
+}
+
+// Permissionless retry/dispatch refers only to an already persisted payout liability.
+struct (0x71b00103) RetryPayoutV2 {
+    operationId: uint64
+}
+
+struct (0x71b00106) DispatchPayoutV2 {
+    operationId: uint64
+}
+
 struct MarketplaceV2ProductExtra {
     collection: address
     itemIndex: uint256
@@ -758,17 +781,30 @@ struct MarketplaceV2Payout {
 }
 
 struct MarketplaceV2Storage {
+    // Schema version is checked on every state-changing V2 entrypoint.
+    schemaVersion: uint16
     owner: address
     escrow: address
     escrowConfigured: bool
+    treasury: address
+    treasuryConfigured: bool
     nextProductId: uint64
     nextQueryId: uint64
+    nextOrderId: uint64
+    nextOperationId: uint64
     products: map<uint64, Cell<MarketplaceV2Product>>
     // NFT Item address -> pending/active Marketplace V2 product ID.
     assetListings: map<address, uint64>
     queryToProduct: map<uint64, uint64>
     // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
     refundQueryToProduct: map<uint64, uint64>
+    // Durable purchase and compensation indexes.
+    orders: map<uint64, Cell<MarketplaceV2Order>>
+    productToOrder: map<uint64, uint64>
+    paymentQueryToOrder: map<uint64, uint64>
+    payouts: map<uint64, Cell<MarketplaceV2Payout>>
+    payoutQueryToOperation: map<uint64, uint64>
+    refundQueryToOrder: map<uint64, uint64>
 }
 
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
