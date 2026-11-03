@@ -47,6 +47,8 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
             depositCallbacks: [],
             pendingReleases: [],
             releaseCallbacks: [],
+            pendingRefunds: [],
+            refundCallbacks: [],
             collectionStorage: NFTEscrowV2CollectionStorage {
                 collections: [],
                 collectionItemCodes: [],
