@@ -26,6 +26,8 @@ enum Errors {
     InvalidCollectionItemCode = 123
     InvalidItemIndex = 124
     InvalidDepositConfirmation = 125
+    AssetAlreadyListed = 126
+    AssetListingIndexMismatch = 127
 }
 
 struct Storage {
@@ -105,6 +107,8 @@ struct MarketplaceStorage {
     nextProductId: uint64
     nextOrderId: uint64
     products: map<uint64, Product>
+    // NFT Item address -> pending/active product ID; absent means available.
+    assetListings: map<address, uint64>
     orders: map<uint64, Order>
 }
 
@@ -273,6 +277,7 @@ struct (0x71a00007) EscrowRefunded {
     nftItem: address
     seller: address
 }
+
 // TEP-62 NFT Transfer：NFT 所有者发起转移
 struct (0x5fcc3d14) NftTransfer {
     queryId: uint64
@@ -329,4 +334,447 @@ struct (0x71a0000D) RetryDepositCallback {
 // Marketplace 管理员重试创建 NFT 托管
 struct (0x71a0000E) RetryCreateEscrow {
     productId: uint64
+}
+
+// Marketplace V2 isolated NFT release ABI. These declarations do not alter
+// V1 serialized storage and do not enable any V2 entrypoint.
+struct (0x71b00002) ReleaseEscrowV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    buyer: address
+}
+
+// Emitted only after the NFT Item's authenticated TEP-62 excesses confirmation.
+struct (0x71b00003) EscrowReleasedV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+// Exact acknowledgement lets Escrow clear its durable callback record.
+struct (0x71b00008) EscrowReleaseAckV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+struct (0x71b00009) RetryReleaseCallbackV2 {
+    escrowId: uint64
+}
+
+struct (0x71b00013) EscrowReleaseFailedV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+struct (0x71b00014) EscrowReleaseFailureAckV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+struct (0x71b00015) RetryReleaseFailureCallbackV2 {
+    escrowId: uint64
+}
+
+// Seller-initiated NFT return after a listing is cancelled; no buyer funds involved.
+struct (0x71b0000E) RefundEscrowV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    seller: address
+}
+
+struct (0x71b0000F) EscrowRefundedV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    nftItem: address
+    seller: address
+}
+
+struct (0x71b00010) EscrowRefundAckV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    nftItem: address
+    seller: address
+}
+
+struct (0x71b00011) RetryRefundCallbackV2 {
+    escrowId: uint64
+}
+
+struct EscrowRefundCallbackV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    nftItem: address
+    seller: address
+}
+
+struct EscrowReleaseCallbackV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+enum EscrowReleaseStatusV2 {
+    Deposited = 1
+    ReleasePending = 2
+    Released = 3
+}
+
+enum ErrorsV2 {
+    NotOwner = 200
+    InvalidMessage = 0xFFFF
+    InvalidRelease = 201
+    ReleaseAlreadyPending = 202
+    InvalidReleaseConfirmation = 203
+    AssetAlreadyEscrowed = 204
+    CollectionNotApproved = 205
+    InvalidCollectionStatus = 206
+    CollectionItemCodeNotConfigured = 207
+    InvalidCollectionItemCode = 208
+    InvalidNftItem = 209
+    InvalidProductKind = 210
+    InvalidRefund = 211
+}
+
+struct CreateEscrowV2Extra {
+    itemIndex: uint256
+    kind: uint8
+}
+
+struct (0x71b00001) CreateEscrowV2 {
+    productId: uint64
+    nftItem: address
+    collection: address
+    seller: address
+    queryId: uint64
+    extra: Cell<CreateEscrowV2Extra>
+}
+
+// V2 collection policy is isolated from V1 serialized storage.
+struct (0x71b0000C) SetCollectionStatusV2 {
+    collection: address
+    newStatus: uint8
+}
+
+struct (0x71b0000D) SetCollectionItemCodeV2 {
+    collection: address
+    kind: uint8
+    code: cell
+}
+
+struct NFTEscrowV2CollectionItemCode {
+    kind: uint8
+    code: cell
+}
+
+struct NFTEscrowV2CollectionStorage {
+    collections: map<address, uint8>
+    collectionItemCodes: map<address, Cell<NFTEscrowV2CollectionItemCode>>
+}
+
+struct (0x71b00004) EscrowDepositedV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+struct (0x71b00005) EscrowDepositAckV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+struct (0x71b00006) RetryDepositCallbackV2 {
+    escrowId: uint64
+}
+
+struct EscrowDepositCallbackV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+struct NFTEscrowV2RecordExtra {
+    collection: address
+    itemIndex: uint256
+    kind: uint8
+}
+
+struct NFTEscrowV2Record {
+    escrowId: uint64
+    nftItem: address
+    seller: address
+    productId: uint64
+    status: uint8
+    queryId: uint64
+    extra: Cell<NFTEscrowV2RecordExtra>
+}
+
+enum NFTEscrowV2RecordStatus {
+    Pending = 0
+    Deposited = 1
+    ReleasePending = 2
+    Released = 3
+    RefundPending = 4
+    Refunded = 5
+}
+
+struct EscrowReleaseFailureCallbackV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+}
+
+struct NFTEscrowV2ReleaseCallbackStorage {
+    pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    releaseFailureCallbacks: map<uint64, Cell<EscrowReleaseFailureCallbackV2>>
+}
+
+struct NFTEscrowV2RefundCallbackStorage {
+    pendingRefunds: map<uint64, Cell<EscrowRefundCallbackV2>>
+    refundCallbacks: map<uint64, Cell<EscrowRefundCallbackV2>>
+}
+
+struct NFTEscrowV2CallbackStorage {
+    depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
+    releaseStorage: Cell<NFTEscrowV2ReleaseCallbackStorage>
+    refundStorage: Cell<NFTEscrowV2RefundCallbackStorage>
+    collectionStorage: Cell<NFTEscrowV2CollectionStorage>
+}
+
+struct NFTEscrowV2Storage {
+    owner: address
+    marketplace: address
+    records: map<uint64, Cell<NFTEscrowV2Record>>
+    // NFT Item -> current custody escrow ID; released items become available again.
+    assetToEscrow: map<address, uint64>
+    nextEscrowId: uint64
+    queryToEscrow: map<uint64, uint64>
+    callbacks: Cell<NFTEscrowV2CallbackStorage>
+}
+
+fun NFTEscrowV2Storage.load(): NFTEscrowV2Storage {
+    return NFTEscrowV2Storage.fromCell(contract.getData());
+}
+
+fun NFTEscrowV2Storage.save(self) {
+    contract.setData(self.toCell());
+}
+
+/// Integer-only settlement split. Fee rounds down; seller receives the remainder,
+/// so platformFee + sellerAmount always equals the exact gross price.
+struct SettlementAmounts {
+    gross: coins
+    platformFee: coins
+    sellerAmount: coins
+}
+
+fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
+    // Divide before multiplying so the intermediate never exceeds the
+    // TON VarUInteger 16 (120-bit) amount range for a valid gross amount.
+    // Splitting quotient and remainder preserves exact floor(gross * 3 / 100).
+    val wholeHundreds = gross / 100;
+    val remainder = gross % 100;
+    val platformFee = wholeHundreds * 3 + remainder * 3 / 100;
+
+    return SettlementAmounts {
+        gross: gross,
+        platformFee: platformFee,
+        sellerAmount: gross - platformFee,
+    };
+}
+
+// Isolated Marketplace V2 listing integration. Purchase/payment opcodes remain reserved.
+struct (0x71b0000A) PublishProductV2 {
+    nftItem: address
+    collection: address
+    itemIndex: uint256
+    kind: uint8
+    price: coins
+}
+
+struct (0x71b0000B) SetMarketplaceV2Escrow {
+    escrow: address
+}
+
+struct (0x71b00012) CancelProductV2 {
+    productId: uint64
+}
+
+struct MarketplaceV2ProductExtra {
+    collection: address
+    itemIndex: uint256
+    kind: uint8
+}
+
+struct MarketplaceV2Product {
+    id: uint64
+    seller: address
+    nftItem: address
+    price: coins
+    escrowId: uint64
+    queryId: uint64
+    refundQueryId: uint64
+    status: uint8
+    createdAt: uint32
+    extra: Cell<MarketplaceV2ProductExtra>
+}
+
+// Order lifecycle is separate from delivery and each payout leg. A partially
+// settled order must never be represented as Completed.
+enum MarketplaceV2OrderStatus {
+    PaymentAccepted = 1
+    DeliveryPending = 2
+    DeliveryConfirmed = 3
+    SettlementPending = 4
+    // Both payout messages were dispatched. A later exact bounce can return
+    // the order to SettlementPending; recipient finality is observed by indexers.
+    PayoutsDispatched = 5
+    RefundPending = 6
+    ManualReview = 7
+    // Buyer refund and seller NFT return were dispatched after a proven delivery failure.
+    RefundDispatched = 8
+}
+
+enum MarketplaceV2DeliveryStatus {
+    NotStarted = 0
+    Pending = 1
+    Confirmed = 2
+    Bounced = 3
+}
+
+enum MarketplaceV2PayoutStatus {
+    NotCreated = 0
+    Pending = 1
+    Dispatched = 2
+    Bounced = 3
+    ManualReview = 4
+}
+
+enum MarketplaceV2RefundStatus {
+    None = 0
+    Pending = 1
+    Dispatched = 2
+    Bounced = 3
+    ManualReview = 4
+}
+
+// Immutable order snapshot. All operation IDs are distinct uint64 values;
+// none is inferred from the order ID or NFT Escrow ID.
+// Keep each snapshot segment below the TON 1023-bit cell limit.
+struct MarketplaceV2OrderParties {
+    buyer: address
+    seller: address
+    treasury: address
+}
+
+struct MarketplaceV2OrderAsset {
+    nftItem: address
+    collection: address
+    itemIndex: uint256
+    escrowId: uint64
+}
+
+struct MarketplaceV2OrderSettlement {
+    gross: coins
+    feeBps: uint16
+    feeRoundingVersion: uint8
+    platformFee: coins
+    sellerProceeds: coins
+    processingReserve: coins
+}
+
+struct MarketplaceV2OrderOperations {
+    paymentQueryId: uint64
+    releaseQueryId: uint64
+    sellerPayoutQueryId: uint64
+    platformPayoutQueryId: uint64
+    buyerRefundQueryId: uint64
+}
+
+struct MarketplaceV2OrderExtra {
+    parties: Cell<MarketplaceV2OrderParties>
+    asset: Cell<MarketplaceV2OrderAsset>
+    settlement: Cell<MarketplaceV2OrderSettlement>
+    operations: Cell<MarketplaceV2OrderOperations>
+}
+
+struct MarketplaceV2Order {
+    id: uint64
+    productId: uint64
+    status: uint8
+    deliveryStatus: uint8
+    sellerPayoutStatus: uint8
+    platformPayoutStatus: uint8
+    refundStatus: uint8
+    createdAt: uint32
+    extra: Cell<MarketplaceV2OrderExtra>
+}
+
+// Independent payout liability snapshot. Seller and platform legs are
+// persisted separately so a retry of one can never duplicate the other.
+struct MarketplaceV2Payout {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+    beneficiary: address
+    amount: coins
+    kind: uint8
+    status: uint8
+    createdAt: uint32
+}
+
+struct MarketplaceV2Storage {
+    owner: address
+    escrow: address
+    escrowConfigured: bool
+    nextProductId: uint64
+    nextQueryId: uint64
+    products: map<uint64, Cell<MarketplaceV2Product>>
+    // NFT Item address -> pending/active Marketplace V2 product ID.
+    assetListings: map<address, uint64>
+    queryToProduct: map<uint64, uint64>
+    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
+    refundQueryToProduct: map<uint64, uint64>
+}
+
+fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
+    return MarketplaceV2Storage.fromCell(contract.getData());
+}
+
+fun MarketplaceV2Storage.save(self) {
+    contract.setData(self.toCell());
 }

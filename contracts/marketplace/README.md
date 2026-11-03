@@ -1,89 +1,95 @@
-# Empty Template
+# TON Marketplace Contracts
 
-This project was generated from Acton's `empty` template. It gives you a
-minimal but fully working contract starter with storage, one message, a wrapper,
-tests, and a deployment script you can extend.
+This directory contains an experimental Tolk/Acton implementation of the TON marketplace escrow prototype.
 
-## What Is Included
+## Contracts
 
-- `contracts/Empty.tolk` implements a small ownable contract.
-- `contracts/types.tolk` defines storage, messages, and starter error codes.
-- `wrappers/Empty.gen.tolk` is the generated wrapper used by tests and scripts.
-- `tests/contract.test.tolk` covers deployment and ownership transfer.
-- `scripts/deploy.tolk` deploys the contract with `deployer` as the initial
-  owner and reads the owner back after deployment.
-- `.github/workflows/contracts.yml` runs build, format, lint, and test checks
-  on GitHub Actions.
+- `contracts/Marketplace.tolk` — V1 product publication, pending/active/cancelled state, and callbacks from the V1 escrow contract.
+- `contracts/MarketplaceV2.tolk` — isolated V2 listing registration, NFT Item uniqueness reservation, and authenticated NFTEscrowV2 deposit callback/ACK integration.
+- `contracts/NFTEscrow.tolk` — official collection/item-code allowlisting, NFT deposit verification, seller refunds, and retryable callbacks.
+- `contracts/types.tolk` — storage structures, message ABI and error codes.
+- `wrappers/` — generated contract wrappers.
+- `tests/` — emulation tests, including NFT deposit and refund integration.
 
-## Build
+## Current functionality
+
+The V1 prototype supports:
+1. seller submits a listing request;
+2. Marketplace creates a pending product and asks Escrow to prepare a record;
+3. seller transfers the NFT to Escrow using the TEP-62 ownership transfer flow;
+4. Escrow verifies the NFT sender, previous owner, query ID and forward payload;
+5. Marketplace marks the product active after the authenticated Escrow callback;
+6. seller or Escrow owner can request a refund;
+7. refund is marked complete only after the NFT transfer response, and Marketplace cancels the product after its callback;
+8. Marketplace reserves each NFT Item address across Pending and Active listings, and releases that reservation only after the matching refund callback.
+
+## Marketplace V2 listing status
+
+The isolated MarketplaceV2 listing path is implemented and emulator-tested:
+1. seller identity is taken from the inbound message sender;
+2. MarketplaceV2 reserves the NFT Item address and stores a Pending product;
+3. MarketplaceV2 asks the configured NFTEscrowV2 to create a custody record;
+4. the seller must transfer the NFT Item to NFTEscrowV2;
+5. MarketplaceV2 activates the product only after an authenticated callback matching product ID, query ID, NFT Item, seller, and escrow ID;
+6. MarketplaceV2 sends the exact deposit ACK, allowing Escrow to clear its durable callback;
+7. the seller (or Marketplace owner) can cancel an Active listing; MarketplaceV2 requests the NFT return from NFTEscrowV2, and only the authenticated NFT Item `excesses` confirmation can mark the listing Cancelled and release the NFT uniqueness index;
+8. the exact refund callback is ACKed so NFTEscrowV2 can clear its durable callback record.
+
+NFTEscrowV2 also now sends a durable `EscrowReleaseFailedV2` callback after an exact NFT Item release bounce restores the record to Deposited. Its callback survives a bounce, can be retried by the Escrow owner, and is cleared only by an exact Marketplace ACK. The MarketplaceV2 consumer and buyer-refund/seller-return compensation are not yet implemented; buyer funds must remain disabled until those paths are complete.
+
+This is a listing/custody integration milestone only. V2 checks the approved Fragment Gift Collection, recognized Item Code hash, and Item address derived from the collection and index before creating custody. It also validates the TEP-62 forward-payload marker and exact escrow query ID before accepting an ownership notification. The dedicated `marketplace-v2-official-item-transfer.integration.test.tolk` now registers and deploys the allowlisted Fragment Item Code in the emulator through the collection deployment ABI, verifies the initial owner with `get_nft_data`, rejects a non-owner transfer attempt, executes the seller's standard TEP-62 transfer to Escrow, and verifies the Item getter reports Escrow as the new owner before asserting the deposit callback/ACK lifecycle. Other focused adversarial tests still inject malformed or forged notifications to exercise validation branches. This is emulator evidence for the recognized Item Code fixture, not a testnet/mainnet rehearsal or a guarantee covering every live Fragment collection version. V2 does not implement a buyer purchase/payment entrypoint, release NFTs through a MarketplaceV2 order, pay sellers/platform, or refund buyers. The seller cancellation/refund path is implemented and emulator-tested; bounced or uncorrelated refund requests remain fail-closed for operator review. It is not safe for production listing or purchasing.
+
+## Important: buying and settlement are not implemented
+
+This is **not yet a complete marketplace**. There is no buyer purchase message, payment/order state machine, NFT delivery to buyer, seller payout, or 97% / 3% fee split. The `Order` structures currently present in the types are not wired into a purchase flow.
+
+The frontend NFT publish endpoint remains fail-closed. MarketplaceV2 is source/emulator-only and must not be exposed to real users until testnet rehearsal against current live official collections, deployment, cancellation/recovery, purchase, delivery, refund, and settlement controls are complete. Do not accept real buyer funds or list real NFTs using this prototype.
+
+See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_CONTRACT_READINESS_AUDIT_2026-11-02.md) for the full blockers and required implementation order.
+
+The planned arbitrary-wallet payout model is documented in [Payout Finality and Bounce Recovery Decision](../../docs/architecture/TON_MARKETPLACE_PAYOUT_FINALITY_DECISION_2026-11-03.md). It does not require ordinary TON wallets to send custom acknowledgements; recipient transaction finality is verified from the chain trace.
+
+The required NFT release failure callback and buyer compensation protocol is documented in [NFT Delivery Failure and Buyer Compensation Decision](../../docs/architecture/TON_MARKETPLACE_DELIVERY_FAILURE_COMPENSATION_2026-11-03.md). MarketplaceV2 must not accept buyer funds until the Escrow failure callback, seller NFT return, and buyer refund paths are implemented and tested.
+
+## Build and test
+
+Install the Acton toolchain described by the official Acton documentation, then run from this directory:
 
 ```bash
 acton build
-```
-
-## Test
-
-```bash
 acton test
+acton fmt --check
 ```
 
-## Try It In Emulation
+The GitHub Contracts workflow runs the contract build, emulation tests, linter and formatter. Check the latest workflow result for the exact commit before treating a change as verified.
 
-```bash
-acton run deploy-emulation
-```
+## Storage compatibility and deployment safety
 
-## Customize The Starter
+- `MarketplaceStorage` now includes `assetListings: map<address, uint64>` between `products` and `orders`; an absent key means the NFT is available. This changes the serialized storage layout; it is not a drop-in compatible update for a contract initialized with the prior structure.
+- The current contract has no on-chain migration/upgrade handler that can safely reconstruct this index from existing products. Do not send the new code to an existing Marketplace address.
+- Treat this storage shape as a fresh-deployment schema only. If an older Marketplace was deployed outside this repository workflow, preserve it and design/test a separate migration or deploy a new address with an explicit user-facing cutover. Never assume an empty index for old products.
+- A fresh deployment must initialize `assetListings` as an empty map. The deployment script and test fixtures now do so.
+- Current source review does not authorize mainnet deployment.
+- Use a testnet rehearsal only after the contract ABI, storage layout, upgrade plan and security tests are reviewed.
+- Never put signing keys or mnemonic phrases in this repository.
+- Mainnet deployment or upgrade requires a separate explicit operational approval.
 
-1. Extend `contracts/types.tolk` with your storage and messages.
-2. Update `contracts/Empty.tolk` with your contract logic.
-3. Adjust `wrappers/Empty.gen.tolk` to match the new ABI, or regenerate it
-   with `acton wrapper Empty`.
-4. Extend `tests/contract.test.tolk` with the scenarios you care about.
-5. Update `scripts/deploy.tolk` with the storage and deployment flow you want.
 
-## Deploy To Testnet
+Latest observed Contracts CI for the architecture branch: workflow #281 succeeded on commit `661aed983cdd0d173e7b4bd3d4e9f474bf0b3766` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
 
-1. Create a local wallet named `deployer` and fund it on testnet:
 
-```bash
-acton wallet new --name deployer --local --airdrop
-```
+Latest observed Contracts CI for the architecture branch: workflow #282 succeeded on commit `a122ed2ba9081b7d35d13d09ee8dbf4f732af4f8` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This includes regressions rejecting release destinations equal to the seller, Escrow itself, and the NFT Item contract. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
 
-2. Update the starter contract, wrapper, and deploy script for your use case.
-3. Run the deployment script against testnet:
 
-```bash
-acton script scripts/deploy.tolk --net testnet
-```
+Latest observed Contracts CI for the architecture branch: workflow #297 succeeded on commit `5f13f31a613905cd399f9f7878e5635d0022a3e1` — opcode registry check (35 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. The additional test round-trips the V2 immutable order snapshot and separate seller/platform payout liability records. These are serialization-only types; MarketplaceV2 still has no buyer purchase entrypoint and accepts no buyer funds.
 
-The starter script waits for the transaction and then reads the deployed owner
-back from testnet. You do not need a separate `--fork-net` for that check.
 
-The generated `Acton.toml` also includes shortcut scripts:
+NFTEscrowV2 has an emulator-tested seller refund primitive wired to MarketplaceV2 `CancelProductV2`: a Marketplace-authorized request transfers the NFT back to its recorded seller, only authenticated NFT Item `excesses` marks it Refunded, a correlated transfer bounce restores Deposited, and the durable callback remains until exact ACK. The real official Item integration verifies unauthorized cancellation rejection and the complete seller NFT return/callback/ACK lifecycle.
 
-```bash
-acton run deploy-emulation
-acton run deploy-testnet
-```
+Latest observed Contracts CI: workflow #322 succeeded on commit `cbc1306c0ba70dd3577b069a1bceeb3d76a8fb1c` — opcode registry check (39 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. This validates emulator/source behavior only; no deployment or real-asset use is authorized.
 
-If you hit rate limits while talking to Toncenter, copy `.env.example` to
-`.env` and put `TONCENTER_MAINNET_API_KEY` or `TONCENTER_TESTNET_API_KEY` there,
-depending on the network you use. Acton loads `.env` automatically.
 
-## CI
+Latest observed Contracts CI: workflow #336 succeeded on commit `4a0261879a0d3be5de4a1bab5859a90dfce82d7d` — opcode registry check (**40 declarations, no collisions**), build, **100 tests in 12 files**, linter, and formatter. The official Item integration test now also exercises unauthorized cancellation rejection and the complete seller NFT return/callback/ACK lifecycle. This is emulator/source verification only; live testnet rehearsal, full purchase/payment/settlement, and production security review remain release gates.
 
-The generated project includes `.github/workflows/contracts.yml`, which runs:
 
-- `acton build`
-- `acton fmt --check`
-- `acton check --output-format github`
-- `acton test`
-
-## Documentation
-
-- Quickstart: https://ton-blockchain.github.io/acton/docs/quickstart
-- Testing: https://ton-blockchain.github.io/acton/docs/commands/test
-- Scripts and deployment: https://ton-blockchain.github.io/acton/docs/commands/script
-- Wrappers: https://ton-blockchain.github.io/acton/docs/commands/wrapper
-- Wallets: https://ton-blockchain.github.io/acton/docs/commands/wallet
+Latest observed Contracts CI: workflow #374 succeeded on commit `c89ee0169fb0c1e6a1b52d14680a83e3dd96b208` — opcode registry check (**43 declarations, no collisions**), build, **101 tests in 13 files**, linter, and formatter. The new release-failure callback integration test causes a real NFT Item transfer bounce, verifies the Escrow durable failure callback, forces an actual Marketplace receiver action-phase bounce, retries from the Escrow owner, and confirms the exact ACK clears the callback. MarketplaceV2 still does not consume this callback for buyer compensation, and buyer payments remain disabled.

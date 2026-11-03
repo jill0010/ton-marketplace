@@ -1,17 +1,27 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
 import { getListedProducts } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
-import type { Product } from "../types/product"
+import type { Product, ProductType, ListingMode } from "../types/product"
 
 const HOME_CATEGORIES = [
-  { type: "username", en: "Usernames", zh: "用户名" },
   { type: "number", en: "Numbers", zh: "匿名号码" },
+  { type: "username", en: "Usernames", zh: "用户名" },
   { type: "gift", en: "Gifts", zh: "收藏礼物" },
   { type: "premium", en: "Telegram Premium", zh: "Telegram 高级版" },
 ] as const
+
+const POPULAR_TITLES: Record<"number" | "username" | "gift", [string, string]> = {
+  number: ["Popular Numbers", "热门号码"],
+  username: ["Popular Usernames", "热门用户名"],
+  gift: ["Popular Gifts", "热门礼物"],
+}
+
+function getGiftSeries(title: string): string {
+  return title.replace(/\s*#\d+\s*$/, "").trim() || title
+}
 
 export function HomePage() {
   const { t } = useLanguage()
@@ -19,13 +29,17 @@ export function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedType, setSelectedType] = useState<ProductType | null>("number")
+  const [listingMode, setListingMode] = useState<ListingMode>("sale")
+  const [priceDescending, setPriceDescending] = useState(true)
+  const [selectedGiftSeries, setSelectedGiftSeries] = useState<string | null>(null)
+  const [giftSeriesQuery, setGiftSeriesQuery] = useState("")
 
   const loadProducts = useCallback(async (isActive: () => boolean = () => true) => {
     try {
       const result = await getListedProducts()
-      if (isActive()) {
-        setProducts(result)
-      }
+      if (isActive()) setProducts(result)
     } catch (err) {
       if (isActive()) {
         setError(
@@ -35,24 +49,55 @@ export function HomePage() {
         )
       }
     } finally {
-      if (isActive()) {
-        setLoading(false)
-      }
+      if (isActive()) setLoading(false)
     }
   }, [t])
 
   useEffect(() => {
     let cancelled = false
     queueMicrotask(() => {
-      if (!cancelled) {
-        void loadProducts(() => !cancelled)
-      }
+      if (!cancelled) void loadProducts(() => !cancelled)
     })
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [loadProducts])
+
+  const giftSeries = useMemo(() => {
+    const names = products
+      .filter((product) => product.type === "gift")
+      .map((product) => getGiftSeries(product.title))
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b))
+  }, [products])
+
+  const visibleGiftSeries = useMemo(() => {
+    const query = giftSeriesQuery.trim().toLowerCase()
+    return giftSeries.filter((name) => !query || name.toLowerCase().includes(query))
+  }, [giftSeries, giftSeriesQuery])
+
+  const visibleProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    const result = products.filter((product) => {
+      if (selectedType && product.type !== selectedType) return false
+      if ((product.listingMode ?? "sale") !== listingMode) return false
+      if (selectedType === "gift" && selectedGiftSeries &&
+        getGiftSeries(product.title) !== selectedGiftSeries) return false
+      if (!query) return true
+      return [product.title, product.subtitle, product.id]
+        .some((field) => field.toLowerCase().includes(query))
+    })
+    return result.sort((a, b) =>
+      priceDescending ? b.priceTon - a.priceTon : a.priceTon - b.priceTon
+    )
+  }, [products, searchQuery, selectedType, listingMode, selectedGiftSeries, priceDescending])
+
+  function selectCategory(type: ProductType) {
+    setSelectedType(type)
+    setSelectedGiftSeries(null)
+    setListingMode("sale")
+  }
+
+  const selectedTitle = selectedType
+    ? t(...POPULAR_TITLES[selectedType])
+    : t("Popular Listings", "热门商品")
 
   return (
     <div className="space-y-10">
@@ -63,7 +108,7 @@ export function HomePage() {
         <h1 className="mt-3 max-w-2xl text-4xl font-medium tracking-tight text-white">
           {t(
             "Explore Usernames, Numbers, Gifts and Telegram Premium",
-            "浏览用户名、匿名号码、收藏礼物与 Telegram 高级版"
+            "浏览匿名号码、用户名、收藏礼物与 Telegram 高级版"
           )}
         </h1>
         <p className="mt-4 max-w-xl text-zinc-400">
@@ -72,102 +117,159 @@ export function HomePage() {
             "浏览数据库中的在售商品。钱包支付将在后续阶段接入。"
           )}
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          {walletAddress && (
-            <Link
-              to="/publish"
-              className="inline-flex rounded-full border border-white/20 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-            >
+        {walletAddress && (
+          <div className="mt-8">
+            <Link to="/publish" className="inline-flex rounded-full border border-white/20 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10">
               {t("Publish Product", "发布商品")}
             </Link>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4">
+        <div className="relative">
+          <label htmlFor="home-product-search" className="sr-only">{t("Search products", "搜索商品")}</label>
+          <input
+            id="home-product-search"
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={t("Enter a username, number, gift or product ID...", "请输入用户名、匿名号码、收藏礼物或商品编号...")}
+            className="w-full rounded-full border border-white/15 bg-white/[0.03] py-3 pr-20 pl-5 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/40"
+          />
+          {searchQuery.length > 0 && (
+            <button type="button" onClick={() => setSearchQuery("")} className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10">
+              {t("Clear", "清除")}
+            </button>
           )}
-          <Link
-            to="/catalog"
-            className="inline-flex rounded-full bg-white px-5 py-2 text-sm font-medium text-black"
-          >
-            {t("View All Products", "查看全部商品")}
-          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {HOME_CATEGORIES.map((category) => {
+            const isPremium = category.type === "premium"
+            const count = products.filter((item) => item.type === category.type).length
+            const isSelected = selectedType === category.type
+
+            if (isPremium) {
+              return (
+                <Link key={category.type} to="/premium" className="rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-white transition hover:border-white/40">
+                  <span className="font-medium">{t(category.en, category.zh)}</span>
+                </Link>
+              )
+            }
+
+            return (
+              <button
+                key={category.type}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => selectCategory(category.type)}
+                className={`rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 ${isSelected ? "border-white/50 bg-white/10" : ""}`}
+              >
+                <span className="font-medium">{t(category.en, category.zh)}</span>
+                <span className="mt-2 block text-xs text-zinc-500">
+                  {loading ? t("Loading…", "加载中…") : t(`${count} listed`, `${count} 件在售`)}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {HOME_CATEGORIES.map((category) => {
-          const isPremium = category.type === "premium"
-          const count = products.filter(
-            (item) => item.type === category.type
-          ).length
-          const destination = isPremium
-            ? "/premium"
-            : `/catalog?type=${category.type}`
-
-          return (
-            <Link
-              key={category.type}
-              to={destination}
-              className={`rounded-2xl border p-5 transition ${
-                isPremium
-                  ? "border-white/20 bg-white/[0.06] text-white hover:border-white/40"
-                  : "border-white/10 text-zinc-300 hover:border-white/25"
-              }`}
-            >
-              <span className="font-medium">{t(category.en, category.zh)}</span>
-              {!isPremium && (
-                <span className="mt-2 block text-xs text-zinc-500">
-                  {loading
-                    ? t("Loading…", "加载中…")
-                    : t(`${count} listed`, `${count} 件在售`)}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </section>
-
-
       <section>
-        <h2 className="mb-4 text-lg font-medium text-white">
-          {t("Listed Products", "在售商品")}
-        </h2>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold tracking-tight text-white">{selectedTitle}</h2>
+          {selectedType && (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+                <button
+                  type="button"
+                  aria-pressed={listingMode === "auction"}
+                  onClick={() => setListingMode("auction")}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listingMode === "auction" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"}`}
+                >
+                  {t("Auction", "拍卖")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={listingMode === "sale"}
+                  onClick={() => setListingMode("sale")}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listingMode === "sale" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"}`}
+                >
+                  {t("For Sale", "出售")}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPriceDescending((current) => !current)}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
+                aria-label={t("Toggle price ranking order", "切换价格排行顺序")}
+              >
+                {t("Price Ranking", "价格排行")}
+                <span className="text-sky-300">{priceDescending ? "↓" : "↑"}</span>
+              </button>
+            </div>
+          )}
+        </div>
 
-        {loading && (
-          <p className="text-sm text-zinc-400">
-            {t("Loading products…", "正在加载商品…")}
-          </p>
-        )}
+        {loading && <p className="text-sm text-zinc-400">{t("Loading products…", "正在加载商品…")}</p>}
 
         {!loading && error && (
           <div className="rounded-2xl border border-red-500/30 p-5">
             <p className="text-sm text-red-300">{error}</p>
-            <button
-              type="button"
-              onClick={() => { setLoading(true); setError(""); void loadProducts() }}
-              className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
-            >
+            <button type="button" onClick={() => { setLoading(true); setError(""); void loadProducts() }} className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white">
               {t("Retry", "重试")}
             </button>
           </div>
         )}
 
-        {!loading && !error && products.length === 0 && (
-          <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
-            {t(
-              "No products listed yet. Please check back later.",
-              "暂无在售商品。请稍后再来查看。"
+        {!loading && !error && (
+          <div className={selectedType === "gift" ? "grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]" : "block"}>
+            {selectedType === "gift" && (
+              <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                <h3 className="mb-3 text-sm font-semibold text-white">{t("Gift Collections", "礼物系列")}</h3>
+                <input
+                  type="search"
+                  value={giftSeriesQuery}
+                  onChange={(event) => setGiftSeriesQuery(event.target.value)}
+                  placeholder={t("Search collections", "搜索系列")}
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-white/25"
+                />
+                <div className="max-h-[560px] space-y-1 overflow-y-auto pr-1">
+                  <button type="button" onClick={() => setSelectedGiftSeries(null)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedGiftSeries === null ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}>
+                    <span>{t("All collections", "全部系列")}</span>
+                    <span className="text-xs text-zinc-500">{products.filter((p) => p.type === "gift").length}</span>
+                  </button>
+                  {visibleGiftSeries.map((series) => {
+                    const count = products.filter((p) => p.type === "gift" && getGiftSeries(p.title) === series).length
+                    return (
+                      <button key={series} type="button" onClick={() => setSelectedGiftSeries(series)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedGiftSeries === series ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}>
+                        <span className="truncate pr-2">{series}</span>
+                        <span className="shrink-0 text-xs text-zinc-500">{count}</span>
+                      </button>
+                    )
+                  })}
+                  {visibleGiftSeries.length === 0 && <p className="px-3 py-2 text-xs text-zinc-500">{t("No collections found", "没有找到系列")}</p>}
+                </div>
+              </aside>
             )}
-          </p>
-        )}
 
-        {!loading && !error && products.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {products.slice(0, 8).map((product) => (
-              <ProductCard key={product.id} product={product} compact />
-            ))}
+            <div className="min-w-0">
+              {visibleProducts.length === 0 ? (
+                <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
+                  {listingMode === "auction"
+                    ? t("No auctions are listed yet.", "目前暂无拍卖商品。")
+                    : t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
+                </p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
     </div>
   )
 }
-
-
-

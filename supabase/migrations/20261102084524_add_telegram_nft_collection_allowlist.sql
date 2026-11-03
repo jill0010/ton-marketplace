@@ -1,5 +1,5 @@
-﻿-- Telegram official NFT collection allowlist.
--- Local migration source only. Do not apply without explicit approval.
+-- Telegram official NFT collection allowlist.
+-- Production migration source; version reconciled to the live Supabase migration ledger.
 
 CREATE TABLE IF NOT EXISTS public.telegram_nft_collection_allowlist (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

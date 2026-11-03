@@ -1,0 +1,122 @@
+name: Wallet Identity Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/_shared/ton-address.ts"
+      - "supabase/functions/_shared/ton-amount.ts"
+      - "supabase/functions/_shared/ton-amount_test.ts"
+      - "supabase/functions/_shared/wallet-identity-migration.ts"
+      - "supabase/functions/_shared/wallet-identity-migration_test.ts"
+      - "supabase/functions/ton-proof-challenge/**"
+      - "supabase/functions/ton-proof-verify/**"
+      - "supabase/functions/ton-proof-status/**"
+      - "supabase/functions/create-premium-order/**"
+      - "supabase/migrations/**"
+      - "supabase/tests/canonical-wallet-identity-*.sql"
+      - "scripts/audit-legacy-wallet-identities.ts"
+      - ".github/workflows/wallet-identity-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wallet-identity-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-tests:
+    name: Wallet identity and TON Proof checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install repository package dependencies
+        run: deno install --config supabase/functions/deno.json
+
+      - name: Type-check wallet identity audit helper and CLI
+        run: deno check --config supabase/functions/deno.json scripts/audit-legacy-wallet-identities.ts supabase/functions/_shared/wallet-identity-migration.ts
+
+      - name: Type-check exact TON amount utility
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/ton-amount.ts supabase/functions/_shared/ton-amount_test.ts
+
+      - name: Type-check shared wallet authentication
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/auth.ts
+
+      - name: Type-check wallet NFT asset endpoint
+        run: deno check --config supabase/functions/deno.json supabase/functions/nft-wallet-assets/index.ts
+
+      - name: Type-check TON Proof challenge
+        run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-challenge/index.ts
+
+      - name: Type-check TON Proof verifier
+        run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-verify/index.ts
+
+      - name: Type-check TON Proof status
+        run: deno check --config supabase/functions/deno.json supabase/functions/ton-proof-status/index.ts
+
+      - name: Type-check fail-closed premium order endpoint
+        run: deno check --config supabase/functions/deno.json supabase/functions/create-premium-order/index.ts
+
+      - name: Test wallet identity audit
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/wallet-identity-migration_test.ts
+
+      - name: Test exact TON amount conversion
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/ton-amount_test.ts
+
+  canonical-wallet-db-tests:
+    name: Canonical wallet identity PostgreSQL integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wallet_identity_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wallet_identity_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Create minimal Supabase schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/tests/canonical-wallet-identity-bootstrap.sql
+
+      - name: Apply canonical wallet identity migration to disposable database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261102140000_add_canonical_ton_wallet_identity.sql
+
+      - name: Test identity uniqueness, multi-session binding, replay protection and ACLs
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/tests/canonical-wallet-identity.test.sql

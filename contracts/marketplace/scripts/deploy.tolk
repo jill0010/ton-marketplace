@@ -16,6 +16,7 @@ fun main() {
         nextProductId: 1,
         nextOrderId: 1,
         products: [],
+        assetListings: [],
         orders: [],
     });
 

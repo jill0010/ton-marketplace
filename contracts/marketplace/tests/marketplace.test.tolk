@@ -88,7 +88,7 @@ get fun `test Product serialization`() {
         extra: ProductExtra {
             collection: seller.address,
             queryId: 1001,
-        itemIndex: 0,
+            itemIndex: 0,
         }.toCell(),
     };
 
@@ -178,7 +178,7 @@ get fun `test Product dictionary operations`() {
         extra: ProductExtra {
             collection: seller.address,
             queryId: 1001,
-        itemIndex: 0,
+            itemIndex: 0,
         }.toCell(),
     };
 
@@ -215,8 +215,8 @@ get fun `test Product dictionary operations`() {
             extra: ProductExtra {
                 collection: seller.address,
                 queryId: 1001,
-            itemIndex: 0,
-        }.toCell(),
+                itemIndex: 0,
+            }.toCell(),
         },
     );
 
@@ -302,6 +302,7 @@ fun setupMarketplaceTest(): (Marketplace, Treasury, Treasury) {
         nextProductId: 1,
         nextOrderId: 1,
         products: [],
+        assetListings: [],
         orders: [],
     });
     val res = contract.deploy(deployer.address, { value: grams("0.05") });
@@ -336,8 +337,7 @@ get fun `test refund callback rejected when escrow is not configured`() {
 
 // 测试11：验证退款回调发送者、商品信息、状态及重复回调保护
 get fun `test refund callback validates escrow and product before cancellation`() {
-    val (contract, escrow, attacker, seller, nftItem) =
-        setupActiveMarketplaceTest();
+    val (contract, escrow, attacker, seller, nftItem) = setupActiveMarketplaceTest();
 
     // 非 Escrow 地址伪造退款回调
     val forgedSenderRes = contract.sendAny(
@@ -500,11 +500,13 @@ fun setupActiveMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, Tr
         extra: ProductExtra {
             collection: deployer.address,
             queryId: 1,
-        itemIndex: 0,
+            itemIndex: 0,
         }.toCell(),
     };
 
     products.set(1, product);
+    var assetListings: map<address, uint64> = [];
+    assetListings.set(nftItem.address, 1);
 
     val contract = Marketplace.fromStorage({
         owner: deployer.address,
@@ -513,6 +515,7 @@ fun setupActiveMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, Tr
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: assetListings,
         orders: [],
     });
 
@@ -568,6 +571,8 @@ fun setupPendingMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, T
         }.toCell(),
     };
     products.set(1, product);
+    var assetListings: map<address, uint64> = [];
+    assetListings.set(nftItem.address, 1);
 
     val contract = Marketplace.fromStorage({
         owner: deployer.address,
@@ -576,6 +581,7 @@ fun setupPendingMarketplaceTest(): (Marketplace, Treasury, Treasury, Treasury, T
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: assetListings,
         orders: [],
     });
 
@@ -824,6 +830,7 @@ get fun `test escrow deposit callback rejects paused product`() {
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: [],
         orders: [],
     });
 
@@ -908,6 +915,7 @@ get fun `test escrow deposit callback rejected when escrow is not configured`() 
         nextProductId: 2,
         nextOrderId: 1,
         products: products,
+        assetListings: [],
         orders: [],
     });
 
@@ -936,4 +944,170 @@ get fun `test escrow deposit callback rejected when escrow is not configured`() 
     val saved = contract.product(1);
     assert (saved != null) throw Errors.ProductNotFound;
     expect(saved!!.status).toEqual(1);
+}
+
+// Settlement math must stay integer-only and conserve every nanotons unit.
+get fun `test settlement split conserves gross amount and rounds fee down`() {
+    val wholeTon = calculateSettlementAmounts(grams("100"));
+    expect(wholeTon.gross).toEqual(grams("100"));
+    expect(wholeTon.platformFee).toEqual(grams("3"));
+    expect(wholeTon.sellerAmount).toEqual(grams("97"));
+    expect(wholeTon.platformFee + wholeTon.sellerAmount).toEqual(wholeTon.gross);
+
+    val oneTon = calculateSettlementAmounts(grams("1"));
+    expect(oneTon.platformFee).toEqual(grams("0.03"));
+    expect(oneTon.sellerAmount).toEqual(grams("0.97"));
+    expect(oneTon.platformFee + oneTon.sellerAmount).toEqual(oneTon.gross);
+
+    // One nanotons cannot be divided into 3% and 97%; fee rounds down
+    // and the seller receives the full remainder without value creation/loss.
+    val oneNanoton = calculateSettlementAmounts(1);
+    expect(oneNanoton.platformFee).toEqual(0);
+    expect(oneNanoton.sellerAmount).toEqual(1);
+    expect(oneNanoton.platformFee + oneNanoton.sellerAmount).toEqual(1);
+
+    // Exact floor-rounding boundaries around each 100-nanoton fee unit.
+    val thirtyThree = calculateSettlementAmounts(33);
+    expect(thirtyThree.platformFee).toEqual(0);
+    expect(thirtyThree.sellerAmount).toEqual(33);
+
+    val thirtyFour = calculateSettlementAmounts(34);
+    expect(thirtyFour.platformFee).toEqual(1);
+    expect(thirtyFour.sellerAmount).toEqual(33);
+
+    val ninetyNine = calculateSettlementAmounts(99);
+    expect(ninetyNine.platformFee).toEqual(2);
+    expect(ninetyNine.sellerAmount).toEqual(97);
+
+    val oneHundred = calculateSettlementAmounts(100);
+    expect(oneHundred.platformFee).toEqual(3);
+    expect(oneHundred.sellerAmount).toEqual(97);
+
+    // A large valid TON amount exercises the divide-before-multiply path.
+    // Raw nanotons avoid the grams() helper's narrower literal parser.
+    val largeGross: coins = 1000000000000000000000000;
+    val largeSplit = calculateSettlementAmounts(largeGross);
+    val expectedLargeFee: coins = 30000000000000000000000;
+    expect(largeSplit.platformFee).toEqual(expectedLargeFee);
+    expect(largeSplit.sellerAmount).toEqual(largeGross - expectedLargeFee);
+    expect(largeSplit.platformFee + largeSplit.sellerAmount).toEqual(largeGross);
+}
+
+// V2 order snapshot persists all parties, exact amounts, and independent operation IDs.
+get fun `test Marketplace V2 immutable order and independent payout snapshots`() {
+    val buyer = testing.treasury("v2OrderBuyer");
+    val seller = testing.treasury("v2OrderSeller");
+    val nftItem = testing.treasury("v2OrderNftItem");
+    val collection = testing.treasury("v2OrderCollection");
+    val treasury = testing.treasury("v2OrderTreasury");
+
+    val orderExtra = MarketplaceV2OrderExtra {
+        parties: MarketplaceV2OrderParties {
+            buyer: buyer.address,
+            seller: seller.address,
+            treasury: treasury.address,
+        }.toCell(),
+        asset: MarketplaceV2OrderAsset {
+            nftItem: nftItem.address,
+            collection: collection.address,
+            itemIndex: 4242,
+            escrowId: 17,
+        }.toCell(),
+        settlement: MarketplaceV2OrderSettlement {
+            gross: grams("100"),
+            feeBps: 300,
+            feeRoundingVersion: 1,
+            platformFee: grams("3"),
+            sellerProceeds: grams("97"),
+            processingReserve: grams("0.2"),
+        }.toCell(),
+        operations: MarketplaceV2OrderOperations {
+            paymentQueryId: 9001,
+            releaseQueryId: 9002,
+            sellerPayoutQueryId: 9003,
+            platformPayoutQueryId: 9004,
+            buyerRefundQueryId: 9005,
+        }.toCell(),
+    };
+    val order = MarketplaceV2Order {
+        id: 7001,
+        productId: 3001,
+        status: 1,
+        deliveryStatus: 1,
+        sellerPayoutStatus: 0,
+        platformPayoutStatus: 0,
+        refundStatus: 0,
+        createdAt: 1793366400,
+        extra: orderExtra.toCell(),
+    };
+
+    val decodedOrder = MarketplaceV2Order.fromCell(order.toCell());
+    val decodedExtra = decodedOrder.extra.load();
+    expect(decodedOrder.id).toEqual(7001);
+    expect(decodedOrder.productId).toEqual(3001);
+    expect(decodedOrder.status).toEqual(1);
+    expect(decodedOrder.deliveryStatus).toEqual(1);
+    expect(decodedOrder.sellerPayoutStatus).toEqual(0);
+    expect(decodedOrder.platformPayoutStatus).toEqual(0);
+    expect(decodedOrder.refundStatus).toEqual(0);
+    val decodedParties = decodedExtra.parties.load();
+    val decodedAsset = decodedExtra.asset.load();
+    val decodedSettlement = decodedExtra.settlement.load();
+    val decodedOperations = decodedExtra.operations.load();
+    expect(decodedParties.buyer).toEqual(buyer.address);
+    expect(decodedParties.seller).toEqual(seller.address);
+    expect(decodedParties.treasury).toEqual(treasury.address);
+    expect(decodedAsset.nftItem).toEqual(nftItem.address);
+    expect(decodedAsset.collection).toEqual(collection.address);
+    expect(decodedAsset.itemIndex).toEqual(4242);
+    expect(decodedAsset.escrowId).toEqual(17);
+    expect(decodedSettlement.gross).toEqual(grams("100"));
+    expect(decodedSettlement.feeBps).toEqual(300);
+    expect(decodedSettlement.feeRoundingVersion).toEqual(1);
+    expect(decodedSettlement.platformFee).toEqual(grams("3"));
+    expect(decodedSettlement.sellerProceeds).toEqual(grams("97"));
+    expect(decodedSettlement.processingReserve).toEqual(grams("0.2"));
+    expect(decodedOperations.paymentQueryId).toEqual(9001);
+    expect(decodedOperations.releaseQueryId).toEqual(9002);
+    expect(decodedOperations.sellerPayoutQueryId).toEqual(9003);
+    expect(decodedOperations.platformPayoutQueryId).toEqual(9004);
+    expect(decodedOperations.buyerRefundQueryId).toEqual(9005);
+    expect(
+        decodedSettlement.platformFee + decodedSettlement.sellerProceeds,
+    ).toEqual(decodedSettlement.gross);
+
+    val sellerPayout = MarketplaceV2Payout {
+        orderId: decodedOrder.id,
+        operationId: 8001,
+        queryId: decodedOperations.sellerPayoutQueryId,
+        beneficiary: decodedParties.seller,
+        amount: decodedSettlement.sellerProceeds,
+        kind: 1,
+        status: 1,
+        createdAt: decodedOrder.createdAt,
+    };
+    val platformPayout = MarketplaceV2Payout {
+        orderId: decodedOrder.id,
+        operationId: 8002,
+        queryId: decodedOperations.platformPayoutQueryId,
+        beneficiary: decodedParties.treasury,
+        amount: decodedSettlement.platformFee,
+        kind: 2,
+        status: 1,
+        createdAt: decodedOrder.createdAt,
+    };
+    val decodedSellerPayout = MarketplaceV2Payout.fromCell(sellerPayout.toCell());
+    val decodedPlatformPayout = MarketplaceV2Payout.fromCell(platformPayout.toCell());
+    expect(decodedSellerPayout.orderId).toEqual(decodedPlatformPayout.orderId);
+    expect(decodedSellerPayout.operationId).toEqual(8001);
+    expect(decodedPlatformPayout.operationId).toEqual(8002);
+    expect(decodedSellerPayout.operationId != decodedPlatformPayout.operationId).toEqual(true);
+    expect(decodedSellerPayout.queryId).toEqual(9003);
+    expect(decodedPlatformPayout.queryId).toEqual(9004);
+    expect(decodedSellerPayout.beneficiary).toEqual(seller.address);
+    expect(decodedPlatformPayout.beneficiary).toEqual(treasury.address);
+    expect(decodedSellerPayout.amount).toEqual(grams("97"));
+    expect(decodedPlatformPayout.amount).toEqual(grams("3"));
+    expect(decodedSellerPayout.kind).toEqual(1);
+    expect(decodedPlatformPayout.kind).toEqual(2);
 }

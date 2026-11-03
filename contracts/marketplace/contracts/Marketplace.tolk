@@ -37,8 +37,14 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy MarketplaceStorage.load();
 
             assert (storage.escrowConfigured) throw Errors.EscrowNotConfigured;
-            assert (msg.kind == 1 || msg.kind == 2 || msg.kind == 3) throw Errors.InvalidProductKind;
+            assert (
+                msg.kind == 1 || msg.kind == 2 || msg.kind == 3
+            ) throw Errors.InvalidProductKind;
             assert (msg.price > 0) throw Errors.InvalidProductPrice;
+
+            // Reserve before creating escrow so Pending listings are exclusive too.
+            val existingListing = storage.assetListings.get(msg.nftItem);
+            assert (!existingListing.isFound) throw Errors.AssetAlreadyListed;
 
             val seller = in.senderAddress;
             val productId = storage.nextProductId;
@@ -65,6 +71,7 @@ fun onInternalMessage(in: InMessage) {
             val escrowAddress = storage.escrow;
 
             storage.products.set(productId, product);
+            storage.assetListings.set(msg.nftItem, productId);
             storage.nextProductId = productId + 1;
             storage.save();
 
@@ -75,7 +82,9 @@ fun onInternalMessage(in: InMessage) {
             };
 
             val escrowMessage = createMessage({
-                bounce: BounceMode.Only256BitsOfBody,
+                // Preserve the complete CreateEscrow body (including its referenced identity cell)
+                // so the bounce handler can correlate the exact failed request.
+                bounce: BounceMode.RichBounce,
                 value: grams("0.05"),
                 dest: escrowAddress,
                 body: CreateEscrow {
@@ -111,7 +120,8 @@ fun onInternalMessage(in: InMessage) {
             };
 
             val retryMessage = createMessage({
-                bounce: BounceMode.Only256BitsOfBody,
+                // Retry uses the same complete identity and needs the same full bounce envelope.
+                bounce: BounceMode.RichBounce,
                 value: grams("0.05"),
                 dest: storage.escrow,
                 body: CreateEscrow {
@@ -143,10 +153,7 @@ fun onInternalMessage(in: InMessage) {
             assert (product.seller == msg.seller) throw Errors.InvalidSeller;
 
             // 首次通知：激活商品；重复通知：保持激活状态并重新 ACK。
-            assert (
-                product.status == 1 ||
-                product.status == 2
-            ) throw Errors.ProductNotPending;
+            assert (product.status == 1 || product.status == 2) throw Errors.ProductNotPending;
 
             if (product.status == 1) {
                 product.status = 2;
@@ -187,14 +194,19 @@ fun onInternalMessage(in: InMessage) {
             assert (product.seller == msg.seller) throw Errors.InvalidRefundConfirmation;
 
             // 首次通知：取消商品；重复通知：保持已取消状态并重新 ACK。
-            assert (
-                product.status == 2 ||
-                product.status == 5
-            ) throw Errors.InvalidProductStatus;
+            assert (product.status == 2 || product.status == 5) throw Errors.InvalidProductStatus;
 
             if (product.status == 2) {
+                // Release only the exact index owned by this product. Duplicate
+                // callbacks for a cancelled product must not clear a newer listing.
+                val listingResult = storage.assetListings.get(msg.nftItem);
+                assert (
+                    listingResult.isFound && listingResult.loadValue() == msg.productId
+                ) throw Errors.AssetListingIndexMismatch;
+
                 product.status = 5;
                 storage.products.set(msg.productId, product);
+                storage.assetListings.delete(msg.nftItem);
                 storage.save();
             }
 
@@ -221,7 +233,58 @@ fun onInternalMessage(in: InMessage) {
     }
 }
 
-fun onBouncedMessage(_in: InMessageBounced) {}
+fun onBouncedMessage(in: InMessageBounced) {
+    val storage = lazy MarketplaceStorage.load();
+
+    // A bounced message is useful here only when it came back from the configured Escrow.
+    if (in.senderAddress != storage.escrow) {
+        return;
+    }
+
+    // Marketplace CreateEscrow messages must use RichBounce. Ignore other bounce formats.
+    if (in.bouncedBody.remainingBitsCount() < 32) {
+        return;
+    }
+    if (in.bouncedBody.preloadUint(32) != 0xfffffffe) {
+        return;
+    }
+
+    // Any parser operation may fail on a truncated envelope, body, or referenced extra cell.
+    // Catch malformed data at this boundary so it cannot make the bounce transaction fail.
+    try {
+        val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
+        val originalBody = rich.originalBody;
+        var originalSlice = originalBody.beginParse();
+
+        if (originalSlice.remainingBitsCount() >= 32 && originalSlice.loadUint(32) == 0x71a00001) {
+            // RichBounce must preserve the entire original CreateEscrow body, including its ref.
+            val create = lazy CreateEscrow.fromCell(originalBody);
+            val createExtra = create.extra.load();
+
+            val productResult = storage.products.get(create.productId);
+            if (productResult.isFound) {
+                val product = productResult.loadValue();
+                val productExtra = product.extra.load();
+
+                // Exact identity correlation only. This handler intentionally records no state:
+                // a bounce does not prove NFT ownership and must never release the reservation.
+                val isExactPendingMatch = product.status == 1 && product.id == create.productId &&
+                    product.assetAddress == create.nftItem &&
+                    product.seller == create.seller &&
+                    product.kind == create.kind &&
+                    productExtra.collection == create.collection &&
+                    productExtra.queryId == createExtra.queryId &&
+                    productExtra.itemIndex == createExtra.itemIndex;
+
+                if (isExactPendingMatch) {
+                    // Informational no-op by design.
+                }
+            }
+        }
+    } catch {
+        // Ignore malformed RichBounce data. Never infer ownership or mutate listing state.
+    }
+}
 
 get fun owner(): address {
     val storage = lazy MarketplaceStorage.load();

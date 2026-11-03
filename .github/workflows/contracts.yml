@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - architecture/unified-trading-v1
   pull_request:
     branches:
       - main
@@ -35,17 +36,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check opcode registry
+        run: node scripts/check-opcode-registry.mjs
+
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
       - name: Build
         run: acton build
 
-      - name: Formatter
-        run: acton fmt --check
+      - name: Test
+        run: acton test --backtrace full
 
       - name: Linter
         run: acton check --output-format github
 
-      - name: Test
-        run: acton test
+      - name: Formatter
+        run: acton fmt --check

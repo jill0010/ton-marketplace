@@ -5,6 +5,7 @@ export const PRODUCT_TYPES = [
 ] as const
 
 export type ProductType = (typeof PRODUCT_TYPES)[number]
+export type ListingMode = "auction" | "sale"
 
 export type Product = {
   id: string
@@ -14,6 +15,7 @@ export type Product = {
   priceTon: number
   imageUrl?: string | null
   status: "listed"
+  listingMode?: ListingMode
   createdAt: string
 }
 

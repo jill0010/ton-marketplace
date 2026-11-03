@@ -73,9 +73,7 @@ fun onInternalMessage(in: InMessage) {
             // Return the remaining balance to the response destination.
             // Do not send Excesses when response destination is addr_none.
             if (msg.responseDestination != null) {
-                val excesses = NftExcesses {
-                    queryId: msg.queryId,
-                };
+                val excesses = NftExcesses { queryId: msg.queryId };
 
                 val excessesMessage = createMessage({
                     bounce: BounceMode.NoBounce,

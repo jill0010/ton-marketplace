@@ -43,3 +43,23 @@ depends = []
 display-name = "Mock NFT Item"
 src = "contracts/MockNFTItem.tolk"
 depends = []
+
+[contracts.RejectingNFTItem]
+display-name = "Test-only Rejecting NFT Item"
+src = "contracts/RejectingNFTItem.tolk"
+depends = []
+
+[contracts.NFTEscrowV2]
+display-name = "NFT Escrow V2 (isolated release lifecycle)"
+src = "contracts/NFTEscrowV2.tolk"
+depends = []
+
+[contracts.RejectingMarketplaceCallback]
+display-name = "Test-only Rejecting Marketplace Callback"
+src = "contracts/RejectingMarketplaceCallback.tolk"
+depends = []
+
+[contracts.MarketplaceV2]
+display-name = "Marketplace V2 (isolated listing integration)"
+src = "contracts/MarketplaceV2.tolk"
+depends = []

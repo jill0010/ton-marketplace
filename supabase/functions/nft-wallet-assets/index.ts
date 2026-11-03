@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { authenticateVerifiedWallet } from "../_shared/auth.ts";
-import { normalizeTonAddress } from "../_shared/ton-address.ts";
+import { normalizeTonAddress } from "./shared/ton-address.ts";
 import {
   type AddressBookEntry,
   type AddressMetadata,
@@ -11,9 +10,9 @@ import {
   isVerifiedMetadata,
   isWalletOwner,
   type TokenInfo,
-} from "../_shared/telegram-nft-validation.ts";
-import { tonCenterGet } from "../_shared/toncenter.ts";
-import { handleCors, jsonResponse } from "../_shared/http.ts";
+} from "./shared/telegram-nft-validation.ts";
+import { tonCenterGet } from "./shared/toncenter.ts";
+import { handleCors, jsonResponse } from "./shared/http.ts";
 
 type TonCenterNft = {
   address?: string;
@@ -51,10 +50,26 @@ Deno.serve(async (request: Request) => {
   }
 
   try {
-    const walletContext = await authenticateVerifiedWallet(request);
-    const walletAddress = normalizeTonAddress(
-      walletContext.walletAddress,
-    );
+    // NFT ownership is public on-chain data. A connected wallet address is
+    // sufficient for this read-only lookup; listing and escrow operations
+    // continue to require their own server-side wallet proof authorization.
+    const body = await request.json().catch(() => null) as
+      | { wallet_address?: unknown }
+      | null;
+    if (
+      !body ||
+      typeof body.wallet_address !== "string" ||
+      body.wallet_address.length > 128
+    ) {
+      return jsonResponse({ error: "A valid wallet_address is required" }, 400);
+    }
+
+    let walletAddress: string;
+    try {
+      walletAddress = normalizeTonAddress(body.wallet_address);
+    } catch {
+      return jsonResponse({ error: "Invalid TON wallet address" }, 400);
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -217,21 +232,11 @@ Deno.serve(async (request: Request) => {
       truncated,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-
-    if (
-      message.includes("authorization") ||
-      message.includes("session") ||
-      message.includes("verified TON mainnet wallet") ||
-      message.includes("wallet identity")
-    ) {
-      return jsonResponse({ error: "Wallet authentication failed" }, 401);
-    }
-
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("nft-wallet-assets failed:", message);
 
     return jsonResponse({
-      error: "Unable to retrieve verified Telegram NFT assets",
+      error: "Unable to retrieve Telegram NFT assets",
     }, 500);
   }
 });
