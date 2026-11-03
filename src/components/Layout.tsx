@@ -107,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#2588f5] to-[#1264d8] px-4 text-sm font-semibold text-white shadow-md shadow-blue-950/30 transition hover:from-[#3b98ff] hover:to-[#2478ed]"><TonMark />
+              <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-[#0098EA] px-4 text-sm font-semibold text-white shadow-md shadow-blue-950/30 transition hover:bg-[#17A8F5]"><TonMark />
                 {t("Connect TON", "连接钱包")}
               </button>
             )}
