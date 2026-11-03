@@ -87,6 +87,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
             releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
                 pendingReleases: [],
                 releaseCallbacks: [],
+                releaseFailureCallbacks: [],
             }.toCell(),
             refundStorage: NFTEscrowV2RefundCallbackStorage {
                 pendingRefunds: [],
