@@ -8,7 +8,7 @@ import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/NFTEscrowV2.gen"
 import "@wrappers/RejectingNFTItem.gen"
 
-get fun `test Marketplace V2 listing is activated only after the authenticated Escrow deposit callback`() {
+get fun `test Marketplace V2 rejects NFT Items not derived from an approved official Fragment code`() {
     val seller = testing.treasury("marketplaceV2ListingSeller");
     val owner = testing.treasury("marketplaceV2ListingOwner");
     val attacker = testing.treasury("marketplaceV2ListingAttacker");
@@ -93,7 +93,37 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
     });
     expect(marketplace.escrowV2()).toEqual(escrow.address);
 
-    // Publishing reserves the NFT Item and creates a pending custody record.
+    // Register a recognized Fragment Gift Item Code. The deployed RejectingNFTItem
+    // fixture is deliberately not derived from this code and must be rejected.
+    val collectionPaused = escrow.sendSetCollectionStatusV2(
+        owner.address,
+        owner.address,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(collectionPaused).toHaveSuccessfulTx();
+
+    val officialItemCode = parseCellFromHex(
+        "b5ee9c72010101010023000842022498bd63f3e9cc2c20c79abe58899a4816ea156855b8d4fcd47cda4bae9e911a",
+    );
+    val setItemCode = escrow.sendSetCollectionItemCodeV2(
+        owner.address,
+        owner.address,
+        3,
+        officialItemCode,
+        { value: grams("0.05") },
+    );
+    expect(setItemCode).toHaveSuccessfulTx();
+
+    val collectionActive = escrow.sendSetCollectionStatusV2(
+        owner.address,
+        owner.address,
+        1,
+        { value: grams("0.05") },
+    );
+    expect(collectionActive).toHaveSuccessfulTx();
+
+    // A malicious NFT Item with an unrelated code/address cannot enter custody.
     val publish = marketplace.sendPublishProductV2(
         seller.address,
         nftItem.address,
@@ -104,14 +134,15 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
         { value: grams("0.2") },
     );
     expect(publish).toHaveSuccessfulTx();
+    expect(publish).toHaveBouncedTx({ from: escrow.address, to: marketplace.address });
 
-    val pending = marketplace.productV2(1);
-    assert (pending != null) throw ErrorsV2.InvalidRelease;
-    expect(pending!!.seller).toEqual(seller.address);
-    expect(pending.price).toEqual(grams("2"));
-    expect(pending.status).toEqual(1);
-    expect(pending.queryId).toEqual(1);
-    expect(marketplace.assetProductIdV2(nftItem.address)).toEqual(1);
+    val rejectedProduct = marketplace.productV2(1);
+    assert (rejectedProduct != null) throw ErrorsV2.InvalidRelease;
+    expect(rejectedProduct!!.seller).toEqual(seller.address);
+    expect(rejectedProduct.price).toEqual(grams("2"));
+    expect(rejectedProduct.status).toEqual(5);
+    expect(rejectedProduct.queryId).toEqual(1);
+    expect(marketplace.assetProductIdV2(nftItem.address) == null).toEqual(true);
 
     // An attacker cannot activate the listing by forging the exact callback body.
     val forgedCallback = createMessage({
@@ -132,54 +163,23 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
         to: marketplace.address,
         exitCode: ErrorsV2.InvalidReleaseConfirmation,
     });
-    expect(marketplace.productV2(1)!!.status).toEqual(1);
+    expect(marketplace.productV2(1)!!.status).toEqual(5);
+    expect(escrow.escrowRecordV2(1) == null).toEqual(true);
 
-    val custodyPending = escrow.escrowRecordV2(1);
-    assert (custodyPending != null) throw ErrorsV2.InvalidRelease;
-    expect(custodyPending!!.nftItem).toEqual(nftItem.address);
-    expect(custodyPending.seller).toEqual(seller.address);
-    expect(custodyPending.status).toEqual(0);
-
-    // A second seller cannot reserve the same NFT Item through Marketplace V2.
-    val duplicateListing = marketplace.sendPublishProductV2(
+    // After the exact failed escrow request is bounced, the reservation is released.
+    // A second attempt is accepted into Marketplace pending state, then rejected again by Escrow.
+    val retryPublish = marketplace.sendPublishProductV2(
         attacker.address,
         nftItem.address,
+        owner.address,
+        0,
+        3,
         grams("3"),
         { value: grams("0.2") },
     );
-    expect(duplicateListing).toHaveFailedTx({
-        from: attacker.address,
-        to: marketplace.address,
-        exitCode: ErrorsV2.AssetAlreadyEscrowed,
-    });
-    expect(marketplace.productV2(1)!!.status).toEqual(1);
+    expect(retryPublish).toHaveSuccessfulTx();
+    expect(retryPublish).toHaveBouncedTx({ from: escrow.address, to: marketplace.address });
+    expect(marketplace.productV2(2)!!.status).toEqual(5);
+    expect(marketplace.assetProductIdV2(nftItem.address) == null).toEqual(true);
 
-    // The seller proves custody by transferring the NFT Item to the configured Escrow.
-    val deposit = nftItem.sendNftTransfer(
-        seller.address,
-        1,
-        escrow.address,
-        null,
-        null,
-        grams("0.01"),
-        beginCell().endCell().beginParse(),
-        { value: grams("0.1") },
-    );
-    expect(deposit).toHaveSuccessfulTx();
-    expect(nftItem.owner()).toEqual(escrow.address);
-
-    // Marketplace activates only after the Escrow's authenticated callback.
-    val active = marketplace.productV2(1);
-    assert (active != null) throw ErrorsV2.InvalidReleaseConfirmation;
-    expect(active!!.status).toEqual(2);
-    expect(active.escrowId).toEqual(1);
-    expect(active.nftItem).toEqual(nftItem.address);
-    expect(active.seller).toEqual(seller.address);
-    expect(marketplace.assetProductIdV2(nftItem.address)).toEqual(1);
-
-    // The exact ACK clears Escrow's durable deposit callback.
-    expect(escrow.depositCallbackV2(1) == null).toEqual(true);
-    val depositedRecord = escrow.escrowRecordV2(1);
-    assert (depositedRecord != null) throw ErrorsV2.InvalidReleaseConfirmation;
-    expect(depositedRecord!!.status).toEqual(1);
 }
