@@ -84,7 +84,6 @@ fun onInternalMessage(in: InMessage) {
                 !storage.assetToEscrow.get(msg.nftItem).isFound
             ) throw ErrorsV2.AssetAlreadyEscrowed;
 
-            assert (!storage.paused) throw ErrorsV2.InvalidRelease;
             assert (msg.kind == 3) throw ErrorsV2.InvalidProductKind;
 
             val collectionStorage = storage.collectionStorage.load();
