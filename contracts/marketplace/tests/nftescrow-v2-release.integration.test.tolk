@@ -450,4 +450,150 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         exitCode: ErrorsV2.InvalidNftItem,
     });
     expect(escrow.assetEscrowIdV2(nftItem.address) == null).toEqual(true);
+
+    // Deposit a second NFT fixture to exercise seller refund independently.
+    val refundDeposit = refundNftItem.sendNftTransfer(
+        seller.address,
+        refundDepositQueryId,
+        escrow.address,
+        null,
+        null,
+        grams("0.01"),
+        beginCell()
+            .storeUint(1, 1)
+            .storeRef(
+                beginCell()
+                    .storeUint(0x53564950, 32)
+                    .storeUint(refundDepositQueryId, 64)
+                    .endCell(),
+            )
+            .endCell()
+            .beginParse(),
+        { value: grams("0.1") },
+    );
+    expect(refundDeposit).toHaveSuccessfulTx();
+    expect(refundNftItem.owner()).toEqual(escrow.address);
+    val refundDepositAck = escrow.sendEscrowDepositAckV2(
+        marketplace.address,
+        2,
+        7002,
+        refundNftItem.address,
+        seller.address,
+        refundDepositQueryId,
+        { value: grams("0.05") },
+    );
+    expect(refundDepositAck).toHaveSuccessfulTx();
+
+    // A rejected transfer back to the seller must bounce and restore Deposited.
+    val refundQueryId = 72011;
+    val rejectedRefund = escrow.sendRefundEscrowV2(
+        marketplace.address,
+        2,
+        7002,
+        refundQueryId,
+        seller.address,
+        { value: grams("0.1") },
+    );
+    expect(rejectedRefund).toHaveBouncedTx({
+        from: refundNftItem.address,
+        to: escrow.address,
+    });
+    expect(refundNftItem.owner()).toEqual(escrow.address);
+    val afterRejectedRefund = escrow.escrowRecordV2(2);
+    assert (afterRejectedRefund != null) throw ErrorsV2.InvalidRefund;
+    expect(afterRejectedRefund!!.status).toEqual(1);
+    expect(escrow.assetEscrowIdV2(refundNftItem.address)).toEqual(2);
+    expect(escrow.refundCallbackV2(2) == null).toEqual(true);
+
+    // Allow the seller transfer and retry with the same query ID.
+    val allowSellerRefund = refundNftItem.sendAny(
+        seller.address,
+        SetRejectReturn { rejectReturn: false }.toCell(),
+        { value: grams("0.02") },
+    );
+    expect(allowSellerRefund).toHaveSuccessfulTx();
+    val refund = escrow.sendRefundEscrowV2(
+        marketplace.address,
+        2,
+        7002,
+        refundQueryId,
+        seller.address,
+        { value: grams("0.1") },
+    );
+    expect(refund).toHaveSuccessfulTx();
+    expect(refundNftItem.owner()).toEqual(seller.address);
+    val refunded = escrow.escrowRecordV2(2);
+    assert (refunded != null) throw ErrorsV2.InvalidRefund;
+    expect(refunded!!.status).toEqual(5);
+    expect(escrow.assetEscrowIdV2(refundNftItem.address) == null).toEqual(true);
+
+    val refundCallback = escrow.refundCallbackV2(2);
+    assert (refundCallback != null) throw ErrorsV2.InvalidRefund;
+    expect(refundCallback!!.queryId).toEqual(refundQueryId);
+    expect(refundCallback!!.seller).toEqual(seller.address);
+
+    // A bounced Marketplace callback is durable and owner-retryable until exact ACK.
+    val refundCallbackBounce = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: EscrowRefundedV2 {
+            escrowId: 2,
+            productId: 7002,
+            queryId: refundQueryId,
+            nftItem: refundNftItem.address,
+            seller: seller.address,
+        },
+    }).bounced();
+    val refundCallbackBounceResult = net.send(marketplace.address, refundCallbackBounce);
+    expect(refundCallbackBounceResult).toHaveSuccessfulTx({
+        from: marketplace.address,
+        to: escrow.address,
+        bounced: true,
+    });
+    expect(escrow.refundCallbackV2(2) != null).toEqual(true);
+
+    val forgedRefundRetry = escrow.sendRetryRefundCallbackV2(
+        attacker.address,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(forgedRefundRetry).toHaveFailedTx({
+        from: attacker.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.NotOwner,
+    });
+    val retryRefundCallback = escrow.sendRetryRefundCallbackV2(
+        owner.address,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(retryRefundCallback).toHaveSuccessfulTx();
+    expect(escrow.refundCallbackV2(2) != null).toEqual(true);
+
+    val wrongRefundAck = escrow.sendEscrowRefundAckV2(
+        marketplace.address,
+        2,
+        7002,
+        refundQueryId,
+        refundNftItem.address,
+        attacker.address,
+        { value: grams("0.05") },
+    );
+    expect(wrongRefundAck).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRefund,
+    });
+    val validRefundAck = escrow.sendEscrowRefundAckV2(
+        marketplace.address,
+        2,
+        7002,
+        refundQueryId,
+        refundNftItem.address,
+        seller.address,
+        { value: grams("0.05") },
+    );
+    expect(validRefundAck).toHaveSuccessfulTx();
+    expect(escrow.refundCallbackV2(2) == null).toEqual(true);
 }
