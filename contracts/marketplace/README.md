@@ -33,7 +33,7 @@ The isolated MarketplaceV2 listing path is implemented and emulator-tested:
 5. MarketplaceV2 activates the product only after an authenticated callback matching product ID, query ID, NFT Item, seller, and escrow ID;
 6. MarketplaceV2 sends the exact deposit ACK, allowing Escrow to clear its durable callback.
 
-This is a listing/custody integration milestone only. The V2 path does not yet verify official Fragment collection provenance, implement a buyer purchase/payment entrypoint, release NFTs through a MarketplaceV2 order, pay sellers/platform, or refund buyers. It is not safe for production listing or purchasing.
+This is a listing/custody integration milestone only. V2 now checks the approved Fragment Gift Collection, the recognized Item Code hash, and the Item address derived from the collection and index before creating custody. It also validates the TEP-62 forward-payload marker and exact escrow query ID before accepting an ownership notification. The current notification tests construct messages from the expected NFT Item address; they do **not** yet execute a real deployed official NFT Item contract through an end-to-end TEP-62 transfer. That real-item transfer test remains a release blocker. V2 does not implement a buyer purchase/payment entrypoint, release NFTs through a MarketplaceV2 order, pay sellers/platform, or refund buyers. It is not safe for production listing or purchasing.
 
 ## Important: buying and settlement are not implemented
 
