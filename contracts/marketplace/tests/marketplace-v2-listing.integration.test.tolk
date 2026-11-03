@@ -227,6 +227,71 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(validEscrowExtra.itemIndex).toEqual(validItemIndex);
     expect(validEscrowExtra.kind).toEqual(3);
 
+    // A notification from the exact official NFT Item is still insufficient
+    // unless it carries the listing-specific marker and the escrow query ID.
+    val wrongMarkerPayload = beginCell()
+        .storeUint(1, 1)
+        .storeRef(beginCell().storeUint(0x11111111, 32).storeUint(3, 64).endCell())
+        .endCell();
+    val wrongMarkerNotification = createMessage({
+        bounce: true,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: NftOwnershipAssigned {
+            queryId: 3,
+            prevOwner: seller.address,
+            forwardPayload: wrongMarkerPayload.beginParse(),
+        },
+    });
+    val wrongMarkerResult = net.send(validNftItem, wrongMarkerNotification);
+    expect(wrongMarkerResult).toHaveFailedTx({
+        from: validNftItem,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(0);
+
+    val wrongQueryPayload = beginCell()
+        .storeUint(1, 1)
+        .storeRef(beginCell().storeUint(0x53564950, 32).storeUint(4, 64).endCell())
+        .endCell();
+    val wrongQueryNotification = createMessage({
+        bounce: true,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: NftOwnershipAssigned {
+            queryId: 3,
+            prevOwner: seller.address,
+            forwardPayload: wrongQueryPayload.beginParse(),
+        },
+    });
+    val wrongQueryResult = net.send(validNftItem, wrongQueryNotification);
+    expect(wrongQueryResult).toHaveFailedTx({
+        from: validNftItem,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(0);
+
+    val validDepositPayload = beginCell()
+        .storeUint(1, 1)
+        .storeRef(beginCell().storeUint(0x53564950, 32).storeUint(3, 64).endCell())
+        .endCell();
+    val validDepositNotification = createMessage({
+        bounce: true,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: NftOwnershipAssigned {
+            queryId: 3,
+            prevOwner: seller.address,
+            forwardPayload: validDepositPayload.beginParse(),
+        },
+    });
+    val validDepositResult = net.send(validNftItem, validDepositNotification);
+    expect(validDepositResult).toHaveSuccessfulTx();
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(1);
+    assert (escrow.depositCallbackV2(1) != null) throw ErrorsV2.InvalidRelease;
+
     // Exact duplicate CreateEscrowV2 is idempotent; changed identity is rejected.
     val exactReplay = escrow.sendCreateEscrowV2(
         marketplace.address,
