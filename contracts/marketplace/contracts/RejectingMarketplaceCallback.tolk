@@ -44,6 +44,7 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | SetTestEscrowAddressV2
     | EscrowDepositedV2
     | EscrowReleasedV2
+    | EscrowReleaseFailedV2
 
 contract RejectingMarketplaceCallback {
     author: "TON Market"
@@ -141,6 +142,34 @@ fun onInternalMessage(in: InMessage) {
                     value: grams("0.01"),
                     dest: storage.escrow,
                     body: EscrowReleaseAckV2 {
+                        orderId: msg.orderId,
+                        productId: msg.productId,
+                        escrowId: msg.escrowId,
+                        queryId: msg.queryId,
+                        nftItem: msg.nftItem,
+                        buyer: msg.buyer,
+                    },
+                }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+            }
+        }
+
+        EscrowReleaseFailedV2 => {
+            val storage = lazy RejectingMarketplaceCallbackStorage.load();
+            if (storage.rejectAction) {
+                // Force a real action-phase failure so the durable failure callback
+                // must remain stored and be retried by the Escrow owner.
+                createMessage({
+                    bounce: false,
+                    value: grams("1"),
+                    dest: storage.controller,
+                    body: beginCell().endCell().beginParse(),
+                }).send(SEND_MODE_REGULAR + SEND_MODE_BOUNCE_ON_ACTION_FAIL);
+            } else {
+                createMessage({
+                    bounce: BounceMode.Only256BitsOfBody,
+                    value: grams("0.01"),
+                    dest: storage.escrow,
+                    body: EscrowReleaseFailureAckV2 {
                         orderId: msg.orderId,
                         productId: msg.productId,
                         escrowId: msg.escrowId,
