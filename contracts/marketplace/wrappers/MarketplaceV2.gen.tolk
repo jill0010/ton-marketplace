@@ -63,6 +63,9 @@ fun MarketplaceV2.sendPublishProductV2(
     self,
     from: address,
     nftItem: address,
+    collection: address,
+    itemIndex: uint256,
+    kind: uint8,
     price: coins,
     config: SendParams = {},
 ): SendResultList {
@@ -70,7 +73,7 @@ fun MarketplaceV2.sendPublishProductV2(
         bounce: config.bounce,
         value: config.value,
         dest: self.address,
-        body: PublishProductV2 { nftItem, price },
+        body: PublishProductV2 { nftItem, collection, itemIndex, kind, price },
     });
     return net.send(from, genericMsg);
 }
