@@ -17,6 +17,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val seller = testing.treasury("marketplaceV2ListingSeller");
     val owner = testing.treasury("marketplaceV2ListingOwner");
     val attacker = testing.treasury("marketplaceV2ListingAttacker");
+    val treasury = testing.treasury("marketplaceV2ListingTreasury");
 
     val nftItem = RejectingNFTItem.fromStorage({
         owner: seller.address,
