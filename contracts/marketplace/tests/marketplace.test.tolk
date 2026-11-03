@@ -1036,11 +1036,11 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     val order = MarketplaceV2Order {
         id: 7001,
         productId: 3001,
-        status: 1,
-        deliveryStatus: 1,
-        sellerPayoutStatus: 0,
-        platformPayoutStatus: 0,
-        refundStatus: 0,
+        status: MarketplaceV2OrderStatus.PaymentAccepted,
+        deliveryStatus: MarketplaceV2DeliveryStatus.Pending,
+        sellerPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+        platformPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+        refundStatus: MarketplaceV2RefundStatus.None,
         createdAt: 1793366400,
         extra: orderExtra.toCell(),
     };
@@ -1049,9 +1049,9 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     val decodedExtra = decodedOrder.extra.load();
     expect(decodedOrder.id).toEqual(7001);
     expect(decodedOrder.productId).toEqual(3001);
-    expect(decodedOrder.status).toEqual(1);
-    expect(decodedOrder.deliveryStatus).toEqual(1);
-    expect(decodedOrder.sellerPayoutStatus).toEqual(0);
+    expect(decodedOrder.status).toEqual(MarketplaceV2OrderStatus.PaymentAccepted);
+    expect(decodedOrder.deliveryStatus).toEqual(MarketplaceV2DeliveryStatus.Pending);
+    expect(decodedOrder.sellerPayoutStatus).toEqual(MarketplaceV2PayoutStatus.NotCreated);
     expect(decodedOrder.platformPayoutStatus).toEqual(0);
     expect(decodedOrder.refundStatus).toEqual(0);
     val decodedParties = decodedExtra.parties.load();
