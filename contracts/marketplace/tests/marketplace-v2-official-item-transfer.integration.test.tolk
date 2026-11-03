@@ -1,9 +1,9 @@
 import "@acton/fmt"
-import "@acton/tlb/maybe"
-import "@acton/types/transaction"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
+import "@acton/tlb/maybe"
+import "@acton/types/transaction"
 
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
@@ -46,49 +46,56 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         }.toCell(),
     });
 
-    expect(marketplace.deploy(owner.address, { value: grams("0.2") }))
-        .toHaveSuccessfulDeploy({ to: marketplace.address });
-    expect(escrow.deploy(owner.address, { value: grams("0.2") }))
-        .toHaveSuccessfulDeploy({ to: escrow.address });
+    expect(
+        marketplace.deploy(owner.address, { value: grams("0.2") }),
+    ).toHaveSuccessfulDeploy({ to: marketplace.address });
+    expect(
+        escrow.deploy(owner.address, { value: grams("0.2") }),
+    ).toHaveSuccessfulDeploy({ to: escrow.address });
 
-    expect(marketplace.sendSetMarketplaceV2Escrow(
-        owner.address,
-        escrow.address,
-        { value: grams("0.02") },
-    )).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendSetMarketplaceV2Escrow(
+            owner.address,
+            escrow.address,
+            { value: grams("0.02") },
+        ),
+    ).toHaveSuccessfulTx();
 
     // Register the exact allowlisted Fragment Gift Item Code and approve its collection.
     val officialItemCode = parseCellFromHex(
         "b5ee9c72010101010023000842022498bd63f3e9cc2c20c79abe58899a4816ea156855b8d4fcd47cda4bae9e911a",
     );
-    expect(escrow.sendSetCollectionStatusV2(
-        owner.address,
-        owner.address,
-        2,
-        { value: grams("0.05") },
-    )).toHaveSuccessfulTx();
-    expect(escrow.sendSetCollectionItemCodeV2(
-        owner.address,
-        owner.address,
-        3,
-        officialItemCode,
-        { value: grams("0.05") },
-    )).toHaveSuccessfulTx();
-    expect(escrow.sendSetCollectionStatusV2(
-        owner.address,
-        owner.address,
-        1,
-        { value: grams("0.05") },
-    )).toHaveSuccessfulTx();
+    expect(
+        escrow.sendSetCollectionStatusV2(
+            owner.address,
+            owner.address,
+            2,
+            { value: grams("0.05") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(
+        escrow.sendSetCollectionItemCodeV2(
+            owner.address,
+            owner.address,
+            3,
+            officialItemCode,
+            { value: grams("0.05") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(
+        escrow.sendSetCollectionStatusV2(
+            owner.address,
+            owner.address,
+            1,
+            { value: grams("0.05") },
+        ),
+    ).toHaveSuccessfulTx();
 
     // Recreate the exact Fragment Gift Item StateInit used by the escrow's
     // collection/index address derivation. This deploys the allowlisted code,
     // rather than impersonating its future address in a network message.
     val itemIndex = 4242;
-    val itemConfig = beginCell()
-        .storeUint(itemIndex, 256)
-        .storeAddress(owner.address)
-        .endCell();
+    val itemConfig = beginCell().storeUint(itemIndex, 256).storeAddress(owner.address).endCell();
     val itemData = beginCell().storeRef(itemConfig).storeUint(0, 1).endCell();
     val itemStateInit: ContractState = { code: officialItemCode, data: itemData };
     val nftItem = AutoDeployAddress {
@@ -131,14 +138,10 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val deployItem = createMessage({
         bounce: false,
         value: grams("1.5"),
-        dest: {
-            workchain: 0,
-            stateInit: itemStateInit,
-        },
+        dest: { workchain: 0, stateInit: itemStateInit },
         body: deployBody,
     });
-    expect(net.send(owner.address, deployItem))
-        .toHaveSuccessfulDeploy({ to: nftItem });
+    expect(net.send(owner.address, deployItem)).toHaveSuccessfulDeploy({ to: nftItem });
 
     // Verify the actual deployed official Item reports the seller as owner.
     val beforeTransfer = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
@@ -172,15 +175,17 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
 
     // Publish from the real seller wallet; Marketplace reserves the item and
     // Escrow creates the pending custody record before the NFT transfer.
-    expect(marketplace.sendPublishProductV2(
-        seller.address,
-        nftItem,
-        owner.address,
-        itemIndex,
-        3,
-        grams("4"),
-        { value: grams("0.2") },
-    )).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendPublishProductV2(
+            seller.address,
+            nftItem,
+            owner.address,
+            itemIndex,
+            3,
+            grams("4"),
+            { value: grams("0.2") },
+        ),
+    ).toHaveSuccessfulTx();
 
     val pendingProduct = marketplace.productV2(1);
     assert (pendingProduct != null) throw ErrorsV2.InvalidRelease;
