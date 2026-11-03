@@ -131,8 +131,7 @@ fun onInternalMessage(in: InMessage) {
 
             val codeHash = itemCode.code.hash();
             assert (
-                codeHash ==
-                0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
+                codeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
                 codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
             ) throw ErrorsV2.InvalidCollectionItemCode;
 
