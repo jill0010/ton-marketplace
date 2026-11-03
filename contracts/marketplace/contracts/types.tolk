@@ -393,6 +393,41 @@ enum ErrorsV2 {
     InvalidReleaseConfirmation = 203
 }
 
+struct (0x71b00001) CreateEscrowV2 {
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+struct (0x71b00004) EscrowDepositedV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+struct (0x71b00005) EscrowDepositAckV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+struct (0x71b00006) RetryDepositCallbackV2 {
+    escrowId: uint64
+}
+
+struct EscrowDepositCallbackV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
 struct NFTEscrowV2Record {
     escrowId: uint64
     nftItem: address
@@ -406,7 +441,9 @@ struct NFTEscrowV2Storage {
     owner: address
     marketplace: address
     records: map<uint64, Cell<NFTEscrowV2Record>>
+    nextEscrowId: uint64
     queryToEscrow: map<uint64, uint64>
+    depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
     releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
 }
