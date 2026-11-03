@@ -965,4 +965,29 @@ get fun `test settlement split conserves gross amount and rounds fee down`() {
     expect(oneNanoton.platformFee).toEqual(0);
     expect(oneNanoton.sellerAmount).toEqual(1);
     expect(oneNanoton.platformFee + oneNanoton.sellerAmount).toEqual(1);
+
+    // Exact floor-rounding boundaries around each 100-nanoton fee unit.
+    val thirtyThree = calculateSettlementAmounts(33);
+    expect(thirtyThree.platformFee).toEqual(0);
+    expect(thirtyThree.sellerAmount).toEqual(33);
+
+    val thirtyFour = calculateSettlementAmounts(34);
+    expect(thirtyFour.platformFee).toEqual(1);
+    expect(thirtyFour.sellerAmount).toEqual(33);
+
+    val ninetyNine = calculateSettlementAmounts(99);
+    expect(ninetyNine.platformFee).toEqual(2);
+    expect(ninetyNine.sellerAmount).toEqual(97);
+
+    val oneHundred = calculateSettlementAmounts(100);
+    expect(oneHundred.platformFee).toEqual(3);
+    expect(oneHundred.sellerAmount).toEqual(97);
+
+    // A large valid TON amount exercises the divide-before-multiply path.
+    val largeGross = grams("100000000000000000000000");
+    val largeSplit = calculateSettlementAmounts(largeGross);
+    val expectedLargeFee = grams("3000000000000000000000");
+    expect(largeSplit.platformFee).toEqual(expectedLargeFee);
+    expect(largeSplit.sellerAmount).toEqual(largeGross - expectedLargeFee);
+    expect(largeSplit.platformFee + largeSplit.sellerAmount).toEqual(largeGross);
 }
