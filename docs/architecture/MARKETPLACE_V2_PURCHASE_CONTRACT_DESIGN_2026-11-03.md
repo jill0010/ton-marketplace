@@ -266,10 +266,13 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 - MarketplaceV2 derives the seller from `in.senderAddress`, reserves each NFT Item address before sending `CreateEscrowV2`, and allocates product IDs and escrow query IDs from separate monotonic counters.
 - Product state remains Pending until NFTEscrowV2 sends an authenticated `EscrowDepositedV2` callback. The callback must match the configured Escrow sender, product ID, query ID, NFT Item, seller, and nonzero escrow ID.
 - MarketplaceV2 sends an exact `EscrowDepositAckV2`; duplicate exact callbacks are idempotently re-ACKed.
+- The configured V2 Escrow address is immutable after initial owner configuration; owner rotation is rejected to avoid stranding custody callbacks.
+- Integration tests reject a forged `EscrowDepositedV2` callback even when its body contains otherwise exact product fields.
 - An exact RichBounce for a pending `CreateEscrowV2` request cancels that pending listing and releases only its matching NFT Item index. Malformed, stale, or mismatched bounces are no-ops.
 - Added an end-to-end emulator test covering owner-only Escrow configuration, pending listing creation, NFT custody transfer, callback-authenticated activation, duplicate NFT listing rejection, and deposit callback ACK cleanup.
 - Opcode registry check reports 33 Tolk declarations with no collisions.
 - Contracts workflow #201 on commit `431923431dcefd378c43ccff9736c32063fa7776`: success — build, **98 tests in 11 files**, linter, and formatter.
+- Security hardening: Escrow binding is one-time/immutable and forged callback rejection is tested. Contracts workflow #205 on commit `d1c77c9eb167fb0da6c0e72d0a895d7d680ccce9`: success — opcode check (33 declarations, no collisions), build, **98 tests in 11 files**, linter, and formatter.
 
 ### Explicit limits
 
