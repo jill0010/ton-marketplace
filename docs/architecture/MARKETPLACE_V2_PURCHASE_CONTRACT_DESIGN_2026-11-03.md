@@ -83,7 +83,7 @@ Independent exceptional states:
 - `RefundPending`;
 - `ManualReview`.
 
-The order is Completed only when NFT delivery, seller payout, and platform payout are each confirmed. Partial payout is an explicit state, never represented as Completed.
+User-facing order status is Completed only after NFT delivery and both payout recipient transactions are observed successful and finalized in the chain trace. On-chain state records PayoutsDispatched and remains bounce-recoverable; partial payout is never represented as completed.
 
 Escrow:
 `Deposited → ReleasePending → Released`.
