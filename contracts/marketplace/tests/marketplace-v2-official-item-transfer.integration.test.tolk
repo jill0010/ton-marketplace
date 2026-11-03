@@ -242,4 +242,36 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(activeProduct!!.status).toEqual(2);
     expect(activeProduct.escrowId).toEqual(1);
     expect(escrow.depositCallbackV2(1) == null).toEqual(true);
+
+    // Only the seller or Marketplace owner may cancel a deposited listing.
+    val forgedCancel = marketplace.sendCancelProductV2(
+        owner.address,
+        1,
+        { value: grams("0.1") },
+    );
+    expect(forgedCancel).toHaveFailedTx({
+        from: owner.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidRefund,
+    });
+    expect(marketplace.productV2(1)!!.status).toEqual(2);
+
+    // Seller cancellation returns the NFT through the real Item contract,
+    // confirms ownership via TEP-62 excesses, and ACKs the durable callback.
+    val cancel = marketplace.sendCancelProductV2(
+        seller.address,
+        1,
+        { value: grams("0.2") },
+    );
+    expect(cancel).toHaveSuccessfulTx();
+
+    val afterRefund = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
+    expect(afterRefund.isSuccess()).toEqual(true);
+    expect(afterRefund.unwrap().get(3) as address).toEqual(seller.address);
+
+    expect(marketplace.productV2(1)!!.status).toEqual(5);
+    expect(marketplace.assetProductIdV2(nftItem) == null).toEqual(true);
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(5);
+    expect(escrow.assetEscrowIdV2(nftItem) == null).toEqual(true);
+    expect(escrow.refundCallbackV2(1) == null).toEqual(true);
 }
