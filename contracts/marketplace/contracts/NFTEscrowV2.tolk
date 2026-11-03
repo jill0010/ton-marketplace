@@ -634,7 +634,6 @@ fun onInternalMessage(in: InMessage) {
                     queryId: callback.queryId,
                     nftItem: callback.nftItem,
                     buyer: callback.buyer,
-                    seller: callback.seller,
                 },
             });
             retryMessage.send(SEND_MODE_REGULAR);
