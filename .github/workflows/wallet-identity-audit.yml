@@ -148,6 +148,18 @@ jobs:
         run: |
           psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261103160500_add_marketplace_seller_return_status.sql
 
+      - name: Create minimal products schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --command "CREATE TABLE IF NOT EXISTS public.products (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, type text NOT NULL, description text, price numeric NOT NULL, currency text NOT NULL, image_url text, status text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());"
+
+      - name: Apply product chain listing metadata migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261103162000_add_chain_listing_metadata_to_products.sql
+
       - name: Test marketplace ledger RLS, 97/3 arithmetic, and idempotency constraints
         env:
           PGPASSWORD: postgres
