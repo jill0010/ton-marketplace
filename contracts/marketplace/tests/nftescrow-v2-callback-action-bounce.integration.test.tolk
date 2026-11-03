@@ -64,6 +64,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
             releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
                 pendingReleases: [],
                 releaseCallbacks: [],
+                releaseFailureCallbacks: [],
             }.toCell(),
             refundStorage: NFTEscrowV2RefundCallbackStorage {
                 pendingRefunds: [],
