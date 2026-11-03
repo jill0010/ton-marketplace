@@ -391,6 +391,7 @@ enum ErrorsV2 {
     InvalidRelease = 201
     ReleaseAlreadyPending = 202
     InvalidReleaseConfirmation = 203
+    AssetAlreadyEscrowed = 204
 }
 
 struct (0x71b00001) CreateEscrowV2 {
@@ -447,6 +448,8 @@ struct NFTEscrowV2Storage {
     owner: address
     marketplace: address
     records: map<uint64, Cell<NFTEscrowV2Record>>
+    // NFT Item -> current custody escrow ID; released items become available again.
+    assetToEscrow: map<address, uint64>
     nextEscrowId: uint64
     queryToEscrow: map<uint64, uint64>
     callbacks: Cell<NFTEscrowV2CallbackStorage>
