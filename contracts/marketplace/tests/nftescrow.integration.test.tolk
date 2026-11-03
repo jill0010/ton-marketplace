@@ -738,6 +738,15 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         exitCode: Errors.AssetAlreadyListed,
     });
 
+    // 模拟 Marketplace 暂时无法认证 Escrow 回调的情况。
+    // NFT 退款本身仍可完成，但 EscrowRefunded 回调必须保留待确认记录。
+    val misconfigureEscrowRes = marketplace.sendAny(
+        deployer.address,
+        SetEscrowAddress { escrow: deployer.address }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(misconfigureEscrowRes).toHaveSuccessfulTx<SetEscrowAddress>();
+
     // 卖家申请退款，由 Emulator 递归处理 Escrow 与真实 NFT 的交易。
     val refundMessage = createMessage({
         bounce: false,
@@ -768,6 +777,44 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     assert (refundedRecord != null) throw Errors.InvalidEscrow;
 
     expect(refundedRecord!!.status).toEqual(4);
+
+    // NFT 已退回，但 Marketplace 拒绝错误 Escrow 身份的回调时，
+    // 商品仍保持 Active，且 NFT listing reservation 不得提前释放。
+    val productBeforeRefundAck = marketplace.product(1);
+    assert (productBeforeRefundAck != null) throw Errors.ProductNotFound;
+    expect(productBeforeRefundAck!!.status).toEqual(2);
+    val duplicateBeforeRefundAck = marketplace.sendAny(
+        seller.address,
+        publishBody,
+        { value: grams("0.1") },
+    );
+    expect(duplicateBeforeRefundAck).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: Errors.AssetAlreadyListed,
+    });
+
+    // 恢复正确 Escrow 身份后，管理员重试仍待确认的退款回调。
+    val restoreEscrowRes = marketplace.sendAny(
+        deployer.address,
+        SetEscrowAddress { escrow: escrow.address }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(restoreEscrowRes).toHaveSuccessfulTx<SetEscrowAddress>();
+    val retryRefundCallbackRes = escrow.sendAny(
+        deployer.address,
+        RetryRefundCallback { escrowId: 1 }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(retryRefundCallbackRes).toHaveSuccessfulTx<RetryRefundCallback>({
+        from: deployer.address,
+        to: escrow.address,
+    });
+
+    // 只有 Marketplace 接受认证回调后，商品才取消并释放 NFT 索引。
+    val productAfterRefundAck = marketplace.product(1);
+    assert (productAfterRefundAck != null) throw Errors.ProductNotFound;
+    expect(productAfterRefundAck!!.status).toEqual(5);
 
     // 退款完成后，旧 CreateEscrow 请求必须拒绝，不能复活已退款托管记录。
     val staleCreateReplayRes = escrow.sendAny(
