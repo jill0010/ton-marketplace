@@ -292,6 +292,47 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(escrow.escrowRecordV2(1)!!.status).toEqual(1);
     assert (escrow.depositCallbackV2(1) != null) throw ErrorsV2.InvalidRelease;
 
+    // Replaying the exact ownership notification must not create a second
+    // transition or overwrite the durable callback after the record is deposited.
+    val duplicateDepositResult = net.send(validNftItem, validDepositNotification);
+    expect(duplicateDepositResult).toHaveFailedTx({
+        from: validNftItem,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(1);
+    assert (escrow.depositCallbackV2(1) != null) throw ErrorsV2.InvalidRelease;
+
+    // The referenced payload cell must not contain trailing bits or refs.
+    val trailingPayload = beginCell()
+        .storeUint(1, 1)
+        .storeRef(
+            beginCell()
+                .storeUint(0x53564950, 32)
+                .storeUint(3, 64)
+                .storeUint(1, 1)
+                .endCell(),
+        )
+        .endCell();
+    val trailingNotification = createMessage({
+        bounce: true,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: NftOwnershipAssigned {
+            queryId: 3,
+            prevOwner: seller.address,
+            forwardPayload: trailingPayload.beginParse(),
+        },
+    });
+    val trailingResult = net.send(validNftItem, trailingNotification);
+    expect(trailingResult).toHaveFailedTx({
+        from: validNftItem,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(1);
+    assert (escrow.depositCallbackV2(1) != null) throw ErrorsV2.InvalidRelease;
+
     // Exact duplicate CreateEscrowV2 is idempotent; changed identity is rejected.
     val exactReplay = escrow.sendCreateEscrowV2(
         marketplace.address,
