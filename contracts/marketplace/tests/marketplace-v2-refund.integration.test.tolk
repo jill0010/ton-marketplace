@@ -5,6 +5,7 @@ import "@acton/tlb/maybe"
 import "@acton/types/transaction"
 
 import "@contracts/types"
+import "@contracts/MockMarketplaceEscrowV2"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/MockMarketplaceEscrowV2.gen"
 
