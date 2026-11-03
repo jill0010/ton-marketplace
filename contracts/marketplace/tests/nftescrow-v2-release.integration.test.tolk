@@ -21,14 +21,17 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     });
 
     var records: map<uint64, Cell<NFTEscrowV2Record>> = [];
-    records.set(1, NFTEscrowV2Record {
-        escrowId: 1,
-        nftItem: nftItem.address,
-        seller: seller.address,
-        productId: 7001,
-        status: 0,
-        queryId: depositQueryId,
-    }.toCell());
+    records.set(
+        1,
+        NFTEscrowV2Record {
+            escrowId: 1,
+            nftItem: nftItem.address,
+            seller: seller.address,
+            productId: 7001,
+            status: 0,
+            queryId: depositQueryId,
+        }.toCell(),
+    );
 
     var queryToEscrow: map<uint64, uint64> = [];
     queryToEscrow.set(depositQueryId, 1);
