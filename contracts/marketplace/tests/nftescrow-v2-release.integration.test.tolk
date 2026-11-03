@@ -6,8 +6,8 @@ import "@acton/types/transaction"
 
 import "@contracts/RejectingNFTItem"
 import "@contracts/types"
-import "@wrappers/RejectingNFTItem.gen"
 import "@wrappers/NFTEscrowV2.gen"
+import "@wrappers/RejectingNFTItem.gen"
 
 get fun `test V2 escrow confirms NFT deposit release callback and exact acknowledgement`() {
     val seller = testing.treasury("v2ReleaseSeller");
