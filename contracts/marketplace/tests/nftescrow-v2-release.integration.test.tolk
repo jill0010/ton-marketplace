@@ -253,7 +253,6 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     expect(releaseFailure.queryId).toEqual(releaseQueryId);
     expect(releaseFailure.nftItem).toEqual(nftItem.address);
     expect(releaseFailure.buyer).toEqual(buyer.address);
-    expect(releaseFailure.seller).toEqual(seller.address);
 
     // A bounced callback delivery leaves the durable failure snapshot intact.
     val bouncedFailureCallback = createMessage({
@@ -307,7 +306,6 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         releaseQueryId,
         nftItem.address,
         buyer.address,
-        seller.address,
         { value: grams("0.05") },
     );
     expect(forgedFailureAck).toHaveFailedTx({
