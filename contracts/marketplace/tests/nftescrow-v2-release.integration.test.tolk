@@ -118,8 +118,8 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         exitCode: ErrorsV2.InvalidRelease,
     });
 
-    // An underfunded release attempt must roll back atomically: no pending state,
-    // query reservation, or NFT custody index may be lost.
+    // A release whose outbound action fails must roll back atomically: no pending
+    // state, query reservation, or NFT custody index may be lost.
     val underfundedRelease = escrow.sendReleaseEscrowV2(
         marketplace.address,
         8000,
@@ -139,7 +139,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     expect(underfundedDescription.aborted).toEqual(true);
     assert (underfundedDescription.action is TlbJust) throw 402;
     val underfundedAction = underfundedDescription.action.value.load();
-    expect(underfundedAction.noFunds).toEqual(true);
+    expect(underfundedAction.resultCode != 0).toEqual(true);
     expect(nftItem.owner()).toEqual(escrow.address);
 
     val afterUnderfunded = escrow.escrowRecordV2(1);
@@ -147,6 +147,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     expect(afterUnderfunded!!.status).toEqual(1);
     expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
 
+    // A funded retry uses the same query ID; the failed attempt left no stale reservation.
     // Marketplace requests delivery. The NFT Item itself performs the ownership change.
     val release = escrow.sendReleaseEscrowV2(
         marketplace.address,
