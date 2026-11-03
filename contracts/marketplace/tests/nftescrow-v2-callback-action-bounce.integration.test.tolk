@@ -61,10 +61,14 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         queryToEscrow: seededQueries,
         callbacks: NFTEscrowV2CallbackStorage {
             depositCallbacks: [],
-            pendingReleases: [],
-            releaseCallbacks: [],
-            pendingRefunds: [],
-            refundCallbacks: [],
+            releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
+                pendingReleases: [],
+                releaseCallbacks: [],
+            }.toCell(),
+            refundStorage: NFTEscrowV2RefundCallbackStorage {
+                pendingRefunds: [],
+                refundCallbacks: [],
+            }.toCell(),
             collectionStorage: NFTEscrowV2CollectionStorage {
                 collections: [],
                 collectionItemCodes: [],
