@@ -457,6 +457,12 @@ enum ErrorsV2 {
     InvalidNftItem = 209
     InvalidProductKind = 210
     InvalidRefund = 211
+    InvalidPurchase = 212
+    InsufficientPayment = 213
+    InvalidPayout = 214
+    InvalidTreasury = 215
+    OrderNotFound = 216
+    InvalidOrder = 217
 }
 
 struct CreateEscrowV2Extra {
@@ -765,6 +771,9 @@ struct MarketplaceV2OrderOperations {
     platformPayoutQueryId: uint64
     buyerRefundQueryId: uint64
     sellerReturnQueryId: uint64
+    sellerPayoutOperationId: uint64
+    platformPayoutOperationId: uint64
+    buyerRefundOperationId: uint64
 }
 
 struct MarketplaceV2OrderExtra {
