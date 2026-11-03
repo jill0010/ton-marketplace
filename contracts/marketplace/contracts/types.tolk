@@ -624,6 +624,7 @@ struct MarketplaceV2OrderOperations {
     releaseQueryId: uint64
     sellerPayoutQueryId: uint64
     platformPayoutQueryId: uint64
+    buyerRefundQueryId: uint64
 }
 
 struct MarketplaceV2OrderExtra {
