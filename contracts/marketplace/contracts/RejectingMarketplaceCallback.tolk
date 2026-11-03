@@ -129,7 +129,7 @@ fun onInternalMessage(in: InMessage) {
                     value: grams("1"),
                     dest: storage.controller,
                     body: beginCell().endCell().beginParse(),
-                }).send(SEND_MODE_REGULAR);
+                }).send(SEND_MODE_REGULAR + SEND_MODE_BOUNCE_ON_ACTION_FAIL);
             } else {
                 createMessage({
                     bounce: BounceMode.Only256BitsOfBody,
