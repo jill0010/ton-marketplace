@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { useLanguage } from "../lib/useLanguage"
+import { ConnectTonButton } from "./ConnectTonButton"
 
 function TonMark() {
   return (
@@ -107,9 +108,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-[#0098EA] px-4 text-sm font-semibold text-white shadow-md shadow-blue-950/30 transition hover:bg-[#17A8F5]"><TonMark />
-                {t("Connect TON", "连接钱包")}
-              </button>
+              <ConnectTonButton />
             )}
           </nav>
         </div>
