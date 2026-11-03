@@ -1,8 +1,6 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@acton/tlb/maybe"
-import "@acton/types/transaction"
 
 import "@contracts/RejectingNFTItem"
 import "@contracts/types"
@@ -142,6 +140,52 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     assert (afterRejectedRelease != null) throw ErrorsV2.InvalidRelease;
     expect(afterRejectedRelease!!.status).toEqual(1);
     expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
+
+    // Malformed RichBounce envelope and truncated original TEP-62 body are ignored.
+    // Neither may fail the bounce transaction or alter the reserved custody state.
+    val truncatedEnvelopeMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: beginCell().storeUint(0xfffffffe, 32).endCell(),
+    }).bounced();
+    val truncatedEnvelopeResult = net.send(nftItem.address, truncatedEnvelopeMessage);
+    expect(truncatedEnvelopeResult).toHaveSuccessfulTx({
+        from: nftItem.address,
+        to: escrow.address,
+        bounced: true,
+    });
+
+    val truncatedTransferRichBounce = RichBounceBody {
+        originalBody: beginCell().storeUint(0x5fcc3d14, 32).endCell(),
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.05"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: 402,
+        computePhase: null,
+    };
+    val truncatedTransferMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: truncatedTransferRichBounce,
+    }).bounced();
+    val truncatedTransferResult = net.send(nftItem.address, truncatedTransferMessage);
+    expect(truncatedTransferResult).toHaveSuccessfulTx({
+        from: nftItem.address,
+        to: escrow.address,
+        bounced: true,
+    });
+
+    val afterMalformedBounces = escrow.escrowRecordV2(1);
+    assert (afterMalformedBounces != null) throw ErrorsV2.InvalidRelease;
+    expect(afterMalformedBounces!!.status).toEqual(1);
+    expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
+    expect(nftItem.owner()).toEqual(escrow.address);
 
     // The test controller permits delivery again. A retry with the same query ID
     // proves the failed attempt did not leave a stale query reservation.
