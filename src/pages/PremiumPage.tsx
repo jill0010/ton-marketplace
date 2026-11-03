@@ -33,6 +33,15 @@ type MarketQuote = {
   updatedAt: number
 }
 
+type TelegramProfile = {
+  username: string
+  displayName: string
+  bio: string | null
+  extra: string | null
+  avatarUrl: string | null
+  profileUrl: string
+}
+
 type WalletVerification = {
   verified: boolean
   address: string
@@ -71,6 +80,9 @@ export function PremiumPage() {
 
   const [recipient, setRecipient] = useState<"self" | "other">("self")
   const [username, setUsername] = useState("")
+  const [telegramProfile, setTelegramProfile] = useState<TelegramProfile | null>(null)
+  const [profileLookup, setProfileLookup] = useState<"idle" | "loading" | "found" | "not-found" | "error">("idle")
+  const [profileLookupMessage, setProfileLookupMessage] = useState("")
   const [selectedPlan, setSelectedPlan] =
     useState<Plan["id"]>("year")
 
@@ -89,6 +101,78 @@ export function PremiumPage() {
   const pendingProofRef = useRef(false)
   const verificationInProgressRef = useRef(false)
   const restoreRequestRef = useRef(0)
+
+  // 输入 Telegram 用户名后，延迟查询公开头像和资料，避免每个按键都请求。
+  useEffect(() => {
+    let active = true
+    const normalizedUsername = username.trim().replace(/^@+/, "")
+    setTelegramProfile(null)
+    setProfileLookupMessage("")
+
+    if (
+      normalizedUsername.length < 5 ||
+      normalizedUsername.length > 32 ||
+      !/^[A-Za-z][A-Za-z0-9_]*$/.test(normalizedUsername)
+    ) {
+      setProfileLookup("idle")
+      return () => {
+        active = false
+      }
+    }
+
+    setProfileLookup("loading")
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          await ensureAnonymousSession()
+          if (!active) return
+
+          const { data, error } = await anonymousSupabase.functions.invoke(
+            "telegram-user-profile",
+            { body: { username: normalizedUsername } },
+          )
+
+          if (!active) return
+
+          if (error) {
+            throw new Error(
+              typeof data?.error === "string"
+                ? data.error
+                : error.message || "Telegram 资料查询失败",
+            )
+          }
+
+          if (data?.success === true && data.profile) {
+            setTelegramProfile(data.profile as TelegramProfile)
+            setProfileLookup("found")
+            return
+          }
+
+          setProfileLookup(
+            data?.code === "USER_NOT_FOUND" ? "not-found" : "error",
+          )
+          setProfileLookupMessage(
+            typeof data?.error === "string"
+              ? data.error
+              : "暂时无法读取该用户的公开资料。",
+          )
+        } catch (error) {
+          if (!active) return
+          setProfileLookup("error")
+          setProfileLookupMessage(
+            error instanceof Error
+              ? error.message
+              : "Telegram 资料查询失败，请稍后重试。",
+          )
+        }
+      })()
+    }, 500)
+
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [username])
 
   // =====================================================
   // 1. 读取会员套餐价格
@@ -743,17 +827,80 @@ export function PremiumPage() {
               className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-400"
             />
 
-            <p className="text-xs leading-5 text-zinc-500">
-              {username
-                ? t(
-                    `Entered recipient: @${username}. Profile verification is not connected yet.`,
-                    `已输入接收人：@${username}。用户头像和身份验证功能尚未接通。`,
-                  )
-                : t(
-                    "Enter a username without the @ symbol. Profile lookup is not connected yet.",
-                    "请输入用户名，可不带 @ 符号。头像和资料查询功能尚未接通。",
+            <div className="space-y-3" aria-live="polite">
+              {profileLookup === "idle" && (
+                <p className="text-xs leading-5 text-zinc-500">
+                  {t(
+                    "Enter a public Telegram username (with or without @).",
+                    "输入 Telegram 用户名（可带或不带 @），系统会自动查询公开头像和资料。",
                   )}
-            </p>
+                </p>
+              )}
+
+              {profileLookup === "loading" && (
+                <p className="text-xs text-sky-300">
+                  {t("Looking up Telegram profile…", "正在查询 Telegram 用户资料…")}
+                </p>
+              )}
+
+              {profileLookup === "not-found" && (
+                <p className="text-xs text-amber-300">
+                  {profileLookupMessage || t("Username not found.", "未找到该用户名。")}
+                </p>
+              )}
+
+              {profileLookup === "error" && (
+                <p className="text-xs text-amber-300">
+                  {profileLookupMessage || t("Public profile is unavailable.", "暂时无法读取公开资料。")}
+                </p>
+              )}
+
+              {profileLookup === "found" && telegramProfile && (
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
+                  {telegramProfile.avatarUrl ? (
+                    <img
+                      src={telegramProfile.avatarUrl}
+                      alt={telegramProfile.displayName}
+                      referrerPolicy="no-referrer"
+                      className="h-14 w-14 shrink-0 rounded-full bg-black/20 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-xl font-semibold text-sky-200">
+                      {telegramProfile.displayName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="break-words text-sm font-semibold text-white">
+                      {telegramProfile.displayName}
+                    </p>
+                    <p className="text-xs text-sky-300">@{telegramProfile.username}</p>
+                    {telegramProfile.bio && (
+                      <p className="whitespace-pre-wrap break-words text-xs leading-5 text-zinc-300">
+                        {telegramProfile.bio}
+                      </p>
+                    )}
+                    {telegramProfile.extra && (
+                      <p className="text-xs text-zinc-500">{telegramProfile.extra}</p>
+                    )}
+                    <a
+                      href={telegramProfile.profileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block pt-1 text-xs text-sky-300 hover:underline"
+                    >
+                      {t("Open Telegram profile", "打开 Telegram 个人资料")}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs leading-5 text-zinc-500">
+                {t(
+                  "Only public Telegram profile details are shown. This lookup does not verify the recipient's identity or guarantee Premium delivery.",
+                  "这里只显示 Telegram 公开资料，不代表已验证接收人身份，也不代表 Premium 已成功赠送。",
+                )}
+              </p>
+            </div>
           </div>
         )}
       </section>
