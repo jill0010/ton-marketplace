@@ -1,4 +1,6 @@
 import "@acton/fmt"
+import "@acton/tlb/maybe"
+import "@acton/types/transaction"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
@@ -94,16 +96,54 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         stateInit: itemStateInit,
     }.calculateAddress();
 
+    // Fragment collection deployment ABI: the collection sends the deploy
+    // message and names the seller as the initial owner. This is the same
+    // initialization path exercised by official-nft-emulation.test.tolk.
+    val tokenInfo = beginCell()
+        .storeUint(1, 8)
+        .storeUint(65, 8)
+        .storeUint(1, 8)
+        .storeUint(66, 8)
+        .endCell();
+    val nftContent = beginCell().storeUint(1, 8).storeUint(120, 8).endCell();
+    val auctionConfig = beginCell()
+        .storeAddress(owner.address)
+        .storeCoins(grams("1"))
+        .storeCoins(grams("1"))
+        .storeUint(1, 8)
+        .storeUint(60, 32)
+        .storeUint(3600, 32)
+        .endCell();
+    val royaltyParams = beginCell()
+        .storeUint(0, 16)
+        .storeUint(100, 16)
+        .storeAddress(owner.address)
+        .endCell();
+    val deployBody = beginCell()
+        .storeUint(0x299a3e15, 32)
+        .storeAddress(seller.address)
+        .storeCoins(grams("1"))
+        .storeRef(tokenInfo)
+        .storeRef(nftContent)
+        .storeRef(auctionConfig)
+        .storeRef(royaltyParams)
+        .endCell();
     val deployItem = createMessage({
         bounce: false,
-        value: grams("0.3"),
+        value: grams("1.5"),
         dest: {
             workchain: 0,
             stateInit: itemStateInit,
         },
+        body: deployBody,
     });
-    expect(net.send(seller.address, deployItem))
+    expect(net.send(owner.address, deployItem))
         .toHaveSuccessfulDeploy({ to: nftItem });
+
+    // Verify the actual deployed official Item reports the seller as owner.
+    val beforeTransfer = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
+    expect(beforeTransfer.isSuccess()).toEqual(true);
+    expect(beforeTransfer.unwrap().get(3) as address).toEqual(seller.address);
 
     // Publish from the real seller wallet; Marketplace reserves the item and
     // Escrow creates the pending custody record before the NFT transfer.
@@ -146,6 +186,12 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     });
     val transferResult = net.send(seller.address, transfer);
     expect(transferResult).toHaveSuccessfulTx();
+
+    // Assert the NFT Item's own getter confirms the ownership change; this
+    // prevents a notification-only or forged-sender test from passing.
+    val afterTransfer = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
+    expect(afterTransfer.isSuccess()).toEqual(true);
+    expect(afterTransfer.unwrap().get(3) as address).toEqual(escrow.address);
 
     // The official Item's emitted notification must drive the complete
     // Escrow -> Marketplace callback -> exact ACK chain.
