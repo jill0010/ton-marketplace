@@ -116,3 +116,6 @@ The shared type module now includes serialization-only V2 order snapshot and ind
 ## V2 seller refund lifecycle checkpoint
 
 NFTEscrowV2 now supports seller-directed NFT refund from a deposited record, RichBounce restoration to Deposited, authenticated NFT Item excesses confirmation, durable callback, owner retry, and exact Marketplace ACK cleanup. This is the Escrow half only: MarketplaceV2 seller cancellation/callback handling is not yet implemented, so no user-facing V2 cancel/refund action is available. The refund messages do not accept buyer funds.
+
+
+Latest Contracts workflow #322 passed on `cbc1306c0ba70dd3577b069a1bceeb3d76a8fb1c`: 39 declarations with no opcode collisions, build, 100 tests in 12 files, linter, formatter. V2 refund opcodes are implemented in NFTEscrowV2 only; MarketplaceV2 seller cancellation/callback handling is still pending.
