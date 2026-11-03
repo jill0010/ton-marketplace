@@ -20,7 +20,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         owner: seller.address,
     });
 
-    val escrow = NFTEscrowV2.fromStorage({
+    val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
         owner: owner.address,
         marketplace: marketplace.address,
         records: [],
