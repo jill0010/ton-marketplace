@@ -698,12 +698,156 @@ fun onInternalMessage(in: InMessage) {
     }
 }
 
-fun onBouncedMessage(in: InMessageBounced) {
+fun restorePayoutAfterBounce(
+    orderId: uint64,
+    operationId: uint64,
+    queryId: uint64,
+    beneficiary: address,
+    amount: coins,
+    kind: uint8,
+    sender: address,
+) {
     var storage = lazy MarketplaceV2Storage.load();
-
-    if (!storage.escrowConfigured || in.senderAddress != storage.escrow) {
+    val payoutResult = storage.payouts.get(operationId);
+    if (!payoutResult.isFound) {
         return;
     }
+    var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
+    if (
+        payout.status != MarketplaceV2PayoutStatus.Dispatched ||
+        payout.orderId != orderId ||
+        payout.operationId != operationId ||
+        payout.queryId != queryId ||
+        payout.beneficiary != beneficiary ||
+        payout.amount != amount ||
+        payout.kind != kind ||
+        sender != beneficiary
+    ) {
+        return;
+    }
+
+    val orderResult = storage.orders.get(orderId);
+    if (!orderResult.isFound) {
+        return;
+    }
+    var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+    if (order.id != orderId) {
+        return;
+    }
+
+    payout.status = MarketplaceV2PayoutStatus.Bounced;
+    storage.payouts.set(operationId, payout.toCell());
+    if (kind == 1) {
+        order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Bounced;
+        order.status = MarketplaceV2OrderStatus.SettlementPending;
+    } else if (kind == 2) {
+        order.platformPayoutStatus = MarketplaceV2PayoutStatus.Bounced;
+        order.status = MarketplaceV2OrderStatus.SettlementPending;
+    } else if (kind == 3) {
+        order.refundStatus = MarketplaceV2RefundStatus.Bounced;
+        order.status = MarketplaceV2OrderStatus.RefundPending;
+    } else {
+        return;
+    }
+    storage.orders.set(orderId, order.toCell());
+    storage.save();
+}
+
+fun handleReleaseRequestBounce(msg: ReleaseEscrowV2, sender: address) {
+    var storage = lazy MarketplaceV2Storage.load();
+    if (!storage.escrowConfigured || sender != storage.escrow) {
+        return;
+    }
+
+    val orderIdResult = storage.releaseQueryToOrder.get(msg.queryId);
+    if (!orderIdResult.isFound || orderIdResult.loadValue() != msg.orderId) {
+        return;
+    }
+    val orderResult = storage.orders.get(msg.orderId);
+    if (!orderResult.isFound) {
+        return;
+    }
+    var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+    var orderExtra = order.extra.load();
+    val parties = orderExtra.parties.load();
+    val asset = orderExtra.asset.load();
+    val operations = orderExtra.operations.load();
+    val settlement = orderExtra.settlement.load();
+
+    if (
+        order.productId != msg.productId ||
+        operations.releaseQueryId != msg.queryId ||
+        asset.escrowId != msg.escrowId ||
+        parties.buyer != msg.buyer
+    ) {
+        return;
+    }
+
+    val productResult = storage.products.get(order.productId);
+    if (!productResult.isFound) {
+        return;
+    }
+    var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+    if (
+        product.seller != parties.seller ||
+        product.nftItem != asset.nftItem
+    ) {
+        return;
+    }
+
+    if (order.status == MarketplaceV2OrderStatus.DeliveryPending) {
+        order.status = MarketplaceV2OrderStatus.RefundPending;
+        order.deliveryStatus = MarketplaceV2DeliveryStatus.Bounced;
+        order.refundStatus = MarketplaceV2RefundStatus.Pending;
+
+        val buyerRefund = MarketplaceV2Payout {
+            orderId: msg.orderId,
+            operationId: operations.buyerRefundOperationId,
+            queryId: operations.buyerRefundQueryId,
+            beneficiary: parties.buyer,
+            amount: settlement.gross,
+            kind: 3,
+            status: MarketplaceV2PayoutStatus.Pending,
+            createdAt: order.createdAt,
+        };
+        storage.payouts.set(buyerRefund.operationId, buyerRefund.toCell());
+
+        product.status = 6;
+        product.refundQueryId = operations.sellerReturnQueryId;
+        storage.products.set(product.id, product.toCell());
+        storage.refundQueryToProduct.set(operations.sellerReturnQueryId, product.id);
+        storage.refundQueryToOrder.set(operations.sellerReturnQueryId, msg.orderId);
+        storage.orders.set(order.id, order.toCell());
+        storage.save();
+    } else if (
+        order.status != MarketplaceV2OrderStatus.RefundPending &&
+        order.status != MarketplaceV2OrderStatus.RefundDispatched
+    ) {
+        return;
+    }
+
+    val currentProductResult = storage.products.get(order.productId);
+    if (!currentProductResult.isFound) {
+        return;
+    }
+    val currentProduct = MarketplaceV2Product.fromCell(currentProductResult.loadValue());
+    if (currentProduct.status == 6) {
+        val returnMessage = createMessage({
+            bounce: BounceMode.RichBounce,
+            value: grams("0.05"),
+            dest: storage.escrow,
+            body: RefundEscrowV2 {
+                escrowId: asset.escrowId,
+                productId: order.productId,
+                queryId: operations.sellerReturnQueryId,
+                seller: parties.seller,
+            },
+        });
+        returnMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
+    }
+}
+
+fun onBouncedMessage(in: InMessageBounced) {
     if (in.bouncedBody.remainingBitsCount() < 32) {
         return;
     }
@@ -711,9 +855,6 @@ fun onBouncedMessage(in: InMessageBounced) {
         return;
     }
 
-    // Only an exact bounced CreateEscrowV2 request can safely release a
-    // pending listing reservation. Refund-request bounces are left in
-    // ManualReview: the NFT may already have returned if its callback raced.
     try {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
         val originalBody = rich.originalBody;
@@ -724,6 +865,10 @@ fun onBouncedMessage(in: InMessageBounced) {
         val opcode = originalSlice.loadUint(32);
 
         if (opcode == 0x71b00001) {
+            var storage = lazy MarketplaceV2Storage.load();
+            if (!storage.escrowConfigured || in.senderAddress != storage.escrow) {
+                return;
+            }
             val create = lazy CreateEscrowV2.fromCell(originalBody);
             val queryResult = storage.queryToProduct.get(create.queryId);
             if (!queryResult.isFound) {
@@ -757,9 +902,80 @@ fun onBouncedMessage(in: InMessageBounced) {
                 storage.queryToProduct.delete(create.queryId);
                 storage.save();
             }
+        } else if (opcode == 0x71b00002) {
+            val release = lazy ReleaseEscrowV2.fromCell(originalBody);
+            handleReleaseRequestBounce(release, in.senderAddress);
+        } else if (opcode == 0x71b00101) {
+            val payout = lazy SellerPayoutV2.fromCell(originalBody);
+            restorePayoutAfterBounce(
+                payout.orderId,
+                payout.operationId,
+                payout.queryId,
+                payout.beneficiary,
+                payout.amount,
+                1,
+                in.senderAddress,
+            );
+        } else if (opcode == 0x71b00102) {
+            val payout = lazy PlatformPayoutV2.fromCell(originalBody);
+            restorePayoutAfterBounce(
+                payout.orderId,
+                payout.operationId,
+                payout.queryId,
+                payout.beneficiary,
+                payout.amount,
+                2,
+                in.senderAddress,
+            );
+        } else if (opcode == 0x71b00104) {
+            val payout = lazy BuyerRefundV2.fromCell(originalBody);
+            restorePayoutAfterBounce(
+                payout.orderId,
+                payout.operationId,
+                payout.queryId,
+                payout.beneficiary,
+                payout.amount,
+                3,
+                in.senderAddress,
+            );
+        } else if (opcode == 0x71b0000E) {
+            // A bounced seller NFT-return request is ambiguous if a callback raced.
+            // Keep the order reserved for explicit operator review; never infer
+            // that the NFT remained in escrow solely from the bounce.
+            var storage = lazy MarketplaceV2Storage.load();
+            if (!storage.escrowConfigured || in.senderAddress != storage.escrow) {
+                return;
+            }
+            val refund = lazy RefundEscrowV2.fromCell(originalBody);
+            val orderResult = storage.refundQueryToOrder.get(refund.queryId);
+            if (!orderResult.isFound) {
+                return;
+            }
+            val orderId = orderResult.loadValue();
+            val orderRecord = storage.orders.get(orderId);
+            if (!orderRecord.isFound) {
+                return;
+            }
+            var order = MarketplaceV2Order.fromCell(orderRecord.loadValue());
+            var orderExtra = order.extra.load();
+            val operations = orderExtra.operations.load();
+            val asset = orderExtra.asset.load();
+            val parties = orderExtra.parties.load();
+            if (
+                order.status == MarketplaceV2OrderStatus.RefundPending &&
+                refund.productId == order.productId &&
+                refund.escrowId == asset.escrowId &&
+                refund.queryId == operations.sellerReturnQueryId &&
+                refund.seller == parties.seller
+            ) {
+                order.status = MarketplaceV2OrderStatus.ManualReview;
+                order.refundStatus = MarketplaceV2RefundStatus.ManualReview;
+                storage.orders.set(orderId, order.toCell());
+                storage.save();
+            }
         }
     } catch {
-        // A malformed or mismatched bounce must not mutate product or NFT indexes.
+        // Malformed, stale, or uncorrelated bounces must never mutate liabilities.
     }
 }
 
