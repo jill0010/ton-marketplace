@@ -484,8 +484,7 @@ struct NFTEscrowV2CallbackStorage {
     depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
     releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
-    collections: map<address, uint8>
-    collectionItemCodes: map<address, Cell<NFTEscrowV2CollectionItemCode>>
+    collectionStorage: Cell<NFTEscrowV2CollectionStorage>
 }
 
 struct NFTEscrowV2Storage {
