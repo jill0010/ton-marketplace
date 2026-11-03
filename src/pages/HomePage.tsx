@@ -77,7 +77,7 @@ export function HomePage() {
     const query = searchQuery.trim().toLowerCase()
     const result = products.filter((product) => {
       if (selectedType && product.type !== selectedType) return false
-      if (product.listingMode !== listingMode) return false
+      if ((product.listingMode ?? "sale") !== listingMode) return false
       if (selectedType === "gift" && selectedGiftSeries &&
         getGiftSeries(product.title) !== selectedGiftSeries) return false
       if (!query) return true
@@ -255,7 +255,7 @@ export function HomePage() {
             )}
 
             <div className="min-w-0">
-              {!error && visibleProducts.length === 0 ? (
+              {visibleProducts.length === 0 ? (
                 <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
                   {listingMode === "auction"
                     ? t("No auctions are listed yet.", "目前暂无拍卖商品。")
