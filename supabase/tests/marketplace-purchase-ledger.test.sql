@@ -39,6 +39,40 @@ BEGIN
 END
 $security$;
 
+DO $product_chain_metadata$
+DECLARE
+  product_uuid uuid;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'products'
+      AND column_name = 'chain_product_id'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'products'
+      AND column_name = 'chain_escrow_id'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'products'
+      AND column_name = 'chain_status'
+  ) THEN
+    RAISE EXCEPTION 'Product chain metadata columns are missing';
+  END IF;
+
+  INSERT INTO public.products (name, type, price, currency, status)
+  VALUES ('ledger-test-offchain-product', 'gift', 1, 'TON', 'listed')
+  RETURNING id INTO product_uuid;
+
+  IF (SELECT chain_status FROM public.products WHERE id = product_uuid) <> 'offchain' THEN
+    RAISE EXCEPTION 'Products must default to offchain and remain non-purchasable';
+  END IF;
+  IF (SELECT chain_product_id FROM public.products WHERE id = product_uuid) IS NOT NULL
+    OR (SELECT chain_escrow_id FROM public.products WHERE id = product_uuid) IS NOT NULL THEN
+    RAISE EXCEPTION 'Off-chain products unexpectedly received chain identifiers';
+  END IF;
+END
+$product_chain_metadata$;
+
 DO $settlement$
 DECLARE
   gross numeric(36,0);
