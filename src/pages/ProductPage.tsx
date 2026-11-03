@@ -280,8 +280,8 @@ export function ProductPage() {
         </div>
         <p className="text-xs text-zinc-500">
           {t(
-            "The 97% seller / 3% platform split applies to the listing price. The separate 0.5 TON reserve funds escrow, callback and payout transaction costs.",
-            "卖家 97% / 平台 3% 按商品价格计算；额外 0.5 TON 储备用于托管、回调及结算交易成本。",
+            "The 97% seller / 3% platform split applies to the listing price. The additional 0.5 TON is retained by the Marketplace contract as an operational reserve and is not included in a purchase refund.",
+            "卖家 97% / 平台 3% 按商品价格计算。额外 0.5 TON 留在商城合约作为运营储备金，买家退款仅退还商品价格，不包含该储备金。",
           )}
         </p>
       </div>
