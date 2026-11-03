@@ -11,7 +11,9 @@ contract MarketplaceV2 {
 type MarketplaceV2AllowedMessage =
     | SetMarketplaceV2Escrow
     | PublishProductV2
+    | CancelProductV2
     | EscrowDepositedV2
+    | EscrowRefundedV2
 
 fun onInternalMessage(in: InMessage) {
     val msg = lazy MarketplaceV2AllowedMessage.fromSlice(in.body);
@@ -49,6 +51,7 @@ fun onInternalMessage(in: InMessage) {
                 price: msg.price,
                 escrowId: 0,
                 queryId,
+                refundQueryId: 0,
                 status: 1,
                 createdAt: in.createdAt,
                 extra: MarketplaceV2ProductExtra {
@@ -82,6 +85,54 @@ fun onInternalMessage(in: InMessage) {
                 },
             });
             createEscrow.send(SEND_MODE_REGULAR);
+        }
+
+        CancelProductV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
+            val productResult = storage.products.get(msg.productId);
+            assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+            assert (
+                in.senderAddress == product.seller || in.senderAddress == storage.owner
+            ) throw ErrorsV2.InvalidRefund;
+
+            var queryId = 0;
+            if (product.status == 2) {
+                queryId = storage.nextQueryId;
+                assert (queryId > 0) throw ErrorsV2.InvalidRefund;
+                val existingQuery = storage.refundQueryToProduct.get(queryId);
+                assert (!existingQuery.isFound) throw ErrorsV2.InvalidRefund;
+
+                product.status = 6;
+                product.refundQueryId = queryId;
+                storage.products.set(msg.productId, product.toCell());
+                storage.refundQueryToProduct.set(queryId, msg.productId);
+                storage.nextQueryId = queryId + 1;
+                storage.save();
+            } else {
+                // A seller can retry the exact same refund query after Escrow
+                // reports a correlated NFT transfer bounce and restores Deposited.
+                assert (product.status == 6) throw ErrorsV2.InvalidRefund;
+                queryId = product.refundQueryId;
+                assert (queryId > 0) throw ErrorsV2.InvalidRefund;
+                val queryResult = storage.refundQueryToProduct.get(queryId);
+                assert (queryResult.isFound && queryResult.loadValue() == msg.productId)
+                    throw ErrorsV2.InvalidRefund;
+            }
+
+            val refundMessage = createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.05"),
+                dest: storage.escrow,
+                body: RefundEscrowV2 {
+                    escrowId: product.escrowId,
+                    productId: product.id,
+                    queryId,
+                    seller: product.seller,
+                },
+            });
+            refundMessage.send(SEND_MODE_REGULAR);
         }
 
         EscrowDepositedV2 => {
@@ -125,6 +176,53 @@ fun onInternalMessage(in: InMessage) {
                     nftItem: msg.nftItem,
                     seller: msg.seller,
                     queryId: msg.queryId,
+                },
+            });
+            ack.send(SEND_MODE_REGULAR);
+        }
+
+        EscrowRefundedV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
+            assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidRefund;
+
+            val queryResult = storage.refundQueryToProduct.get(msg.queryId);
+            assert (queryResult.isFound) throw ErrorsV2.InvalidRefund;
+            val productId = queryResult.loadValue();
+            assert (productId == msg.productId) throw ErrorsV2.InvalidRefund;
+            val productResult = storage.products.get(productId);
+            assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+
+            assert (product.id == msg.productId) throw ErrorsV2.InvalidRefund;
+            assert (product.refundQueryId == msg.queryId) throw ErrorsV2.InvalidRefund;
+            assert (product.escrowId == msg.escrowId) throw ErrorsV2.InvalidRefund;
+            assert (product.nftItem == msg.nftItem) throw ErrorsV2.InvalidRefund;
+            assert (product.seller == msg.seller) throw ErrorsV2.InvalidRefund;
+
+            if (product.status == 6) {
+                product.status = 5;
+                storage.products.set(productId, product.toCell());
+                val listingResult = storage.assetListings.get(product.nftItem);
+                if (listingResult.isFound && listingResult.loadValue() == productId) {
+                    storage.assetListings.delete(product.nftItem);
+                }
+                storage.save();
+            } else {
+                // Keep the query index so an exact duplicate callback can be re-ACKed.
+                assert (product.status == 5) throw ErrorsV2.InvalidRefund;
+            }
+
+            val ack = createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.escrow,
+                body: EscrowRefundAckV2 {
+                    escrowId: msg.escrowId,
+                    productId: msg.productId,
+                    queryId: msg.queryId,
+                    nftItem: msg.nftItem,
+                    seller: msg.seller,
                 },
             });
             ack.send(SEND_MODE_REGULAR);
