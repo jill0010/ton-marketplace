@@ -61,6 +61,8 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
             depositCallbacks: [],
             pendingReleases: [],
             releaseCallbacks: [],
+            pendingRefunds: [],
+            refundCallbacks: [],
             collectionStorage: NFTEscrowV2CollectionStorage {
                 collections: [],
                 collectionItemCodes: [],
