@@ -255,6 +255,50 @@ fun NFTEscrowV2.sendRetryReleaseCallbackV2(
     return net.send(from, genericMsg);
 }
 
+fun NFTEscrowV2.sendEscrowReleaseFailureAckV2(
+    self,
+    from: address,
+    orderId: uint64,
+    productId: uint64,
+    escrowId: uint64,
+    queryId: uint64,
+    nftItem: address,
+    buyer: address,
+    seller: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: EscrowReleaseFailureAckV2 {
+            orderId,
+            productId,
+            escrowId,
+            queryId,
+            nftItem,
+            buyer,
+            seller,
+        },
+    });
+    return net.send(from, genericMsg);
+}
+
+fun NFTEscrowV2.sendRetryReleaseFailureCallbackV2(
+    self,
+    from: address,
+    escrowId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RetryReleaseFailureCallbackV2 { escrowId },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun NFTEscrowV2.assetEscrowIdV2(self, nftItem: address): uint64? {
     return net.runGetMethod(self.address, "assetEscrowIdV2", [nftItem]);
 }
@@ -281,4 +325,11 @@ fun NFTEscrowV2.releaseCallbackV2(self, escrowId: uint64): EscrowReleaseCallback
 
 fun NFTEscrowV2.refundCallbackV2(self, escrowId: uint64): EscrowRefundCallbackV2? {
     return net.runGetMethod(self.address, "refundCallbackV2", [escrowId]);
+}
+
+fun NFTEscrowV2.releaseFailureCallbackV2(
+    self,
+    escrowId: uint64,
+): EscrowReleaseFailureCallbackV2? {
+    return net.runGetMethod(self.address, "releaseFailureCallbackV2", [escrowId]);
 }
