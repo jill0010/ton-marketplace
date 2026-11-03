@@ -65,7 +65,9 @@ fun NFTEscrowV2.sendNftExcesses(
     config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: NftExcesses { queryId },
     });
     return net.send(from, genericMsg);
@@ -83,7 +85,9 @@ fun NFTEscrowV2.sendEscrowReleaseAckV2(
     config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: EscrowReleaseAckV2 { orderId, productId, escrowId, queryId, nftItem, buyer },
     });
     return net.send(from, genericMsg);
@@ -96,7 +100,9 @@ fun NFTEscrowV2.sendRetryReleaseCallbackV2(
     config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: RetryReleaseCallbackV2 { escrowId },
     });
     return net.send(from, genericMsg);
