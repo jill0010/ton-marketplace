@@ -230,6 +230,38 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(validEscrowExtra.itemIndex).toEqual(validItemIndex);
     expect(validEscrowExtra.kind).toEqual(3);
 
+    // Exact duplicate CreateEscrowV2 is idempotent; changed identity is rejected.
+    val exactReplay = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        3,
+        validNftItem,
+        owner.address,
+        seller.address,
+        3,
+        validItemIndex,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(exactReplay).toHaveSuccessfulTx();
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(0);
+
+    val changedIndexReplay = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        3,
+        validNftItem,
+        owner.address,
+        seller.address,
+        3,
+        validItemIndex + 1,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(changedIndexReplay).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+
     // The same official code and collection cannot authorize a mismatched index.
     val wrongIndex = escrow.sendCreateEscrowV2(
         marketplace.address,
