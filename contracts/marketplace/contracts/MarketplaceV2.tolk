@@ -174,6 +174,9 @@ fun onBouncedMessage(in: InMessageBounced) {
             product.status == 1 && product.id == create.productId &&
             product.queryId == create.queryId &&
             product.nftItem == create.nftItem &&
+            product.collection == create.collection &&
+            product.itemIndex == create.itemIndex &&
+            product.kind == create.kind &&
             product.seller == create.seller
         ) {
             product.status = 5;
