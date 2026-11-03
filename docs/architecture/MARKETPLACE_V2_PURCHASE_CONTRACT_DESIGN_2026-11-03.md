@@ -258,3 +258,22 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - The test-only rejecting callback contract and its generated wrapper are registered in Acton. The production NFTEscrowV2 callback amount remains unchanged; no additional fixed-fee sufficiency claim is made.
 
 This proves the isolated V2 release callback's Action-phase bounce/retry behavior in emulation only. It does not implement MarketplaceV2 purchase/payment, seller/platform payout, buyer refund, or production deployment. No production database migration, Edge Function deployment, testnet/mainnet contract deployment, NFT transfer, or fund movement occurred.
+
+## Marketplace V2 listing integration checkpoint — 2026-11-03
+
+- Added `MarketplaceV2.tolk` with a fresh, independent storage layout. It does not change or reuse V1 Marketplace storage.
+- Added seller-originated `PublishProductV2` and owner-only `SetMarketplaceV2Escrow` messages.
+- MarketplaceV2 derives the seller from `in.senderAddress`, reserves each NFT Item address before sending `CreateEscrowV2`, and allocates product IDs and escrow query IDs from separate monotonic counters.
+- Product state remains Pending until NFTEscrowV2 sends an authenticated `EscrowDepositedV2` callback. The callback must match the configured Escrow sender, product ID, query ID, NFT Item, seller, and nonzero escrow ID.
+- MarketplaceV2 sends an exact `EscrowDepositAckV2`; duplicate exact callbacks are idempotently re-ACKed.
+- An exact RichBounce for a pending `CreateEscrowV2` request cancels that pending listing and releases only its matching NFT Item index. Malformed, stale, or mismatched bounces are no-ops.
+- Added an end-to-end emulator test covering owner-only Escrow configuration, pending listing creation, NFT custody transfer, callback-authenticated activation, duplicate NFT listing rejection, and deposit callback ACK cleanup.
+- Opcode registry check reports 33 Tolk declarations with no collisions.
+- Contracts workflow #201 on commit `431923431dcefd378c43ccff9736c32063fa7776`: success — build, **98 tests in 11 files**, linter, and formatter.
+
+### Explicit limits
+
+- This V2 listing path currently proves NFT Item custody transfer, not official Fragment collection provenance. The V2 Escrow currently has no collection allowlist/item-code validation; official asset verification must be implemented before any public listing.
+- `BuyProductV2` and payout/refund messages remain reserved and are not accepted by MarketplaceV2.
+- No buyer funds are accepted; no NFT release from MarketplaceV2, seller/platform payout, buyer refund, production database migration, Edge Function deployment, testnet/mainnet deployment, or real NFT/fund movement occurred.
+- The V2 contract is not approved for production listing or purchase. It remains isolated source/emulator work pending official collection verification and the complete purchase/delivery/refund/settlement lifecycle.
