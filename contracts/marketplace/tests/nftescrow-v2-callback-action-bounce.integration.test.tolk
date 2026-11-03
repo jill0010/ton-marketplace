@@ -1,8 +1,8 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@acton/types/transaction"
 import "@acton/tlb/maybe"
+import "@acton/types/transaction"
 
 import "@contracts/RejectingMarketplaceCallback"
 import "@contracts/RejectingNFTItem"
@@ -44,27 +44,44 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         }.toCell(),
     });
 
-    expect(nftItem.deploy(seller.address, { value: grams("0.1") }))
-        .toHaveSuccessfulDeploy({ to: nftItem.address });
-    expect(escrow.deploy(owner.address, { value: grams("0.1") }))
-        .toHaveSuccessfulDeploy({ to: escrow.address });
-    expect(marketplace.deploy(controller.address, { value: grams("0.1") }))
-        .toHaveSuccessfulDeploy({ to: marketplace.address });
+    expect(
+        nftItem.deploy(seller.address, { value: grams("0.1") }),
+    ).toHaveSuccessfulDeploy({ to: nftItem.address });
+    expect(
+        escrow.deploy(owner.address, { value: grams("0.1") }),
+    ).toHaveSuccessfulDeploy({ to: escrow.address });
+    expect(
+        marketplace.deploy(controller.address, { value: grams("0.1") }),
+    ).toHaveSuccessfulDeploy({ to: marketplace.address });
 
-    expect(marketplace.sendSetTestEscrowAddressV2(
-        controller.address, escrow.address, { value: grams("0.02") },
-    )).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendSetTestEscrowAddressV2(
+            controller.address,
+            escrow.address,
+            { value: grams("0.02") },
+        ),
+    ).toHaveSuccessfulTx();
 
     // The Marketplace fixture is the only sender authorized to create the escrow.
     val create = marketplace.sendStartTestEscrowV2(
-        controller.address, 7301, nftItem.address, seller.address, depositQueryId,
+        controller.address,
+        7301,
+        nftItem.address,
+        seller.address,
+        depositQueryId,
         { value: grams("0.1") },
     );
     expect(create).toHaveSuccessfulTx();
 
     val deposit = nftItem.sendNftTransfer(
-        seller.address, depositQueryId, escrow.address, null, null, grams("0.01"),
-        beginCell().endCell().beginParse(), { value: grams("0.1") },
+        seller.address,
+        depositQueryId,
+        escrow.address,
+        null,
+        null,
+        grams("0.01"),
+        beginCell().endCell().beginParse(),
+        { value: grams("0.1") },
     );
     expect(deposit).toHaveSuccessfulTx();
     expect(nftItem.owner()).toEqual(escrow.address);
@@ -74,7 +91,12 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     expect(escrow.depositCallbackV2(1) == null).toEqual(true);
 
     val startRelease = marketplace.sendStartTestReleaseV2(
-        controller.address, 8301, 7301, 1, releaseQueryId, buyer.address,
+        controller.address,
+        8301,
+        7301,
+        1,
+        releaseQueryId,
+        buyer.address,
         { value: grams("0.1") },
     );
     expect(startRelease).toHaveSuccessfulTx();
@@ -107,13 +129,19 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     expect(durableCallback.buyer).toEqual(buyer.address);
 
     // Turn off the action failure, then retry from the Escrow owner.
-    expect(marketplace.sendSetRejectCallbackV2(
-        controller.address, false, { value: grams("0.02") },
-    )).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendSetRejectCallbackV2(
+            controller.address,
+            false,
+            { value: grams("0.02") },
+        ),
+    ).toHaveSuccessfulTx();
     expect(marketplace.rejectAction()).toEqual(false);
 
     val retry = escrow.sendRetryReleaseCallbackV2(
-        owner.address, 1, { value: grams("0.05") },
+        owner.address,
+        1,
+        { value: grams("0.05") },
     );
     expect(retry).toHaveSuccessfulTx();
     // The accepted callback sends the exact ACK; only that ACK clears the record.
