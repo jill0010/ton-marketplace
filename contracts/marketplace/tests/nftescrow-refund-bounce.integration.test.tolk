@@ -66,10 +66,7 @@ get fun `test real NFT Item compute failure automatically bounces refund transfe
 
     // 先执行真实 TEP-62 转账，把测试 NFT 的所有权交给 Escrow。
     // Escrow 收到真实 NftOwnershipAssigned 后，记录从 Pending 变为 Deposited。
-    val notificationData = beginCell()
-        .storeUint(0x53564950, 32)
-        .storeUint(queryId, 64)
-        .endCell();
+    val notificationData = beginCell().storeUint(0x53564950, 32).storeUint(queryId, 64).endCell();
     val forwardPayload = beginCell()
         .storeUint(1, 1)
         .storeRef(notificationData)
