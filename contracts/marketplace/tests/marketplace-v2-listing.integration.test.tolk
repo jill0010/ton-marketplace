@@ -182,4 +182,135 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(marketplace.productV2(2)!!.status).toEqual(5);
     expect(marketplace.assetProductIdV2(nftItem.address) == null).toEqual(true);
 
+
+    // Positive provenance case: derive the NFT Item address from the exact
+    // approved Fragment Item Code, index, and collection. Escrow accepts it.
+    val validItemIndex = 42;
+    val itemConfig = beginCell()
+        .storeUint(validItemIndex, 256)
+        .storeAddress(owner.address)
+        .endCell();
+    val itemData = beginCell().storeRef(itemConfig).storeUint(0, 1).endCell();
+    val validItemStateInit: ContractState = {
+        code: officialItemCode,
+        data: itemData,
+    };
+    val validNftItem = AutoDeployAddress {
+        workchain: 0,
+        stateInit: validItemStateInit,
+    }.calculateAddress();
+
+    val validPublish = marketplace.sendPublishProductV2(
+        seller.address,
+        validNftItem,
+        owner.address,
+        validItemIndex,
+        3,
+        grams("4"),
+        { value: grams("0.2") },
+    );
+    expect(validPublish).toHaveSuccessfulTx();
+    val validProduct = marketplace.productV2(3);
+    assert (validProduct != null) throw ErrorsV2.InvalidRelease;
+    expect(validProduct!!.status).toEqual(1);
+    expect(validProduct.collection).toEqual(owner.address);
+    expect(validProduct.itemIndex).toEqual(validItemIndex);
+    expect(validProduct.kind).toEqual(3);
+
+    val validEscrowRecord = escrow.escrowRecordV2(1);
+    assert (validEscrowRecord != null) throw ErrorsV2.InvalidRelease;
+    expect(validEscrowRecord!!.nftItem).toEqual(validNftItem);
+    expect(validEscrowRecord.collection).toEqual(owner.address);
+    expect(validEscrowRecord.itemIndex).toEqual(validItemIndex);
+    expect(validEscrowRecord.kind).toEqual(3);
+
+    // The same official code and collection cannot authorize a mismatched index.
+    val wrongIndex = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        999,
+        validNftItem,
+        owner.address,
+        seller.address,
+        999,
+        validItemIndex + 1,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(wrongIndex).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidNftItem,
+    });
+
+    val wrongKind = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        1000,
+        validNftItem,
+        owner.address,
+        seller.address,
+        1000,
+        validItemIndex,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(wrongKind).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidProductKind,
+    });
+
+    val unapprovedCollection = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        1001,
+        validNftItem,
+        attacker.address,
+        seller.address,
+        1001,
+        validItemIndex,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(unapprovedCollection).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.CollectionNotApproved,
+    });
+
+    val unsupportedItemCode = escrow.sendSetCollectionItemCodeV2(
+        owner.address,
+        owner.address,
+        3,
+        beginCell().storeUint(0, 32).endCell(),
+        { value: grams("0.05") },
+    );
+    expect(unsupportedItemCode).toHaveFailedTx({
+        from: owner.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidCollectionItemCode,
+    });
+
+    val pauseCollection = escrow.sendSetCollectionStatusV2(
+        owner.address,
+        owner.address,
+        2,
+        { value: grams("0.05") },
+    );
+    expect(pauseCollection).toHaveSuccessfulTx();
+    val pausedCreate = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        1002,
+        validNftItem,
+        owner.address,
+        seller.address,
+        1002,
+        validItemIndex,
+        3,
+        { value: grams("0.05") },
+    );
+    expect(pausedCreate).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.CollectionNotApproved,
+    });
+
 }
