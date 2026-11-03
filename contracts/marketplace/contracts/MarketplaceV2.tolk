@@ -46,14 +46,16 @@ fun onInternalMessage(in: InMessage) {
                 id: productId,
                 seller: in.senderAddress,
                 nftItem: msg.nftItem,
-                collection: msg.collection,
-                itemIndex: msg.itemIndex,
-                kind: msg.kind,
                 price: msg.price,
                 escrowId: 0,
                 queryId,
                 status: 1,
                 createdAt: in.createdAt,
+                extra: MarketplaceV2ProductExtra {
+                    collection: msg.collection,
+                    itemIndex: msg.itemIndex,
+                    kind: msg.kind,
+                }.toCell(),
             };
 
             storage.products.set(productId, product.toCell());
@@ -73,8 +75,10 @@ fun onInternalMessage(in: InMessage) {
                     collection: msg.collection,
                     seller: in.senderAddress,
                     queryId,
-                    itemIndex: msg.itemIndex,
-                    kind: msg.kind,
+                    extra: CreateEscrowV2Extra {
+                        itemIndex: msg.itemIndex,
+                        kind: msg.kind,
+                    }.toCell(),
                 },
             });
             createEscrow.send(SEND_MODE_REGULAR);
@@ -170,13 +174,15 @@ fun onBouncedMessage(in: InMessageBounced) {
         }
 
         var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+        val productExtra = product.extra.load();
+        val createExtra = create.extra.load();
         if (
             product.status == 1 && product.id == create.productId &&
             product.queryId == create.queryId &&
             product.nftItem == create.nftItem &&
-            product.collection == create.collection &&
-            product.itemIndex == create.itemIndex &&
-            product.kind == create.kind &&
+            productExtra.collection == create.collection &&
+            productExtra.itemIndex == createExtra.itemIndex &&
+            productExtra.kind == createExtra.kind &&
             product.seller == create.seller
         ) {
             product.status = 5;
