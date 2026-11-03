@@ -58,3 +58,8 @@ depends = []
 display-name = "Test-only Rejecting Marketplace Callback"
 src = "contracts/RejectingMarketplaceCallback.tolk"
 depends = []
+
+[contracts.MarketplaceV2]
+display-name = "Marketplace V2 (isolated listing integration)"
+src = "contracts/MarketplaceV2.tolk"
+depends = []
