@@ -485,3 +485,45 @@ fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
         sellerAmount: gross - platformFee,
     };
 }
+
+
+// Isolated Marketplace V2 listing integration. Purchase/payment opcodes remain reserved.
+struct (0x71b0000A) PublishProductV2 {
+    nftItem: address
+    price: coins
+}
+
+struct (0x71b0000B) SetMarketplaceV2Escrow {
+    escrow: address
+}
+
+struct MarketplaceV2Product {
+    id: uint64
+    seller: address
+    nftItem: address
+    price: coins
+    escrowId: uint64
+    queryId: uint64
+    status: uint8
+    createdAt: uint32
+}
+
+struct MarketplaceV2Storage {
+    owner: address
+    escrow: address
+    escrowConfigured: bool
+    nextProductId: uint64
+    nextQueryId: uint64
+    products: map<uint64, Cell<MarketplaceV2Product>>
+    // NFT Item address -> pending/active Marketplace V2 product ID.
+    assetListings: map<address, uint64>
+    queryToProduct: map<uint64, uint64>
+}
+
+fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
+    return MarketplaceV2Storage.fromCell(contract.getData());
+}
+
+fun MarketplaceV2Storage.save(self) {
+    contract.setData(self.toCell());
+}
