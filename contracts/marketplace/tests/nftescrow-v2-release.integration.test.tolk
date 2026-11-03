@@ -1,6 +1,7 @@
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
+import "@acton/types/transaction"
 
 import "@contracts/MockNFTItem"
 import "@contracts/types"
@@ -127,10 +128,19 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         buyer.address,
         { value: grams("0.001") },
     );
-    expect(underfundedRelease).toHaveFailedTx({
-        from: marketplace.address,
+    val underfundedTxResult = underfundedRelease.findTransaction({
         to: escrow.address,
     });
+    expect(underfundedTxResult).toBeNotNull();
+    val underfundedTx = underfundedTxResult!!;
+    val underfundedDescription = underfundedTx.description.load();
+    assert (underfundedDescription is TlbTransOrd) throw 402;
+    expect(underfundedDescription.aborted).toEqual(true);
+    assert (underfundedDescription.action is TlbJust) throw 402;
+    val underfundedAction = underfundedDescription.action.value.load();
+    expect(underfundedAction.noFunds).toEqual(true);
+    expect(nftItem.owner()).toEqual(escrow.address);
+
     val afterUnderfunded = escrow.escrowRecordV2(1);
     assert (afterUnderfunded != null) throw ErrorsV2.InvalidRelease;
     expect(afterUnderfunded!!.status).toEqual(1);
