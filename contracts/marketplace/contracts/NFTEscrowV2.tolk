@@ -174,6 +174,10 @@ fun onInternalMessage(in: InMessage) {
             });
             retryMessage.send(SEND_MODE_REGULAR);
         }
+
+        else => {
+            assert (in.body.isEmpty()) throw ErrorsV2.InvalidMessage;
+        }
     }
 }
 
