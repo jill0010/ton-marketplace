@@ -80,8 +80,11 @@ fun onInternalMessage(in: InMessage) {
                 body: CreateEscrowV2 {
                     productId: msg.productId,
                     nftItem: msg.nftItem,
+                    collection: storage.controller,
                     seller: msg.seller,
                     queryId: msg.queryId,
+                    itemIndex: 0,
+                    kind: 3,
                 },
             }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
