@@ -42,9 +42,9 @@ This registry is the canonical opcode allocation record for contract messages in
 | `0x71b0000C` | `SetCollectionStatusV2` | Owner → NFTEscrowV2 | Implemented (V2 collection policy) |
 | `0x71b0000D` | `SetCollectionItemCodeV2` | Owner → NFTEscrowV2 | Implemented (official Gift Item Code only) |
 | `0x71b00012` | `CancelProductV2` | Seller or owner → MarketplaceV2 | Implemented (seller NFT return request) |
-| `0x71b00013` | `EscrowReleaseFailedV2` | NFTEscrowV2 → MarketplaceV2 | Reserved (buyer compensation prerequisite) |
-| `0x71b00014` | `EscrowReleaseFailureAckV2` | MarketplaceV2 → NFTEscrowV2 | Reserved (buyer compensation prerequisite) |
-| `0x71b00015` | `RetryReleaseFailureCallbackV2` | Operator → NFTEscrowV2 | Reserved (buyer compensation prerequisite) |
+| `0x71b00013` | `EscrowReleaseFailedV2` | NFTEscrowV2 → MarketplaceV2 | Implemented in Escrow (durable failure callback) |
+| `0x71b00014` | `EscrowReleaseFailureAckV2` | MarketplaceV2 → NFTEscrowV2 | Implemented in Escrow (exact callback ACK) |
+| `0x71b00015` | `RetryReleaseFailureCallbackV2` | Operator → NFTEscrowV2 | Implemented in Escrow (owner retry) |
 
 ## Existing Marketplace V2 escrow messages
 
