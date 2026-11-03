@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
     const rawUsername = typeof body?.recipient_username === "string" ? body.recipient_username : "";
     const username = rawUsername.trim().replace(/^@+/, "");
 
-    if (!["year", "half-year", "quarter"].includes(planId)) {
+    if (!["month", "year", "half-year", "quarter"].includes(planId)) {
       return response({ success: false, error: "Invalid Premium duration" }, 400, origin);
     }
     if (paymentMethod !== "USDT_TRC20") {
