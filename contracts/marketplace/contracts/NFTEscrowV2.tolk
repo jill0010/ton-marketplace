@@ -19,6 +19,8 @@ type NFTEscrowV2AllowedMessage =
     | RetryDepositCallbackV2
     | EscrowReleaseAckV2
     | RetryReleaseCallbackV2
+    | EscrowReleaseFailureAckV2
+    | RetryReleaseFailureCallbackV2
     | RefundEscrowV2
     | EscrowRefundAckV2
     | RetryRefundCallbackV2
@@ -316,6 +318,11 @@ fun onInternalMessage(in: InMessage) {
 
             assert (record.status == 1) throw ErrorsV2.InvalidRelease;
             assert (msg.buyer != record.seller) throw ErrorsV2.InvalidRelease;
+            // Do not start another release while the previous failure callback
+            // remains unacknowledged by MarketplaceV2.
+            assert (
+                !releaseCallbacks.releaseFailureCallbacks.get(msg.escrowId).isFound
+            ) throw ErrorsV2.InvalidRelease;
 
             val existingQuery = storage.queryToEscrow.get(msg.queryId);
             assert (!existingQuery.isFound) throw ErrorsV2.InvalidRelease;
@@ -588,6 +595,52 @@ fun onInternalMessage(in: InMessage) {
             retryMessage.send(SEND_MODE_REGULAR);
         }
 
+        EscrowReleaseFailureAckV2 => {
+            var storage = lazy NFTEscrowV2Storage.load();
+            var callbacks = storage.callbacks.load();
+            var releaseCallbacks = callbacks.releaseStorage.load();
+            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
+            val callbackResult = releaseCallbacks.releaseFailureCallbacks.get(msg.escrowId);
+            assert (callbackResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
+            val callback = EscrowReleaseFailureCallbackV2.fromCell(callbackResult.loadValue());
+            assert (callback.orderId == msg.orderId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (callback.productId == msg.productId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (callback.escrowId == msg.escrowId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (callback.queryId == msg.queryId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (callback.nftItem == msg.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (callback.buyer == msg.buyer) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (callback.seller == msg.seller) throw ErrorsV2.InvalidReleaseConfirmation;
+            releaseCallbacks.releaseFailureCallbacks.delete(msg.escrowId);
+            callbacks.releaseStorage = releaseCallbacks.toCell();
+            storage.callbacks = callbacks.toCell();
+            storage.save();
+        }
+
+        RetryReleaseFailureCallbackV2 => {
+            val storage = lazy NFTEscrowV2Storage.load();
+            val callbacks = storage.callbacks.load();
+            val releaseCallbacks = callbacks.releaseStorage.load();
+            assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
+            val callbackResult = releaseCallbacks.releaseFailureCallbacks.get(msg.escrowId);
+            assert (callbackResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
+            val callback = EscrowReleaseFailureCallbackV2.fromCell(callbackResult.loadValue());
+            val retryMessage = createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.marketplace,
+                body: EscrowReleaseFailedV2 {
+                    orderId: callback.orderId,
+                    productId: callback.productId,
+                    escrowId: callback.escrowId,
+                    queryId: callback.queryId,
+                    nftItem: callback.nftItem,
+                    buyer: callback.buyer,
+                    seller: callback.seller,
+                },
+            });
+            retryMessage.send(SEND_MODE_REGULAR);
+        }
+
         else => {
             assert (in.body.isEmpty()) throw ErrorsV2.InvalidMessage;
         }
@@ -655,8 +708,38 @@ fun onBouncedMessage(in: InMessageBounced) {
                     releaseCallbacks.pendingReleases.delete(escrowId);
                     callbacks.releaseStorage = releaseCallbacks.toCell();
                     storage.queryToEscrow.delete(transfer.queryId);
+                    val failureCallback = EscrowReleaseFailureCallbackV2 {
+                        orderId: pending.orderId,
+                        productId: pending.productId,
+                        escrowId: pending.escrowId,
+                        queryId: pending.queryId,
+                        nftItem: pending.nftItem,
+                        buyer: pending.buyer,
+                        seller: record.seller,
+                    };
+                    releaseCallbacks.releaseFailureCallbacks.set(
+                        escrowId,
+                        failureCallback.toCell(),
+                    );
+                    callbacks.releaseStorage = releaseCallbacks.toCell();
                     storage.callbacks = callbacks.toCell();
                     storage.save();
+
+                    val failureMessage = createMessage({
+                        bounce: BounceMode.Only256BitsOfBody,
+                        value: grams("0.03"),
+                        dest: storage.marketplace,
+                        body: EscrowReleaseFailedV2 {
+                            orderId: pending.orderId,
+                            productId: pending.productId,
+                            escrowId: pending.escrowId,
+                            queryId: pending.queryId,
+                            nftItem: pending.nftItem,
+                            buyer: pending.buyer,
+                            seller: record.seller,
+                        },
+                    });
+                    failureMessage.send(SEND_MODE_REGULAR);
                 }
             } else if (record.status == 4) {
                 val pendingResult = refundCallbacks.pendingRefunds.get(escrowId);
@@ -691,7 +774,10 @@ fun onBouncedMessage(in: InMessageBounced) {
             return;
         }
         val opcode = bodySlice.loadUint(32);
-        if (opcode == 0x71b00003 || opcode == 0x71b00004 || opcode == 0x71b0000F) {
+        if (
+            opcode == 0x71b00003 || opcode == 0x71b00004 ||
+            opcode == 0x71b0000F || opcode == 0x71b00013
+        ) {
             val storage = lazy NFTEscrowV2Storage.load();
             if (in.senderAddress != storage.marketplace) {
                 return;
@@ -742,6 +828,18 @@ get fun releaseCallbackV2(escrowId: uint64): EscrowReleaseCallbackV2? {
         return null;
     }
     return EscrowReleaseCallbackV2.fromCell(result.loadValue());
+}
+
+get fun releaseFailureCallbackV2(
+    escrowId: uint64,
+): EscrowReleaseFailureCallbackV2? {
+    val callbacks = NFTEscrowV2Storage.load().callbacks.load();
+    val releaseCallbacks = callbacks.releaseStorage.load();
+    val result = releaseCallbacks.releaseFailureCallbacks.get(escrowId);
+    if (!result.isFound) {
+        return null;
+    }
+    return EscrowReleaseFailureCallbackV2.fromCell(result.loadValue());
 }
 
 get fun refundCallbackV2(escrowId: uint64): EscrowRefundCallbackV2? {
