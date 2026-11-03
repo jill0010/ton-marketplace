@@ -20,7 +20,7 @@ BEGIN
       RAISE EXCEPTION 'RLS is not enabled on %', v_table_name;
     END IF;
     IF has_table_privilege('anon', format('public.%I', v_table_name), 'SELECT')
-      OR has_table_privilege('authenticated', format('public.%I', table_name), 'SELECT') THEN
+      OR has_table_privilege('authenticated', format('public.%I', v_table_name), 'SELECT') THEN
       RAISE EXCEPTION 'Public roles must not read %', v_table_name;
     END IF;
     IF NOT has_table_privilege('service_role', format('public.%I', table_name), 'SELECT') THEN
