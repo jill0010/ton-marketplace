@@ -1,15 +1,9 @@
 import { useState } from "react"
+import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { useLanguage } from "../lib/useLanguage"
-import {
-  PRODUCT_TYPE_LABELS,
-  PRODUCT_TYPE_LABELS_ZH,
-  type Product,
-} from "../types/product"
+import { PRODUCT_TYPE_LABELS, PRODUCT_TYPE_LABELS_ZH, type Product } from "../types/product"
 
-type ProductCardProps = {
-  product: Product
-  compact?: boolean
-}
+type ProductCardProps = { product: Product; compact?: boolean }
 
 const TYPE_ART: Record<Product["type"], string> = {
   username: "from-sky-500/40 to-indigo-950/80",
@@ -18,47 +12,42 @@ const TYPE_ART: Record<Product["type"], string> = {
 }
 
 export function ProductCard({ product, compact = false }: ProductCardProps) {
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
+  const walletAddress = useTonAddress()
+  const [tonConnectUI] = useTonConnectUI()
   const [imageFailed, setImageFailed] = useState(false)
-
+  const [claimNotice, setClaimNotice] = useState("")
   const showImage = Boolean(product.imageUrl) && !imageFailed
-  const typeLabel =
-    language === "en"
-      ? PRODUCT_TYPE_LABELS[product.type]
-      : PRODUCT_TYPE_LABELS_ZH[product.type]
+  const typeLabel = language === "en" ? PRODUCT_TYPE_LABELS[product.type] : PRODUCT_TYPE_LABELS_ZH[product.type]
+
+  async function claimProduct() {
+    setClaimNotice("")
+    if (!walletAddress) {
+      await tonConnectUI.openModal()
+      return
+    }
+    setClaimNotice(t(
+      "Wallet connected. Secure checkout is not available yet, so no payment has been sent. Please do not transfer TON manually to the displayed escrow address.",
+      "钱包已连接，但安全结账功能尚未开放，因此没有发送付款。请勿手动向页面显示的托管地址转账。"
+    ))
+  }
 
   return (
     <article className="block min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-      <div
-        className={`relative aspect-square overflow-hidden bg-gradient-to-br ${TYPE_ART[product.type]}`}
-      >
-        {showImage && (
-          <img
-            src={product.imageUrl!}
-            alt={product.title}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-            className="absolute inset-0 h-full w-full object-contain"
-          />
-        )}
+      <div className={`relative aspect-square overflow-hidden bg-gradient-to-br ${TYPE_ART[product.type]}`}>
+        {showImage && <img src={product.imageUrl!} alt={product.title} loading="lazy" onError={() => setImageFailed(true)} className="absolute inset-0 h-full w-full object-contain" />}
       </div>
-
       <div className={compact ? "p-3" : "p-4"}>
         {!compact && <p className="text-xs tracking-wider text-zinc-500">{typeLabel}</p>}
-
-        <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>
-          {product.title}
-        </h2>
-
-        <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>
-          {product.subtitle}
-        </p>
-
-        <div className={compact ? "mt-2" : "mt-4"}>
-          <p className={compact ? "text-sm font-semibold text-emerald-300" : "text-lg font-semibold text-emerald-300"}>
-            {product.priceTon} TON
-          </p>
+        <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>{product.title}</h2>
+        <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>{product.subtitle}</p>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className={compact ? "text-sm font-semibold text-emerald-300" : "text-lg font-semibold text-emerald-300"}>{product.priceTon} TON</p>
+          <button type="button" onClick={() => void claimProduct()} className="shrink-0 rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-sky-950/20 transition hover:bg-sky-400 active:scale-[0.98]">
+            {t("Claim", "认领")}
+          </button>
         </div>
+        {claimNotice && <p role="status" className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2 text-xs leading-5 text-amber-100">{claimNotice}</p>}
       </div>
     </article>
   )
