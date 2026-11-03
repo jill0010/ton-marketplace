@@ -53,3 +53,8 @@ depends = []
 display-name = "NFT Escrow V2 (isolated release lifecycle)"
 src = "contracts/NFTEscrowV2.tolk"
 depends = []
+
+[contracts.RejectingMarketplaceCallback]
+display-name = "Test-only Rejecting Marketplace Callback"
+src = "contracts/RejectingMarketplaceCallback.tolk"
+depends = []
