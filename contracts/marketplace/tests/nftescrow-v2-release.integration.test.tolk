@@ -27,13 +27,15 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     seededRecords.set(1, NFTEscrowV2Record {
         escrowId: 1,
         nftItem: nftItem.address,
-        collection: owner.address,
         seller: seller.address,
         productId: 7001,
         status: 0,
         queryId: depositQueryId,
-        itemIndex: 0,
-        kind: 3,
+        extra: NFTEscrowV2RecordExtra {
+            collection: owner.address,
+            itemIndex: 0,
+            kind: 3,
+        }.toCell(),
     }.toCell());
     var seededAssets: map<address, uint64> = [];
     seededAssets.set(nftItem.address, 1);
@@ -45,16 +47,14 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         marketplace: marketplace.address,
         records: seededRecords,
         assetToEscrow: seededAssets,
-        collectionStorage: NFTEscrowV2CollectionStorage {
-            collections: [],
-            collectionItemCodes: [],
-        }.toCell(),
         nextEscrowId: 2,
         queryToEscrow: seededQueries,
         callbacks: NFTEscrowV2CallbackStorage {
             depositCallbacks: [],
             pendingReleases: [],
             releaseCallbacks: [],
+            collections: [],
+            collectionItemCodes: [],
         }.toCell(),
     });
 
