@@ -2,7 +2,7 @@ import "types"
 
 contract MarketplaceV2 {
     author: "TON Market"
-    version: "2.0.0"
+    version: "2.1.0"
     description: "Marketplace V2 escrow-backed purchase, delivery, refund and split settlement"
     storage: MarketplaceV2Storage
     incomingMessages: MarketplaceV2AllowedMessage
