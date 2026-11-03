@@ -78,6 +78,21 @@ fun MarketplaceV2.sendPublishProductV2(
     return net.send(from, genericMsg);
 }
 
+fun MarketplaceV2.sendCancelProductV2(
+    self,
+    from: address,
+    productId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: CancelProductV2 { productId },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun MarketplaceV2.ownerV2(self): address {
     return net.runGetMethod(self.address, "ownerV2");
 }
