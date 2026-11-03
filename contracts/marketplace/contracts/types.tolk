@@ -739,6 +739,14 @@ enum MarketplaceV2RefundStatus {
     ManualReview = 4
 }
 
+enum MarketplaceV2SellerReturnStatus {
+    NotStarted = 0
+    Pending = 1
+    Confirmed = 2
+    Bounced = 3
+    ManualReview = 4
+}
+
 // Immutable order snapshot. All operation IDs are distinct uint64 values;
 // none is inferred from the order ID or NFT Escrow ID.
 // Keep each snapshot segment below the TON 1023-bit cell limit.
@@ -791,6 +799,7 @@ struct MarketplaceV2Order {
     sellerPayoutStatus: MarketplaceV2PayoutStatus
     platformPayoutStatus: MarketplaceV2PayoutStatus
     refundStatus: MarketplaceV2RefundStatus
+    sellerReturnStatus: MarketplaceV2SellerReturnStatus
     createdAt: uint32
     extra: Cell<MarketplaceV2OrderExtra>
 }
