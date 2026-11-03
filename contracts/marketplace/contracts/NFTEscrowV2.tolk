@@ -599,7 +599,9 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
             var releaseCallbacks = callbacks.releaseStorage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (
+                in.senderAddress == storage.marketplace
+            ) throw ErrorsV2.InvalidReleaseConfirmation;
             val callbackResult = releaseCallbacks.releaseFailureCallbacks.get(msg.escrowId);
             assert (callbackResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
             val callback = EscrowReleaseFailureCallbackV2.fromCell(callbackResult.loadValue());
@@ -714,10 +716,12 @@ fun onBouncedMessage(in: InMessageBounced) {
                         nftItem: pending.nftItem,
                         buyer: pending.buyer,
                     };
-                    releaseCallbacks.releaseFailureCallbacks.set(
-                        escrowId,
-                        failureCallback.toCell(),
-                    );
+                    releaseCallbacks
+                        .releaseFailureCallbacks
+                        .set(
+                            escrowId,
+                            failureCallback.toCell(),
+                        );
                     callbacks.releaseStorage = releaseCallbacks.toCell();
                     storage.callbacks = callbacks.toCell();
                     storage.save();
@@ -771,8 +775,8 @@ fun onBouncedMessage(in: InMessageBounced) {
         }
         val opcode = bodySlice.loadUint(32);
         if (
-            opcode == 0x71b00003 || opcode == 0x71b00004 ||
-            opcode == 0x71b0000F || opcode == 0x71b00013
+            opcode == 0x71b00003 || opcode == 0x71b00004 || opcode == 0x71b0000F ||
+            opcode == 0x71b00013
         ) {
             val storage = lazy NFTEscrowV2Storage.load();
             if (in.senderAddress != storage.marketplace) {
