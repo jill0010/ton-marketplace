@@ -14,18 +14,16 @@ import {
 } from "../lib/supabase"
 
 type Plan = {
-  id: "year" | "half-year" | "quarter"
+  id: "year"
   period: string
   periodZh: string
   marketUsd: number
-  gramPrice: number
 }
 
 type PricingRow = {
-  id: Plan["id"]
+  id: "year"
   period: string
   market_usd: number | string
-  gram_price: number | string
 }
 
 type MarketQuote = {
@@ -49,42 +47,22 @@ type WalletVerification = {
   walletVersion: string
 }
 
-const INITIAL_PLANS: Plan[] = [
-  {
-    id: "year",
-    period: "1 year",
-    periodZh: "1 年",
-    marketUsd: 28.99,
-    gramPrice: 23.67,
-  },
-  {
-    id: "half-year",
-    period: "6 months",
-    periodZh: "6 个月",
-    marketUsd: 15.99,
-    gramPrice: 13.05,
-  },
-  {
-    id: "quarter",
-    period: "3 months",
-    periodZh: "3 个月",
-    marketUsd: 11.99,
-    gramPrice: 9.79,
-  },
-]
+const INITIAL_PLAN: Plan = {
+  id: "year",
+  period: "12 months",
+  periodZh: "12 个月",
+  marketUsd: 28.99,
+}
 
 export function PremiumPage() {
   const { t } = useLanguage()
   const [tonConnectUI] = useTonConnectUI()
   const walletAddress = useTonAddress()
 
-  const [recipient, setRecipient] = useState<"self" | "other">("self")
   const [username, setUsername] = useState("")
   const [telegramProfile, setTelegramProfile] = useState<TelegramProfile | null>(null)
   const [profileLookup, setProfileLookup] = useState<"idle" | "loading" | "found" | "not-found" | "error">("idle")
   const [profileLookupMessage, setProfileLookupMessage] = useState("")
-  const [selectedPlan, setSelectedPlan] =
-    useState<Plan["id"]>("year")
 
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
@@ -175,7 +153,7 @@ export function PremiumPage() {
   }, [username])
 
   // =====================================================
-  // 1. 读取会员套餐价格
+  // 1. 读取管理员设置的 12 个月固定美元售价
   // =====================================================
 
   useEffect(() => {
@@ -187,7 +165,9 @@ export function PremiumPage() {
 
       const { data, error } = await supabase
         .from("premium_pricing")
-        .select("id, period, market_usd, gram_price")
+        .select("id, period, market_usd")
+        .eq("id", "year")
+        .maybeSingle()
 
       if (!active) return
 
@@ -198,40 +178,16 @@ export function PremiumPage() {
         return
       }
 
-      const rows = (data ?? []) as PricingRow[]
+      const marketUsd = Number((data as PricingRow | null)?.market_usd)
 
-      const loadedPlans = INITIAL_PLANS.flatMap((initial) => {
-        const row = rows.find((item) => item.id === initial.id)
-
-        if (!row) return []
-
-        const marketUsd = Number(row.market_usd)
-        const gramPrice = Number(row.gram_price)
-
-        if (
-          !Number.isFinite(marketUsd) ||
-          marketUsd <= 0 ||
-          !Number.isFinite(gramPrice) ||
-          gramPrice <= 0
-        ) {
-          return []
-        }
-
-        return [{
-          ...initial,
-          marketUsd,
-          gramPrice,
-        }]
-      })
-
-      setPlans(loadedPlans)
-
-      if (loadedPlans.length !== INITIAL_PLANS.length) {
-        setLoadError(
-          "部分套餐价格缺失或无效，请联系管理员检查定价设置。",
-        )
+      if (!data || !Number.isFinite(marketUsd) || marketUsd <= 0) {
+        setLoadError("12 个月 Premium 美元售价尚未设置，请联系管理员。")
+        setPlans([])
+        setLoading(false)
+        return
       }
 
+      setPlans([{ ...INITIAL_PLAN, marketUsd }])
       setLoading(false)
     }
 
@@ -741,9 +697,7 @@ export function PremiumPage() {
   // 6. 当前套餐与验证状态
   // =====================================================
 
-  const selected = plans.find(
-    (plan) => plan.id === selectedPlan,
-  )
+  const selected = plans[0]
 
   const isWalletVerified =
     walletVerification?.verified === true &&
@@ -757,251 +711,140 @@ export function PremiumPage() {
   // =====================================================
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          {t("Buy Telegram Premium", "购买 Telegram Premium")}
+          {t("Telegram Premium Gift", "赠送 Telegram Premium")}
         </h1>
-
         <p className="text-sm leading-6 text-zinc-400">
           {t(
-            "Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.",
-            "使用加密钱包为自己、朋友或同事购买 Telegram Premium 订阅。",
+            "Gift a 12-month Telegram Premium subscription to a Telegram user.",
+            "为 Telegram 用户赠送 12 个月高级版。",
           )}
         </p>
       </header>
 
-      {/* 接收人 */}
-      <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setRecipient("other")}
-            className={`rounded-xl border px-3 py-3 text-sm ${
-              recipient === "other"
-                ? "border-sky-400 bg-sky-400/10 text-white"
-                : "border-white/10 text-zinc-400 hover:bg-white/5"
-            }`}
-          >
-            {t("Choose recipient", "选择接收人")}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setRecipient("self")
-              setUsername("")
-            }}
-            className={`rounded-xl border px-3 py-3 text-sm ${
-              recipient === "self"
-                ? "border-sky-400 bg-sky-400/10 text-white"
-                : "border-white/10 text-zinc-400 hover:bg-white/5"
-            }`}
-          >
-            {t("Buy for myself", "为自己购买")}
-          </button>
+      {/* Fragment 风格：先选择接收人，再显示订阅与支付信息 */}
+      <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
+        <div className="space-y-2">
+          <label htmlFor="premium-username" className="text-sm font-medium text-white">
+            {t("Telegram username", "Telegram 用户名")}
+          </label>
+          <input
+            id="premium-username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value.replace(/^@+/, ""))}
+            placeholder={t("Enter Telegram username", "输入 Telegram 用户名")}
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-400"
+          />
         </div>
 
-        {recipient === "other" && (
-          <div className="space-y-2">
-            <label
-              htmlFor="premium-username"
-              className="text-sm text-zinc-300"
-            >
-              {t("Telegram username", "Telegram 用户名")}
-            </label>
+        <div className="space-y-3" aria-live="polite">
+          {profileLookup === "loading" && (
+            <p className="text-xs text-sky-300">
+              {t("Searching Telegram profile…", "正在查询 Telegram 资料…")}
+            </p>
+          )}
 
-            <input
-              id="premium-username"
-              value={username}
-              onChange={(event) =>
-                setUsername(
-                  event.target.value.replace(/^@/, ""),
-                )
-              }
-              placeholder={t(
-                "Enter Telegram username...",
-                "输入 Telegram 用户名...",
-              )}
-              autoComplete="off"
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-400"
-            />
+          {profileLookup === "not-found" && (
+            <p className="text-xs text-amber-300">
+              {profileLookupMessage || t("Username not found.", "未找到该用户名。")}
+            </p>
+          )}
 
-            <div className="space-y-3" aria-live="polite">
-              {profileLookup === "idle" && (
-                <p className="text-xs leading-5 text-zinc-500">
-                  {t(
-                    "Enter a public Telegram username (with or without @).",
-                    "输入 Telegram 用户名（可带或不带 @），系统会自动查询公开头像和资料。",
-                  )}
-                </p>
-              )}
+          {profileLookup === "error" && (
+            <p className="text-xs text-amber-300">
+              {profileLookupMessage || t("Public profile is unavailable.", "暂时无法读取公开资料。")}
+            </p>
+          )}
 
-              {profileLookup === "loading" && (
-                <p className="text-xs text-sky-300">
-                  {t("Looking up Telegram profile…", "正在查询 Telegram 用户资料…")}
-                </p>
-              )}
-
-              {profileLookup === "not-found" && (
-                <p className="text-xs text-amber-300">
-                  {profileLookupMessage || t("Username not found.", "未找到该用户名。")}
-                </p>
-              )}
-
-              {profileLookup === "error" && (
-                <p className="text-xs text-amber-300">
-                  {profileLookupMessage || t("Public profile is unavailable.", "暂时无法读取公开资料。")}
-                </p>
-              )}
-
-              {profileLookup === "found" && telegramProfile && (
-                <div className="flex items-start gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
-                  {telegramProfile.avatarUrl ? (
-                    <img
-                      src={telegramProfile.avatarUrl}
-                      alt={telegramProfile.displayName}
-                      referrerPolicy="no-referrer"
-                      className="h-14 w-14 shrink-0 rounded-full bg-black/20 object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-xl font-semibold text-sky-200">
-                      {telegramProfile.displayName.slice(0, 1).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="break-words text-sm font-semibold text-white">
-                      {telegramProfile.displayName}
-                    </p>
-                    <p className="text-xs text-sky-300">@{telegramProfile.username}</p>
-                    {telegramProfile.bio && (
-                      <p className="whitespace-pre-wrap break-words text-xs leading-5 text-zinc-300">
-                        {telegramProfile.bio}
-                      </p>
-                    )}
-                    {telegramProfile.extra && (
-                      <p className="text-xs text-zinc-500">{telegramProfile.extra}</p>
-                    )}
-                    <a
-                      href={telegramProfile.profileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block pt-1 text-xs text-sky-300 hover:underline"
-                    >
-                      {t("Open Telegram profile", "打开 Telegram 个人资料")}
-                    </a>
-                  </div>
+          {profileLookup === "found" && telegramProfile && (
+            <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              {telegramProfile.avatarUrl ? (
+                <img
+                  src={telegramProfile.avatarUrl}
+                  alt={telegramProfile.displayName}
+                  referrerPolicy="no-referrer"
+                  className="h-14 w-14 shrink-0 rounded-full bg-black/20 object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-xl font-semibold text-sky-200">
+                  {telegramProfile.displayName.slice(0, 1).toUpperCase()}
                 </div>
               )}
-
-              <p className="text-xs leading-5 text-zinc-500">
-                {t(
-                  "Only public Telegram profile details are shown. This lookup does not verify the recipient's identity or guarantee Premium delivery.",
-                  "这里只显示 Telegram 公开资料，不代表已验证接收人身份，也不代表 Premium 已成功赠送。",
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="break-words text-sm font-semibold text-white">
+                  {telegramProfile.displayName}
+                </p>
+                <p className="text-xs text-sky-300">@{telegramProfile.username}</p>
+                {telegramProfile.bio && (
+                  <p className="whitespace-pre-wrap break-words text-xs leading-5 text-zinc-300">
+                    {telegramProfile.bio}
+                  </p>
                 )}
-              </p>
+                {telegramProfile.extra && (
+                  <p className="text-xs text-zinc-500">{telegramProfile.extra}</p>
+                )}
+                <a
+                  href={telegramProfile.profileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block pt-1 text-xs text-sky-300 hover:underline"
+                >
+                  {t("Open Telegram profile", "打开 Telegram 个人资料")}
+                </a>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
-      {/* 套餐 */}
+      {/* 12 个月固定套餐 */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-white">
-          {t("Choose a subscription", "选择订阅套餐")}
+          {t("Subscription", "订阅套餐")}
         </h2>
 
         {loading && (
           <p className="text-sm text-zinc-400">
-            {t("Loading prices...", "正在读取套餐价格……")}
+            {t("Loading price…", "正在读取价格……")}
           </p>
         )}
 
         {loadError && (
-          <p
-            role="alert"
-            className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-300"
-          >
-            {t("Unable to load prices: ", "读取价格失败：")}
+          <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-300">
+            {t("Unable to load price: ", "读取价格失败：")}
             {loadError}
           </p>
         )}
 
-        {!loading &&
-          !loadError &&
-          plans.map((plan) => {
-            const active = selectedPlan === plan.id
-
-            const gramUsdValue = marketQuote
-              ? plan.gramPrice * marketQuote.priceUsd
-              : null
-
-            const discountPercent =
-              gramUsdValue !== null
-                ? ((plan.marketUsd - gramUsdValue) /
-                    plan.marketUsd) *
-                  100
-                : null
-
-            return (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSelectedPlan(plan.id)}
-                className={`w-full rounded-2xl border p-4 text-left transition ${
-                  active
-                    ? "border-sky-400 bg-sky-400/[0.08]"
-                    : "border-white/10 bg-white/[0.03] hover:border-white/20"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-white">
-                      {t(plan.period, plan.periodZh)}
-                    </p>
-
-                    <p className="text-xs text-zinc-500">
-                      {t("Original price", "原价格")}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="mb-1 text-xs font-medium text-emerald-300">
-                      {t("Discount price", "优惠价格")}
-                    </p>
-
-                    <p className="text-lg font-semibold text-emerald-300">
-                      {plan.gramPrice.toFixed(2)} GRAM
-                    </p>
-
-                    <p className="text-sm text-zinc-400 line-through">
-                      ${plan.marketUsd.toFixed(2)} USD
-                    </p>
-
-                    <p className="mt-1 text-xs text-zinc-400">
-                      {gramUsdValue !== null
-                        ? `≈ $${gramUsdValue.toFixed(2)} USD`
-                        : t(
-                            "USD estimate unavailable",
-                            "美元估值暂不可用",
-                          )}
-                    </p>
-
-                    {discountPercent !== null && (
-                      <p className="text-xs text-emerald-300">
-                        {discountPercent > 0
-                          ? t(
-                              `Save ${discountPercent.toFixed(1)}%`,
-                              `优惠 ${discountPercent.toFixed(1)}%`,
-                            )
-                          : t("No discount", "暂无折扣")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+        {!loading && !loadError && selected && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-sky-400 bg-sky-400/[0.08] p-5">
+            <div className="space-y-1">
+              <p className="font-semibold text-white">
+                {t("12 months Telegram Premium", "Telegram Premium · 12 个月")}
+              </p>
+              <p className="text-xs text-zinc-400">
+                {t("One-time gift", "一次性赠送")}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-semibold text-white">
+                {marketQuote
+                  ? (selected.marketUsd / marketQuote.priceUsd).toFixed(2)
+                  : "—"}{" "}
+                <span className="text-base text-sky-300">GRAM</span>
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">
+                {marketQuote
+                  ? t("Converted from the fixed USD price", "按固定美元售价实时换算")
+                  : t("Live GRAM rate unavailable", "GRAM 实时汇率暂不可用")}
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 钱包身份验证及支付方式 */}
@@ -1113,74 +956,34 @@ export function PremiumPage() {
         </div>
 
         {/* 订单价格预览 */}
-        <div className="space-y-2 rounded-xl bg-black/20 p-4 text-sm">
+        <div className="space-y-3 rounded-xl bg-black/20 p-4 text-sm">
           <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Subscription", "订阅套餐")}</span>
-            <span className="text-white">
-              {selected
-                ? t(selected.period, selected.periodZh)
-                : "—"}
+            <span>{t("Recipient", "赠送对象")}</span>
+            <span className="max-w-[65%] break-all text-right text-white">
+              {username.trim() ? "@" + username.trim().replace(/^@+/, "") : "—"}
             </span>
           </div>
-
           <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Original price", "原价格")}</span>
-            <span className="text-white line-through">
-              {selected
-                ? `$${selected.marketUsd.toFixed(2)} USD`
-                : "—"}
-            </span>
+            <span>{t("Subscription", "订阅时长")}</span>
+            <span className="text-white">{t("12 months", "12 个月")}</span>
           </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Discount price", "优惠价格")}</span>
-            <span className="font-semibold text-emerald-300">
-              {selected
-                ? `${selected.gramPrice.toFixed(2)} GRAM`
-                : "—"}
-            </span>
-          </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("USD equivalent", "美元估值")}</span>
-            <span className="text-white">
+          <div className="flex justify-between gap-3 border-t border-white/10 pt-3 text-zinc-300">
+            <span>{t("Total", "应付总额")}</span>
+            <span className="text-lg font-semibold text-sky-300">
               {selected && marketQuote
-                ? `$${(
-                    selected.gramPrice * marketQuote.priceUsd
-                  ).toFixed(2)} USD`
+                ? (selected.marketUsd / marketQuote.priceUsd).toFixed(2) + " GRAM"
                 : "—"}
             </span>
           </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Discount", "优惠比例")}</span>
-            <span className="font-semibold text-emerald-300">
-              {selected && marketQuote
-                ? (() => {
-                    const discount =
-                      ((selected.marketUsd -
-                        selected.gramPrice *
-                          marketQuote.priceUsd) /
-                        selected.marketUsd) *
-                      100
-
-                    return discount > 0
-                      ? `${discount.toFixed(1)}%`
-                      : t("No discount", "暂无折扣")
-                  })()
-                : "—"}
-            </span>
-          </div>
-
-          <p className="pt-1 text-xs leading-5 text-zinc-500">
+          <p className="text-xs leading-5 text-zinc-500">
             {marketQuote
               ? t(
-                  "GRAM/USD quote from CoinGecko. Automatically refreshed every 60 seconds.",
-                  "GRAM/USD 行情来自 CoinGecko，每 60 秒自动刷新。",
+                  "GRAM market rate is provided by CoinGecko and refreshed every 60 seconds.",
+                  "GRAM 实时行情来自 CoinGecko，每 60 秒自动刷新。",
                 )
               : t(
-                  "Live market quote unavailable. USD equivalent and discount are hidden.",
-                  "实时行情暂不可用，美元估值和折扣暂不显示。",
+                  "The live GRAM/USD quote is currently unavailable.",
+                  "当前无法获取 GRAM/USD 实时汇率。",
                 )}
           </p>
         </div>
