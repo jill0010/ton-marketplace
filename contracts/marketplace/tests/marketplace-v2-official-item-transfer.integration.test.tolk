@@ -42,6 +42,7 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
             releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
                 pendingReleases: [],
                 releaseCallbacks: [],
+                releaseFailureCallbacks: [],
             }.toCell(),
             refundStorage: NFTEscrowV2RefundCallbackStorage {
                 pendingRefunds: [],
