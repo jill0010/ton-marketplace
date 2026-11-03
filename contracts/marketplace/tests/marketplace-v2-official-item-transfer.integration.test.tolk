@@ -37,10 +37,14 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
             depositCallbacks: [],
-            pendingReleases: [],
-            releaseCallbacks: [],
-            pendingRefunds: [],
-            refundCallbacks: [],
+            releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
+                pendingReleases: [],
+                releaseCallbacks: [],
+            }.toCell(),
+            refundStorage: NFTEscrowV2RefundCallbackStorage {
+                pendingRefunds: [],
+                refundCallbacks: [],
+            }.toCell(),
             collectionStorage: NFTEscrowV2CollectionStorage {
                 collections: [],
                 collectionItemCodes: [],
