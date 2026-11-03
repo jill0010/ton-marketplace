@@ -786,11 +786,11 @@ struct MarketplaceV2OrderExtra {
 struct MarketplaceV2Order {
     id: uint64
     productId: uint64
-    status: uint8
-    deliveryStatus: uint8
-    sellerPayoutStatus: uint8
-    platformPayoutStatus: uint8
-    refundStatus: uint8
+    status: MarketplaceV2OrderStatus
+    deliveryStatus: MarketplaceV2DeliveryStatus
+    sellerPayoutStatus: MarketplaceV2PayoutStatus
+    platformPayoutStatus: MarketplaceV2PayoutStatus
+    refundStatus: MarketplaceV2RefundStatus
     createdAt: uint32
     extra: Cell<MarketplaceV2OrderExtra>
 }
@@ -804,16 +804,20 @@ struct MarketplaceV2Payout {
     beneficiary: address
     amount: coins
     kind: uint8
-    status: uint8
+    status: MarketplaceV2PayoutStatus
     createdAt: uint32
+}
+
+struct MarketplaceV2Config {
+    treasury: address
+    treasuryConfigured: bool
 }
 
 struct MarketplaceV2Storage {
     owner: address
     escrow: address
     escrowConfigured: bool
-    treasury: address
-    treasuryConfigured: bool
+    config: Cell<MarketplaceV2Config>
     nextProductId: uint64
     nextQueryId: uint64
     nextOrderId: uint64
