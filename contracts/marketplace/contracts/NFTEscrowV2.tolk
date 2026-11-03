@@ -637,8 +637,8 @@ fun onBouncedMessage(in: InMessageBounced) {
                 val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
                 if (
                     in.senderAddress == record.nftItem && pending.queryId == transfer.queryId &&
-                    pending.buyer == transfer.newOwner &&
-                    pending.nftItem == record.nftItem
+                    pending.buyer == transfer.newOwner && pending.nftItem == record.nftItem &&
+                    pending.escrowId == escrowId && pending.productId == record.productId
                 ) {
                     record.status = 1;
                     storage.records.set(escrowId, record.toCell());
@@ -656,8 +656,9 @@ fun onBouncedMessage(in: InMessageBounced) {
                 val pending = EscrowRefundCallbackV2.fromCell(pendingResult.loadValue());
                 if (
                     in.senderAddress == record.nftItem && pending.queryId == transfer.queryId &&
-                    pending.seller == transfer.newOwner &&
-                    pending.nftItem == record.nftItem
+                    pending.seller == transfer.newOwner && pending.nftItem == record.nftItem &&
+                    pending.escrowId == escrowId && pending.productId == record.productId &&
+                    pending.seller == record.seller
                 ) {
                     record.status = 1;
                     storage.records.set(escrowId, record.toCell());
