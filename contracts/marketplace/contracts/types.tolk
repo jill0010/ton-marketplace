@@ -437,15 +437,19 @@ struct NFTEscrowV2Record {
     queryId: uint64
 }
 
+struct NFTEscrowV2CallbackStorage {
+    depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
+    pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+}
+
 struct NFTEscrowV2Storage {
     owner: address
     marketplace: address
     records: map<uint64, Cell<NFTEscrowV2Record>>
     nextEscrowId: uint64
     queryToEscrow: map<uint64, uint64>
-    depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
-    pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
-    releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    callbacks: Cell<NFTEscrowV2CallbackStorage>
 }
 
 fun NFTEscrowV2Storage.load(): NFTEscrowV2Storage {
