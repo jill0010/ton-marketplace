@@ -598,6 +598,10 @@ struct (0x71b0000B) SetMarketplaceV2Escrow {
     escrow: address
 }
 
+struct (0x71b00012) CancelProductV2 {
+    productId: uint64
+}
+
 struct MarketplaceV2ProductExtra {
     collection: address
     itemIndex: uint256
@@ -611,6 +615,7 @@ struct MarketplaceV2Product {
     price: coins
     escrowId: uint64
     queryId: uint64
+    refundQueryId: uint64
     status: uint8
     createdAt: uint32
     extra: Cell<MarketplaceV2ProductExtra>
@@ -725,6 +730,8 @@ struct MarketplaceV2Storage {
     // NFT Item address -> pending/active Marketplace V2 product ID.
     assetListings: map<address, uint64>
     queryToProduct: map<uint64, uint64>
+    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
+    refundQueryToProduct: map<uint64, uint64>
 }
 
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
