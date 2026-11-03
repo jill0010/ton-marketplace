@@ -596,24 +596,41 @@ enum MarketplaceV2RefundStatus {
 
 // Immutable order snapshot. All operation IDs are distinct uint64 values;
 // none is inferred from the order ID or NFT Escrow ID.
-struct MarketplaceV2OrderExtra {
+// Keep each snapshot segment below the TON 1023-bit cell limit.
+struct MarketplaceV2OrderParties {
     buyer: address
     seller: address
+    treasury: address
+}
+
+struct MarketplaceV2OrderAsset {
     nftItem: address
     collection: address
     itemIndex: uint256
     escrowId: uint64
+}
+
+struct MarketplaceV2OrderSettlement {
     gross: coins
     feeBps: uint16
     feeRoundingVersion: uint8
     platformFee: coins
     sellerProceeds: coins
-    treasury: address
     processingReserve: coins
+}
+
+struct MarketplaceV2OrderOperations {
     paymentQueryId: uint64
     releaseQueryId: uint64
     sellerPayoutQueryId: uint64
     platformPayoutQueryId: uint64
+}
+
+struct MarketplaceV2OrderExtra {
+    parties: Cell<MarketplaceV2OrderParties>
+    asset: Cell<MarketplaceV2OrderAsset>
+    settlement: Cell<MarketplaceV2OrderSettlement>
+    operations: Cell<MarketplaceV2OrderOperations>
 }
 
 struct MarketplaceV2Order {
