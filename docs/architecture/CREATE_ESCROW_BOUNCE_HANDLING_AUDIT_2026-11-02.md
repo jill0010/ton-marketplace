@@ -202,3 +202,27 @@ Validation on code commit `5d08d7864efc38aa9cb316c0ad3c8003b9911e11`:
 - Wallet Identity Audit #90: success — Deno/type checks and PostgreSQL 17 integration tests.
 
 Together, malformed-input tests now cover (1) truncated RichBounce envelope, (2) truncated CreateEscrow root body, and (3) truncated referenced CreateEscrowExtra cell. The test suite also asserts the NFT listing reservation remains held for malformed messages.
+
+## CreateEscrow replay and escrow-record lifecycle regression coverage (2026-11-03)
+
+The NFT Escrow integration test now exercises duplicate CreateEscrow requests against the same persisted query mapping:
+
+- An exact replay while the record is Pending (status 1) succeeds idempotently and leaves the original record and query-to-escrow mapping unchanged.
+- Replays with the same query ID but a changed NFT Item, seller, collection, or item index fail with `EscrowAlreadyExists`; the original record's identity and Pending status remain unchanged.
+- An exact replay after the NFT has been deposited (status 2) succeeds without resetting the record or changing its status.
+- An exact stale replay after the refund has completed (status 4) fails with `EscrowAlreadyExists`; the record is not resurrected.
+
+This confirms the current Escrow duplicate-request branch accepts only the original immutable identity while a record is Pending or Deposited, and rejects terminal/refund-in-progress records. The tests do not add storage fields or change either contract's serialized storage layout.
+
+### Identity boundary and explicit trust assumption
+
+The Escrow's `queryToEscrow` index is keyed by the supplied query ID, while the stored record also carries a product ID. The current Marketplace is the only authorized sender and generates product IDs monotonically, using its product ID as the query ID in this implementation. The standalone Escrow test fixtures also intentionally demonstrate that query ID and product ID are separate ABI fields and need not be numerically equal; therefore this audit does not impose an equality rule that would break the existing protocol.
+
+Accordingly, the current cross-contract uniqueness guarantee depends on the configured Marketplace remaining the trusted request authority and enforcing product-ID uniqueness. If the system later supports multiple Marketplace contracts, changes the request authority, or permits arbitrary product-ID allocation, add a product-ID uniqueness index through a separately versioned storage-layout migration and fresh-address deployment plan. Do not silently add a map to the current Escrow storage layout.
+
+Validation on commit `f5812906e50a92ad6585a5d274e9a49ff4c0eae1`:
+- Contracts workflow #104: success — Acton build, 94 tests in 7 files, linter, formatter.
+- Frontend Build #46: success.
+- Wallet Identity Audit #93: success — Deno/type checks and PostgreSQL 17 integration tests.
+
+No contract implementation, storage layout, production migration, Edge Function deployment, contract deployment, mainnet transaction, NFT transfer, or fund movement was changed or performed by this replay-test slice.
