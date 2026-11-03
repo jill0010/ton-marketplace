@@ -275,7 +275,7 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val selfPurchase = marketplace.sendBuyProductV2(
         seller.address,
         1,
-        { value: grams("4.5") },
+        { value: grams("4") },
     );
     expect(selfPurchase).toHaveFailedTx({
         from: seller.address,
@@ -287,7 +287,7 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val underpayment = marketplace.sendBuyProductV2(
         buyer.address,
         1,
-        { value: grams("4.49") },
+        { value: grams("3.99") },
     );
     expect(underpayment).toHaveFailedTx({
         from: buyer.address,
@@ -296,12 +296,12 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     });
     expect(marketplace.productV2(1)!!.status).toEqual(2);
 
-    // Exact payment is gross listing price + the 0.5 TON processing reserve.
-    // The Marketplace reserves the product and asks NFTEscrowV2 to deliver the NFT.
+    // Exact payment is the listing price only. Marketplace operational reserve
+    // funds escrow callbacks and payout transaction fees, not an extra buyer surcharge.
     val purchase = marketplace.sendBuyProductV2(
         buyer.address,
         1,
-        { value: grams("4.5") },
+        { value: grams("4") },
     );
     expect(purchase).toHaveSuccessfulTx();
 
@@ -315,7 +315,7 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
 
     val order = marketplace.orderV2(1);
     assert (order != null) throw ErrorsV2.OrderNotFound;
-    expect(order!!.status).toEqual(MarketplaceV2OrderStatus.SettlementPending);
+    expect(order!!.status).toEqual(MarketplaceV2OrderStatus.PayoutsDispatched);
     expect(order.deliveryStatus).toEqual(MarketplaceV2DeliveryStatus.Confirmed);
 
     val orderExtra = order.extra.load();
@@ -332,30 +332,21 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(settlement.platformFee).toEqual(grams("0.12"));
     expect(settlement.sellerProceeds).toEqual(grams("3.88"));
     expect(settlement.platformFee + settlement.sellerProceeds).toEqual(settlement.gross);
+    expect(settlement.processingReserve).toEqual(grams("0"));
 
     val sellerPayout = marketplace.payoutV2(operations.sellerPayoutOperationId);
     assert (sellerPayout != null) throw ErrorsV2.InvalidPayout;
     expect(sellerPayout!!.beneficiary).toEqual(seller.address);
     expect(sellerPayout.amount).toEqual(grams("3.88"));
-    expect(sellerPayout.status).toEqual(MarketplaceV2PayoutStatus.Pending);
+    expect(sellerPayout.status).toEqual(MarketplaceV2PayoutStatus.Dispatched);
 
     val platformPayout = marketplace.payoutV2(operations.platformPayoutOperationId);
     assert (platformPayout != null) throw ErrorsV2.InvalidPayout;
     expect(platformPayout!!.beneficiary).toEqual(treasury.address);
     expect(platformPayout.amount).toEqual(grams("0.12"));
-    expect(platformPayout.status).toEqual(MarketplaceV2PayoutStatus.Pending);
+    expect(platformPayout.status).toEqual(MarketplaceV2PayoutStatus.Dispatched);
 
-    // Each payout is independently dispatched from its immutable liability.
-    val sellerDispatch = marketplace.sendDispatchPayoutV2(
-        buyer.address,
-        operations.sellerPayoutOperationId,
-        { value: grams("0.05") },
-    );
-    expect(sellerDispatch).toHaveSuccessfulTx();
-    expect(
-        marketplace.payoutV2(operations.sellerPayoutOperationId)!!.status,
-    ).toEqual(MarketplaceV2PayoutStatus.Dispatched);
-
+    // Successful delivery dispatches both payout legs automatically.
     val duplicateSellerDispatch = marketplace.sendDispatchPayoutV2(
         attacker.address,
         operations.sellerPayoutOperationId,
@@ -367,15 +358,6 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         exitCode: ErrorsV2.InvalidPayout,
     });
 
-    val platformDispatch = marketplace.sendDispatchPayoutV2(
-        buyer.address,
-        operations.platformPayoutOperationId,
-        { value: grams("0.05") },
-    );
-    expect(platformDispatch).toHaveSuccessfulTx();
-    expect(
-        marketplace.payoutV2(operations.platformPayoutOperationId)!!.status,
-    ).toEqual(MarketplaceV2PayoutStatus.Dispatched);
     expect(marketplace.orderV2(1)!!.status).toEqual(
         MarketplaceV2OrderStatus.PayoutsDispatched,
     );
