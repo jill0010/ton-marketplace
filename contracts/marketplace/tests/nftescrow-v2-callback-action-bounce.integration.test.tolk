@@ -81,7 +81,7 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
     expect(escrow.escrowRecordV2(1)!!.status).toEqual(3);
 
     // NFT delivery succeeded, but Marketplace callback processing fails in ACTION phase.
-    val failedReceiverTxResult = startRelease.findTransaction({ to: marketplace.address });
+    val failedReceiverTxResult = startRelease.findTransaction({ from: escrow.address, to: marketplace.address });
     expect(failedReceiverTxResult).toBeNotNull();
     val failedReceiverTx = failedReceiverTxResult!!;
     val failedReceiverDescription = failedReceiverTx.description.load();
