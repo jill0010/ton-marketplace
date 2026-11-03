@@ -105,7 +105,7 @@ get fun `test real NFT Item compute failure automatically bounces refund transfe
     );
     val underfundedTxResult = underfundedRefundRes.findTransaction({ to: escrow.address });
     expect(underfundedTxResult).toBeNotNull();
-    val underfundedTx = underfundedTxResult!!.tx.load();
+    val underfundedTx = underfundedTxResult!!;
     val underfundedDescription = underfundedTx.description.load();
     assert (underfundedDescription is TlbTransOrd) throw 402;
     expect(underfundedDescription.aborted).toEqual(true);
@@ -145,7 +145,7 @@ get fun `test real NFT Item compute failure automatically bounces refund transfe
     // 检查 NFT Item 交易的 Bounce phase：必须实际成功生成 Bounce，且费用确实被扣除。
     val failedItemTxResult = failedRefundRes.findTransaction({ to: nftItem.address });
     expect(failedItemTxResult).toBeNotNull();
-    val failedItemTx = failedItemTxResult!!.tx.load();
+    val failedItemTx = failedItemTxResult!!;
     val failedItemDescription = failedItemTx.description.load();
     assert (failedItemDescription is TlbTransOrd) throw 402;
     assert (failedItemDescription.bounce is TlbJust) throw 402;
