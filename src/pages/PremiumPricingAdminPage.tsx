@@ -37,10 +37,11 @@ export function PremiumPricingAdminPage() {
       if (error) {
         setLoadError("读取数据库失败：" + error.message)
       } else {
-        const next = { ...prices }
+        const next: PriceMap = { ...prices }
         for (const row of data ?? []) {
-          if (row.id === "year" || row.id === "half-year" || row.id === "quarter") {
-            next[row.id] = String(row.market_usd)
+          const id = row.id as PlanId
+          if (id === "year" || id === "half-year" || id === "quarter") {
+            next[id] = String(row.market_usd)
           }
         }
         setPrices(next)
