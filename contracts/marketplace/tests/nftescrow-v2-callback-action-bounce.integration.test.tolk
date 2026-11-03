@@ -30,17 +30,34 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         escrow: controller.address,
         rejectAction: true,
     });
+    var seededRecords: map<uint64, Cell<NFTEscrowV2Record>> = [];
+    seededRecords.set(1, NFTEscrowV2Record {
+        escrowId: 1,
+        nftItem: nftItem.address,
+        collection: controller.address,
+        seller: seller.address,
+        productId: 7301,
+        status: 0,
+        queryId: depositQueryId,
+        itemIndex: 0,
+        kind: 3,
+    }.toCell());
+    var seededAssets: map<address, uint64> = [];
+    seededAssets.set(nftItem.address, 1);
+    var seededQueries: map<uint64, uint64> = [];
+    seededQueries.set(depositQueryId, 1);
+
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
         owner: owner.address,
         marketplace: marketplace.address,
-        records: [],
-        assetToEscrow: [],
+        records: seededRecords,
+        assetToEscrow: seededAssets,
         collectionStorage: NFTEscrowV2CollectionStorage {
             collections: [],
             collectionItemCodes: [],
         }.toCell(),
-        nextEscrowId: 1,
-        queryToEscrow: [],
+        nextEscrowId: 2,
+        queryToEscrow: seededQueries,
         callbacks: NFTEscrowV2CallbackStorage {
             depositCallbacks: [],
             pendingReleases: [],
@@ -66,16 +83,8 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         ),
     ).toHaveSuccessfulTx();
 
-    // The Marketplace fixture is the only sender authorized to create the escrow.
-    val create = marketplace.sendStartTestEscrowV2(
-        controller.address,
-        7301,
-        nftItem.address,
-        seller.address,
-        depositQueryId,
-        { value: grams("0.1") },
-    );
-    expect(create).toHaveSuccessfulTx();
+    // Seed a pending record to isolate callback Action-phase bounce/retry.
+    // The V2 collection policy is covered by the dedicated provenance test.
 
     val deposit = nftItem.sendNftTransfer(
         seller.address,
