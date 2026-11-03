@@ -4,13 +4,21 @@ struct (0x7f000006) SetMockRejectRefundV2 {
     rejectRefund: bool
 }
 
-struct MockMarketplaceEscrowV2Storage {
+struct MockMarketplaceEscrowV2Config {
     owner: address
     marketplace: address
+}
+
+struct MockMarketplaceEscrowV2State {
     escrowId: uint64
     nftItem: address
     seller: address
     rejectRefund: bool
+}
+
+struct MockMarketplaceEscrowV2Storage {
+    config: Cell<MockMarketplaceEscrowV2Config>
+    state: Cell<MockMarketplaceEscrowV2State>
 }
 
 fun MockMarketplaceEscrowV2Storage.load(): MockMarketplaceEscrowV2Storage {
@@ -43,24 +51,30 @@ fun onInternalMessage(in: InMessage) {
     match (msg) {
         SetMockRejectRefundV2 => {
             var storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
-            storage.rejectRefund = msg.rejectRefund;
+            val config = storage.config.load();
+            var state = storage.state.load();
+            assert (in.senderAddress == config.owner) throw ErrorsV2.NotOwner;
+            state.rejectRefund = msg.rejectRefund;
+            storage.state = state.toCell();
             storage.save();
         }
 
         CreateEscrowV2 => {
             var storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
+            val config = storage.config.load();
+            var state = storage.state.load();
+            assert (in.senderAddress == config.marketplace) throw ErrorsV2.InvalidRelease;
             assert (msg.productId > 0 && msg.queryId > 0) throw ErrorsV2.InvalidRelease;
-            storage.escrowId = 77;
-            storage.nftItem = msg.nftItem;
-            storage.seller = msg.seller;
+            state.escrowId = 77;
+            state.nftItem = msg.nftItem;
+            state.seller = msg.seller;
+            storage.state = state.toCell();
             storage.save();
 
             val callback = createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
                 value: grams("0.03"),
-                dest: storage.marketplace,
+                dest: config.marketplace,
                 body: EscrowDepositedV2 {
                     escrowId: storage.escrowId,
                     productId: msg.productId,
@@ -74,13 +88,16 @@ fun onInternalMessage(in: InMessage) {
 
         EscrowDepositAckV2 => {
             val storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
+            val config = storage.config.load();
+            assert (in.senderAddress == config.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
         }
 
         ReleaseEscrowV2 => {
             val storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
-            assert (msg.escrowId == storage.escrowId) throw ErrorsV2.InvalidRelease;
+            val config = storage.config.load();
+            val state = storage.state.load();
+            assert (in.senderAddress == config.marketplace) throw ErrorsV2.InvalidRelease;
+            assert (msg.escrowId == state.escrowId) throw ErrorsV2.InvalidRelease;
             assert (msg.productId > 0 && msg.orderId > 0) throw ErrorsV2.InvalidRelease;
 
             // Deterministically simulate the escrow's durable release-failure
@@ -89,13 +106,13 @@ fun onInternalMessage(in: InMessage) {
             val callback = createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
                 value: grams("0.03"),
-                dest: storage.marketplace,
+                dest: config.marketplace,
                 body: EscrowReleaseFailedV2 {
                     orderId: msg.orderId,
                     productId: msg.productId,
                     escrowId: msg.escrowId,
                     queryId: msg.queryId,
-                    nftItem: storage.nftItem,
+                    nftItem: state.nftItem,
                     buyer: msg.buyer,
                 },
             });
@@ -104,21 +121,25 @@ fun onInternalMessage(in: InMessage) {
 
         EscrowReleaseFailureAckV2 => {
             val storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
+            val config = storage.config.load();
+            assert (in.senderAddress == config.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
         }
 
         RefundEscrowV2 => {
             val storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
-            assert (msg.escrowId == storage.escrowId) throw ErrorsV2.InvalidRefund;
-            if (storage.rejectRefund) {
+            val config = storage.config.load();
+            val state = storage.state.load();
+            assert (in.senderAddress == config.marketplace) throw ErrorsV2.InvalidRefund;
+            assert (msg.escrowId == state.escrowId) throw ErrorsV2.InvalidRefund;
+            assert (msg.seller == state.seller) throw ErrorsV2.InvalidRefund;
+            if (state.rejectRefund) {
                 throw ErrorsV2.InvalidRefund;
             }
 
             val callback = createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
                 value: grams("0.03"),
-                dest: storage.marketplace,
+                dest: config.marketplace,
                 body: EscrowRefundedV2 {
                     escrowId: msg.escrowId,
                     productId: msg.productId,
@@ -132,11 +153,18 @@ fun onInternalMessage(in: InMessage) {
 
         EscrowRefundAckV2 => {
             val storage = lazy MockMarketplaceEscrowV2Storage.load();
-            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
+            val config = storage.config.load();
+            assert (in.senderAddress == config.marketplace) throw ErrorsV2.InvalidRefund;
         }
 
         else => {
             assert (in.body.isEmpty()) throw ErrorsV2.InvalidMessage;
         }
     }
+}
+
+get fun rejectRefund(): bool {
+    val storage = MockMarketplaceEscrowV2Storage.load();
+    val state = storage.state.load();
+    return state.rejectRefund;
 }
