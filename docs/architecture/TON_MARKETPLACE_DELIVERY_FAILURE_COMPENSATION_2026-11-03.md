@@ -33,7 +33,7 @@ Reserve these opcodes without implementing them until the callback and compensat
 | `0x71b00014` | `EscrowReleaseFailureAckV2` | MarketplaceV2 → NFTEscrowV2 |
 | `0x71b00015` | `RetryReleaseFailureCallbackV2` | Operator → NFTEscrowV2 |
 
-The callback snapshot must include order ID, product ID, escrow ID, release query ID, NFT Item, buyer, and seller. NFTEscrowV2 creates it only after an exact NFT Item RichBounce restores the record to Deposited. The callback is stored durably until an exact ACK from the configured MarketplaceV2.
+The callback snapshot carries order ID, product ID, escrow ID, release query ID, NFT Item, and buyer. The seller remains in the Escrow record and must be checked against MarketplaceV2's stored product snapshot. The message deliberately omits the seller address to remain below TON's 1023-bit cell limit. NFTEscrowV2 creates the callback only after an exact NFT Item RichBounce restores the record to Deposited. The callback is stored durably until an exact ACK from the configured MarketplaceV2.
 
 The Marketplace accepts the callback only from its immutable configured Escrow and only when every field matches the order snapshot and the order is currently DeliveryPending. A duplicate exact callback is idempotently re-ACKed and must not create a second refund liability.
 
@@ -79,4 +79,4 @@ The order must never be marked Completed/Refunded merely because a refund messag
 
 ## Scope boundary
 
-This decision is a prerequisite for MarketplaceV2 buyer payment. NFTEscrowV2 currently restores its custody record on a correlated NFT release bounce, but it does not yet send the durable release-failure callback described here. MarketplaceV2 has no buyer purchase entrypoint or buyer refund handler. Do not accept buyer funds until this protocol and the full cross-contract tests are implemented.
+This decision is a prerequisite for MarketplaceV2 buyer payment. NFTEscrowV2 now persists and sends the durable release-failure callback on a correlated NFT Item bounce, supports owner-authorized callback retry, and clears it only after an exact Marketplace ACK. Emulator coverage exercises callback persistence, bounce handling, retry authorization, and exact ACK. MarketplaceV2 does not yet accept or ACK this callback, and buyer refund/seller-return compensation is not yet wired into an order. Do not accept buyer funds until the Marketplace consumer, compensation flow, and full cross-contract tests are implemented.
