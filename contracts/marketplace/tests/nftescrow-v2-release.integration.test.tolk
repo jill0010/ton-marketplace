@@ -24,6 +24,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         owner: owner.address,
         marketplace: marketplace.address,
         records: [],
+        assetToEscrow: [],
         nextEscrowId: 1,
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
@@ -48,6 +49,22 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         { value: grams("0.05") },
     );
     expect(create).toHaveSuccessfulTx();
+
+    // A second query ID must not create a second custody record for the same NFT Item.
+    val duplicateCreate = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        7002,
+        nftItem.address,
+        seller.address,
+        72003,
+        { value: grams("0.05") },
+    );
+    expect(duplicateCreate).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.AssetAlreadyEscrowed,
+    });
+    expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
 
     // Deposit through a real TEP-62 transfer and authenticated ownership notification.
     val deposit = nftItem.sendNftTransfer(
@@ -154,4 +171,17 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
 
     val cleared = escrow.releaseCallbackV2(1);
     expect(cleared == null).toEqual(true);
+    expect(escrow.assetEscrowIdV2(nftItem.address) == null).toEqual(true);
+
+    // Once authenticated NFT excesses confirms delivery, the new owner can list it again.
+    val relist = escrow.sendCreateEscrowV2(
+        marketplace.address,
+        7002,
+        nftItem.address,
+        buyer.address,
+        72003,
+        { value: grams("0.05") },
+    );
+    expect(relist).toHaveSuccessfulTx();
+    expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(2);
 }
