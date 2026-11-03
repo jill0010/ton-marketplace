@@ -23,15 +23,25 @@ Use a new opcode namespace, subject to a final collision scan before code genera
 
 | Opcode | Message | Direction |
 |---|---|---|
-| `0x71b00001` | `BuyProductV2` | Buyer → MarketplaceV2 |
+| `0x71b00001` | `CreateEscrowV2` | MarketplaceV2 → NFTEscrowV2 |
 | `0x71b00002` | `ReleaseEscrowV2` | MarketplaceV2 → NFTEscrowV2 |
 | `0x71b00003` | `EscrowReleasedV2` | NFTEscrowV2 → MarketplaceV2 |
-| `0x71b00004` | `SellerPayoutV2` | MarketplaceV2 → Seller |
-| `0x71b00005` | `PlatformPayoutV2` | MarketplaceV2 → Treasury |
-| `0x71b00006` | `RetryPayoutV2` | Operator → MarketplaceV2 |
-| `0x71b00007` | `BuyerRefundV2` | MarketplaceV2 → Buyer |
-| `0x71b00008` | `PayoutSettledV2` | Beneficiary → MarketplaceV2 |
+| `0x71b00004` | `EscrowDepositedV2` | NFTEscrowV2 → MarketplaceV2 |
+| `0x71b00005` | `EscrowDepositAckV2` | MarketplaceV2 → NFTEscrowV2 |
+| `0x71b00006` | `RetryDepositCallbackV2` | Operator → NFTEscrowV2 |
+| `0x71b00008` | `EscrowReleaseAckV2` | MarketplaceV2 → NFTEscrowV2 |
 | `0x71b00009` | `RetryReleaseCallbackV2` | Operator → NFTEscrowV2 |
+
+Purchase and settlement messages use a separate range to avoid colliding with the already implemented escrow ABI:
+
+| Opcode | Message | Direction |
+|---|---|---|
+| `0x71b00100` | `BuyProductV2` | Buyer → MarketplaceV2 |
+| `0x71b00101` | `SellerPayoutV2` | MarketplaceV2 → Seller |
+| `0x71b00102` | `PlatformPayoutV2` | MarketplaceV2 → Treasury |
+| `0x71b00103` | `RetryPayoutV2` | Operator → MarketplaceV2 |
+| `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer |
+| `0x71b00105` | `PayoutSettledV2` | Beneficiary → MarketplaceV2 |
 
 These values are proposed, not yet frozen. Do not release an ABI or deploy until a repository-wide opcode scan and generated-wrapper review are complete.
 
@@ -211,3 +221,12 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - Contracts CI #162 on commit `cf89085`: success — build, 96 tests in 9 files, linter, and formatter.
 - The same test suite also verifies a real NFT Item compute-phase rejection, bounce recovery to Deposited, reservation retention, and successful retry with the same query ID.
 - No production deployment, database migration, or NFT/fund movement was performed.
+
+
+## Opcode collision audit — 2026-11-03
+
+- Added the canonical registry at `docs/architecture/TON_MARKETPLACE_OPCODE_REGISTRY_2026-11-03.md`.
+- Repository Tolk message declarations show `0x71b00001` is already assigned to `CreateEscrowV2`; the prior design table incorrectly reused it for `BuyProductV2`.
+- Kept every existing V1, TEP-62, and V2 escrow opcode unchanged. Reserved purchase and settlement messages in the non-overlapping `0x71b00100–0x71b00105` range.
+- This is a protocol/documentation correction only. No purchase entrypoint, payment receiver, payout handler, or refund handler was implemented or enabled.
+- A full pre-implementation scan of generated wrappers and deployment artifacts remains a required gate before ABI code generation.
