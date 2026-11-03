@@ -45,10 +45,15 @@ function getMeta(html: string, key: string): string | null {
 }
 
 function getElementText(html: string, className: string): string | null {
-  for (const match of html.matchAll(/<([a-z0-9]+)\b([^>]*)>([\s\S]*?)<\/\1>/gi)) {
-    const classes = getAttribute(match[2], "class") ?? "";
+  const lowerHtml = html.toLowerCase();
+  for (const openTag of html.matchAll(/<([a-z0-9]+)\b([^>]*)>/gi)) {
+    const classes = getAttribute(openTag[2], "class") ?? "";
     if (!classes.split(/\s+/).includes(className)) continue;
-    return decodeHtml(match[3].replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).slice(0, 1000);
+    const tagName = openTag[1].toLowerCase();
+    const start = (openTag.index ?? 0) + openTag[0].length;
+    const closeIndex = lowerHtml.indexOf("</" + tagName + ">", start);
+    if (closeIndex < 0) continue;
+    return decodeHtml(html.slice(start, closeIndex).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).slice(0, 1000);
   }
   return null;
 }
