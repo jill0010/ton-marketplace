@@ -26,26 +26,28 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     });
 
     val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
-        schemaVersion: 2,
         owner: owner.address,
         escrow: owner.address,
         escrowConfigured: false,
-        treasury: owner.address,
-        treasuryConfigured: false,
         nextProductId: 1,
         nextQueryId: 1,
-        nextOrderId: 1,
-        nextOperationId: 1,
         products: [],
         assetListings: [],
         queryToProduct: [],
         refundQueryToProduct: [],
-        orders: [],
-        productToOrder: [],
-        paymentQueryToOrder: [],
-        payouts: [],
-        payoutQueryToOperation: [],
-        refundQueryToOrder: [],
+        purchaseStorage: MarketplaceV2PurchaseStorage {
+            schemaVersion: 2,
+            treasury: owner.address,
+            treasuryConfigured: false,
+            nextOrderId: 1,
+            nextOperationId: 1,
+            orders: [],
+            productToOrder: [],
+            paymentQueryToOrder: [],
+            payouts: [],
+            payoutQueryToOperation: [],
+            refundQueryToOrder: [],
+        }.toCell(),
     });
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
