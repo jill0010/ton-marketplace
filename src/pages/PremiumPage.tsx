@@ -246,6 +246,10 @@ export function PremiumPage() {
         </svg>
       </header>
 
+      <p className="text-sm leading-6 text-zinc-400">
+        Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.
+      </p>
+
       <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-white">{t("Choose recipient", "选择收件人")}</h2>
         <label htmlFor="premium-username" className="sr-only">{t("Telegram username", "Telegram 用户名")}</label>
