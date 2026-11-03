@@ -376,7 +376,7 @@ struct (0x71b00013) EscrowReleaseFailedV2 {
     queryId: uint64
     nftItem: address
     buyer: address
-
+}
 
 struct (0x71b00014) EscrowReleaseFailureAckV2 {
     orderId: uint64
@@ -385,8 +385,7 @@ struct (0x71b00014) EscrowReleaseFailureAckV2 {
     queryId: uint64
     nftItem: address
     buyer: address
-    seller: address
-
+}
 
 struct (0x71b00015) RetryReleaseFailureCallbackV2 {
     escrowId: uint64
@@ -554,8 +553,7 @@ struct EscrowReleaseFailureCallbackV2 {
     queryId: uint64
     nftItem: address
     buyer: address
-    seller: address
-
+}
 
 struct NFTEscrowV2ReleaseCallbackStorage {
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
