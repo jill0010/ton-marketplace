@@ -10,6 +10,7 @@ contract MarketplaceV2 {
 
 type MarketplaceV2AllowedMessage =
     | SetMarketplaceV2Escrow
+    | SetMarketplaceV2Treasury
     | PublishProductV2
     | CancelProductV2
     | EscrowDepositedV2
@@ -27,6 +28,24 @@ fun onInternalMessage(in: InMessage) {
             assert (!storage.escrowConfigured) throw ErrorsV2.InvalidRelease;
             storage.escrow = msg.escrow;
             storage.escrowConfigured = true;
+            storage.save();
+        }
+
+        SetMarketplaceV2Treasury => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
+            var purchase = storage.purchaseStorage.load();
+            assert (purchase.schemaVersion == 2) throw ErrorsV2.InvalidRelease;
+            // Treasury is immutable after configuration. Changing it after an order
+            // exists would redirect already-created platform liabilities.
+            assert (!purchase.treasuryConfigured) throw ErrorsV2.InvalidRelease;
+            assert (purchase.nextOrderId == 1) throw ErrorsV2.InvalidRelease;
+            assert (!purchase.orders.get(1).isFound) throw ErrorsV2.InvalidRelease;
+            assert (msg.treasury != contract.getAddress()) throw ErrorsV2.InvalidRelease;
+            assert (msg.treasury != storage.escrow) throw ErrorsV2.InvalidRelease;
+            purchase.treasury = msg.treasury;
+            purchase.treasuryConfigured = true;
+            storage.purchaseStorage = purchase.toCell();
             storage.save();
         }
 
