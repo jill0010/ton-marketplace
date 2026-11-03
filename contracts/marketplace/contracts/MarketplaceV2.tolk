@@ -3,16 +3,21 @@ import "types"
 contract MarketplaceV2 {
     author: "TON Market"
     version: "2.0.0"
-    description: "Isolated Marketplace V2 listing and escrow callback integration"
+    description: "Marketplace V2 escrow-backed purchase, delivery, refund and split settlement"
     storage: MarketplaceV2Storage
     incomingMessages: MarketplaceV2AllowedMessage
 }
 
 type MarketplaceV2AllowedMessage =
     | SetMarketplaceV2Escrow
+    | SetMarketplaceV2Treasury
     | PublishProductV2
+    | BuyProductV2
+    | DispatchPayoutV2
     | CancelProductV2
     | EscrowDepositedV2
+    | EscrowReleasedV2
+    | EscrowReleaseFailedV2
     | EscrowRefundedV2
 
 fun onInternalMessage(in: InMessage) {
@@ -28,6 +33,218 @@ fun onInternalMessage(in: InMessage) {
             storage.escrow = msg.escrow;
             storage.escrowConfigured = true;
             storage.save();
+        }
+
+        SetMarketplaceV2Treasury => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
+            assert (!storage.treasuryConfigured) throw ErrorsV2.InvalidTreasury;
+            assert (msg.treasury != contract.getAddress()) throw ErrorsV2.InvalidTreasury;
+            storage.treasury = msg.treasury;
+            storage.treasuryConfigured = true;
+            storage.save();
+        }
+
+        BuyProductV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (storage.escrowConfigured && storage.treasuryConfigured) throw ErrorsV2.InvalidPurchase;
+
+            val productResult = storage.products.get(msg.productId);
+            assert (productResult.isFound) throw ErrorsV2.InvalidPurchase;
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+            assert (product.status == 2) throw ErrorsV2.InvalidPurchase;
+            assert (in.senderAddress != product.seller) throw ErrorsV2.InvalidPurchase;
+
+            // The buyer must attach the exact listing price plus a fixed processing
+            // reserve. This prevents underfunded delivery/refund/payout actions and
+            // avoids silently retaining arbitrary overpayments.
+            val processingReserve = grams("0.5");
+            assert (in.valueCoins == product.price + processingReserve) throw ErrorsV2.InsufficientPayment;
+
+            val orderId = storage.nextOrderId;
+            val queryBase = storage.nextQueryId;
+            val operationBase = storage.nextOperationId;
+            assert (orderId > 0 && queryBase > 0 && operationBase > 0) throw ErrorsV2.InvalidPurchase;
+
+            val amounts = calculateSettlementAmounts(product.price);
+            val operations = MarketplaceV2OrderOperations {
+                paymentQueryId: queryBase,
+                releaseQueryId: queryBase + 1,
+                sellerPayoutQueryId: queryBase + 2,
+                platformPayoutQueryId: queryBase + 3,
+                buyerRefundQueryId: queryBase + 4,
+                sellerReturnQueryId: queryBase + 5,
+                sellerPayoutOperationId: operationBase,
+                platformPayoutOperationId: operationBase + 1,
+                buyerRefundOperationId: operationBase + 2,
+            };
+            val order = MarketplaceV2Order {
+                id: orderId,
+                productId: product.id,
+                status: MarketplaceV2OrderStatus.DeliveryPending,
+                deliveryStatus: MarketplaceV2DeliveryStatus.Pending,
+                sellerPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+                platformPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
+                refundStatus: MarketplaceV2RefundStatus.None,
+                createdAt: in.createdAt,
+                extra: MarketplaceV2OrderExtra {
+                    parties: MarketplaceV2OrderParties {
+                        buyer: in.senderAddress,
+                        seller: product.seller,
+                        treasury: storage.treasury,
+                    }.toCell(),
+                    asset: MarketplaceV2OrderAsset {
+                        nftItem: product.nftItem,
+                        collection: product.extra.load().collection,
+                        itemIndex: product.extra.load().itemIndex,
+                        escrowId: product.escrowId,
+                    }.toCell(),
+                    settlement: MarketplaceV2OrderSettlement {
+                        gross: product.price,
+                        feeBps: 300,
+                        feeRoundingVersion: 1,
+                        platformFee: amounts.platformFee,
+                        sellerProceeds: amounts.sellerAmount,
+                        processingReserve,
+                    }.toCell(),
+                    operations: operations.toCell(),
+                }.toCell(),
+            };
+
+            // Reserve the listing before requesting NFT release. A second buyer
+            // can never create a competing order for this escrowed asset.
+            product.status = 3;
+            storage.products.set(product.id, product.toCell());
+            storage.orders.set(orderId, order.toCell());
+            storage.releaseQueryToOrder.set(operations.releaseQueryId, orderId);
+            storage.nextOrderId = orderId + 1;
+            storage.nextQueryId = queryBase + 6;
+            storage.nextOperationId = operationBase + 3;
+            storage.save();
+
+            val release = createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.08"),
+                dest: storage.escrow,
+                body: ReleaseEscrowV2 {
+                    orderId,
+                    productId: product.id,
+                    escrowId: product.escrowId,
+                    queryId: operations.releaseQueryId,
+                    buyer: in.senderAddress,
+                },
+            });
+            release.send(SEND_MODE_PAY_FEES_SEPARATELY);
+        }
+
+        DispatchPayoutV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            val payoutResult = storage.payouts.get(msg.operationId);
+            assert (payoutResult.isFound) throw ErrorsV2.InvalidPayout;
+            var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
+            assert (
+                payout.status == MarketplaceV2PayoutStatus.Pending ||
+                payout.status == MarketplaceV2PayoutStatus.Bounced
+            ) throw ErrorsV2.InvalidPayout;
+
+            val orderResult = storage.orders.get(payout.orderId);
+            assert (orderResult.isFound) throw ErrorsV2.OrderNotFound;
+            var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+            var orderExtra = order.extra.load();
+            val operations = orderExtra.operations.load();
+
+            if (payout.kind == 1) {
+                assert (payout.operationId == operations.sellerPayoutOperationId) throw ErrorsV2.InvalidPayout;
+                assert (payout.queryId == operations.sellerPayoutQueryId) throw ErrorsV2.InvalidPayout;
+                assert (
+                    payout.status == MarketplaceV2PayoutStatus.Pending ||
+                    payout.status == MarketplaceV2PayoutStatus.Bounced
+                ) throw ErrorsV2.InvalidPayout;
+                order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Dispatched;
+                val transfer = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: payout.amount,
+                    dest: payout.beneficiary,
+                    body: SellerPayoutV2 {
+                        orderId: payout.orderId,
+                        operationId: payout.operationId,
+                        queryId: payout.queryId,
+                        beneficiary: payout.beneficiary,
+                        amount: payout.amount,
+                    },
+                });
+                payout.status = MarketplaceV2PayoutStatus.Dispatched;
+                storage.payouts.set(payout.operationId, payout.toCell());
+                if (
+                    order.sellerPayoutStatus == MarketplaceV2PayoutStatus.Dispatched &&
+                    order.platformPayoutStatus == MarketplaceV2PayoutStatus.Dispatched
+                ) {
+                    order.status = MarketplaceV2OrderStatus.PayoutsDispatched;
+                }
+                storage.orders.set(order.id, order.toCell());
+                storage.save();
+                transfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
+            } else if (payout.kind == 2) {
+                assert (payout.operationId == operations.platformPayoutOperationId) throw ErrorsV2.InvalidPayout;
+                assert (payout.queryId == operations.platformPayoutQueryId) throw ErrorsV2.InvalidPayout;
+                order.platformPayoutStatus = MarketplaceV2PayoutStatus.Dispatched;
+                val transfer = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: payout.amount,
+                    dest: payout.beneficiary,
+                    body: PlatformPayoutV2 {
+                        orderId: payout.orderId,
+                        operationId: payout.operationId,
+                        queryId: payout.queryId,
+                        beneficiary: payout.beneficiary,
+                        amount: payout.amount,
+                    },
+                });
+                payout.status = MarketplaceV2PayoutStatus.Dispatched;
+                storage.payouts.set(payout.operationId, payout.toCell());
+                if (
+                    order.sellerPayoutStatus == MarketplaceV2PayoutStatus.Dispatched &&
+                    order.platformPayoutStatus == MarketplaceV2PayoutStatus.Dispatched
+                ) {
+                    order.status = MarketplaceV2OrderStatus.PayoutsDispatched;
+                }
+                storage.orders.set(order.id, order.toCell());
+                storage.save();
+                transfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
+            } else if (payout.kind == 3) {
+                assert (payout.operationId == operations.buyerRefundOperationId) throw ErrorsV2.InvalidPayout;
+                assert (payout.queryId == operations.buyerRefundQueryId) throw ErrorsV2.InvalidPayout;
+                assert (
+                    order.status == MarketplaceV2OrderStatus.RefundPending ||
+                    order.status == MarketplaceV2OrderStatus.RefundDispatched
+                ) throw ErrorsV2.InvalidPayout;
+                order.refundStatus = MarketplaceV2RefundStatus.Dispatched;
+                val productResult = storage.products.get(order.productId);
+                assert (productResult.isFound) throw ErrorsV2.InvalidPayout;
+                val product = MarketplaceV2Product.fromCell(productResult.loadValue());
+                if (product.status == 5) {
+                    order.status = MarketplaceV2OrderStatus.RefundDispatched;
+                }
+                val transfer = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: payout.amount,
+                    dest: payout.beneficiary,
+                    body: BuyerRefundV2 {
+                        orderId: payout.orderId,
+                        operationId: payout.operationId,
+                        queryId: payout.queryId,
+                        beneficiary: payout.beneficiary,
+                        amount: payout.amount,
+                    },
+                });
+                payout.status = MarketplaceV2PayoutStatus.Dispatched;
+                storage.payouts.set(payout.operationId, payout.toCell());
+                storage.orders.set(order.id, order.toCell());
+                storage.save();
+                transfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
+            } else {
+                throw ErrorsV2.InvalidPayout;
+            }
         }
 
         PublishProductV2 => {
