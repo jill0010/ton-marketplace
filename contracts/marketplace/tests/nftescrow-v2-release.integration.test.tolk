@@ -108,7 +108,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     // Only the configured Marketplace can request delivery.
     val forged = escrow.sendReleaseEscrowV2(
         attacker.address,
-        8001,
+        8000,
         7001,
         1,
         releaseQueryId,
@@ -160,7 +160,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     // Marketplace requests delivery. The NFT Item itself performs the ownership change.
     val release = escrow.sendReleaseEscrowV2(
         marketplace.address,
-        8001,
+        8000,
         7001,
         1,
         releaseQueryId,
@@ -177,14 +177,14 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     // Callback is durable until an exact Marketplace ACK.
     val callback = escrow.releaseCallbackV2(1);
     assert (callback != null) throw ErrorsV2.InvalidReleaseConfirmation;
-    expect(callback!!.orderId).toEqual(8001);
+    expect(callback!!.orderId).toEqual(8000);
     expect(callback.productId).toEqual(7001);
     expect(callback.queryId).toEqual(releaseQueryId);
     expect(callback.buyer).toEqual(buyer.address);
 
     val wrongAck = escrow.sendEscrowReleaseAckV2(
         attacker.address,
-        8001,
+        8000,
         7001,
         1,
         releaseQueryId,
@@ -200,7 +200,7 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
 
     val validAck = escrow.sendEscrowReleaseAckV2(
         marketplace.address,
-        8001,
+        8000,
         7001,
         1,
         releaseQueryId,
