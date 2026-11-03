@@ -15,7 +15,10 @@ fun NFTEscrowV2.fromStorage(
     toShard: AddressShardingOptions? = null,
     workchain: int8 = BASECHAIN,
 ): NFTEscrowV2 {
-    val stateInit = ContractState { code: build("NFTEscrowV2"), data: storage.toCell() };
+    val stateInit = ContractState {
+        code: build("NFTEscrowV2"),
+        data: storage.toCell(),
+    };
     val address = AutoDeployAddress { workchain, stateInit, toShard }.calculateAddress();
     return NFTEscrowV2 { address, stateInit, toShard };
 }
@@ -37,18 +40,29 @@ fun NFTEscrowV2.deploy(self, from: address, config: SendParams = {}): SendResult
 }
 
 fun NFTEscrowV2.sendReleaseEscrowV2(
-    self, from: address, orderId: uint64, productId: uint64, escrowId: uint64,
-    queryId: uint64, buyer: address, config: SendParams = {},
+    self,
+    from: address,
+    orderId: uint64,
+    productId: uint64,
+    escrowId: uint64,
+    queryId: uint64,
+    buyer: address,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
-        bounce: config.bounce, value: config.value, dest: self.address,
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
         body: ReleaseEscrowV2 { orderId, productId, escrowId, queryId, buyer },
     });
     return net.send(from, genericMsg);
 }
 
 fun NFTEscrowV2.sendNftExcesses(
-    self, from: address, queryId: uint64, config: SendParams = {},
+    self,
+    from: address,
+    queryId: uint64,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
         bounce: config.bounce, value: config.value, dest: self.address,
@@ -58,20 +72,28 @@ fun NFTEscrowV2.sendNftExcesses(
 }
 
 fun NFTEscrowV2.sendEscrowReleaseAckV2(
-    self, from: address, orderId: uint64, productId: uint64, escrowId: uint64,
-    queryId: uint64, nftItem: address, buyer: address, config: SendParams = {},
+    self,
+    from: address,
+    orderId: uint64,
+    productId: uint64,
+    escrowId: uint64,
+    queryId: uint64,
+    nftItem: address,
+    buyer: address,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
         bounce: config.bounce, value: config.value, dest: self.address,
-        body: EscrowReleaseAckV2 {
-            orderId, productId, escrowId, queryId, nftItem, buyer,
-        },
+        body: EscrowReleaseAckV2 { orderId, productId, escrowId, queryId, nftItem, buyer },
     });
     return net.send(from, genericMsg);
 }
 
 fun NFTEscrowV2.sendRetryReleaseCallbackV2(
-    self, from: address, escrowId: uint64, config: SendParams = {},
+    self,
+    from: address,
+    escrowId: uint64,
+    config: SendParams = {},
 ): SendResultList {
     val genericMsg = createMessage({
         bounce: config.bounce, value: config.value, dest: self.address,
