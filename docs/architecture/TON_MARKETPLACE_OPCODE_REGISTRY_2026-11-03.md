@@ -39,6 +39,8 @@ This registry is the canonical opcode allocation record for contract messages in
 |---|---|---|---|
 | `0x71b0000A` | `PublishProductV2` | Seller → MarketplaceV2 | Implemented (listing only) |
 | `0x71b0000B` | `SetMarketplaceV2Escrow` | Owner → MarketplaceV2 | Implemented (configuration) |
+| `0x71b0000C` | `SetCollectionStatusV2` | Owner → NFTEscrowV2 | Implemented (V2 collection policy) |
+| `0x71b0000D` | `SetCollectionItemCodeV2` | Owner → NFTEscrowV2 | Implemented (official Gift Item Code only) |
 
 ## Existing Marketplace V2 escrow messages
 
@@ -83,3 +85,13 @@ The following assignments replace the conflicting provisional assignments in the
 ## Audit note
 
 The source scan of `contracts/marketplace/contracts/types.tolk` found the provisional purchase-design collision: `0x71b00001` is already `CreateEscrowV2`. The design table previously proposed the same opcode for `BuyProductV2`. The purchase design has been corrected to use `0x71b00100` and the settlement family above. No existing contract ABI was changed by this registry update.
+
+
+## V2 official collection provenance policy
+
+- `NFTEscrowV2` now has isolated collection status and Item Code storage.
+- The owner can register collection status (1 active, 2 paused, 3 revoked) and configure an Item Code only for a registered non-active collection.
+- Only Gift kind (`3`) and the two official Fragment Item Code hashes already enforced by V1 are accepted.
+- Before allocating an escrow record, V2 derives the expected Item address from `itemIndex:uint256 + collection`, the configured Item Code, the Fragment Gift initial data layout, and workchain 0; the derived address must exactly equal the requested NFT Item.
+- `CreateEscrowV2` now includes collection, item index, and kind. This is an ABI/storage-breaking change for the not-yet-deployed V2 contracts; use fresh V2 addresses.
+- The new source path still requires successful end-to-end positive and adversarial emulator tests and CI before it can be considered verified. It is not deployed or approved for public listings.
