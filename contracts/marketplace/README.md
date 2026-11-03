@@ -4,7 +4,8 @@ This directory contains an experimental Tolk/Acton implementation of the TON mar
 
 ## Contracts
 
-- `contracts/Marketplace.tolk` — product publication, pending/active/cancelled state, and callbacks from the escrow contract.
+- `contracts/Marketplace.tolk` — V1 product publication, pending/active/cancelled state, and callbacks from the V1 escrow contract.
+- `contracts/MarketplaceV2.tolk` — isolated V2 listing registration, NFT Item uniqueness reservation, and authenticated NFTEscrowV2 deposit callback/ACK integration.
 - `contracts/NFTEscrow.tolk` — official collection/item-code allowlisting, NFT deposit verification, seller refunds, and retryable callbacks.
 - `contracts/types.tolk` — storage structures, message ABI and error codes.
 - `wrappers/` — generated contract wrappers.
@@ -12,7 +13,7 @@ This directory contains an experimental Tolk/Acton implementation of the TON mar
 
 ## Current functionality
 
-The current prototype supports:
+The V1 prototype supports:
 1. seller submits a listing request;
 2. Marketplace creates a pending product and asks Escrow to prepare a record;
 3. seller transfers the NFT to Escrow using the TEP-62 ownership transfer flow;
@@ -22,11 +23,23 @@ The current prototype supports:
 7. refund is marked complete only after the NFT transfer response, and Marketplace cancels the product after its callback;
 8. Marketplace reserves each NFT Item address across Pending and Active listings, and releases that reservation only after the matching refund callback.
 
+## Marketplace V2 listing status
+
+The isolated MarketplaceV2 listing path is implemented and emulator-tested:
+1. seller identity is taken from the inbound message sender;
+2. MarketplaceV2 reserves the NFT Item address and stores a Pending product;
+3. MarketplaceV2 asks the configured NFTEscrowV2 to create a custody record;
+4. the seller must transfer the NFT Item to NFTEscrowV2;
+5. MarketplaceV2 activates the product only after an authenticated callback matching product ID, query ID, NFT Item, seller, and escrow ID;
+6. MarketplaceV2 sends the exact deposit ACK, allowing Escrow to clear its durable callback.
+
+This is a listing/custody integration milestone only. The V2 path does not yet verify official Fragment collection provenance, implement a buyer purchase/payment entrypoint, release NFTs through a MarketplaceV2 order, pay sellers/platform, or refund buyers. It is not safe for production listing or purchasing.
+
 ## Important: buying and settlement are not implemented
 
 This is **not yet a complete marketplace**. There is no buyer purchase message, payment/order state machine, NFT delivery to buyer, seller payout, or 97% / 3% fee split. The `Order` structures currently present in the types are not wired into a purchase flow.
 
-The frontend NFT publish endpoint remains fail-closed until escrow is fully integrated. Do not accept real buyer funds or list real NFTs using this prototype.
+The frontend NFT publish endpoint remains fail-closed. MarketplaceV2 is source/emulator-only and must not be exposed to real users until official collection verification, deployment, cancellation/recovery, purchase, delivery, refund, and settlement controls are complete. Do not accept real buyer funds or list real NFTs using this prototype.
 
 See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_CONTRACT_READINESS_AUDIT_2026-11-02.md) for the full blockers and required implementation order.
 
