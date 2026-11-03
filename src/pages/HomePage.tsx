@@ -30,7 +30,7 @@ export function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedType, setSelectedType] = useState<ProductType | null>(null)
+  const [selectedType, setSelectedType] = useState<ProductType | null>("number")
   const [listingMode, setListingMode] = useState<ListingMode>("sale")
   const [priceDescending, setPriceDescending] = useState(true)
   const [selectedGiftSeries, setSelectedGiftSeries] = useState<string | null>(null)
@@ -90,7 +90,7 @@ export function HomePage() {
   }, [products, searchQuery, selectedType, listingMode, selectedGiftSeries, priceDescending])
 
   function selectCategory(type: ProductType) {
-    setSelectedType((current) => current === type ? null : type)
+    setSelectedType(type)
     setSelectedGiftSeries(null)
     setListingMode("sale")
   }
