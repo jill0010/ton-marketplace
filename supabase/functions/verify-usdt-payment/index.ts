@@ -125,9 +125,14 @@ Deno.serve(async (req: Request) => {
         return response({ success: false, error: "This order has expired" }, 410, origin);
       }
 
-      const headers: Record<string, string> = { Accept: "application/json" };
       const tronGridKey = Deno.env.get("TRONGRID_API_KEY");
-      if (tronGridKey) headers["TRON-PRO-API-KEY"] = tronGridKey;
+      if (!tronGridKey) {
+        return response({ success: false, code: "TRONGRID_API_KEY_MISSING", error: "TRON chain verification is not configured yet. Please contact support; do not send funds until checkout is enabled." }, 503, origin);
+      }
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+        "TRON-PRO-API-KEY": tronGridKey,
+      };
 
       const eventUrl = `${TRONGRID_BASE}/v1/transactions/${txHash}/events?only_confirmed=true&limit=200`;
       const chainResponse = await fetch(eventUrl, {
@@ -147,7 +152,7 @@ Deno.serve(async (req: Request) => {
           : {};
         const eventTx = String(event.transaction_id ?? event.transactionId ?? txHash).toLowerCase();
         return String(event.event_name ?? "") === "Transfer" &&
-          String(event.contract_address ?? "").toLowerCase() === USDT_CONTRACT.toLowerCase() &&
+          String(event.contract_address ?? "") === USDT_CONTRACT &&
           eventTx === txHash &&
           eventField(result, "to", "1") === USDT_RECEIVER;
       });
