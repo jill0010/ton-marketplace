@@ -71,3 +71,6 @@ Latest observed Contracts CI for the architecture branch: workflow #281 succeede
 
 
 Latest observed Contracts CI for the architecture branch: workflow #282 succeeded on commit `a122ed2ba9081b7d35d13d09ee8dbf4f732af4f8` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This includes regressions rejecting release destinations equal to the seller, Escrow itself, and the NFT Item contract. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
+
+
+Latest observed Contracts CI for the architecture branch: workflow #297 succeeded on commit `5f13f31a613905cd399f9f7878e5635d0022a3e1` — opcode registry check (35 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. The additional test round-trips the V2 immutable order snapshot and separate seller/platform payout liability records. These are serialization-only types; MarketplaceV2 still has no buyer purchase entrypoint and accepts no buyer funds.
