@@ -11,6 +11,10 @@ struct (0x7f000003) StartTestEscrowV2 {
     queryId: uint64
 }
 
+struct (0x7f000005) SetTestEscrowAddressV2 {
+    escrow: address
+}
+
 struct (0x7f000004) StartTestReleaseV2 {
     orderId: uint64
     productId: uint64
@@ -37,6 +41,7 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | SetRejectCallbackV2
     | StartTestEscrowV2
     | StartTestReleaseV2
+    | SetTestEscrowAddressV2
     | EscrowDepositedV2
     | EscrowReleasedV2
 
@@ -55,6 +60,13 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy RejectingMarketplaceCallbackStorage.load();
             assert (in.senderAddress == storage.controller) throw ErrorsV2.NotOwner;
             storage.rejectAction = msg.rejectAction;
+            storage.save();
+        }
+
+        SetTestEscrowAddressV2 => {
+            var storage = lazy RejectingMarketplaceCallbackStorage.load();
+            assert (in.senderAddress == storage.controller) throw ErrorsV2.NotOwner;
+            storage.escrow = msg.escrow;
             storage.save();
         }
 
