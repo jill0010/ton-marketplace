@@ -107,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <TonConnectButton />
+              <TonConnectButton className="home-ton-connect-button" />
             )}
           </nav>
         </div>
