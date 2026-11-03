@@ -400,14 +400,18 @@ enum ErrorsV2 {
     InvalidProductKind = 210
 }
 
+struct CreateEscrowV2Extra {
+    itemIndex: uint256
+    kind: uint8
+}
+
 struct (0x71b00001) CreateEscrowV2 {
     productId: uint64
     nftItem: address
     collection: address
     seller: address
     queryId: uint64
-    itemIndex: uint256
-    kind: uint8
+    extra: Cell<CreateEscrowV2Extra>
 }
 
 // V2 collection policy is isolated from V1 serialized storage.
@@ -460,22 +464,28 @@ struct EscrowDepositCallbackV2 {
     queryId: uint64
 }
 
+struct NFTEscrowV2RecordExtra {
+    collection: address
+    itemIndex: uint256
+    kind: uint8
+}
+
 struct NFTEscrowV2Record {
     escrowId: uint64
     nftItem: address
-    collection: address
     seller: address
     productId: uint64
     status: uint8
     queryId: uint64
-    itemIndex: uint256
-    kind: uint8
+    extra: Cell<NFTEscrowV2RecordExtra>
 }
 
 struct NFTEscrowV2CallbackStorage {
     depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
     releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    collections: map<address, uint8>
+    collectionItemCodes: map<address, Cell<NFTEscrowV2CollectionItemCode>>
 }
 
 struct NFTEscrowV2Storage {
@@ -484,7 +494,6 @@ struct NFTEscrowV2Storage {
     records: map<uint64, Cell<NFTEscrowV2Record>>
     // NFT Item -> current custody escrow ID; released items become available again.
     assetToEscrow: map<address, uint64>
-    collectionStorage: Cell<NFTEscrowV2CollectionStorage>
     nextEscrowId: uint64
     queryToEscrow: map<uint64, uint64>
     callbacks: Cell<NFTEscrowV2CallbackStorage>
@@ -534,18 +543,22 @@ struct (0x71b0000B) SetMarketplaceV2Escrow {
     escrow: address
 }
 
+struct MarketplaceV2ProductExtra {
+    collection: address
+    itemIndex: uint256
+    kind: uint8
+}
+
 struct MarketplaceV2Product {
     id: uint64
     seller: address
     nftItem: address
-    collection: address
-    itemIndex: uint256
-    kind: uint8
     price: coins
     escrowId: uint64
     queryId: uint64
     status: uint8
     createdAt: uint32
+    extra: Cell<MarketplaceV2ProductExtra>
 }
 
 struct MarketplaceV2Storage {
