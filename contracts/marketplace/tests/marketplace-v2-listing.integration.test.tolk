@@ -106,6 +106,40 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(marketplace.escrowV2()).toEqual(escrow.address);
     expect(marketplace.escrowConfiguredV2()).toEqual(true);
 
+    // Treasury is configured once by the owner before the first purchase.
+    val forgedTreasury = marketplace.sendSetMarketplaceV2Treasury(
+        attacker.address,
+        treasury.address,
+        { value: grams("0.02") },
+    );
+    expect(forgedTreasury).toHaveFailedTx({
+        from: attacker.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.NotOwner,
+    });
+    expect(marketplace.treasuryConfiguredV2()).toEqual(false);
+
+    val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
+        owner.address,
+        treasury.address,
+        { value: grams("0.02") },
+    );
+    expect(configureTreasury).toHaveSuccessfulTx();
+    expect(marketplace.treasuryV2()).toEqual(treasury.address);
+    expect(marketplace.treasuryConfiguredV2()).toEqual(true);
+
+    val rotateTreasury = marketplace.sendSetMarketplaceV2Treasury(
+        owner.address,
+        attacker.address,
+        { value: grams("0.02") },
+    );
+    expect(rotateTreasury).toHaveFailedTx({
+        from: owner.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+    expect(marketplace.treasuryV2()).toEqual(treasury.address);
+
     // Once bound, the V2 Escrow cannot be rotated by the owner.
     val rotateEscrow = marketplace.sendSetMarketplaceV2Escrow(
         owner.address,
