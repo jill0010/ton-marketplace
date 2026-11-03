@@ -36,16 +36,14 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         marketplace: marketplace.address,
         records: [],
         assetToEscrow: [],
-        collectionStorage: NFTEscrowV2CollectionStorage {
-            collections: [],
-            collectionItemCodes: [],
-        }.toCell(),
         nextEscrowId: 1,
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
             depositCallbacks: [],
             pendingReleases: [],
             releaseCallbacks: [],
+            collections: [],
+            collectionItemCodes: [],
         }.toCell(),
     });
 
@@ -213,9 +211,10 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     val validProduct = marketplace.productV2(3);
     assert (validProduct != null) throw ErrorsV2.InvalidRelease;
     expect(validProduct!!.status).toEqual(1);
-    expect(validProduct.collection).toEqual(owner.address);
-    expect(validProduct.itemIndex).toEqual(validItemIndex);
-    expect(validProduct.kind).toEqual(3);
+    val validProductExtra = validProduct.extra.load();
+    expect(validProductExtra.collection).toEqual(owner.address);
+    expect(validProductExtra.itemIndex).toEqual(validItemIndex);
+    expect(validProductExtra.kind).toEqual(3);
 
     val validEscrowRecord = escrow.escrowRecordV2(1);
     assert (validEscrowRecord != null) throw ErrorsV2.InvalidRelease;
