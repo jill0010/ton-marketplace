@@ -15,3 +15,38 @@ body {
   background: #0b0d12;
   color: #e8eaed;
 }
+
+/* Use TON Connect's documented data attributes for the real injected button. */
+.wallet-connect-button [data-tc-connect-button="true"] {
+  border-radius: 10px !important;
+}
+
+.wallet-connect-button [data-tc-text="true"] {
+  font-size: 0 !important;
+}
+
+.wallet-connect-button [data-tc-text="true"]::after {
+  content: "Connect TON";
+  font-size: 14px;
+}
+
+/* Same blue TON Connect appearance for the in-page history action. */
+.wallet-connect-trigger {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: #0098ea;
+  padding: 0 16px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 150ms ease;
+}
+
+.wallet-connect-trigger:hover {
+  background: #0088d1;
+}
