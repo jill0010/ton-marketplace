@@ -345,7 +345,13 @@ struct SettlementAmounts {
 }
 
 fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
-    val platformFee = gross * 3 / 100;
+    // Divide before multiplying so the intermediate never exceeds the
+    // TON VarUInteger 16 (120-bit) amount range for a valid gross amount.
+    // Splitting quotient and remainder preserves exact floor(gross * 3 / 100).
+    val wholeHundreds = gross / 100;
+    val remainder = gross % 100;
+    val platformFee = wholeHundreds * 3 + remainder * 3 / 100;
+
     return SettlementAmounts {
         gross: gross,
         platformFee: platformFee,
