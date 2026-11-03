@@ -2,6 +2,7 @@ import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
 import "@acton/types/message"
+import "@acton/tlb/maybe"
 import "@acton/types/transaction"
 
 import "@contracts/RejectingNFTItem"
