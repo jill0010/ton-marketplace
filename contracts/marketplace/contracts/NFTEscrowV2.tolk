@@ -52,7 +52,7 @@ fun onInternalMessage(in: InMessage) {
         SetCollectionItemCodeV2 => {
             var storage = lazy NFTEscrowV2Storage.load();
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
-            assert (createExtra.kind == 3) throw ErrorsV2.InvalidProductKind;
+            assert (msg.kind == 3) throw ErrorsV2.InvalidProductKind;
 
             val codeHash = msg.code.hash();
             assert (
@@ -83,8 +83,6 @@ fun onInternalMessage(in: InMessage) {
             assert (
                 !storage.assetToEscrow.get(msg.nftItem).isFound
             ) throw ErrorsV2.AssetAlreadyEscrowed;
-
-            assert (msg.kind == 3) throw ErrorsV2.InvalidProductKind;
 
             val createExtra = msg.extra.load();
             val callbacks = storage.callbacks.load();
