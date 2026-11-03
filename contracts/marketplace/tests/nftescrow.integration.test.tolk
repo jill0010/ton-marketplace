@@ -520,6 +520,122 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     expect(pendingRecord!!.nftItem).toEqual(nftItem);
     expect(pendingRecord!!.seller).toEqual(seller.address);
 
+    // Escrow 对相同 queryId 的精确 CreateEscrow 重放必须幂等，不创建第二条记录。
+    val exactCreateReplay = CreateEscrow {
+        nftItem: nftItem,
+        collection: collection.address,
+        seller: seller.address,
+        productId: 1,
+        kind: 3,
+        extra: CreateEscrowExtra {
+            queryId: 1,
+            createdAt: 0,
+            itemIndex: 0,
+        }.toCell(),
+    }.toCell();
+    val exactPendingReplayRes = escrow.sendAny(
+        marketplace.address,
+        exactCreateReplay,
+        { value: grams("0.05") },
+    );
+    expect(exactPendingReplayRes).toHaveSuccessfulTx<CreateEscrow>({
+        from: marketplace.address,
+        to: escrow.address,
+    });
+    expect(escrow.escrowRecord(1)!!.status).toEqual(1);
+    expect(escrow.escrowIdByQueryId(1)).toEqual(1);
+
+    // 相同 queryId 但修改 NFT、seller、collection 或 itemIndex 都必须拒绝，
+    // 且不能覆盖原托管记录。
+    val otherSeller = testing.treasury("replayOtherSeller");
+    val changedNftReplayRes = escrow.sendAny(
+        marketplace.address,
+        CreateEscrow {
+            nftItem: collection.address,
+            collection: collection.address,
+            seller: seller.address,
+            productId: 1,
+            kind: 3,
+            extra: CreateEscrowExtra {
+                queryId: 1,
+                createdAt: 0,
+                itemIndex: 0,
+            }.toCell(),
+        }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(changedNftReplayRes).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: Errors.EscrowAlreadyExists,
+    });
+    val changedSellerReplayRes = escrow.sendAny(
+        marketplace.address,
+        CreateEscrow {
+            nftItem: nftItem,
+            collection: collection.address,
+            seller: otherSeller.address,
+            productId: 1,
+            kind: 3,
+            extra: CreateEscrowExtra {
+                queryId: 1,
+                createdAt: 0,
+                itemIndex: 0,
+            }.toCell(),
+        }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(changedSellerReplayRes).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: Errors.EscrowAlreadyExists,
+    });
+    val changedCollectionReplayRes = escrow.sendAny(
+        marketplace.address,
+        CreateEscrow {
+            nftItem: nftItem,
+            collection: seller.address,
+            seller: seller.address,
+            productId: 1,
+            kind: 3,
+            extra: CreateEscrowExtra {
+                queryId: 1,
+                createdAt: 0,
+                itemIndex: 0,
+            }.toCell(),
+        }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(changedCollectionReplayRes).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: Errors.EscrowAlreadyExists,
+    });
+    val changedItemIndexReplayRes = escrow.sendAny(
+        marketplace.address,
+        CreateEscrow {
+            nftItem: nftItem,
+            collection: collection.address,
+            seller: seller.address,
+            productId: 1,
+            kind: 3,
+            extra: CreateEscrowExtra {
+                queryId: 1,
+                createdAt: 0,
+                itemIndex: 1,
+            }.toCell(),
+        }.toCell(),
+        { value: grams("0.05") },
+    );
+    expect(changedItemIndexReplayRes).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: Errors.EscrowAlreadyExists,
+    });
+    expect(escrow.escrowRecord(1)!!.nftItem).toEqual(nftItem);
+    expect(escrow.escrowRecord(1)!!.seller).toEqual(seller.address);
+    expect(escrow.escrowRecord(1)!!.status).toEqual(1);
+
     // 构造 NFT 转移所需的 forward_payload
     val payloadCell = beginCell().storeUint(0x53564950, 32).storeUint(1, 64).endCell();
 
@@ -567,6 +683,18 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     expect(depositedRecord!!.nftItem).toEqual(nftItem);
     expect(depositedRecord!!.seller).toEqual(seller.address);
     expect(escrow.escrowIdByQueryId(1)).toEqual(1);
+
+    // NFT 已入库后，完全相同的 CreateEscrow 重放仍只能命中原记录，不能重置状态。
+    val exactDepositedReplayRes = escrow.sendAny(
+        marketplace.address,
+        exactCreateReplay,
+        { value: grams("0.05") },
+    );
+    expect(exactDepositedReplayRes).toHaveSuccessfulTx<CreateEscrow>({
+        from: marketplace.address,
+        to: escrow.address,
+    });
+    expect(escrow.escrowRecord(1)!!.status).toEqual(2);
 
     // 检查 Escrow 已回调 Marketplace，商品变为在售
     val activeProduct = marketplace.product(1);
@@ -640,6 +768,19 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     assert (refundedRecord != null) throw Errors.InvalidEscrow;
 
     expect(refundedRecord!!.status).toEqual(4);
+
+    // 退款完成后，旧 CreateEscrow 请求必须拒绝，不能复活已退款托管记录。
+    val staleCreateReplayRes = escrow.sendAny(
+        marketplace.address,
+        exactCreateReplay,
+        { value: grams("0.05") },
+    );
+    expect(staleCreateReplayRes).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: Errors.EscrowAlreadyExists,
+    });
+    expect(escrow.escrowRecord(1)!!.status).toEqual(4);
 
     // 检查 Marketplace 收到退款确认后自动取消商品
     val cancelledProduct = marketplace.product(1);
