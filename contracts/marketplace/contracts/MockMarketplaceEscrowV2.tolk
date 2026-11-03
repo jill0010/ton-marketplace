@@ -76,7 +76,7 @@ fun onInternalMessage(in: InMessage) {
                 value: grams("0.03"),
                 dest: config.marketplace,
                 body: EscrowDepositedV2 {
-                    escrowId: storage.escrowId,
+                    escrowId: state.escrowId,
                     productId: msg.productId,
                     nftItem: msg.nftItem,
                     seller: msg.seller,
@@ -144,7 +144,7 @@ fun onInternalMessage(in: InMessage) {
                     escrowId: msg.escrowId,
                     productId: msg.productId,
                     queryId: msg.queryId,
-                    nftItem: storage.nftItem,
+                    nftItem: state.nftItem,
                     seller: msg.seller,
                 },
             });
