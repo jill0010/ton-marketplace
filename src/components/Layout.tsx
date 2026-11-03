@@ -88,7 +88,7 @@ export function Layout() {
 
             {walletAddress ? (
               <div className="relative" ref={accountMenuRef}>
-                <button type="button" aria-expanded={accountMenuOpen} aria-haspopup="menu" onClick={() => setAccountMenuOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] px-4 py-2.5 text-sm font-semibold text-white shadow-inner shadow-white/5 transition hover:from-[#29394d] hover:to-[#1c2a3b]">
+                <button type="button" aria-expanded={accountMenuOpen} aria-haspopup="menu" onClick={() => setAccountMenuOpen((open) => !open)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] px-4 text-sm font-semibold text-white shadow-inner shadow-white/5 transition hover:from-[#29394d] hover:to-[#1c2a3b]">
                   <TonMark />
                   <span>{shortAddress}</span>
                   <svg viewBox="0 0 20 20" aria-hidden="true" className={`h-4 w-4 transition ${accountMenuOpen ? "rotate-180" : ""}`}>
@@ -107,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#202c3b] to-[#17212e] px-4 py-2.5 text-sm font-semibold text-white shadow-inner shadow-white/5 transition hover:from-[#29394d] hover:to-[#1c2a3b]"><TonMark />
+              <button type="button" onClick={() => void tonConnectUI.openModal()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-transparent bg-gradient-to-b from-[#2588f5] to-[#1264d8] px-4 text-sm font-semibold text-white shadow-md shadow-blue-950/30 transition hover:from-[#3b98ff] hover:to-[#2478ed]"><TonMark />
                 {t("Connect TON", "连接钱包")}
               </button>
             )}
