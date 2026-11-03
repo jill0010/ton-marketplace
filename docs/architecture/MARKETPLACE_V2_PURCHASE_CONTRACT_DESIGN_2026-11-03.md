@@ -173,3 +173,10 @@ The shared Tolk type module now defines the first V2 release messages:
 - `EscrowReleaseStatusV2` isolated V2 lifecycle enum
 
 These are message/data declarations only. No contract currently accepts or emits them. They do not modify V1 serialized storage. The remaining proposed V2 opcode assignments are not frozen. A complete ABI collision scan, wrapper review, and serialization tests remain mandatory before ABI freeze.
+
+
+## NFTEscrowV2 implementation checkpoint
+
+The isolated contract now includes Marketplace-authorized escrow record creation, TEP-62 deposit notification handling, durable deposit callback + ACK/retry, Marketplace-authorized NFT release, authenticated NFT Item excesses confirmation, durable release callback + ACK/retry, and RichBounce recovery to the deposited state. The integration test uses the repository's MockNFTItem and exercises deposit, release to buyer, forged Marketplace request rejection, callback persistence, and ACK identity checks.
+
+This implementation remains a first contract slice, not an end-to-end marketplace: MarketplaceV2 purchase/payment/order settlement handlers are not implemented, collection authenticity must be enforced by the trusted Marketplace before creating records, and official Fragment NFT Item/testnet rehearsals plus bounce/low-gas adversarial coverage remain required. No V2 deployment or funds/NFT movement has occurred.
