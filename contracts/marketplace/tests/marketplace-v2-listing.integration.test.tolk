@@ -29,8 +29,10 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         owner: owner.address,
         escrow: owner.address,
         escrowConfigured: false,
-        treasury: owner.address,
-        treasuryConfigured: false,
+        config: MarketplaceV2Config {
+            treasury: owner.address,
+            treasuryConfigured: false,
+        }.toCell(),
         nextProductId: 1,
         nextQueryId: 1,
         nextOrderId: 1,
