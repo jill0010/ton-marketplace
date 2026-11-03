@@ -353,6 +353,97 @@ fun onInternalMessage(in: InMessage) {
             refundMessage.send(SEND_MODE_REGULAR);
         }
 
+        EscrowReleasedV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (storage.escrowConfigured) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidReleaseConfirmation;
+
+            val orderIdResult = storage.releaseQueryToOrder.get(msg.queryId);
+            assert (orderIdResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
+            val orderId = orderIdResult.loadValue();
+            assert (orderId == msg.orderId) throw ErrorsV2.InvalidReleaseConfirmation;
+            val orderResult = storage.orders.get(orderId);
+            assert (orderResult.isFound) throw ErrorsV2.OrderNotFound;
+            var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+            var orderExtra = order.extra.load();
+            val parties = orderExtra.parties.load();
+            val asset = orderExtra.asset.load();
+            val operations = orderExtra.operations.load();
+            val settlement = orderExtra.settlement.load();
+
+            assert (order.productId == msg.productId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (operations.releaseQueryId == msg.queryId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (asset.escrowId == msg.escrowId) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (asset.nftItem == msg.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
+            assert (parties.buyer == msg.buyer) throw ErrorsV2.InvalidReleaseConfirmation;
+
+            if (order.status == MarketplaceV2OrderStatus.DeliveryPending) {
+                order.deliveryStatus = MarketplaceV2DeliveryStatus.Confirmed;
+                order.status = MarketplaceV2OrderStatus.SettlementPending;
+                order.sellerPayoutStatus = MarketplaceV2PayoutStatus.Pending;
+                order.platformPayoutStatus = MarketplaceV2PayoutStatus.Pending;
+
+                val sellerPayout = MarketplaceV2Payout {
+                    orderId,
+                    operationId: operations.sellerPayoutOperationId,
+                    queryId: operations.sellerPayoutQueryId,
+                    beneficiary: parties.seller,
+                    amount: settlement.sellerProceeds,
+                    kind: 1,
+                    status: MarketplaceV2PayoutStatus.Pending,
+                    createdAt: in.createdAt,
+                };
+                val platformPayout = MarketplaceV2Payout {
+                    orderId,
+                    operationId: operations.platformPayoutOperationId,
+                    queryId: operations.platformPayoutQueryId,
+                    beneficiary: parties.treasury,
+                    amount: settlement.platformFee,
+                    kind: 2,
+                    status: MarketplaceV2PayoutStatus.Pending,
+                    createdAt: in.createdAt,
+                };
+                assert (settlement.sellerProceeds > 0) throw ErrorsV2.InvalidPayout;
+                assert (settlement.platformFee > 0) throw ErrorsV2.InvalidPayout;
+
+                storage.payouts.set(sellerPayout.operationId, sellerPayout.toCell());
+                storage.payouts.set(platformPayout.operationId, platformPayout.toCell());
+
+                val productResult = storage.products.get(order.productId);
+                assert (productResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
+                var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+                assert (product.status == 3) throw ErrorsV2.InvalidReleaseConfirmation;
+                assert (product.seller == parties.seller) throw ErrorsV2.InvalidReleaseConfirmation;
+                assert (product.nftItem == asset.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
+                product.status = 4;
+                storage.products.set(product.id, product.toCell());
+                storage.orders.set(orderId, order.toCell());
+                storage.save();
+            } else {
+                // An exact duplicate success callback is re-ACKed, but it never
+                // creates another payout liability or repeats the NFT transfer.
+                assert (
+                    order.status == MarketplaceV2OrderStatus.SettlementPending ||
+                    order.status == MarketplaceV2OrderStatus.PayoutsDispatched
+                ) throw ErrorsV2.InvalidReleaseConfirmation;
+            }
+
+            val ack = createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.escrow,
+                body: EscrowReleaseAckV2 {
+                    orderId: msg.orderId,
+                    productId: msg.productId,
+                    escrowId: msg.escrowId,
+                    queryId: msg.queryId,
+                    nftItem: msg.nftItem,
+                    buyer: msg.buyer,
+                },
+            });
+            ack.send(SEND_MODE_REGULAR);
+        }
+
         EscrowDepositedV2 => {
             var storage = lazy MarketplaceV2Storage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRelease;
