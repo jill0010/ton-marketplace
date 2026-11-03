@@ -370,6 +370,42 @@ struct (0x71b00009) RetryReleaseCallbackV2 {
     escrowId: uint64
 }
 
+// Seller-initiated NFT return after a listing is cancelled; no buyer funds involved.
+struct (0x71b0000E) RefundEscrowV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    seller: address
+}
+
+struct (0x71b0000F) EscrowRefundedV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    nftItem: address
+    seller: address
+}
+
+struct (0x71b00010) EscrowRefundAckV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    nftItem: address
+    seller: address
+}
+
+struct (0x71b00011) RetryRefundCallbackV2 {
+    escrowId: uint64
+}
+
+struct EscrowRefundCallbackV2 {
+    escrowId: uint64
+    productId: uint64
+    queryId: uint64
+    nftItem: address
+    seller: address
+}
+
 struct EscrowReleaseCallbackV2 {
     orderId: uint64
     productId: uint64
@@ -398,6 +434,7 @@ enum ErrorsV2 {
     InvalidCollectionItemCode = 208
     InvalidNftItem = 209
     InvalidProductKind = 210
+    InvalidRefund = 211
 }
 
 struct CreateEscrowV2Extra {
@@ -484,6 +521,8 @@ struct NFTEscrowV2CallbackStorage {
     depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
     releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    pendingRefunds: map<uint64, Cell<EscrowRefundCallbackV2>>
+    refundCallbacks: map<uint64, Cell<EscrowRefundCallbackV2>>
     collectionStorage: Cell<NFTEscrowV2CollectionStorage>
 }
 
