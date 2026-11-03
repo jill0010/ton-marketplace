@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - architecture/unified-trading-v1
   pull_request:
     branches:
       - main
