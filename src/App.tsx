@@ -9,7 +9,6 @@ import { LanguageProvider } from "./lib/language"
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
 const AssetsPage = lazy(() => import("./pages/AssetsPage").then((module) => ({ default: module.AssetsPage })))
 const MyBidsPage = lazy(() => import("./pages/MyBidsPage").then((module) => ({ default: module.MyBidsPage })))
-const PublishPage = lazy(() => import("./pages/PublishPage").then((module) => ({ default: module.PublishPage })))
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
