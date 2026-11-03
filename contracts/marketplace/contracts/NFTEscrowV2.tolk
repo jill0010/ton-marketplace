@@ -176,8 +176,6 @@ fun onInternalMessage(in: InMessage) {
         NftOwnershipAssigned => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
-            var releaseCallbacks = callbacks.releaseStorage.load();
-            var refundCallbacks = callbacks.refundStorage.load();
             val indexResult = storage.queryToEscrow.get(msg.queryId);
             assert (indexResult.isFound) throw ErrorsV2.InvalidRelease;
             val escrowId = indexResult.loadValue();
