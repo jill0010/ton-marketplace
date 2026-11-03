@@ -76,8 +76,7 @@ fun onInternalMessage(in: InMessage) {
 
             val callbackMessage = createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
-                // Keep enough attached value for receiver compute and a possible bounce.
-                value: grams("0.1"),
+                value: grams("0.03"),
                 dest: storage.marketplace,
                 body: EscrowDepositedV2 {
                     escrowId,
@@ -232,7 +231,8 @@ fun onInternalMessage(in: InMessage) {
 
             val callbackMessage = createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
-                value: grams("0.03"),
+                // Keep enough attached value for receiver compute and a possible bounce.
+                value: grams("0.1"),
                 dest: storage.marketplace,
                 body: EscrowReleasedV2 {
                     orderId: pending.orderId,
