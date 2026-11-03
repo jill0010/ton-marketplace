@@ -517,6 +517,15 @@ struct NFTEscrowV2Record {
     extra: Cell<NFTEscrowV2RecordExtra>
 }
 
+enum NFTEscrowV2RecordStatus {
+    Pending = 0
+    Deposited = 1
+    ReleasePending = 2
+    Released = 3
+    RefundPending = 4
+    Refunded = 5
+}
+
 struct NFTEscrowV2CallbackStorage {
     depositCallbacks: map<uint64, Cell<EscrowDepositCallbackV2>>
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
