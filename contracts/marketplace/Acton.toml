@@ -48,3 +48,8 @@ depends = []
 display-name = "Test-only Rejecting NFT Item"
 src = "contracts/RejectingNFTItem.tolk"
 depends = []
+
+[contracts.NFTEscrowV2]
+display-name = "NFT Escrow V2 (isolated release lifecycle)"
+src = "contracts/NFTEscrowV2.tolk"
+depends = []
