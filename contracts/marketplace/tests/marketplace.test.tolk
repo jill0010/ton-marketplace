@@ -1111,3 +1111,26 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     expect(decodedSellerPayout.kind).toEqual(1);
     expect(decodedPlatformPayout.kind).toEqual(2);
 }
+
+
+// Marketplace V2 settlement arithmetic: exact 3% fee, floor rounding,
+// seller receives the remainder, and the two liabilities always sum to gross.
+get fun `test Marketplace V2 settlement split is exact for boundary and fractional amounts`() {
+    val oneTon = calculateSettlementAmounts(grams("1"));
+    expect(oneTon.gross).toEqual(grams("1"));
+    expect(oneTon.platformFee).toEqual(grams("0.03"));
+    expect(oneTon.sellerAmount).toEqual(grams("0.97"));
+    expect(oneTon.platformFee + oneTon.sellerAmount).toEqual(oneTon.gross);
+
+    // 1 nanotON rounds the platform fee down to zero; no value is lost.
+    val oneNano = calculateSettlementAmounts(1);
+    expect(oneNano.platformFee).toEqual(0);
+    expect(oneNano.sellerAmount).toEqual(1);
+    expect(oneNano.platformFee + oneNano.sellerAmount).toEqual(oneNano.gross);
+
+    // A non-round gross amount verifies integer floor rounding.
+    val fractional = calculateSettlementAmounts(grams("10.000000001"));
+    expect(fractional.platformFee).toEqual(grams("0.300000000"));
+    expect(fractional.sellerAmount).toEqual(grams("9.700000001"));
+    expect(fractional.platformFee + fractional.sellerAmount).toEqual(fractional.gross);
+}
