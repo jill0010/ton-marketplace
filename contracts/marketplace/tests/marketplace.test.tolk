@@ -1026,6 +1026,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
             releaseQueryId: 9002,
             sellerPayoutQueryId: 9003,
             platformPayoutQueryId: 9004,
+            buyerRefundQueryId: 9005,
         }.toCell(),
     };
     val order = MarketplaceV2Order {
@@ -1070,6 +1071,7 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     expect(decodedOperations.releaseQueryId).toEqual(9002);
     expect(decodedOperations.sellerPayoutQueryId).toEqual(9003);
     expect(decodedOperations.platformPayoutQueryId).toEqual(9004);
+    expect(decodedOperations.buyerRefundQueryId).toEqual(9005);
     expect(
         decodedSettlement.platformFee + decodedSettlement.sellerProceeds,
     ).toEqual(decodedSettlement.gross);
