@@ -32,8 +32,9 @@ fun onInternalMessage(in: InMessage) {
             ) throw ErrorsV2.InvalidCollectionStatus;
 
             var callbacks = storage.callbacks.load();
+            var collectionStorage = callbacks.collectionStorage.load();
             if (msg.newStatus == 1) {
-                val codeResult = callbacks.collectionItemCodes.get(msg.collection);
+                val codeResult = collectionStorage.collectionItemCodes.get(msg.collection);
                 assert (codeResult.isFound) throw ErrorsV2.CollectionItemCodeNotConfigured;
                 val itemCode = NFTEscrowV2CollectionItemCode.fromCell(codeResult.loadValue());
                 assert (itemCode.kind == 3) throw ErrorsV2.InvalidCollectionItemCode;
@@ -44,7 +45,8 @@ fun onInternalMessage(in: InMessage) {
                     codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
                 ) throw ErrorsV2.InvalidCollectionItemCode;
             }
-            callbacks.collections.set(msg.collection, msg.newStatus);
+            collectionStorage.collections.set(msg.collection, msg.newStatus);
+            callbacks.collectionStorage = collectionStorage.toCell();
             storage.callbacks = callbacks.toCell();
             storage.save();
         }
@@ -62,15 +64,17 @@ fun onInternalMessage(in: InMessage) {
             ) throw ErrorsV2.InvalidCollectionItemCode;
 
             var callbacks = storage.callbacks.load();
-            val collectionResult = callbacks.collections.get(msg.collection);
+            var collectionStorage = callbacks.collectionStorage.load();
+            val collectionResult = collectionStorage.collections.get(msg.collection);
             assert (collectionResult.isFound) throw ErrorsV2.CollectionNotApproved;
             assert (collectionResult.loadValue() != 1) throw ErrorsV2.InvalidCollectionStatus;
             assert (!msg.code.beginParse().isEmpty()) throw ErrorsV2.InvalidCollectionItemCode;
 
-            callbacks.collectionItemCodes.set(
+            collectionStorage.collectionItemCodes.set(
                 msg.collection,
                 NFTEscrowV2CollectionItemCode { kind: msg.kind, code: msg.code }.toCell(),
             );
+            callbacks.collectionStorage = collectionStorage.toCell();
             storage.callbacks = callbacks.toCell();
             storage.save();
         }
@@ -86,11 +90,12 @@ fun onInternalMessage(in: InMessage) {
 
             val createExtra = msg.extra.load();
             val callbacks = storage.callbacks.load();
-            val collectionResult = callbacks.collections.get(msg.collection);
+            val collectionStorage = callbacks.collectionStorage.load();
+            val collectionResult = collectionStorage.collections.get(msg.collection);
             assert (collectionResult.isFound) throw ErrorsV2.CollectionNotApproved;
             assert (collectionResult.loadValue() == 1) throw ErrorsV2.CollectionNotApproved;
 
-            val codeResult = callbacks.collectionItemCodes.get(msg.collection);
+            val codeResult = collectionStorage.collectionItemCodes.get(msg.collection);
             assert (codeResult.isFound) throw ErrorsV2.CollectionItemCodeNotConfigured;
             val itemCode = NFTEscrowV2CollectionItemCode.fromCell(codeResult.loadValue());
             assert (itemCode.kind == createExtra.kind) throw ErrorsV2.InvalidCollectionItemCode;
