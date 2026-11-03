@@ -314,6 +314,24 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     });
     expect(escrow.releaseFailureCallbackV2(1) != null).toEqual(true);
 
+    // Even the configured Marketplace cannot ACK a different order snapshot.
+    val wrongFailureAck = escrow.sendEscrowReleaseFailureAckV2(
+        marketplace.address,
+        8001,
+        7001,
+        1,
+        releaseQueryId,
+        nftItem.address,
+        buyer.address,
+        { value: grams("0.05") },
+    );
+    expect(wrongFailureAck).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidReleaseConfirmation,
+    });
+    expect(escrow.releaseFailureCallbackV2(1) != null).toEqual(true);
+
     val validFailureAck = escrow.sendEscrowReleaseFailureAckV2(
         marketplace.address,
         8000,
