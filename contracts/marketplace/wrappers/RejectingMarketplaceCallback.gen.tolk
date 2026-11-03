@@ -38,6 +38,16 @@ fun RejectingMarketplaceCallback.deploy(self, from: address, config: SendParams 
     return net.send(from, genericMsg);
 }
 
+fun RejectingMarketplaceCallback.sendSetTestEscrowAddressV2(
+    self, from: address, escrow: address, config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce, value: config.value, dest: self.address,
+        body: SetTestEscrowAddressV2 { escrow },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun RejectingMarketplaceCallback.sendSetRejectCallbackV2(
     self, from: address, rejectAction: bool, config: SendParams = {},
 ): SendResultList {
