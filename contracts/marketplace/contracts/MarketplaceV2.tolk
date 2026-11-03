@@ -129,7 +129,7 @@ fun onInternalMessage(in: InMessage) {
                 product.refundQueryId = queryId;
                 storage.products.set(msg.productId, product.toCell());
                 purchase.refundQueryToProduct.set(queryId, msg.productId);
-                purchase.save();
+                storage.purchaseStorage = purchase.toCell();
                 storage.nextQueryId = queryId + 1;
                 storage.save();
             } else {
