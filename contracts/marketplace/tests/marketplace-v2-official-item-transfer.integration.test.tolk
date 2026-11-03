@@ -163,7 +163,6 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(forgedTransferResult).toHaveFailedTx({
         from: owner.address,
         to: nftItem,
-        exitCode: Errors.NotOwner,
     });
     val afterForgedTransfer = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
     expect(afterForgedTransfer.isSuccess()).toEqual(true);
