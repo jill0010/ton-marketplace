@@ -37,10 +37,10 @@ type TelegramProfile = {
 }
 
 const INITIAL_PLANS: Plan[] = [
-  { id: "month", period: "1 month", periodZh: "1 个月", marketUsd: 4.29, discount: "-10%" },
-  { id: "quarter", period: "3 months", periodZh: "3 个月", marketUsd: 10.99, discount: "-30%" },
+  { id: "year", period: "12 months", periodZh: "12 个月", marketUsd: 27.99, discount: "-52%" },
   { id: "half-year", period: "6 months", periodZh: "6 个月", marketUsd: 14.99, discount: "-57%" },
-  { id: "year", period: "12 months", periodZh: "12 个月", marketUsd: 27.99, discount: "-62%" },
+  { id: "quarter", period: "3 months", periodZh: "3 个月", marketUsd: 10.99, discount: "-35%" },
+  { id: "month", period: "1 month", periodZh: "1 个月", marketUsd: 4.29, discount: "-18%" },
 ]
 
 export function PremiumPage() {
@@ -243,7 +243,7 @@ export function PremiumPage() {
           placeholder={t("Enter Telegram username", "输入 Telegram 用户名")}
           autoComplete="off"
           spellCheck={false}
-          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-400"
+          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-white/10"
         />
         <div className="space-y-3" aria-live="polite">
           {profileLookup === "loading" && <p className="text-xs text-sky-300">{t("Searching Telegram profile…", "正在查询 Telegram 资料…")}</p>}
@@ -283,13 +283,15 @@ export function PremiumPage() {
                 onClick={() => setSelectedPlanId(plan.id)}
                 className={`rounded-2xl border p-4 text-left transition ${active ? "border-sky-400 bg-white/[0.03]" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-white">{t(plan.period, plan.periodZh)}</span>
-                  <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-xs font-semibold text-emerald-300">{plan.discount}</span>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 whitespace-nowrap">
+                  <span className="min-w-0 truncate text-sm font-semibold text-white">{t(plan.period, plan.periodZh)}</span>
+                  <span className="shrink-0 rounded-full bg-sky-500 px-2 py-1 text-xs font-semibold text-white">{plan.discount}</span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-white">
+                    <span aria-hidden="true" className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-400 text-[11px] font-black text-slate-950">G</span>
+                    {gramAmount ? gramAmount.toFixed(2) : "—"}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-zinc-300">${plan.marketUsd.toFixed(2)}</span>
                 </div>
-                <p className="mt-4 text-2xl font-semibold text-white">{gramAmount ? gramAmount.toFixed(2) : "—"} <span className="text-sm text-sky-300">GRAM</span></p>
-                <p className="mt-1 text-sm text-zinc-400">${plan.marketUsd.toFixed(2)} USD</p>
-                {active && <p className="mt-3 text-xs font-medium text-sky-300">{t("Selected", "已选择")}</p>}
               </button>
             )
           })}
