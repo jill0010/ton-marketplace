@@ -1297,6 +1297,6 @@ get fun `test Marketplace V2 versioned purchase storage round-trips`() {
     expect(decodedPurchase.treasuryConfigured).toEqual(true);
     expect(decodedPurchase.nextOrderId).toEqual(31);
     expect(decodedPurchase.nextOperationId).toEqual(41);
-    expect(decodedOrders.orders.isEmpty()).toEqual(true);
-    expect(decodedPayouts.payouts.isEmpty()).toEqual(true);
+    expect(decodedOrders.orders.get(1).isFound).toEqual(false);
+    expect(decodedPayouts.payouts.get(1).isFound).toEqual(false);
 }
