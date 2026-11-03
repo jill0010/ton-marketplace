@@ -780,31 +780,35 @@ struct MarketplaceV2Payout {
     createdAt: uint32
 }
 
-struct MarketplaceV2Storage {
-    // Schema version is checked on every state-changing V2 entrypoint.
+// Purchase state is nested in one referenced cell so the root storage cell
+// remains safely below TON's 1023-bit limit as the listing indexes grow.
+struct MarketplaceV2PurchaseStorage {
     schemaVersion: uint16
-    owner: address
-    escrow: address
-    escrowConfigured: bool
     treasury: address
     treasuryConfigured: bool
-    nextProductId: uint64
-    nextQueryId: uint64
     nextOrderId: uint64
     nextOperationId: uint64
-    products: map<uint64, Cell<MarketplaceV2Product>>
-    // NFT Item address -> pending/active Marketplace V2 product ID.
-    assetListings: map<address, uint64>
-    queryToProduct: map<uint64, uint64>
-    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
-    refundQueryToProduct: map<uint64, uint64>
-    // Durable purchase and compensation indexes.
     orders: map<uint64, Cell<MarketplaceV2Order>>
     productToOrder: map<uint64, uint64>
     paymentQueryToOrder: map<uint64, uint64>
     payouts: map<uint64, Cell<MarketplaceV2Payout>>
     payoutQueryToOperation: map<uint64, uint64>
     refundQueryToOrder: map<uint64, uint64>
+}
+
+struct MarketplaceV2Storage {
+    owner: address
+    escrow: address
+    escrowConfigured: bool
+    nextProductId: uint64
+    nextQueryId: uint64
+    products: map<uint64, Cell<MarketplaceV2Product>>
+    // NFT Item address -> pending/active Marketplace V2 product ID.
+    assetListings: map<address, uint64>
+    queryToProduct: map<uint64, uint64>
+    // Retained after cancellation so duplicate refund callbacks can be re-ACKed.
+    refundQueryToProduct: map<uint64, uint64>
+    purchaseStorage: Cell<MarketplaceV2PurchaseStorage>
 }
 
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
