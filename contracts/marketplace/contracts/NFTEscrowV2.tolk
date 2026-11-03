@@ -176,6 +176,8 @@ fun onInternalMessage(in: InMessage) {
         NftOwnershipAssigned => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var releaseCallbacks = callbacks.releaseStorage.load();
+            var refundCallbacks = callbacks.refundStorage.load();
             val indexResult = storage.queryToEscrow.get(msg.queryId);
             assert (indexResult.isFound) throw ErrorsV2.InvalidRelease;
             val escrowId = indexResult.loadValue();
@@ -275,6 +277,7 @@ fun onInternalMessage(in: InMessage) {
         ReleaseEscrowV2 => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var releaseCallbacks = callbacks.releaseStorage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
             assert (
                 msg.orderId > 0 && msg.productId > 0 && msg.queryId > 0
@@ -304,7 +307,7 @@ fun onInternalMessage(in: InMessage) {
 
             if (record.status == 2) {
                 // Exact duplicate delivery request is idempotent: do not transfer twice.
-                val pendingResult = callbacks.pendingReleases.get(msg.escrowId);
+                val pendingResult = releaseCallbacks.pendingReleases.get(msg.escrowId);
                 assert (pendingResult.isFound) throw ErrorsV2.ReleaseAlreadyPending;
                 val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
                 assert (
@@ -321,7 +324,8 @@ fun onInternalMessage(in: InMessage) {
 
             record.status = 2;
             storage.records.set(msg.escrowId, record.toCell());
-            callbacks.pendingReleases.set(msg.escrowId, callback.toCell());
+            releaseCallbacks.pendingReleases.set(msg.escrowId, callback.toCell());
+            callbacks.releaseStorage = releaseCallbacks.toCell();
             storage.callbacks = callbacks.toCell();
             storage.queryToEscrow.set(msg.queryId, msg.escrowId);
             storage.save();
@@ -346,6 +350,7 @@ fun onInternalMessage(in: InMessage) {
         RefundEscrowV2 => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var refundCallbacks = callbacks.refundStorage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
             assert (msg.escrowId > 0 && msg.productId > 0 && msg.queryId > 0) throw ErrorsV2.InvalidRefund;
 
@@ -365,7 +370,7 @@ fun onInternalMessage(in: InMessage) {
             };
 
             if (record.status == 4) {
-                val pendingResult = callbacks.pendingRefunds.get(msg.escrowId);
+                val pendingResult = refundCallbacks.pendingRefunds.get(msg.escrowId);
                 assert (pendingResult.isFound) throw ErrorsV2.InvalidRefund;
                 val pending = EscrowRefundCallbackV2.fromCell(pendingResult.loadValue());
                 assert (pending.toCell().hash() == callback.toCell().hash()) throw ErrorsV2.InvalidRefund;
@@ -378,7 +383,8 @@ fun onInternalMessage(in: InMessage) {
 
             record.status = 4;
             storage.records.set(msg.escrowId, record.toCell());
-            callbacks.pendingRefunds.set(msg.escrowId, callback.toCell());
+            refundCallbacks.pendingRefunds.set(msg.escrowId, callback.toCell());
+            callbacks.refundStorage = refundCallbacks.toCell();
             storage.callbacks = callbacks.toCell();
             storage.queryToEscrow.set(msg.queryId, msg.escrowId);
             storage.save();
@@ -403,6 +409,8 @@ fun onInternalMessage(in: InMessage) {
         NftExcesses => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var releaseCallbacks = callbacks.releaseStorage.load();
+            var refundCallbacks = callbacks.refundStorage.load();
             val indexResult = storage.queryToEscrow.get(msg.queryId);
             assert (indexResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
             val escrowId = indexResult.loadValue();
@@ -412,7 +420,7 @@ fun onInternalMessage(in: InMessage) {
             var record = NFTEscrowV2Record.fromCell(recordResult.loadValue());
             assert (in.senderAddress == record.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
             if (record.status == 2) {
-                val pendingResult = callbacks.pendingReleases.get(escrowId);
+                val pendingResult = releaseCallbacks.pendingReleases.get(escrowId);
                 assert (pendingResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
                 val pending = EscrowReleaseCallbackV2.fromCell(pendingResult.loadValue());
                 assert (pending.queryId == msg.queryId) throw ErrorsV2.InvalidReleaseConfirmation;
@@ -426,8 +434,9 @@ fun onInternalMessage(in: InMessage) {
                 if (assetIndexResult.isFound && assetIndexResult.loadValue() == escrowId) {
                     storage.assetToEscrow.delete(record.nftItem);
                 }
-                callbacks.pendingReleases.delete(escrowId);
-                callbacks.releaseCallbacks.set(escrowId, pending.toCell());
+                releaseCallbacks.pendingReleases.delete(escrowId);
+                releaseCallbacks.releaseCallbacks.set(escrowId, pending.toCell());
+                callbacks.releaseStorage = releaseCallbacks.toCell();
                 storage.callbacks = callbacks.toCell();
                 storage.save();
 
@@ -446,7 +455,7 @@ fun onInternalMessage(in: InMessage) {
                 });
                 callbackMessage.send(SEND_MODE_REGULAR);
             } else if (record.status == 4) {
-                val pendingResult = callbacks.pendingRefunds.get(escrowId);
+                val pendingResult = refundCallbacks.pendingRefunds.get(escrowId);
                 assert (pendingResult.isFound) throw ErrorsV2.InvalidRefund;
                 val pending = EscrowRefundCallbackV2.fromCell(pendingResult.loadValue());
                 assert (pending.queryId == msg.queryId) throw ErrorsV2.InvalidRefund;
@@ -461,8 +470,9 @@ fun onInternalMessage(in: InMessage) {
                 if (assetIndexResult.isFound && assetIndexResult.loadValue() == escrowId) {
                     storage.assetToEscrow.delete(record.nftItem);
                 }
-                callbacks.pendingRefunds.delete(escrowId);
-                callbacks.refundCallbacks.set(escrowId, pending.toCell());
+                refundCallbacks.pendingRefunds.delete(escrowId);
+                refundCallbacks.refundCallbacks.set(escrowId, pending.toCell());
+                callbacks.refundStorage = refundCallbacks.toCell();
                 storage.callbacks = callbacks.toCell();
                 storage.save();
 
@@ -487,10 +497,11 @@ fun onInternalMessage(in: InMessage) {
         EscrowReleaseAckV2 => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var releaseCallbacks = callbacks.releaseStorage.load();
             assert (
                 in.senderAddress == storage.marketplace
             ) throw ErrorsV2.InvalidReleaseConfirmation;
-            val callbackResult = callbacks.releaseCallbacks.get(msg.escrowId);
+            val callbackResult = releaseCallbacks.releaseCallbacks.get(msg.escrowId);
             assert (callbackResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
             val callback = EscrowReleaseCallbackV2.fromCell(callbackResult.loadValue());
             assert (callback.orderId == msg.orderId) throw ErrorsV2.InvalidReleaseConfirmation;
@@ -499,7 +510,8 @@ fun onInternalMessage(in: InMessage) {
             assert (callback.queryId == msg.queryId) throw ErrorsV2.InvalidReleaseConfirmation;
             assert (callback.nftItem == msg.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
             assert (callback.buyer == msg.buyer) throw ErrorsV2.InvalidReleaseConfirmation;
-            callbacks.releaseCallbacks.delete(msg.escrowId);
+            releaseCallbacks.releaseCallbacks.delete(msg.escrowId);
+            callbacks.releaseStorage = releaseCallbacks.toCell();
             storage.callbacks = callbacks.toCell();
             storage.save();
         }
@@ -507,8 +519,9 @@ fun onInternalMessage(in: InMessage) {
         EscrowRefundAckV2 => {
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var refundCallbacks = callbacks.refundStorage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
-            val callbackResult = callbacks.refundCallbacks.get(msg.escrowId);
+            val callbackResult = refundCallbacks.refundCallbacks.get(msg.escrowId);
             assert (callbackResult.isFound) throw ErrorsV2.InvalidRefund;
             val callback = EscrowRefundCallbackV2.fromCell(callbackResult.loadValue());
             assert (callback.escrowId == msg.escrowId) throw ErrorsV2.InvalidRefund;
@@ -516,7 +529,8 @@ fun onInternalMessage(in: InMessage) {
             assert (callback.queryId == msg.queryId) throw ErrorsV2.InvalidRefund;
             assert (callback.nftItem == msg.nftItem) throw ErrorsV2.InvalidRefund;
             assert (callback.seller == msg.seller) throw ErrorsV2.InvalidRefund;
-            callbacks.refundCallbacks.delete(msg.escrowId);
+            refundCallbacks.refundCallbacks.delete(msg.escrowId);
+            callbacks.refundStorage = refundCallbacks.toCell();
             storage.callbacks = callbacks.toCell();
             storage.save();
         }
@@ -524,8 +538,9 @@ fun onInternalMessage(in: InMessage) {
         RetryRefundCallbackV2 => {
             val storage = lazy NFTEscrowV2Storage.load();
             val callbacks = storage.callbacks.load();
+            val refundCallbacks = callbacks.refundStorage.load();
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
-            val callbackResult = callbacks.refundCallbacks.get(msg.escrowId);
+            val callbackResult = refundCallbacks.refundCallbacks.get(msg.escrowId);
             assert (callbackResult.isFound) throw ErrorsV2.InvalidRefund;
             val callback = EscrowRefundCallbackV2.fromCell(callbackResult.loadValue());
             val retryMessage = createMessage({
@@ -546,8 +561,9 @@ fun onInternalMessage(in: InMessage) {
         RetryReleaseCallbackV2 => {
             val storage = lazy NFTEscrowV2Storage.load();
             val callbacks = storage.callbacks.load();
+            val releaseCallbacks = callbacks.releaseStorage.load();
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
-            val callbackResult = callbacks.releaseCallbacks.get(msg.escrowId);
+            val callbackResult = releaseCallbacks.releaseCallbacks.get(msg.escrowId);
             assert (callbackResult.isFound) throw ErrorsV2.InvalidReleaseConfirmation;
             val callback = EscrowReleaseCallbackV2.fromCell(callbackResult.loadValue());
             val retryMessage = createMessage({
@@ -603,6 +619,8 @@ fun onBouncedMessage(in: InMessageBounced) {
 
             var storage = lazy NFTEscrowV2Storage.load();
             var callbacks = storage.callbacks.load();
+            var releaseCallbacks = callbacks.releaseStorage.load();
+            var refundCallbacks = callbacks.refundStorage.load();
             val indexResult = storage.queryToEscrow.get(transfer.queryId);
             if (!indexResult.isFound) {
                 return;
@@ -614,7 +632,7 @@ fun onBouncedMessage(in: InMessageBounced) {
             }
             var record = NFTEscrowV2Record.fromCell(recordResult.loadValue());
             if (record.status == 2) {
-                val pendingResult = callbacks.pendingReleases.get(escrowId);
+                val pendingResult = releaseCallbacks.pendingReleases.get(escrowId);
                 if (!pendingResult.isFound) {
                     return;
                 }
@@ -626,13 +644,14 @@ fun onBouncedMessage(in: InMessageBounced) {
                 ) {
                     record.status = 1;
                     storage.records.set(escrowId, record.toCell());
-                    callbacks.pendingReleases.delete(escrowId);
+                    releaseCallbacks.pendingReleases.delete(escrowId);
+                    callbacks.releaseStorage = releaseCallbacks.toCell();
                     storage.queryToEscrow.delete(transfer.queryId);
                     storage.callbacks = callbacks.toCell();
                     storage.save();
                 }
             } else if (record.status == 4) {
-                val pendingResult = callbacks.pendingRefunds.get(escrowId);
+                val pendingResult = refundCallbacks.pendingRefunds.get(escrowId);
                 if (!pendingResult.isFound) {
                     return;
                 }
@@ -644,7 +663,8 @@ fun onBouncedMessage(in: InMessageBounced) {
                 ) {
                     record.status = 1;
                     storage.records.set(escrowId, record.toCell());
-                    callbacks.pendingRefunds.delete(escrowId);
+                    refundCallbacks.pendingRefunds.delete(escrowId);
+                    callbacks.refundStorage = refundCallbacks.toCell();
                     storage.queryToEscrow.delete(transfer.queryId);
                     storage.callbacks = callbacks.toCell();
                     storage.save();
@@ -705,7 +725,8 @@ get fun depositCallbackV2(escrowId: uint64): EscrowDepositCallbackV2? {
 
 get fun releaseCallbackV2(escrowId: uint64): EscrowReleaseCallbackV2? {
     val callbacks = NFTEscrowV2Storage.load().callbacks.load();
-    val result = callbacks.releaseCallbacks.get(escrowId);
+    val releaseCallbacks = callbacks.releaseStorage.load();
+    val result = releaseCallbacks.releaseCallbacks.get(escrowId);
     if (!result.isFound) {
         return null;
     }
@@ -714,7 +735,8 @@ get fun releaseCallbackV2(escrowId: uint64): EscrowReleaseCallbackV2? {
 
 get fun refundCallbackV2(escrowId: uint64): EscrowRefundCallbackV2? {
     val callbacks = NFTEscrowV2Storage.load().callbacks.load();
-    val result = callbacks.refundCallbacks.get(escrowId);
+    val refundCallbacks = callbacks.refundStorage.load();
+    val result = refundCallbacks.refundCallbacks.get(escrowId);
     if (!result.isFound) {
         return null;
     }
