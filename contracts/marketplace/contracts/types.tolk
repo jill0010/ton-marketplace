@@ -336,7 +336,7 @@ struct (0x71a0000E) RetryCreateEscrow {
     productId: uint64
 }
 
- // Marketplace V2 isolated NFT release ABI. These declarations do not alter
+// Marketplace V2 isolated NFT release ABI. These declarations do not alter
 // V1 serialized storage and do not enable any V2 entrypoint.
 struct (0x71b00002) ReleaseEscrowV2 {
     orderId: uint64
@@ -384,7 +384,6 @@ enum EscrowReleaseStatusV2 {
     ReleasePending = 2
     Released = 3
 }
-
 
 /// Integer-only settlement split. Fee rounds down; seller receives the remainder,
 /// so platformFee + sellerAmount always equals the exact gross price.
