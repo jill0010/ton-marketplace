@@ -385,6 +385,40 @@ enum EscrowReleaseStatusV2 {
     Released = 3
 }
 
+enum ErrorsV2 {
+    NotOwner = 200
+    InvalidMessage = 0xFFFF
+    InvalidRelease = 201
+    ReleaseAlreadyPending = 202
+    InvalidReleaseConfirmation = 203
+}
+
+struct NFTEscrowV2Record {
+    escrowId: uint64
+    nftItem: address
+    seller: address
+    productId: uint64
+    status: uint8
+    queryId: uint64
+}
+
+struct NFTEscrowV2Storage {
+    owner: address
+    marketplace: address
+    records: map<uint64, Cell<NFTEscrowV2Record>>
+    queryToEscrow: map<uint64, uint64>
+    pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+}
+
+fun NFTEscrowV2Storage.load(): NFTEscrowV2Storage {
+    return NFTEscrowV2Storage.fromCell(contract.getData());
+}
+
+fun NFTEscrowV2Storage.save(self) {
+    contract.setData(self.toCell());
+}
+
 /// Integer-only settlement split. Fee rounds down; seller receives the remainder,
 /// so platformFee + sellerAmount always equals the exact gross price.
 struct SettlementAmounts {
