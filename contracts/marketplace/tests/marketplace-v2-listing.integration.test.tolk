@@ -346,7 +346,8 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         { value: grams("0.05") },
     );
     expect(exactReplay).toHaveSuccessfulTx();
-    expect(escrow.escrowRecordV2(1)!!.status).toEqual(0);
+    // Idempotent replay must preserve the already-deposited state.
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(1);
 
     val changedIndexReplay = escrow.sendCreateEscrowV2(
         marketplace.address,
