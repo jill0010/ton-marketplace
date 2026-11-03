@@ -113,7 +113,7 @@ export function PremiumHistoryPage() {
           </div>
           <h2 className="mt-4 text-lg font-semibold text-white">{t("Connect your wallet to view transaction history", "连接钱包后查看交易记录")}</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-400">{t("Connect the TON wallet you use on this marketplace to continue.", "请连接你在本商城使用的 TON 钱包后继续查看。")}</p>
-          <div className="mt-5 flex justify-center"><TonConnectButton /></div>
+          <div className="mt-5 flex justify-center"><TonConnectButton className="history-ton-connect-button" /></div>
           <Link to="/premium" className="mt-5 inline-block text-sm text-sky-300 hover:underline">{t("Back to Premium", "返回会员购买")}</Link>
         </div>
       ) : (
