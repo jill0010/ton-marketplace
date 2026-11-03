@@ -280,11 +280,16 @@ export function PremiumPage() {
               <button
                 key={plan.id}
                 type="button"
+                aria-pressed={active}
                 onClick={() => setSelectedPlanId(plan.id)}
                 className={`rounded-2xl border p-4 text-left transition ${active ? "border-sky-400 bg-white/[0.03]" : "border-white/10 bg-white/[0.03] hover:border-white/25"}`}
               >
                 <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 whitespace-nowrap">
                   <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={`h-4 w-4 shrink-0 rounded-full border-2 transition-colors ${active ? "border-sky-400 bg-sky-400" : "border-zinc-500 bg-transparent"}`}
+                    />
                     <span className="truncate text-sm font-semibold text-white">{t(plan.period, plan.periodZh)}</span>
                     <span className="shrink-0 rounded-full bg-sky-500 px-2 py-1 text-xs font-semibold text-white">{plan.discount}</span>
                   </div>
