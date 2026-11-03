@@ -160,10 +160,12 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         },
     });
     val forgedTransferResult = net.send(owner.address, forgedTransfer);
-    expect(forgedTransferResult).toHaveFailedTx({
-        from: owner.address,
-        to: nftItem,
-    });
+    val forgedItemTxResult = forgedTransferResult.findTransaction({ to: nftItem });
+    expect(forgedItemTxResult).toBeNotNull();
+    val forgedItemTx = forgedItemTxResult!!;
+    val forgedItemDescription = forgedItemTx.description.load();
+    assert (forgedItemDescription is TlbTransOrd) throw 402;
+    expect(forgedItemDescription.aborted).toEqual(true);
     val afterForgedTransfer = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
     expect(afterForgedTransfer.isSuccess()).toEqual(true);
     expect(afterForgedTransfer.unwrap().get(3) as address).toEqual(seller.address);
