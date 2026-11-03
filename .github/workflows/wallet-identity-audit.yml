@@ -7,6 +7,7 @@ on:
     paths:
       - "supabase/functions/_shared/auth.ts"
       - "supabase/functions/ton-proof-status/**"
+      - "supabase/functions/marketplace-order-history/**"
       - "supabase/migrations/**"
       - "supabase/tests/canonical-wallet-identity-*.sql"
       - "supabase/tests/marketplace-*.sql"
@@ -23,6 +24,7 @@ on:
       - "supabase/functions/ton-proof-challenge/**"
       - "supabase/functions/ton-proof-verify/**"
       - "supabase/functions/ton-proof-status/**"
+      - "supabase/functions/marketplace-order-history/**"
       - "supabase/functions/create-premium-order/**"
       - "supabase/migrations/**"
       - "supabase/tests/canonical-wallet-identity-*.sql"
@@ -79,6 +81,9 @@ jobs:
 
       - name: Type-check fail-closed premium order endpoint
         run: deno check --config supabase/functions/deno.json supabase/functions/create-premium-order/index.ts
+
+      - name: Type-check verified-wallet marketplace order history endpoint
+        run: deno check --config supabase/functions/deno.json supabase/functions/marketplace-order-history/index.ts
 
       - name: Test wallet identity audit
         run: deno test --config supabase/functions/deno.json supabase/functions/_shared/wallet-identity-migration_test.ts
