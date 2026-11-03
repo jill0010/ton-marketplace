@@ -1252,18 +1252,25 @@ get fun `test Marketplace V2 immutable order snapshot and independent payout lia
 get fun `test Marketplace V2 versioned purchase storage round-trips`() {
     val owner = testing.treasury("v2StorageOwner");
     val treasury = testing.treasury("v2StorageTreasury");
+    val orderStorage = MarketplaceV2OrderStorage {
+        orders: [],
+        productToOrder: [],
+        paymentQueryToOrder: [],
+        refundQueryToOrder: [],
+    };
+    val payoutStorage = MarketplaceV2PayoutStorage {
+        payouts: [],
+        payoutQueryToOperation: [],
+    };
     val purchaseStorage = MarketplaceV2PurchaseStorage {
         schemaVersion: 2,
         treasury: treasury.address,
         treasuryConfigured: true,
         nextOrderId: 31,
         nextOperationId: 41,
-        orders: [],
-        productToOrder: [],
-        paymentQueryToOrder: [],
-        payouts: [],
-        payoutQueryToOperation: [],
-        refundQueryToOrder: [],
+        refundQueryToProduct: [],
+        orders: orderStorage.toCell(),
+        payoutStorage: payoutStorage.toCell(),
     };
     val storage = MarketplaceV2Storage {
         owner: owner.address,
@@ -1274,11 +1281,12 @@ get fun `test Marketplace V2 versioned purchase storage round-trips`() {
         products: [],
         assetListings: [],
         queryToProduct: [],
-        refundQueryToProduct: [],
         purchaseStorage: purchaseStorage.toCell(),
     };
     val decoded = MarketplaceV2Storage.fromCell(storage.toCell());
     val decodedPurchase = decoded.purchaseStorage.load();
+    val decodedOrders = decodedPurchase.orders.load();
+    val decodedPayouts = decodedPurchase.payoutStorage.load();
     expect(decoded.owner).toEqual(owner.address);
     expect(decoded.escrow).toEqual(treasury.address);
     expect(decoded.escrowConfigured).toEqual(true);
@@ -1289,4 +1297,6 @@ get fun `test Marketplace V2 versioned purchase storage round-trips`() {
     expect(decodedPurchase.treasuryConfigured).toEqual(true);
     expect(decodedPurchase.nextOrderId).toEqual(31);
     expect(decodedPurchase.nextOperationId).toEqual(41);
+    expect(decodedOrders.orders.isEmpty()).toEqual(true);
+    expect(decodedPayouts.payouts.isEmpty()).toEqual(true);
 }
