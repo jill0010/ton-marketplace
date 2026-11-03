@@ -1053,8 +1053,9 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
     expect(decodedOrder.status).toEqual(MarketplaceV2OrderStatus.PaymentAccepted);
     expect(decodedOrder.deliveryStatus).toEqual(MarketplaceV2DeliveryStatus.Pending);
     expect(decodedOrder.sellerPayoutStatus).toEqual(MarketplaceV2PayoutStatus.NotCreated);
-    expect(decodedOrder.platformPayoutStatus).toEqual(0);
-    expect(decodedOrder.refundStatus).toEqual(0);
+    expect(decodedOrder.platformPayoutStatus).toEqual(MarketplaceV2PayoutStatus.NotCreated);
+    expect(decodedOrder.refundStatus).toEqual(MarketplaceV2RefundStatus.None);
+    expect(decodedOrder.sellerReturnStatus).toEqual(MarketplaceV2SellerReturnStatus.NotStarted);
     val decodedParties = decodedExtra.parties.load();
     val decodedAsset = decodedExtra.asset.load();
     val decodedSettlement = decodedExtra.settlement.load();
