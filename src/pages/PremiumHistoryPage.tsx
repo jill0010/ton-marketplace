@@ -26,13 +26,15 @@ type PremiumPayment = {
 }
 
 const STATUS_LABELS: Record<string, [string, string]> = {
-  pending_payment: ["Awaiting payment", "等待付款"],
+  pending: ["Awaiting payment", "等待付款"],
+  payment_submitted: ["Payment submitted · Awaiting verification", "已提交付款 · 等待链上核实"],
   payment_detected: ["Payment detected · Awaiting review", "已检测付款 · 等待审核"],
   paid: ["Paid", "已付款"],
+  processing: ["Processing", "处理中"],
   completed: ["Completed", "已完成"],
   expired: ["Expired", "已过期"],
   cancelled: ["Cancelled", "已取消"],
-  failed: ["Failed", "失败"],
+  exception: ["Requires support", "需要联系客服"],
 }
 
 function formatDate(value: string | null, language: string) {
