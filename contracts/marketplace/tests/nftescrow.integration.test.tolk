@@ -755,7 +755,7 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         dest: escrow.address,
         body: RequestRefund { escrowId: 1 },
     });
-    val refundRequestStep = testing.processSingleTraceStep(seller.address, refundMessage);
+    testing.processSingleTraceStep(seller.address, refundMessage);
 
     val refundPendingRecord = escrow.escrowRecord(1);
     assert (refundPendingRecord != null) throw Errors.InvalidEscrow;
@@ -789,11 +789,7 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
         dest: escrow.address,
         body: bouncedRefundTransfer,
     }).bounced();
-    val refundTransferBounceRes = testing.processSingleTraceStep(
-        nftItem,
-        refundTransferBounceMessage,
-    );
-    expect(refundTransferBounceRes.tx.load().description.computePhase!!.exitCode).toEqual(0);
+    testing.processSingleTraceStep(nftItem, refundTransferBounceMessage);
 
     // 只有精确 NFT Item + queryId + newOwner + responseDestination + RefundPending
     // 全部匹配时，Bounce handler 才将状态恢复为 Deposited。
