@@ -113,7 +113,12 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261102140000_add_canonical_ton_wallet_identity.sql
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261103152324_add_canonical_ton_wallet_identity.sql
+      - name: Apply TON Proof expiry migration to disposable database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261103152830_return_wallet_proof_expiry_in_identity_lookup.sql
 
       - name: Test identity uniqueness, multi-session binding, replay protection and ACLs
         env:
