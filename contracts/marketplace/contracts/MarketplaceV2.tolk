@@ -97,7 +97,7 @@ fun onInternalMessage(in: InMessage) {
                 in.senderAddress == product.seller || in.senderAddress == storage.owner
             ) throw ErrorsV2.InvalidRefund;
 
-            var queryId = 0;
+            var queryId: uint64 = 0;
             if (product.status == 2) {
                 queryId = storage.nextQueryId;
                 assert (queryId > 0) throw ErrorsV2.InvalidRefund;
@@ -247,8 +247,9 @@ fun onBouncedMessage(in: InMessageBounced) {
         return;
     }
 
-    // Only exact RichBounce envelopes for our two Marketplace -> Escrow
-    // requests may restore local product state. Malformed/stale bounces no-op.
+    // Only an exact bounced CreateEscrowV2 request can safely release a
+    // pending listing reservation. Refund-request bounces are left in
+    // ManualReview: the NFT may already have returned if its callback raced.
     try {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
         val originalBody = rich.originalBody;
@@ -290,34 +291,6 @@ fun onBouncedMessage(in: InMessageBounced) {
                     storage.assetListings.delete(product.nftItem);
                 }
                 storage.queryToProduct.delete(create.queryId);
-                storage.save();
-            }
-        } else if (opcode == 0x71b0000E) {
-            val refund = lazy RefundEscrowV2.fromCell(originalBody);
-            val queryResult = storage.refundQueryToProduct.get(refund.queryId);
-            if (!queryResult.isFound) {
-                return;
-            }
-            val productId = queryResult.loadValue();
-            if (productId != refund.productId) {
-                return;
-            }
-            val productResult = storage.products.get(productId);
-            if (!productResult.isFound) {
-                return;
-            }
-
-            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
-            if (
-                product.status == 6 && product.id == refund.productId &&
-                product.refundQueryId == refund.queryId &&
-                product.escrowId == refund.escrowId &&
-                product.seller == refund.seller
-            ) {
-                product.status = 2;
-                product.refundQueryId = 0;
-                storage.products.set(productId, product.toCell());
-                storage.refundQueryToProduct.delete(refund.queryId);
                 storage.save();
             }
         }
