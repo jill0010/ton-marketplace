@@ -134,6 +134,59 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
         exitCode: ErrorsV2.InvalidRelease,
     });
 
+    // Reject destinations that would leave the NFT trapped while Escrow
+    // incorrectly records delivery as complete.
+    val releaseToEscrow = escrow.sendReleaseEscrowV2(
+        marketplace.address,
+        7998,
+        7001,
+        1,
+        releaseQueryId,
+        escrow.address,
+        { value: grams("0.1") },
+    );
+    expect(releaseToEscrow).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+
+    val releaseToNftItem = escrow.sendReleaseEscrowV2(
+        marketplace.address,
+        7999,
+        7001,
+        1,
+        releaseQueryId,
+        nftItem.address,
+        { value: grams("0.1") },
+    );
+    expect(releaseToNftItem).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+
+    val releaseToSeller = escrow.sendReleaseEscrowV2(
+        marketplace.address,
+        7997,
+        7001,
+        1,
+        releaseQueryId,
+        seller.address,
+        { value: grams("0.1") },
+    );
+    expect(releaseToSeller).toHaveFailedTx({
+        from: marketplace.address,
+        to: escrow.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+
+    val afterInvalidDestinations = escrow.escrowRecordV2(1);
+    assert (afterInvalidDestinations != null) throw ErrorsV2.InvalidRelease;
+    expect(afterInvalidDestinations!!.status).toEqual(1);
+    expect(escrow.assetEscrowIdV2(nftItem.address)).toEqual(1);
+    expect(nftItem.owner()).toEqual(escrow.address);
+
     // Force the NFT Item to reject delivery to this buyer. This is a real
     // compute-phase failure and must bounce back to the Escrow using RichBounce.
     val rejectedRelease = escrow.sendReleaseEscrowV2(
