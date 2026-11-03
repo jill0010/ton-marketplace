@@ -27,7 +27,9 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
             assert (msg.productId > 0 && msg.queryId > 0) throw ErrorsV2.InvalidRelease;
             assert (!storage.queryToEscrow.get(msg.queryId).isFound) throw ErrorsV2.InvalidRelease;
-            assert (!storage.assetToEscrow.get(msg.nftItem).isFound) throw ErrorsV2.AssetAlreadyEscrowed;
+            assert (
+                !storage.assetToEscrow.get(msg.nftItem).isFound
+            ) throw ErrorsV2.AssetAlreadyEscrowed;
 
             val escrowId = storage.nextEscrowId;
             val record = NFTEscrowV2Record {
