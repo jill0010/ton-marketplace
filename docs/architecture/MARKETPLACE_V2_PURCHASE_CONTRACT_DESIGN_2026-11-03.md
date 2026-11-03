@@ -190,3 +190,12 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - Added a read-only getter for test assertions. This changes only the not-yet-deployed V2 storage layout; it is not compatible with any previously serialized V2 state and requires a fresh V2 address if an earlier V2 deployment ever exists.
 - The latest observed Contracts workflow run #150 failed in the pre-existing V2 integration-test initializer before this uniqueness patch was present. The latest source revision still requires a fresh Contracts CI run; no pass is claimed here.
 - No MarketplaceV2 purchase/payment/settlement handlers, production migration, Edge Function deployment, contract deployment, testnet/mainnet transaction, NFT transfer, or fund movement was added.
+
+
+## V2 release low-balance regression — 2026-11-03
+
+- The Contracts #150 failure log identified a stale test initializer that supplied `depositCallbacks` as a direct `NFTEscrowV2Storage` field. The actual storage schema nests callback maps under `callbacks: Cell<NFTEscrowV2CallbackStorage>`; the test initializer was corrected to explicitly construct both structs.
+- Added a low-balance release attempt to the V2 integration test. It asserts the failed outbound NFT transfer rolls back atomically: escrow record remains Deposited and the NFT Item custody index remains reserved. The normal release then reuses the same query ID.
+- Latest code commits: `8cbf17a` (typed storage initializer) and `881f398` (underfunded release regression).
+- The latest observed Actions run remains Contracts #150 on the earlier `f30bfb1` revision; it failed on the old initializer. No Actions run for the newer commits was visible at the time of this update, so this patch is not claimed to pass CI.
+- No contract deployment, production migration, or NFT/fund movement was performed.
