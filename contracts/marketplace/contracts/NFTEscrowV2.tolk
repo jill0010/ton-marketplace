@@ -27,6 +27,7 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
             assert (msg.productId > 0 && msg.queryId > 0) throw ErrorsV2.InvalidRelease;
             assert (!storage.queryToEscrow.get(msg.queryId).isFound) throw ErrorsV2.InvalidRelease;
+            assert (!storage.assetToEscrow.get(msg.nftItem).isFound) throw ErrorsV2.AssetAlreadyEscrowed;
 
             val escrowId = storage.nextEscrowId;
             val record = NFTEscrowV2Record {
@@ -39,6 +40,7 @@ fun onInternalMessage(in: InMessage) {
             };
             storage.records.set(escrowId, record.toCell());
             storage.queryToEscrow.set(msg.queryId, escrowId);
+            storage.assetToEscrow.set(msg.nftItem, escrowId);
             storage.nextEscrowId = escrowId + 1;
             storage.save();
         }
@@ -216,6 +218,10 @@ fun onInternalMessage(in: InMessage) {
 
             record.status = 3;
             storage.records.set(escrowId, record.toCell());
+            val assetIndexResult = storage.assetToEscrow.get(record.nftItem);
+            if (assetIndexResult.isFound && assetIndexResult.loadValue() == escrowId) {
+                storage.assetToEscrow.delete(record.nftItem);
+            }
             callbacks.pendingReleases.delete(escrowId);
             callbacks.releaseCallbacks.set(escrowId, pending.toCell());
             storage.callbacks = callbacks.toCell();
@@ -356,6 +362,14 @@ fun onBouncedMessage(in: InMessageBounced) {
             // Callback remains persisted for an owner-authorized retry.
         }
     }
+}
+
+get fun assetEscrowIdV2(nftItem: address): uint64? {
+    val result = NFTEscrowV2Storage.load().assetToEscrow.get(nftItem);
+    if (!result.isFound) {
+        return null;
+    }
+    return result.loadValue();
 }
 
 get fun owner(): address {
