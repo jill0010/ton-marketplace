@@ -39,10 +39,6 @@ export function Layout() {
               {t("Home", "首页")}
             </NavLink>
 
-            <NavLink to="/catalog" className={navClass}>
-              {t("All Products", "全部商品")}
-            </NavLink>
-
             <div className="flex items-center">
               <TonConnectButton />
             </div>
