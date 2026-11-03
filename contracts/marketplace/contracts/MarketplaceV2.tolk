@@ -20,6 +20,9 @@ fun onInternalMessage(in: InMessage) {
         SetMarketplaceV2Escrow => {
             var storage = lazy MarketplaceV2Storage.load();
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
+            // Bind the V2 Escrow once. Rotating it after listings exist would strand
+            // callbacks and split custody authority across two contract addresses.
+            assert (!storage.escrowConfigured) throw ErrorsV2.InvalidRelease;
             storage.escrow = msg.escrow;
             storage.escrowConfigured = true;
             storage.save();
