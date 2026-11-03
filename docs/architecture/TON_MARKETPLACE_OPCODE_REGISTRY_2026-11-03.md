@@ -70,7 +70,7 @@ The following assignments are reserved only: no contract currently accepts or em
 
 | Opcode | Message | Direction | Status |
 |---|---|---|---|
-| `0x71b00100` | `BuyProductV2` | Buyer → MarketplaceV2 | Implemented (exact gross + reserve payment, escrow release request) |
+| `0x71b00100` | `BuyProductV2` | Buyer → MarketplaceV2 | Implemented (exact gross-only payment; network costs are paid from Marketplace operational reserve, escrow release request) |
 | `0x71b00101` | `SellerPayoutV2` | MarketplaceV2 → Seller | Implemented (independent 97% payout liability) |
 | `0x71b00102` | `PlatformPayoutV2` | MarketplaceV2 → Treasury | Implemented (independent 3% payout liability) |
 | `0x71b00103` | `RetryPayoutV2` | Operator → MarketplaceV2 | Reserved (permissionless dispatch uses 0x71b00106) |
