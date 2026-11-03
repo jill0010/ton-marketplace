@@ -1,3 +1,25 @@
+import "types"
+
+contract MarketplaceV2 {
+    author: "TON Market"
+    version: "2.0.0"
+    description: "Marketplace V2 escrow-backed purchase, delivery, refund and split settlement"
+    storage: MarketplaceV2Storage
+    incomingMessages: MarketplaceV2AllowedMessage
+}
+
+type MarketplaceV2AllowedMessage =
+    | SetMarketplaceV2Escrow
+    | SetMarketplaceV2Treasury
+    | PublishProductV2
+    | BuyProductV2
+    | DispatchPayoutV2
+    | CancelProductV2
+    | EscrowDepositedV2
+    | EscrowReleasedV2
+    | EscrowReleaseFailedV2
+    | EscrowRefundedV2
+
 fun onInternalMessage(in: InMessage) {
     var storage = lazy MarketplaceV2Storage.load();
     var listingMaps = storage.listingMaps.load();
