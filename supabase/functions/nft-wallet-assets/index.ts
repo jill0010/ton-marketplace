@@ -232,6 +232,7 @@ Deno.serve(async (request: Request) => {
       truncated,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("nft-wallet-assets failed:", message);
 
     return jsonResponse({
