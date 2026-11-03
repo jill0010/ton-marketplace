@@ -43,6 +43,9 @@ Purchase and settlement messages use a separate range to avoid colliding with th
 | `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer |
 | `0x71b00105` | `PayoutSettledV2` | Reserved only; not used for ordinary wallets |
 | `0x71b00106` | `DispatchPayoutV2` | Permissionless caller → MarketplaceV2 |
+| `0x71b00013` | `EscrowReleaseFailedV2` | NFTEscrowV2 → MarketplaceV2 |
+| `0x71b00014` | `EscrowReleaseFailureAckV2` | MarketplaceV2 → NFTEscrowV2 |
+| `0x71b00015` | `RetryReleaseFailureCallbackV2` | Operator → NFTEscrowV2 |
 
 These values are proposed, not yet frozen. Do not release an ABI or deploy until a repository-wide opcode scan and generated-wrapper review are complete.
 
@@ -127,6 +130,8 @@ No transaction should mark delivery or payout complete merely because an outgoin
 - Ordinary TON wallets do not automatically send a custom `PayoutSettledV2` acknowledgement. Do not require one.
 - A bounced payout remains unpaid. Restore only the exact matching Dispatched liability and retry with the same operation/query identity; never create a second liability.
 - The on-chain contract records Dispatched and bounce recovery. The indexer must follow the sender → outgoing message → recipient transaction trace and check recipient compute/action success and finality before showing Completed.
+- An NFT Item release bounce must be followed by an authenticated durable `EscrowReleaseFailedV2` callback; MarketplaceV2 must not infer delivery failure from silence.
+- A proven delivery failure starts two independent compensation legs: return the still-escrowed NFT to the seller and refund the buyer. The listing remains Reserved until the exact seller NFT-return callback cancels it; it is not automatically reactivated.
 - An ambiguous transaction outcome goes to ManualReview. No timeout-only automatic product reactivation or buyer refund.
 - A future design requiring cryptographic beneficiary acknowledgement must restrict beneficiaries to wallets/contracts implementing a documented callback interface; that is not compatible with arbitrary standard wallet addresses.
 
@@ -151,6 +156,8 @@ Before enabling the buyer entrypoint:
 2. two buyers racing for one product; exactly one order is accepted;
 3. product reservation and order creation rollback on action-phase failure;
 4. wrong NFT Item, wrong buyer, wrong collection, wrong escrow record, wrong query and forged callback;
+5. release failure callback, callback bounce/retry/ACK, and stale success-vs-failure callback race;
+6. independent buyer refund and seller NFT-return compensation after a proven release failure;
 5. release success, release bounce, duplicate release request and stale release bounce;
 6. buyer ownership notification plus Escrow excess confirmation;
 7. callback bounce/retry without duplicate payout creation;
@@ -165,8 +172,8 @@ Before enabling the buyer entrypoint:
 ## Implementation sequence
 
 - Phase A: freeze opcode table, V2 storage structs, exact payment mode, query-ID allocation, and versioned deployment manifest.
-- Phase B: implement NFTEscrowV2 release lifecycle and official NFT Item release/bounce tests.
-- Phase C: implement MarketplaceV2 purchase reservation and payment accounting, still without payout enablement.
+- Phase B: implement NFTEscrowV2 release lifecycle, official NFT Item release/bounce tests, and durable release-failure callback/ACK/retry.
+- Phase C: implement MarketplaceV2 purchase reservation, exact payment accounting, and proven-failure compensation (buyer refund + seller NFT return), still without payout enablement.
 - Phase D: implement independent payout liabilities, permissionless per-leg dispatch, exact RichBounce recovery, and indexer trace finality. Do not require ordinary wallet acknowledgements.
 - Phase E: adversarial cross-contract integration tests and measured fee matrix.
 - Phase F: fresh-address testnet deployment, code/hash verification, owner/treasury configuration rehearsal, and security review.
@@ -335,3 +342,8 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 ## Payout finality decision — ordinary TON wallets
 
 The payout confirmation model has been corrected in [TON Marketplace V2 — Payout Finality and Bounce Recovery Decision](TON_MARKETPLACE_PAYOUT_FINALITY_DECISION_2026-11-03.md). Ordinary wallet beneficiaries do not automatically send a custom acknowledgement. Each payout leg is independently dispatched to its immutable beneficiary, and an exact RichBounce restores only that leg. On-chain state records `Dispatched`; an indexer verifies the recipient transaction and finality before displaying user-facing completion. `PayoutSettledV2` remains reserved but is not used in the arbitrary-wallet model. The order enum uses `PayoutsDispatched`, not a false on-chain claim of beneficiary-acknowledged completion.
+
+
+## Delivery failure compensation decision
+
+The separate [NFT Delivery Failure and Buyer Compensation Decision](TON_MARKETPLACE_DELIVERY_FAILURE_COMPENSATION_2026-11-03.md) closes an important asynchronous gap: NFTEscrowV2 currently restores Deposited after a correlated NFT Item release bounce but does not notify MarketplaceV2 of that failure. Before accepting buyer funds, it must persist and retry an exact `EscrowReleaseFailedV2` callback. MarketplaceV2 must then refund the buyer and return the NFT to the seller as independent liabilities, keeping the product Reserved until seller NFT return is confirmed and cancelled. Timeouts and missing callbacks are never proof of failure.
