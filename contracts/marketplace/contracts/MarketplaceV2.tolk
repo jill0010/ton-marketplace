@@ -93,6 +93,7 @@ fun onInternalMessage(in: InMessage) {
                 sellerPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
                 platformPayoutStatus: MarketplaceV2PayoutStatus.NotCreated,
                 refundStatus: MarketplaceV2RefundStatus.None,
+                sellerReturnStatus: MarketplaceV2SellerReturnStatus.NotStarted,
                 createdAt: in.createdAt,
                 extra: MarketplaceV2OrderExtra {
                     parties: MarketplaceV2OrderParties {
@@ -538,6 +539,7 @@ fun onInternalMessage(in: InMessage) {
                 order.status = MarketplaceV2OrderStatus.RefundPending;
                 order.deliveryStatus = MarketplaceV2DeliveryStatus.Bounced;
                 order.refundStatus = MarketplaceV2RefundStatus.Pending;
+                order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.Pending;
 
                 val buyerRefund = MarketplaceV2Payout {
                     orderId,
@@ -656,6 +658,11 @@ fun onInternalMessage(in: InMessage) {
             storage.save();
                 } else {
                     assert (product.status == 5) throw ErrorsV2.InvalidRefund;
+                    order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.Confirmed;
+                    storage.orders.set(order.id, order.toCell());
+                    storage.listingMaps = listingMaps.toCell();
+                    storage.orderMaps = orderMaps.toCell();
+                    storage.save();
                 }
 
                 val ack = createMessage({
@@ -831,6 +838,7 @@ fun handleReleaseRequestBounce(msg: ReleaseEscrowV2, sender: address) {
         order.status = MarketplaceV2OrderStatus.RefundPending;
         order.deliveryStatus = MarketplaceV2DeliveryStatus.Bounced;
         order.refundStatus = MarketplaceV2RefundStatus.Pending;
+        order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.Pending;
 
         val buyerRefund = MarketplaceV2Payout {
             orderId: msg.orderId,
@@ -1008,8 +1016,7 @@ fun onBouncedMessage(in: InMessageBounced) {
                 refund.queryId == operations.sellerReturnQueryId &&
                 refund.seller == parties.seller
             ) {
-                order.status = MarketplaceV2OrderStatus.ManualReview;
-                order.refundStatus = MarketplaceV2RefundStatus.ManualReview;
+                order.sellerReturnStatus = MarketplaceV2SellerReturnStatus.ManualReview;
                 orderMaps.orders.set(orderId, order.toCell());
                 storage.listingMaps = listingMaps.toCell();
     storage.orderMaps = orderMaps.toCell();
