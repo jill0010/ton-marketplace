@@ -45,10 +45,14 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         queryToEscrow: [],
         callbacks: NFTEscrowV2CallbackStorage {
             depositCallbacks: [],
-            pendingReleases: [],
-            releaseCallbacks: [],
-            pendingRefunds: [],
-            refundCallbacks: [],
+            releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
+                pendingReleases: [],
+                releaseCallbacks: [],
+            }.toCell(),
+            refundStorage: NFTEscrowV2RefundCallbackStorage {
+                pendingRefunds: [],
+                refundCallbacks: [],
+            }.toCell(),
             collectionStorage: NFTEscrowV2CollectionStorage {
                 collections: [],
                 collectionItemCodes: [],
