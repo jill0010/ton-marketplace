@@ -992,3 +992,107 @@ get fun `test settlement split conserves gross amount and rounds fee down`() {
     expect(largeSplit.sellerAmount).toEqual(largeGross - expectedLargeFee);
     expect(largeSplit.platformFee + largeSplit.sellerAmount).toEqual(largeGross);
 }
+
+// V2 order snapshot persists all parties, exact amounts, and independent operation IDs.
+get fun `test Marketplace V2 immutable order and independent payout snapshots`() {
+    val buyer = testing.treasury("v2OrderBuyer");
+    val seller = testing.treasury("v2OrderSeller");
+    val nftItem = testing.treasury("v2OrderNftItem");
+    val collection = testing.treasury("v2OrderCollection");
+    val treasury = testing.treasury("v2OrderTreasury");
+
+    val orderExtra = MarketplaceV2OrderExtra {
+        buyer: buyer.address,
+        seller: seller.address,
+        nftItem: nftItem.address,
+        collection: collection.address,
+        itemIndex: 4242,
+        escrowId: 17,
+        gross: grams("100"),
+        feeBps: 300,
+        feeRoundingVersion: 1,
+        platformFee: grams("3"),
+        sellerProceeds: grams("97"),
+        treasury: treasury.address,
+        processingReserve: grams("0.2"),
+        paymentQueryId: 9001,
+        releaseQueryId: 9002,
+        sellerPayoutQueryId: 9003,
+        platformPayoutQueryId: 9004,
+    };
+    val order = MarketplaceV2Order {
+        id: 7001,
+        productId: 3001,
+        status: 1,
+        deliveryStatus: 1,
+        sellerPayoutStatus: 0,
+        platformPayoutStatus: 0,
+        refundStatus: 0,
+        createdAt: 1793366400,
+        extra: orderExtra.toCell(),
+    };
+
+    val decodedOrder = MarketplaceV2Order.fromCell(order.toCell());
+    val decodedExtra = decodedOrder.extra.load();
+    expect(decodedOrder.id).toEqual(7001);
+    expect(decodedOrder.productId).toEqual(3001);
+    expect(decodedOrder.status).toEqual(1);
+    expect(decodedOrder.deliveryStatus).toEqual(1);
+    expect(decodedOrder.sellerPayoutStatus).toEqual(0);
+    expect(decodedOrder.platformPayoutStatus).toEqual(0);
+    expect(decodedOrder.refundStatus).toEqual(0);
+    expect(decodedExtra.buyer).toEqual(buyer.address);
+    expect(decodedExtra.seller).toEqual(seller.address);
+    expect(decodedExtra.nftItem).toEqual(nftItem.address);
+    expect(decodedExtra.collection).toEqual(collection.address);
+    expect(decodedExtra.itemIndex).toEqual(4242);
+    expect(decodedExtra.escrowId).toEqual(17);
+    expect(decodedExtra.gross).toEqual(grams("100"));
+    expect(decodedExtra.feeBps).toEqual(300);
+    expect(decodedExtra.feeRoundingVersion).toEqual(1);
+    expect(decodedExtra.platformFee).toEqual(grams("3"));
+    expect(decodedExtra.sellerProceeds).toEqual(grams("97"));
+    expect(decodedExtra.treasury).toEqual(treasury.address);
+    expect(decodedExtra.processingReserve).toEqual(grams("0.2"));
+    expect(decodedExtra.paymentQueryId).toEqual(9001);
+    expect(decodedExtra.releaseQueryId).toEqual(9002);
+    expect(decodedExtra.sellerPayoutQueryId).toEqual(9003);
+    expect(decodedExtra.platformPayoutQueryId).toEqual(9004);
+    expect(decodedExtra.platformFee + decodedExtra.sellerProceeds).toEqual(decodedExtra.gross);
+
+    val sellerPayout = MarketplaceV2Payout {
+        orderId: decodedOrder.id,
+        operationId: 8001,
+        queryId: decodedExtra.sellerPayoutQueryId,
+        beneficiary: decodedExtra.seller,
+        amount: decodedExtra.sellerProceeds,
+        kind: 1,
+        status: 1,
+        createdAt: decodedOrder.createdAt,
+    };
+    val platformPayout = MarketplaceV2Payout {
+        orderId: decodedOrder.id,
+        operationId: 8002,
+        queryId: decodedExtra.platformPayoutQueryId,
+        beneficiary: decodedExtra.treasury,
+        amount: decodedExtra.platformFee,
+        kind: 2,
+        status: 1,
+        createdAt: decodedOrder.createdAt,
+    };
+    val decodedSellerPayout = MarketplaceV2Payout.fromCell(sellerPayout.toCell());
+    val decodedPlatformPayout = MarketplaceV2Payout.fromCell(platformPayout.toCell());
+    expect(decodedSellerPayout.orderId).toEqual(decodedPlatformPayout.orderId);
+    expect(decodedSellerPayout.operationId).toEqual(8001);
+    expect(decodedPlatformPayout.operationId).toEqual(8002);
+    expect(decodedSellerPayout.operationId != decodedPlatformPayout.operationId).toEqual(true);
+    expect(decodedSellerPayout.queryId).toEqual(9003);
+    expect(decodedPlatformPayout.queryId).toEqual(9004);
+    expect(decodedSellerPayout.beneficiary).toEqual(seller.address);
+    expect(decodedPlatformPayout.beneficiary).toEqual(treasury.address);
+    expect(decodedSellerPayout.amount).toEqual(grams("97"));
+    expect(decodedPlatformPayout.amount).toEqual(grams("3"));
+    expect(decodedSellerPayout.kind).toEqual(1);
+    expect(decodedPlatformPayout.kind).toEqual(2);
+}
+
