@@ -1057,23 +1057,17 @@ export function PremiumPage() {
 
       {/* 交易历史 */}
       <div className="text-center">
-        <p className="text-sm text-zinc-500">
-          {t("View Transactions History", "查看交易历史")}
-        </p>
-
-        <p className="mt-2 text-xs text-zinc-600">
-          {t(
-            "Transaction history is not connected yet.",
-            "交易历史功能尚未接通。",
-          )}
-        </p>
-
         <Link
-          to="/catalog"
-          className="mt-4 inline-block text-sm text-sky-300 hover:underline"
+          to="/premium/history"
+          className="inline-block text-sm text-sky-300 hover:underline"
         >
-          {t("Back to marketplace", "返回商城")}
+          {t("View Transactions History", "查看交易记录")}
         </Link>
+        <div className="mt-4">
+          <Link to="/catalog" className="text-sm text-zinc-500 hover:text-zinc-300">
+            {t("Back to marketplace", "返回商城")}
+          </Link>
+        </div>
       </div>
     </div>
   )
