@@ -142,6 +142,12 @@ jobs:
         run: |
           psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261103154323_add_ton_marketplace_purchase_settlement_ledger.sql
 
+      - name: Apply marketplace seller NFT return state migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql --host 127.0.0.1 --username postgres --dbname wallet_identity_test --set ON_ERROR_STOP=1 --file supabase/migrations/20261103160500_add_marketplace_seller_return_status.sql
+
       - name: Test marketplace ledger RLS, 97/3 arithmetic, and idempotency constraints
         env:
           PGPASSWORD: postgres
