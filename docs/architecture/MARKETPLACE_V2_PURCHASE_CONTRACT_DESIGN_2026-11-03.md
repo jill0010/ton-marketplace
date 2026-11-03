@@ -169,7 +169,7 @@ Before enabling the buyer entrypoint:
 
 ## Current status and safety boundary
 
-This document is a design artifact, not a deployed contract or authorization to receive funds. The current production/prototype Marketplace and NFTEscrow contracts remain unchanged. No purchase, release, payout, or refund V2 handler is enabled. No database migration, Edge Function deployment, testnet/mainnet deployment, NFT transfer, or fund movement occurred.
+This document is a design artifact, not a deployed contract or authorization to receive funds. The current production/prototype Marketplace and NFTEscrow contracts remain unchanged. NFTEscrowV2 has an isolated, emulator-tested release handler, but MarketplaceV2 has no purchase/order/payment entrypoint and cannot invoke that release as a buyer flow. No buyer funds, seller/platform payouts, or buyer refunds are accepted or enabled. No database migration, Edge Function deployment, testnet/mainnet deployment, NFT transfer, or fund movement occurred.
 
 
 ## ABI implementation checkpoint — 2026-11-03
@@ -189,7 +189,7 @@ These are message/data declarations only. No contract currently accepts or emits
 
 The isolated contract now includes Marketplace-authorized escrow record creation, TEP-62 deposit notification handling, durable deposit callback + ACK/retry, Marketplace-authorized NFT release, authenticated NFT Item excesses confirmation, durable release callback + ACK/retry, and RichBounce recovery to the deposited state. The integration test uses the repository's MockNFTItem and exercises deposit, release to buyer, forged Marketplace request rejection, callback persistence, and ACK identity checks.
 
-This implementation remains a first contract slice, not an end-to-end marketplace: MarketplaceV2 purchase/payment/order settlement handlers are not implemented, collection authenticity must be enforced by the trusted Marketplace before creating records, and official Fragment NFT Item/testnet rehearsals plus bounce/low-gas adversarial coverage remain required. No V2 deployment or funds/NFT movement has occurred.
+This implementation remains a first contract slice, not an end-to-end marketplace: MarketplaceV2 purchase/payment/order settlement handlers are not implemented. NFTEscrowV2 itself now enforces the configured Fragment Gift Collection allowlist, recognized Item Code hash, and deterministic Item address derivation before creating custody records. Official Fragment NFT Item emulator coverage has been added; testnet rehearsal against current live collection deployments, operational allowlist governance, and further bounce/low-gas adversarial coverage remain required. No V2 deployment or funds/NFT movement has occurred.
 
 
 ## V2 NFT Item custody uniqueness hardening — 2026-11-03
@@ -276,7 +276,18 @@ This proves the isolated V2 release callback's Action-phase bounce/retry behavio
 
 ### Explicit limits
 
-- This V2 listing path currently proves NFT Item custody transfer, not official Fragment collection provenance. The V2 Escrow currently has no collection allowlist/item-code validation; official asset verification must be implemented before any public listing.
+- V2 Escrow validates the configured Fragment Gift Collection allowlist, recognized Item Code hash, and deterministic Item address derived from collection + item index before accepting custody. The official Item Code fixture is now deployed and transferred in emulator integration tests. This is not yet a testnet rehearsal against live Fragment deployments, and it does not prove every future collection/code revision; allowlist governance and testnet verification remain release gates.
 - `BuyProductV2` and payout/refund messages remain reserved and are not accepted by MarketplaceV2.
 - No buyer funds are accepted; no NFT release from MarketplaceV2, seller/platform payout, buyer refund, production database migration, Edge Function deployment, testnet/mainnet deployment, or real NFT/fund movement occurred.
 - The V2 contract is not approved for production listing or purchase. It remains isolated source/emulator work pending official collection verification and the complete purchase/delivery/refund/settlement lifecycle.
+
+
+## Official Fragment Item provenance and transfer verification — 2026-11-03
+
+- Added `marketplace-v2-official-item-transfer.integration.test.tolk`, which registers the recognized Fragment Item Code fixture, deploys the actual Item code through the collection deployment ABI, and checks `get_nft_data` before and after the seller's standard TEP-62 transfer.
+- The test verifies the seller is the initial owner, a non-owner transfer is aborted without changing ownership, the seller can transfer to NFTEscrowV2, and the Item getter then reports Escrow as owner.
+- The same integration trace checks MarketplaceV2's authenticated deposit activation and exact deposit callback ACK lifecycle.
+- Additional parser-focused tests continue to inject forged, malformed, replayed, wrong-query, and trailing-data notifications; these are intentionally separate from the real Item transfer trace.
+- Contracts workflow #281 on commit `661aed9`: success — opcode registry check (**35 declarations, no collisions**), build, **99 tests in 12 files**, linter, and formatter.
+- The emulator test uses the recognized Item Code fixture; a testnet rehearsal against live Fragment Collection deployments and explicit allowlist operations remain required.
+- No buyer purchase/payment entrypoint, payout/refund handler, database migration, Edge Function deployment, testnet/mainnet deployment, NFT transfer outside emulation, or fund movement was enabled.
