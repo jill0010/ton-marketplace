@@ -107,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <div className="home-wallet-connect"><TonConnectButton /></div>
+              <div className="wallet-connect-button"><TonConnectButton /></div>
             )}
           </nav>
         </div>
