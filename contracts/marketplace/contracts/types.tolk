@@ -370,6 +370,30 @@ struct (0x71b00009) RetryReleaseCallbackV2 {
     escrowId: uint64
 }
 
+struct (0x71b00013) EscrowReleaseFailedV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+    seller: address
+}
+
+struct (0x71b00014) EscrowReleaseFailureAckV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+    seller: address
+}
+
+struct (0x71b00015) RetryReleaseFailureCallbackV2 {
+    escrowId: uint64
+}
+
 // Seller-initiated NFT return after a listing is cancelled; no buyer funds involved.
 struct (0x71b0000E) RefundEscrowV2 {
     escrowId: uint64
@@ -526,9 +550,20 @@ enum NFTEscrowV2RecordStatus {
     Refunded = 5
 }
 
+struct EscrowReleaseFailureCallbackV2 {
+    orderId: uint64
+    productId: uint64
+    escrowId: uint64
+    queryId: uint64
+    nftItem: address
+    buyer: address
+    seller: address
+}
+
 struct NFTEscrowV2ReleaseCallbackStorage {
     pendingReleases: map<uint64, Cell<EscrowReleaseCallbackV2>>
     releaseCallbacks: map<uint64, Cell<EscrowReleaseCallbackV2>>
+    releaseFailureCallbacks: map<uint64, Cell<EscrowReleaseFailureCallbackV2>>
 }
 
 struct NFTEscrowV2RefundCallbackStorage {
