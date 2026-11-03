@@ -2,21 +2,23 @@ import { useEffect, useState } from "react"
 import { useLanguage } from "../lib/useLanguage"
 import { supabase } from "../lib/supabase"
 
-type PlanId = "year" | "half-year" | "quarter"
+type PlanId = "month" | "quarter" | "half-year" | "year"
 type PriceMap = Record<PlanId, string>
 
 const PLAN_FIELDS: { id: PlanId; title: string; period: string }[] = [
-  { id: "year", title: "1 年", period: "12 months" },
-  { id: "half-year", title: "6 个月", period: "6 months" },
+  { id: "month", title: "1 个月", period: "1 month" },
   { id: "quarter", title: "3 个月", period: "3 months" },
+  { id: "half-year", title: "6 个月", period: "6 months" },
+  { id: "year", title: "12 个月", period: "12 months" },
 ]
 
 export function PremiumPricingAdminPage() {
   const { t } = useLanguage()
   const [prices, setPrices] = useState<PriceMap>({
-    year: "28.99",
-    "half-year": "15.99",
-    quarter: "11.99",
+    month: "4.29",
+    quarter: "10.99",
+    "half-year": "14.99",
+    year: "27.99",
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -32,7 +34,7 @@ export function PremiumPricingAdminPage() {
       const { data, error } = await supabase
         .from("premium_pricing")
         .select("id, market_usd")
-        .in("id", ["year", "half-year", "quarter"])
+        .in("id", ["month", "quarter", "half-year", "year"])
       if (!active) return
       if (error) {
         setLoadError("读取数据库失败：" + error.message)
@@ -92,9 +94,10 @@ export function PremiumPricingAdminPage() {
         return
       }
       setPrices((current) => ({
-        year: Number(current.year).toFixed(2),
-        "half-year": Number(current["half-year"]).toFixed(2),
+        month: Number(current.month).toFixed(2),
         quarter: Number(current.quarter).toFixed(2),
+        "half-year": Number(current["half-year"]).toFixed(2),
+        year: Number(current.year).toFixed(2),
       }))
       setMessage("三个 Premium 套餐的美元价格已保存。")
     } catch {
@@ -134,7 +137,7 @@ export function PremiumPricingAdminPage() {
                 disabled={loading || Boolean(loadError) || saving}
                 onChange={(event) => updatePrice(plan.id, event.target.value)}
                 className="w-full bg-transparent px-3 py-3 text-lg font-semibold text-white outline-none disabled:opacity-50"
-                placeholder="28.99"
+                placeholder="4.29"
               />
               <span className="text-sm text-zinc-500">USD</span>
             </div>
