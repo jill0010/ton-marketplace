@@ -4,7 +4,8 @@
 INSERT INTO auth.users (id) VALUES
   ('00000000-0000-0000-0000-000000000001'),
   ('00000000-0000-0000-0000-000000000002'),
-  ('00000000-0000-0000-0000-000000000003');
+  ('00000000-0000-0000-0000-000000000003'),
+  ('00000000-0000-0000-0000-000000000004');
 
 -- Two independent anonymous Auth sessions proving the same wallet must resolve
 -- to exactly one canonical wallet identity.
@@ -141,6 +142,33 @@ BEGIN
   END IF;
 END
 $test_rebind$;
+
+-- Expired TON Proof bindings remain visible to trusted consumers as expired,
+-- preventing an expired canonical session from falling back to a legacy wallet row.
+INSERT INTO public.ton_proof_challenges (payload, expires_at, attempt_id)
+VALUES (repeat('e', 64), floor(extract(epoch FROM now()))::bigint + 300,
+        '00000000-0000-0000-0000-000000000004');
+
+DO $test_expired_proof$
+DECLARE
+  v_expiry timestamptz;
+BEGIN
+  PERFORM public.bind_verified_ton_wallet_identity(
+    repeat('e', 64), '00000000-0000-0000-0000-000000000004',
+    floor(extract(epoch FROM now()))::bigint, '-239',
+    '0:' || repeat('e', 64), 'V4R2', now() - interval '11 minutes'
+  );
+
+  SELECT proof_expires_at INTO v_expiry
+  FROM public.get_current_ton_wallet_identity(
+    '00000000-0000-0000-0000-000000000004'
+  );
+
+  IF v_expiry IS NULL OR v_expiry > now() THEN
+    RAISE EXCEPTION 'Expired TON Proof binding was not reported as expired';
+  END IF;
+END
+$test_expired_proof$;
 
 -- Only the server role may execute the public RPCs; browser roles must not.
 DO $test_acl$
