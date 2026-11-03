@@ -16,25 +16,3 @@ body {
   color: #e8eaed;
 }
 
-
-/* Keep the official TON Connect button visuals while changing its visible label. */
-.home-ton-connect-button [data-tc-connect-button="true"],
-.history-ton-connect-button [data-tc-connect-button="true"] {
-  font-size: 0 !important;
-}
-
-.home-ton-connect-button [data-tc-connect-button="true"]::after,
-.history-ton-connect-button [data-tc-connect-button="true"]::after {
-  content: "Connect TON";
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.home-ton-connect-button [data-tc-connect-button="true"] {
-  border-radius: 12px !important;
-}
-
-.home-ton-connect-button [data-tc-connect-button="true"] > span,
-.history-ton-connect-button [data-tc-connect-button="true"] > span {
-  font-size: 0 !important;
-}
