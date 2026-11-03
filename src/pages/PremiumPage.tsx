@@ -227,9 +227,22 @@ export function PremiumPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <header className="space-y-2">
+      <header className="flex items-center gap-3">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 48 48"
+          className="h-12 w-12 shrink-0"
+          fill="none"
+        >
+          <rect width="48" height="48" rx="14" fill="#229ED9" />
+          <path
+            d="M24 7.5 28.1 18.2 39 22.3 28.1 26.4 24 37.2 19.9 26.4 9 22.3 19.9 18.2 24 7.5Z"
+            fill="white"
+          />
+          <path d="m35.4 8.2 1.2 3.1 3.1 1.2-3.1 1.2-1.2 3.1-1.2-3.1-3.1-1.2 3.1-1.2 1.2-3.1Z" fill="white" />
+        </svg>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          {t("Telegram Premium Gift", "赠送 Telegram Premium")}
+          {t("Buy Telegram Premium", "购买 Telegram Premium")}
         </h1>
       </header>
 
