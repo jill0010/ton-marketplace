@@ -63,6 +63,8 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
             depositCallbacks: [],
             pendingReleases: [],
             releaseCallbacks: [],
+            pendingRefunds: [],
+            refundCallbacks: [],
             collectionStorage: NFTEscrowV2CollectionStorage {
                 collections: [],
                 collectionItemCodes: [],
