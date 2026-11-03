@@ -26,6 +26,7 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         products: [],
         assetListings: [],
         queryToProduct: [],
+        refundQueryToProduct: [],
     });
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
