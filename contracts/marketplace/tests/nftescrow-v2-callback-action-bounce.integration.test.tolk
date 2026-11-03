@@ -31,19 +31,22 @@ get fun `test V2 release callback action-phase failure really bounces and owner 
         rejectAction: true,
     });
     var seededRecords: map<uint64, Cell<NFTEscrowV2Record>> = [];
-    seededRecords.set(1, NFTEscrowV2Record {
-        escrowId: 1,
-        nftItem: nftItem.address,
-        seller: seller.address,
-        productId: 7301,
-        status: 0,
-        queryId: depositQueryId,
-        extra: NFTEscrowV2RecordExtra {
-            collection: controller.address,
-            itemIndex: 0,
-            kind: 3,
+    seededRecords.set(
+        1,
+        NFTEscrowV2Record {
+            escrowId: 1,
+            nftItem: nftItem.address,
+            seller: seller.address,
+            productId: 7301,
+            status: 0,
+            queryId: depositQueryId,
+            extra: NFTEscrowV2RecordExtra {
+                collection: controller.address,
+                itemIndex: 0,
+                kind: 3,
+            }.toCell(),
         }.toCell(),
-    }.toCell());
+    );
     var seededAssets: map<address, uint64> = [];
     seededAssets.set(nftItem.address, 1);
     var seededQueries: map<uint64, uint64> = [];
