@@ -58,8 +58,7 @@ fun onInternalMessage(in: InMessage) {
 
             val codeHash = msg.code.hash();
             assert (
-                codeHash ==
-                0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
+                codeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
                 codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
             ) throw ErrorsV2.InvalidCollectionItemCode;
 
@@ -70,10 +69,15 @@ fun onInternalMessage(in: InMessage) {
             assert (collectionResult.loadValue() != 1) throw ErrorsV2.InvalidCollectionStatus;
             assert (!msg.code.beginParse().isEmpty()) throw ErrorsV2.InvalidCollectionItemCode;
 
-            collectionStorage.collectionItemCodes.set(
-                msg.collection,
-                NFTEscrowV2CollectionItemCode { kind: msg.kind, code: msg.code }.toCell(),
-            );
+            collectionStorage
+                .collectionItemCodes
+                .set(
+                    msg.collection,
+                    NFTEscrowV2CollectionItemCode {
+                        kind: msg.kind,
+                        code: msg.code,
+                    }.toCell(),
+                );
             callbacks.collectionStorage = collectionStorage.toCell();
             storage.callbacks = callbacks.toCell();
             storage.save();
@@ -102,7 +106,9 @@ fun onInternalMessage(in: InMessage) {
                 assert (existingRecord.seller == msg.seller) throw ErrorsV2.InvalidRelease;
                 assert (existingRecord.queryId == msg.queryId) throw ErrorsV2.InvalidRelease;
                 assert (existingExtra.collection == msg.collection) throw ErrorsV2.InvalidRelease;
-                assert (existingExtra.itemIndex == createExtra.itemIndex) throw ErrorsV2.InvalidRelease;
+                assert (
+                    existingExtra.itemIndex == createExtra.itemIndex
+                ) throw ErrorsV2.InvalidRelease;
                 assert (existingExtra.kind == createExtra.kind) throw ErrorsV2.InvalidRelease;
                 return;
             }
