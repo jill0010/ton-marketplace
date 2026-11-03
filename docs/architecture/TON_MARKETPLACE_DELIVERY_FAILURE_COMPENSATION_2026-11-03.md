@@ -52,7 +52,7 @@ The on-chain state records request, dispatch, exact callback, and bounce transit
 
 ## Required storage
 
-NFTEscrowV2's release callback storage must add a separate durable map for release-failure callbacks. Do not overwrite the success callback map: a release success and release failure are mutually exclusive outcomes, and each must be ACKed with a different exact message type.
+NFTEscrowV2's release callback storage now has a separate durable map for release-failure callbacks. It does not overwrite the success callback map: a release success and release failure are mutually exclusive outcomes, and each is ACKed with a different exact message type.
 
 MarketplaceV2's order snapshot must retain:
 - immutable buyer, seller, NFT Item, collection, item index, escrow ID, and gross payment;
@@ -64,8 +64,8 @@ The order must never be marked Completed/Refunded merely because a refund messag
 ## Required adversarial tests
 
 1. Exact ReleaseEscrowV2 request bounce triggers one compensation path; wrong/stale/malformed request bounce is a no-op.
-2. Real official NFT Item transfer to buyer fails and produces an actual RichBounce; NFTEscrowV2 restores Deposited and emits the durable failure callback.
-3. Failure callback bounce preserves the callback; owner retry resends it; only exact Marketplace ACK clears it.
+2. A deployed NFT Item transfer to buyer fails and produces an actual RichBounce; NFTEscrowV2 restores Deposited and emits the durable failure callback. <badge>Implemented</badge>
+3. Failure callback delivery causes a real Marketplace receiver action-phase bounce; owner retry resends it; only exact Marketplace ACK clears it. <badge>Implemented</badge>
 4. Forged sender, wrong order/product/escrow/query/NFT/buyer/seller fields are rejected.
 5. Duplicate exact failure callback re-ACKs without duplicating buyer refund or seller NFT-return liabilities.
 6. Seller NFT return succeeds; the real NFT Item getter reports the seller as owner; Marketplace cancels the product and releases only its matching asset index.
@@ -79,4 +79,4 @@ The order must never be marked Completed/Refunded merely because a refund messag
 
 ## Scope boundary
 
-This decision is a prerequisite for MarketplaceV2 buyer payment. NFTEscrowV2 now persists and sends the durable release-failure callback on a correlated NFT Item bounce, supports owner-authorized callback retry, and clears it only after an exact Marketplace ACK. Emulator coverage exercises callback persistence, bounce handling, retry authorization, and exact ACK. MarketplaceV2 does not yet accept or ACK this callback, and buyer refund/seller-return compensation is not yet wired into an order. Do not accept buyer funds until the Marketplace consumer, compensation flow, and full cross-contract tests are implemented.
+This decision is a prerequisite for MarketplaceV2 buyer payment. NFTEscrowV2 now persists and sends the durable release-failure callback on a correlated NFT Item bounce, supports owner-authorized callback retry, and clears it only after an exact Marketplace ACK. Contracts workflow #374 succeeded on commit `c89ee016`: 43 opcode declarations, build, 101 tests in 13 files, linter, and formatter. The new integration test verifies a real NFT Item transfer bounce, a real Marketplace receiver action-phase bounce, owner retry, and exact ACK. MarketplaceV2 does not yet accept or ACK this callback, and buyer refund/seller-return compensation is not yet wired into an order. Do not accept buyer funds until the Marketplace consumer, compensation flow, and full cross-contract tests are implemented.
