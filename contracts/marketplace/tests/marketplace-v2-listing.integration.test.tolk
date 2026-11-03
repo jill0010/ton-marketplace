@@ -187,7 +187,6 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(marketplace.productV2(2)!!.status).toEqual(5);
     expect(marketplace.assetProductIdV2(nftItem.address) == null).toEqual(true);
 
-
     // Positive provenance case: derive the NFT Item address from the exact
     // approved Fragment Item Code, index, and collection. Escrow accepts it.
     val validItemIndex = 42;
