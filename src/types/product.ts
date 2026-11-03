@@ -13,6 +13,12 @@ export type Product = {
   title: string
   subtitle: string
   priceTon: number
+  priceNano: string
+  chainProductId?: string | null
+  chainEscrowId?: string | null
+  chainMarketplaceAddress?: string | null
+  chainEscrowAddress?: string | null
+  chainStatus?: "offchain" | "escrow_pending" | "escrowed" | "sold" | "delisted" | "manual_review"
   imageUrl?: string | null
   status: "listed"
   listingMode?: ListingMode
