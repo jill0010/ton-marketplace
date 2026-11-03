@@ -23,12 +23,14 @@ get fun `test V2 escrow confirms NFT deposit release callback and exact acknowle
     val escrow = NFTEscrowV2.fromStorage({
         owner: owner.address,
         marketplace: marketplace.address,
-        nextEscrowId: 1,
         records: [],
+        nextEscrowId: 1,
         queryToEscrow: [],
-        depositCallbacks: [],
-        pendingReleases: [],
-        releaseCallbacks: [],
+        callbacks: NFTEscrowV2CallbackStorage {
+            depositCallbacks: [],
+            pendingReleases: [],
+            releaseCallbacks: [],
+        }.toCell(),
     });
 
     val nftDeploy = nftItem.deploy(seller.address, { value: grams("0.1") });
