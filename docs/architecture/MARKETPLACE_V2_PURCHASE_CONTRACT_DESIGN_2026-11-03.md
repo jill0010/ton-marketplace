@@ -201,3 +201,13 @@ This implementation remains a first contract slice, not an end-to-end marketplac
 - CI Contracts #159 on commit `565bc9d`: success — build, 96 tests in 9 files, linter, and formatter.
 - The workflow now also runs on pushes to `architecture/unified-trading-v1`, so branch commits receive direct contract validation.
 - No contract deployment, production migration, or NFT/fund movement was performed.
+
+
+## V2 malformed release-bounce hardening — 2026-11-03
+
+- Wrapped RichBounce envelope and original TEP-62 `NftTransfer` decoding in a defensive try/catch. A truncated envelope or transfer body is ignored without failing the bounce transaction or mutating escrow state.
+- Callback bounce handling now ignores a bounced callback-shaped message unless its sender is the configured Marketplace; the durable callback remains available for owner-authorized retry.
+- Added regressions for a truncated RichBounce envelope and a valid RichBounce envelope containing a truncated original NFT transfer body. Both are sent as bounced messages from the configured NFT Item and must be accepted as safe no-ops.
+- Contracts CI #162 on commit `cf89085`: success — build, 96 tests in 9 files, linter, and formatter.
+- The same test suite also verifies a real NFT Item compute-phase rejection, bounce recovery to Deposited, reservation retention, and successful retry with the same query ID.
+- No production deployment, database migration, or NFT/fund movement was performed.
