@@ -323,6 +323,7 @@ struct (0x71a0000C) EscrowDepositAck {
     queryId: uint64
     productId: uint64
     nftItem: address
+    seller: address
 }
 
 // Escrow 管理员重试发送尚未确认的 NFT 入库回调
@@ -531,6 +532,7 @@ struct NFTEscrowV2RecordExtra {
 struct NFTEscrowV2Record {
     escrowId: uint64
     nftItem: address
+    seller: address
     productId: uint64
     status: uint8
     queryId: uint64
