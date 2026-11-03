@@ -76,7 +76,7 @@ The following assignments are reserved only: no contract currently accepts or em
 | `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer | Reserved |
 | `0x71b00105` | `PayoutSettledV2` | Beneficiary → MarketplaceV2 | Reserved |
 | `0x71b00106` | `DispatchPayoutV2` | Permissionless caller → MarketplaceV2 | ABI declared; handler pending |
-| `0x71b00107` | `SetMarketplaceV2Treasury` | Owner → MarketplaceV2 | ABI declared; handler pending |
+| `0x71b00107` | `SetMarketplaceV2Treasury` | Owner → MarketplaceV2 | Implemented (one-time immutable configuration) |
 
 ## Allocation rules
 
