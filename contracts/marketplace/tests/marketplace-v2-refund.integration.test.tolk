@@ -41,12 +41,16 @@ get fun `test Marketplace V2 refunds buyer and retries seller NFT return indepen
         }.toCell(),
     });
     val escrow = MockMarketplaceEscrowV2.fromStorage(MockMarketplaceEscrowV2Storage {
-        owner: owner.address,
-        marketplace: marketplace.address,
-        escrowId: 0,
-        nftItem: owner.address,
-        seller: owner.address,
-        rejectRefund: true,
+        config: MockMarketplaceEscrowV2Config {
+            owner: owner.address,
+            marketplace: marketplace.address,
+        }.toCell(),
+        state: MockMarketplaceEscrowV2State {
+            escrowId: 0,
+            nftItem: owner.address,
+            seller: owner.address,
+            rejectRefund: true,
+        }.toCell(),
     });
 
     expect(
