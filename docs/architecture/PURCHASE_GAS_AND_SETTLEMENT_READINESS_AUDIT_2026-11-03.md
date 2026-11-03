@@ -40,7 +40,7 @@ val platformFee = wholeHundreds * 3 + remainder * 3 / 100;
 
 Because `wholeHundreds <= gross / 100`, the intermediate `wholeHundreds * 3` is bounded below the original gross amount. The remainder is in [0, 99], so `remainder * 3` is bounded by 297. This preserves exact floor rounding and avoids the unsafe `gross * 3` intermediate.
 
-Regression tests cover 1 nanotons, 33, 34, 99, 100 nanotons, 1 TON, 100 TON, and a large valid TON amount. Each case verifies conservation of gross value.
+Regression tests cover 1 nanotons, 33, 34, 99, 100 nanotons, 1 TON, 100 TON, and a large valid TON amount (10^15 TON, within the encoded `coins` range). Each case verifies conservation of gross value.
 
 ## Purchase gas and failure-path conclusions
 
