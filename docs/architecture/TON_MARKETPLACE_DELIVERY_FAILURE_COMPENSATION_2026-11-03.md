@@ -64,8 +64,8 @@ The order must never be marked Completed/Refunded merely because a refund messag
 ## Required adversarial tests
 
 1. Exact ReleaseEscrowV2 request bounce triggers one compensation path; wrong/stale/malformed request bounce is a no-op.
-2. A deployed NFT Item transfer to buyer fails and produces an actual RichBounce; NFTEscrowV2 restores Deposited and emits the durable failure callback. <badge>Implemented</badge>
-3. Failure callback delivery causes a real Marketplace receiver action-phase bounce; owner retry resends it; only exact Marketplace ACK clears it. <badge>Implemented</badge>
+2. A deployed NFT Item transfer to buyer fails and produces an actual RichBounce; NFTEscrowV2 restores Deposited and emits the durable failure callback. **Implemented in Escrow CI**
+3. Failure callback delivery causes a real Marketplace receiver action-phase bounce; owner retry resends it; only exact Marketplace ACK clears it. **Implemented in Escrow CI**
 4. Forged sender, wrong order/product/escrow/query/NFT/buyer/seller fields are rejected.
 5. Duplicate exact failure callback re-ACKs without duplicating buyer refund or seller NFT-return liabilities.
 6. Seller NFT return succeeds; the real NFT Item getter reports the seller as owner; Marketplace cancels the product and releases only its matching asset index.
