@@ -76,6 +76,19 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
     expect(marketplace.escrowV2()).toEqual(escrow.address);
     expect(marketplace.escrowConfiguredV2()).toEqual(true);
 
+    // Once bound, the V2 Escrow cannot be rotated by the owner.
+    val rotateEscrow = marketplace.sendSetMarketplaceV2Escrow(
+        owner.address,
+        attacker.address,
+        { value: grams("0.02") },
+    );
+    expect(rotateEscrow).toHaveFailedTx({
+        from: owner.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidRelease,
+    });
+    expect(marketplace.escrowV2()).toEqual(escrow.address);
+
     // Publishing reserves the NFT Item and creates a pending custody record.
     val publish = marketplace.sendPublishProductV2(
         seller.address,
@@ -92,6 +105,27 @@ get fun `test Marketplace V2 listing is activated only after the authenticated E
     expect(pending.status).toEqual(1);
     expect(pending.queryId).toEqual(1);
     expect(marketplace.assetProductIdV2(nftItem.address)).toEqual(1);
+
+    // An attacker cannot activate the listing by forging the exact callback body.
+    val forgedCallback = createMessage({
+        bounce: true,
+        value: grams("0.05"),
+        dest: marketplace.address,
+        body: EscrowDepositedV2 {
+            escrowId: 1,
+            productId: 1,
+            nftItem: nftItem.address,
+            seller: seller.address,
+            queryId: 1,
+        },
+    });
+    val forgedCallbackResult = net.send(attacker.address, forgedCallback);
+    expect(forgedCallbackResult).toHaveFailedTx({
+        from: attacker.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidReleaseConfirmation,
+    });
+    expect(marketplace.productV2(1)!!.status).toEqual(1);
 
     val custodyPending = escrow.escrowRecordV2(1);
     assert (custodyPending != null) throw ErrorsV2.InvalidRelease;
