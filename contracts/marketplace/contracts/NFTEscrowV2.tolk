@@ -609,7 +609,6 @@ fun onInternalMessage(in: InMessage) {
             assert (callback.queryId == msg.queryId) throw ErrorsV2.InvalidReleaseConfirmation;
             assert (callback.nftItem == msg.nftItem) throw ErrorsV2.InvalidReleaseConfirmation;
             assert (callback.buyer == msg.buyer) throw ErrorsV2.InvalidReleaseConfirmation;
-            assert (callback.seller == msg.seller) throw ErrorsV2.InvalidReleaseConfirmation;
             releaseCallbacks.releaseFailureCallbacks.delete(msg.escrowId);
             callbacks.releaseStorage = releaseCallbacks.toCell();
             storage.callbacks = callbacks.toCell();
@@ -715,7 +714,6 @@ fun onBouncedMessage(in: InMessageBounced) {
                         queryId: pending.queryId,
                         nftItem: pending.nftItem,
                         buyer: pending.buyer,
-                        seller: record.seller,
                     };
                     releaseCallbacks.releaseFailureCallbacks.set(
                         escrowId,
@@ -736,7 +734,6 @@ fun onBouncedMessage(in: InMessageBounced) {
                             queryId: pending.queryId,
                             nftItem: pending.nftItem,
                             buyer: pending.buyer,
-                            seller: record.seller,
                         },
                     });
                     failureMessage.send(SEND_MODE_REGULAR);
