@@ -490,6 +490,102 @@ fun onInternalMessage(in: InMessage) {
             ack.send(SEND_MODE_REGULAR);
         }
 
+        EscrowReleaseFailedV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
+            assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidRefund;
+
+            val orderIdResult = storage.releaseQueryToOrder.get(msg.queryId);
+            assert (orderIdResult.isFound) throw ErrorsV2.InvalidRefund;
+            val orderId = orderIdResult.loadValue();
+            assert (orderId == msg.orderId) throw ErrorsV2.InvalidRefund;
+            val orderResult = storage.orders.get(orderId);
+            assert (orderResult.isFound) throw ErrorsV2.OrderNotFound;
+            var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+            var orderExtra = order.extra.load();
+            val parties = orderExtra.parties.load();
+            val asset = orderExtra.asset.load();
+            val operations = orderExtra.operations.load();
+            val settlement = orderExtra.settlement.load();
+
+            assert (order.productId == msg.productId) throw ErrorsV2.InvalidRefund;
+            assert (asset.escrowId == msg.escrowId) throw ErrorsV2.InvalidRefund;
+            assert (asset.nftItem == msg.nftItem) throw ErrorsV2.InvalidRefund;
+            assert (parties.buyer == msg.buyer) throw ErrorsV2.InvalidRefund;
+
+            if (order.status == MarketplaceV2OrderStatus.DeliveryPending) {
+                order.status = MarketplaceV2OrderStatus.RefundPending;
+                order.deliveryStatus = MarketplaceV2DeliveryStatus.Bounced;
+                order.refundStatus = MarketplaceV2RefundStatus.Pending;
+
+                val buyerRefund = MarketplaceV2Payout {
+                    orderId,
+                    operationId: operations.buyerRefundOperationId,
+                    queryId: operations.buyerRefundQueryId,
+                    beneficiary: parties.buyer,
+                    amount: settlement.gross,
+                    kind: 3,
+                    status: MarketplaceV2PayoutStatus.Pending,
+                    createdAt: in.createdAt,
+                };
+                storage.payouts.set(buyerRefund.operationId, buyerRefund.toCell());
+
+                val productResult = storage.products.get(order.productId);
+                assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
+                var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+                assert (product.status == 3) throw ErrorsV2.InvalidRefund;
+                assert (product.seller == parties.seller) throw ErrorsV2.InvalidRefund;
+                product.status = 6;
+                product.refundQueryId = operations.sellerReturnQueryId;
+                storage.products.set(product.id, product.toCell());
+                storage.refundQueryToProduct.set(operations.sellerReturnQueryId, product.id);
+                storage.refundQueryToOrder.set(operations.sellerReturnQueryId, orderId);
+                storage.orders.set(orderId, order.toCell());
+                storage.save();
+            } else {
+                assert (
+                    order.status == MarketplaceV2OrderStatus.RefundPending ||
+                    order.status == MarketplaceV2OrderStatus.RefundDispatched
+                ) throw ErrorsV2.InvalidRefund;
+            }
+
+            // Exact retries are safe: NFTEscrowV2 accepts the same refund query
+            // idempotently while the NFT return is pending, and a returned asset
+            // is not sent a second time.
+            val productAfterResult = storage.products.get(order.productId);
+            assert (productAfterResult.isFound) throw ErrorsV2.InvalidRefund;
+            val productAfter = MarketplaceV2Product.fromCell(productAfterResult.loadValue());
+            if (productAfter.status == 6) {
+                val returnMessage = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: grams("0.05"),
+                    dest: storage.escrow,
+                    body: RefundEscrowV2 {
+                        escrowId: asset.escrowId,
+                        productId: order.productId,
+                        queryId: operations.sellerReturnQueryId,
+                        seller: parties.seller,
+                    },
+                });
+                returnMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
+            }
+
+            val ack = createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.escrow,
+                body: EscrowReleaseFailureAckV2 {
+                    orderId: msg.orderId,
+                    productId: msg.productId,
+                    escrowId: msg.escrowId,
+                    queryId: msg.queryId,
+                    nftItem: msg.nftItem,
+                    buyer: msg.buyer,
+                },
+            });
+            ack.send(SEND_MODE_REGULAR);
+        }
+
         EscrowRefundedV2 => {
             var storage = lazy MarketplaceV2Storage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
