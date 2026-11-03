@@ -107,7 +107,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <TonConnectButton />
+              <div className="home-wallet-connect"><TonConnectButton /></div>
             )}
           </nav>
         </div>
