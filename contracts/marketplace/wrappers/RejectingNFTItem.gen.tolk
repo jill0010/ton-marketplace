@@ -74,7 +74,12 @@ fun RejectingNFTItem.sendNftTransfer(
     return net.send(from, genericMsg);
 }
 
-fun RejectingNFTItem.sendAny(self, from: address, body: cell, config: SendParams = {}): SendResultList {
+fun RejectingNFTItem.sendAny(
+    self,
+    from: address,
+    body: cell,
+    config: SendParams = {},
+): SendResultList {
     val genericMsg = createMessage({
         bounce: config.bounce,
         value: config.value,
