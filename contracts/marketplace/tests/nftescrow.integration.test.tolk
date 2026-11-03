@@ -747,15 +747,68 @@ get fun `test Marketplace publishes NFT and Escrow activates product after depos
     );
     expect(misconfigureEscrowRes).toHaveSuccessfulTx<SetEscrowAddress>();
 
-    // 卖家申请退款，由 Emulator 递归处理 Escrow 与真实 NFT 的交易。
+    // 第一步只执行 Escrow 的 RequestRefund 交易，不递归投递 NFT Transfer。
+    // 这样可以在链上状态确实进入 RefundPending 后，单独模拟 NFT Item 的 RichBounce。
     val refundMessage = createMessage({
         bounce: false,
         value: grams("0.05"),
         dest: escrow.address,
         body: RequestRefund { escrowId: 1 },
     });
+    val refundRequestStep = testing.processSingleTraceStep(seller.address, refundMessage);
 
-    val refundRes = net.send(seller.address, refundMessage);
+    val refundPendingRecord = escrow.escrowRecord(1);
+    assert (refundPendingRecord != null) throw Errors.InvalidEscrow;
+    expect(refundPendingRecord!!.status).toEqual(6);
+
+    // 模拟刚才由 Escrow 发出的、身份完全匹配的 TEP-62 Transfer 被 NFT Item Bounce。
+    // Bounce body 保留完整原始 Transfer body，sender 必须是记录中的精确 NFT Item。
+    val bouncedRefundTransferBody = NftTransfer {
+        queryId: 1,
+        newOwner: seller.address,
+        responseDestination: escrow.address,
+        customPayload: null,
+        forwardAmount: grams("0.01"),
+        forwardPayload: beginCell().endCell().beginParse(),
+    }.toCell();
+    val bouncedRefundTransfer = RichBounceBody {
+        originalBody: bouncedRefundTransferBody,
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.05"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: Errors.InvalidMessage,
+        computePhase: null,
+    };
+    val refundTransferBounceMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: bouncedRefundTransfer,
+    }).bounced();
+    val refundTransferBounceRes = testing.processSingleTraceStep(
+        nftItem,
+        refundTransferBounceMessage,
+    );
+    expect(refundTransferBounceRes.tx.load().description.computePhase!!.exitCode).toEqual(0);
+
+    // 只有精确 NFT Item + queryId + newOwner + responseDestination + RefundPending
+    // 全部匹配时，Bounce handler 才将状态恢复为 Deposited。
+    val restoredDepositedRecord = escrow.escrowRecord(1);
+    assert (restoredDepositedRecord != null) throw Errors.InvalidEscrow;
+    expect(restoredDepositedRecord!!.status).toEqual(2);
+
+    // 再次正常申请退款，Emulator 递归处理 Escrow 与真实 NFT 的完整交易链。
+    val refundRetryMessage = createMessage({
+        bounce: false,
+        value: grams("0.05"),
+        dest: escrow.address,
+        body: RequestRefund { escrowId: 1 },
+    });
+    val refundRes = net.send(seller.address, refundRetryMessage);
 
     expect(refundRes).toHaveSuccessfulTx({
         from: escrow.address,
