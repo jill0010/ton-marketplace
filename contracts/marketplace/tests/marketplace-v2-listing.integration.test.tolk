@@ -34,6 +34,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
         products: [],
         assetListings: [],
         queryToProduct: [],
+        refundQueryToProduct: [],
     });
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
