@@ -38,16 +38,19 @@ fun onInternalMessage(in: InMessage) {
         SetMarketplaceV2Treasury => {
             var storage = lazy MarketplaceV2Storage.load();
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
-            assert (!storage.treasuryConfigured) throw ErrorsV2.InvalidTreasury;
+            var config = storage.config.load();
+            assert (!config.treasuryConfigured) throw ErrorsV2.InvalidTreasury;
             assert (msg.treasury != contract.getAddress()) throw ErrorsV2.InvalidTreasury;
-            storage.treasury = msg.treasury;
-            storage.treasuryConfigured = true;
+            config.treasury = msg.treasury;
+            config.treasuryConfigured = true;
+            storage.config = config.toCell();
             storage.save();
         }
 
         BuyProductV2 => {
             var storage = lazy MarketplaceV2Storage.load();
-            assert (storage.escrowConfigured && storage.treasuryConfigured) throw ErrorsV2.InvalidPurchase;
+            val config = storage.config.load();
+            assert (storage.escrowConfigured && config.treasuryConfigured) throw ErrorsV2.InvalidPurchase;
 
             val productResult = storage.products.get(msg.productId);
             assert (productResult.isFound) throw ErrorsV2.InvalidPurchase;
@@ -91,7 +94,7 @@ fun onInternalMessage(in: InMessage) {
                     parties: MarketplaceV2OrderParties {
                         buyer: in.senderAddress,
                         seller: product.seller,
-                        treasury: storage.treasury,
+                        treasury: config.treasury,
                     }.toCell(),
                     asset: MarketplaceV2OrderAsset {
                         nftItem: product.nftItem,
@@ -984,11 +987,13 @@ fun onBouncedMessage(in: InMessageBounced) {
 }
 
 get fun treasuryV2(): address {
-    return MarketplaceV2Storage.load().treasury;
+    val config = MarketplaceV2Storage.load().config.load();
+    return config.treasury;
 }
 
 get fun treasuryConfiguredV2(): bool {
-    return MarketplaceV2Storage.load().treasuryConfigured;
+    val config = MarketplaceV2Storage.load().config.load();
+    return config.treasuryConfigured;
 }
 
 get fun orderV2(orderId: uint64): MarketplaceV2Order? {
