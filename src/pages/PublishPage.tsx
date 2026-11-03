@@ -73,7 +73,7 @@ export function PublishPage() {
 
         const { data, error } = await anonymousSupabase.functions.invoke(
           "nft-wallet-assets",
-          { body: {} },
+          { body: { wallet_address: walletAddress } },
         );
 
         if (error) {
@@ -143,7 +143,7 @@ export function PublishPage() {
 
       const { data, error } = await anonymousSupabase.functions.invoke(
         "nft-wallet-assets",
-        { body: {} },
+        { body: { wallet_address: walletAddress } },
       );
 
       if (requestId !== assetsRequestRef.current) return;
