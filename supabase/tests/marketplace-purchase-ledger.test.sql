@@ -23,7 +23,7 @@ BEGIN
       OR has_table_privilege('authenticated', format('public.%I', v_table_name), 'SELECT') THEN
       RAISE EXCEPTION 'Public roles must not read %', v_table_name;
     END IF;
-    IF NOT has_table_privilege('service_role', format('public.%I', table_name), 'SELECT') THEN
+    IF NOT has_table_privilege('service_role', format('public.%I', v_table_name), 'SELECT') THEN
       RAISE EXCEPTION 'service_role cannot read %', v_table_name;
     END IF;
   END LOOP;
