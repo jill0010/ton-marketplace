@@ -177,7 +177,7 @@ Deno.serve(async (request: Request) => {
       const itemIndex = typeof nft.index === "number" && Number.isSafeInteger(nft.index) &&
           nft.index >= 0
         ? String(nft.index)
-        : typeof nft.index === "string" && /^\\d+$/.test(nft.index)
+        : typeof nft.index === "string" && /^\d+$/.test(nft.index)
         ? nft.index
         : null;
       if (itemIndex === null) continue;
