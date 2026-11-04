@@ -253,25 +253,20 @@ export function HomePage() {
                       <tbody className="divide-y divide-white/10">
                         {visibleProducts.map((product) => {
                           const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
-                          const fragmentUrl = product.type === "username"
-                            ? "https://fragment.com/username/" + rawName
-                            : "https://fragment.com/number/" + rawName
+                          const telegramUrl = "https://t.me/" + rawName
                           return (
                             <tr key={product.id} className="transition hover:bg-white/[0.035]">
                               <td className="px-5 py-4">
-                                <Link to={"/product/" + product.id} className="inline-flex flex-col items-start">
-                                  <span className="font-semibold text-white hover:text-sky-300">
+                                <div className="flex flex-col items-start">
+                                  <Link to={"/product/" + product.id} className="font-semibold text-white hover:text-sky-300">
                                     {product.type === "username" ? "@" + rawName : "+" + rawName}
-                                  </span>
+                                  </Link>
                                   {product.type === "username" && (
-                                    <span className="mt-0.5 text-xs text-sky-400 hover:text-sky-300">{rawName}.t.me</span>
+                                    <a href={telegramUrl} target="_blank" rel="noreferrer" className="mt-0.5 text-xs text-sky-400 hover:text-sky-300">
+                                      {rawName}.t.me
+                                    </a>
                                   )}
-                                </Link>
-                              </td>
-                              <td className="px-5 py-4">
-                                <a href={fragmentUrl} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-sky-300">
-                                  {product.type === "username" ? rawName + ".t.me" : "+" + rawName}
-                                </a>
+                                </div>
                               </td>
                               <td className="px-5 py-4 font-semibold tabular-nums text-white">
                                 {product.priceTon.toLocaleString()} <span className="text-zinc-500">{product.currency}</span>
