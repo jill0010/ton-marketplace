@@ -222,7 +222,6 @@ export function PublishPage() {
     priceNumber <= 1000000000;
 
   async function runPendingListing(pending: PendingListing) {
-    if (publishing) return;
     if (!isWalletVerified || walletAddress !== pending.sellerWallet) {
       setPublishError(t("Reconnect and verify the same seller wallet to continue.", "请重新连接并验证原上架钱包后继续。"));
       return;
@@ -383,7 +382,6 @@ export function PublishPage() {
         step: "registration",
       };
       setPendingListing(pending);
-      setPublishing(false);
       await runPendingListing(pending);
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : "NFT listing failed.");
