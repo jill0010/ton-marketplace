@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       let complete = false;
       for (let page = 0; page < 2; page++) {
         const params = new URLSearchParams({ limit: "100" });
-        if (cursor) params.set("after", cursor);
+        if (cursor) {\n          let decodedCursor = cursor;\n          try { decodedCursor = decodeURIComponent(cursor); } catch { /* Keep opaque cursor unchanged. */ }\n          params.set("after", decodedCursor);\n        }
         const endpoint = `https://api.getgems.io/public-api/v1/nfts/collection/${encodeURIComponent(collection.collection_address)}?${params}`;
         const response = await fetch(endpoint, {
           headers: { Accept: "application/json", Authorization: getgemsKey },
