@@ -103,7 +103,7 @@ export function HomePage() {
     <div className="space-y-10">
       <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent px-6 py-10">
         <p className="text-sm text-zinc-400">
-          {t("TON Digital Asset Marketplace · Phase 2", "TON 数字资产商城 · 阶段 2")}
+          {t("GRAM Digital Asset Marketplace · Phase 2", "GRAM 数字资产商城 · 阶段 2")}
         </p>
         <h1 className="mt-3 max-w-2xl text-4xl font-medium tracking-tight text-white">
           {t(
