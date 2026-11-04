@@ -307,6 +307,9 @@ export function PublishPage() {
             },
           );
 
+          if (data?.listing_enabled !== true) {
+            throw new Error("Marketplace V2 上架功能当前已暂停。NFT 尚未转移，待处理记录已保留。");
+          }
           if (data?.record_matches === false) {
             throw new Error("链上托管登记与当前钱包、NFT 或商品编号不匹配。为保护 NFT，已阻止转移。");
           }
@@ -337,6 +340,7 @@ export function PublishPage() {
           if (
             stateError ||
             latest?.success !== true ||
+            latest.listing_enabled !== true ||
             latest.next_product_id !== current.productId ||
             latest.next_query_id !== current.queryId
           ) {
@@ -390,6 +394,9 @@ export function PublishPage() {
                 },
               },
             );
+            if (data?.listing_enabled !== true) {
+              throw new Error("Marketplace V2 上架功能已暂停，已阻止 NFT 转移。");
+            }
             if (data?.record_matches === false) {
               throw new Error("Escrow query ID 已被其他商品占用，已阻止 NFT 转移。");
             }
@@ -417,45 +424,85 @@ export function PublishPage() {
       }
 
       if (current.step === "transfer") {
-        if (current.transferAttemptedAt) {
-          const remaining = 30000 - (Date.now() - current.transferAttemptedAt);
-          if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
-        }
+        // Recheck the exact Escrow record and listing gate immediately before
+        // transferring the NFT Item. If the gate is closed, the NFT stays with
+        // the seller and the pending record remains recoverable.
+        const { data: preflight, error: preflightError } =
+          await anonymousSupabase.functions.invoke(
+            "marketplace-v2-state",
+            {
+              body: {
+                action: "escrow-registration",
+                query_id: current.queryId,
+                product_id: current.productId,
+                wallet_address: current.sellerWallet,
+                item_address: current.asset.address,
+                collection_address: current.asset.collection_address,
+                item_index: current.asset.item_index,
+                kind: current.asset.type,
+              },
+            },
+          );
         assertActive();
-
-        const { data: owned, error: ownedError } = await anonymousSupabase.functions.invoke(
-          "nft-wallet-assets",
-          { body: { wallet_address: current.sellerWallet } },
-        );
-        if (ownedError || owned?.success !== true || !Array.isArray(owned.items)) {
-          throw new Error("无法重新确认 NFT 当前持有人，已停止转移。");
+        if (
+          preflightError ||
+          preflight?.success !== true ||
+          preflight.listing_enabled !== true ||
+          preflight.record_matches !== true ||
+          preflight.registered !== true ||
+          typeof preflight.escrow_id !== "string"
+        ) {
+          throw new Error("Marketplace V2 上架开关已关闭，或链上 Escrow 登记不再匹配。为保护 NFT，已阻止转移。");
         }
 
-        const stillOwned = owned.items.some(
-          (item: NftAsset) => item.address === current.asset.address,
-        );
-        if (stillOwned) {
-          current = { ...current, transferAttemptedAt: Date.now() };
+        if (preflight.record_status === 1) {
+          current = { ...current, escrowId: preflight.escrow_id, step: "sync" };
           persistPendingListing(current);
-          setListingMessage(t("Escrow registration matches this NFT. Confirm the NFT transfer in your TON mainnet wallet…", "托管登记与此 NFT 完全匹配。请在 TON 主网钱包中确认 NFT 转移……"));
-          await tonConnectUI.sendTransaction({
-            validUntil: Math.floor(Date.now() / 1000) + 300,
-            network: "-239",
-            from: current.sellerWallet,
-            messages: [{
-              address: current.asset.address,
-              amount: MARKETPLACE_V2_NFT_TRANSFER_MESSAGE_VALUE.toString(),
-              payload: buildNftEscrowTransferPayload(
-                BigInt(current.queryId),
-                current.escrowAddress,
-                current.sellerWallet,
-              ),
-            }],
-          });
-        }
+        } else if (preflight.record_status === 0) {
+          current = { ...current, escrowId: preflight.escrow_id };
+          if (current.transferAttemptedAt) {
+            const remaining = 30000 - (Date.now() - current.transferAttemptedAt);
+            if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
+          }
+          assertActive();
 
-        current = { ...current, step: "sync" };
-        persistPendingListing(current);
+          const { data: owned, error: ownedError } = await anonymousSupabase.functions.invoke(
+            "nft-wallet-assets",
+            { body: { wallet_address: current.sellerWallet } },
+          );
+          assertActive();
+          if (ownedError || owned?.success !== true || !Array.isArray(owned.items)) {
+            throw new Error("无法重新确认 NFT 当前持有人，已停止转移。");
+          }
+
+          const stillOwned = owned.items.some(
+            (item: NftAsset) => item.address === current.asset.address,
+          );
+          if (stillOwned) {
+            current = { ...current, transferAttemptedAt: Date.now() };
+            persistPendingListing(current);
+            setListingMessage(t("Escrow registration matches this NFT. Confirm the NFT transfer in your TON mainnet wallet…", "托管登记与此 NFT 完全匹配。请在 TON 主网钱包中确认 NFT 转移……"));
+            await tonConnectUI.sendTransaction({
+              validUntil: Math.floor(Date.now() / 1000) + 300,
+              network: "-239",
+              from: current.sellerWallet,
+              messages: [{
+                address: current.asset.address,
+                amount: MARKETPLACE_V2_NFT_TRANSFER_MESSAGE_VALUE.toString(),
+                payload: buildNftEscrowTransferPayload(
+                  BigInt(current.queryId),
+                  current.escrowAddress,
+                  current.sellerWallet,
+                ),
+              }],
+            });
+          }
+
+          current = { ...current, step: "sync" };
+          persistPendingListing(current);
+        } else {
+          throw new Error("Escrow 记录处于不可转移状态。为保护 NFT，已停止操作。");
+        }
       }
 
       if (current.step === "sync") {
