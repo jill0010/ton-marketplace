@@ -714,8 +714,15 @@ export function PremiumPage() {
       setPendingOrderId(order.orderId)
       setCheckoutMessage(t("Confirm the native GRAM transfer in your wallet…", "请在钱包中确认原生 GRAM 转账……"))
       const payload = beginCell().storeUint(0, 32).storeStringTail(order.memo).endCell().toBoc().toString("base64")
+      const verifiedSender = tonConnectUI.wallet?.account.address;
+      if (!verifiedSender || verifiedSender !== walletVerification?.address) {
+        throw new Error("The connected wallet changed after verification. Reconnect and verify it before paying.");
+      }
+
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 300,
+        network: "-239",
+        from: verifiedSender,
         messages: [{ address: order.paymentAddress, amount: order.amountNano, payload }],
       })
 
