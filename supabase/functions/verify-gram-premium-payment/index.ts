@@ -173,24 +173,60 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, error: "This order has expired" }, 410, origin);
     }
 
-    const txResponse = await fetch(
-      `https://toncenter.com/api/v2/getTransactions?address=${encodeURIComponent(RECEIVER_RAW)}&limit=100`,
-      { headers: { Accept: "application/json", "X-API-Key": toncenterKey }, signal: AbortSignal.timeout(15000) },
-    );
-    if (!txResponse.ok) {
-      console.error("TON Center transaction lookup failed", txResponse.status);
-      return reply({ success: false, error: "TON Mainnet transaction lookup is temporarily unavailable; retry shortly" }, 502, origin);
-    }
-    const txData = await txResponse.json();
-    if (txData?.ok !== true || !Array.isArray(txData?.result)) {
-      return reply({ success: false, error: "TON Mainnet returned an invalid transaction response" }, 502, origin);
-    }
-
     const expectedNano = nanoAmount(order.gram_amount);
     const createdAt = new Date(order.created_at).getTime();
     const expiresAt = new Date(order.expires_at).getTime();
+    if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt)) {
+      return reply({ success: false, error: "The order has invalid payment timestamps" }, 409, origin);
+    }
+
+    // Page through recent account transactions so unrelated marketplace
+    // traffic cannot hide a valid payment outside the first 100 entries.
+    const transactionRows: Record<string, unknown>[] = [];
+    let cursorLt = "";
+    let cursorHash = "";
+    for (let page = 0; page < 5; page += 1) {
+      const params = new URLSearchParams({
+        address: RECEIVER_RAW,
+        limit: "100",
+      });
+      if (cursorLt && cursorHash) {
+        params.set("lt", cursorLt);
+        params.set("hash", cursorHash);
+      }
+
+      const txResponse = await fetch(
+        `https://toncenter.com/api/v2/getTransactions?${params.toString()}`,
+        { headers: { Accept: "application/json", "X-API-Key": toncenterKey }, signal: AbortSignal.timeout(10000) },
+      );
+      if (!txResponse.ok) {
+        console.error("TON Center transaction lookup failed", txResponse.status);
+        return reply({ success: false, error: "TON Mainnet transaction lookup is temporarily unavailable; retry shortly" }, 502, origin);
+      }
+
+      const txData = await txResponse.json();
+      if (txData?.ok !== true || !Array.isArray(txData?.result)) {
+        return reply({ success: false, error: "TON Mainnet returned an invalid transaction response" }, 502, origin);
+      }
+
+      const pageRows = txData.result as Record<string, unknown>[];
+      if (pageRows.length === 0) break;
+      transactionRows.push(...pageRows);
+
+      const oldest = pageRows[pageRows.length - 1];
+      const oldestTimestamp = Number(oldest.utime) * 1000;
+      if (!Number.isFinite(oldestTimestamp) || oldestTimestamp < createdAt - 120000) break;
+
+      const oldestId = oldest.transaction_id as Record<string, unknown> | null;
+      const nextLt = String(oldestId?.lt ?? "");
+      const nextHash = String(oldestId?.hash ?? "");
+      if (!nextLt || !nextHash || (nextLt === cursorLt && nextHash === cursorHash)) break;
+      cursorLt = nextLt;
+      cursorHash = nextHash;
+    }
+
     let match: Record<string, unknown> | null = null;
-    for (const candidate of txData.result as Record<string, unknown>[]) {
+    for (const candidate of transactionRows) {
       const incoming = candidate.in_msg as Record<string, unknown> | null;
       if (!incoming || incoming.bounced === true) continue;
       let destination: string;
