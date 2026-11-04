@@ -225,7 +225,6 @@ export function ProductAdminPage() {
     setDraft({ ...INITIAL_DRAFT })
     setImageUrl("")
     setImageName("")
-    setImageFile(null)
     setImageError("")
     setMessage("")
     setPreviewReady(false)
