@@ -17,6 +17,7 @@ const PremiumRoute = lazy(() => import("./components/PremiumRoute").then((module
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
 const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
 const PremiumOrdersAdminPage = lazy(() => import("./pages/PremiumOrdersAdminPage").then((module) => ({ default: module.PremiumOrdersAdminPage })))
+const AdminWalletSettingsPage = lazy(() => import("./pages/AdminWalletSettingsPage").then((module) => ({ default: module.AdminWalletSettingsPage })))
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
                   <Route path="/admin/manage-products" element={<ProductManagePage />} />
                   <Route path="/admin/premium-pricing" element={<PremiumPricingAdminPage />} />
                   <Route path="/admin/premium-orders" element={<PremiumOrdersAdminPage />} />
+                  <Route path="/admin/wallet-settings" element={<AdminWalletSettingsPage />} />
                 </Route>
               </Route>
             </Routes>
