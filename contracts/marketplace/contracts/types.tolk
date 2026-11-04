@@ -661,6 +661,12 @@ struct (0x71b00102) PlatformPayoutV2 {
     queryId: uint64
 }
 
+struct (0x71b00104) BuyerRefundV2 {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+}
+
 // One-time treasury configuration before any order exists.
 struct (0x71b00107) SetMarketplaceV2Treasury {
     treasury: address
@@ -763,6 +769,7 @@ struct MarketplaceV2OrderOperations {
     releaseQueryId: uint64
     sellerPayoutOperationId: uint64
     platformPayoutOperationId: uint64
+    buyerRefundOperationId: uint64
     sellerPayoutQueryId: uint64
     platformPayoutQueryId: uint64
     buyerRefundQueryId: uint64
