@@ -80,6 +80,72 @@ async function runGetMethod(address: string, method: string, stack: unknown[] = 
   return parseStackNumber(values[0]);
 }
 
+async function runGetMethodCell(address: string, method: string, stack: unknown[] = []): Promise<Cell> {
+  const apiKey = Deno.env.get("TONCENTER_API_KEY");
+  if (!apiKey) throw new Error("TONCENTER_API_KEY is not configured");
+  const response = await fetch(TONCENTER_BASE + "/runGetMethod", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
+    body: JSON.stringify({ address, method, stack }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!response.ok) throw new Error("TON Center getter request failed (" + response.status + ")");
+  const data = await response.json();
+  if (data?.ok !== true) throw new Error("TON Center getter execution failed");
+  const values = data.stack ?? data.result?.stack;
+  if (!Array.isArray(values) || values.length !== 1) {
+    throw new Error("TON Center cell getter returned an unexpected stack");
+  }
+
+  const entry = values[0];
+  let bytes: string | undefined;
+  if (Array.isArray(entry) && entry[0] === "cell") {
+    const value = entry[1];
+    if (typeof value === "string") bytes = value;
+    else if (value && typeof value === "object" && "bytes" in value && typeof value.bytes === "string") {
+      bytes = value.bytes;
+    }
+  } else if (entry && typeof entry === "object" && "type" in entry && entry.type === "cell" && "value" in entry) {
+    const value = entry.value;
+    if (typeof value === "string") bytes = value;
+    else if (value && typeof value === "object" && "bytes" in value && typeof value.bytes === "string") {
+      bytes = value.bytes;
+    }
+  }
+  if (!bytes) throw new Error("TON Center returned an invalid escrow record cell");
+  const roots = Cell.fromBoc(Buffer.from(bytes, "base64"));
+  if (roots.length !== 1) throw new Error("TON Center returned an invalid escrow record BoC");
+  return roots[0];
+}
+
+function parseEscrowRecord(cell: Cell) {
+  const slice = cell.beginParse();
+  const escrowId = slice.loadUintBig(64);
+  const nftItem = slice.loadAddress();
+  const seller = slice.loadAddress();
+  const productId = slice.loadUintBig(64);
+  const status = slice.loadUint(8);
+  const queryId = slice.loadUintBig(64);
+  const extra = slice.loadRef().beginParse();
+  const collection = extra.loadAddress();
+  const itemIndex = extra.loadUintBig(256);
+  const kind = extra.loadUint(8);
+  extra.endParse();
+  slice.endParse();
+  if (!nftItem || !seller || !collection) throw new Error("Escrow record contains an invalid address");
+  return {
+    escrowId,
+    nftItem: nftItem.toRawString(),
+    seller: seller.toRawString(),
+    productId,
+    status,
+    queryId,
+    collection: collection.toRawString(),
+    itemIndex,
+    kind,
+  };
+}
+
 function decodePublishBody(bodyBase64: string) {
   const roots = Cell.fromBoc(Buffer.from(bodyBase64, "base64"));
   if (roots.length !== 1) return null;
@@ -292,6 +358,25 @@ Deno.serve(async (req: Request) => {
     if (productStatus !== 2n || productEscrowId <= 0n ||
         productEscrowId !== requestedEscrowId || registeredEscrowId !== requestedEscrowId) {
       return reply({ success: false, code: "ESCROW_NOT_CONFIRMED", error: "The NFT is not yet confirmed as deposited in the Marketplace V2 escrow. Retry after the on-chain callback completes." }, 409, origin);
+    }
+
+    const escrowRecord = parseEscrowRecord(await runGetMethodCell(
+      escrowRaw,
+      "escrowRecordV2",
+      [["num", "0x" + requestedEscrowId.toString(16)]],
+    ));
+    if (
+      escrowRecord.status !== 1 ||
+      escrowRecord.escrowId !== requestedEscrowId ||
+      escrowRecord.productId !== productId ||
+      escrowRecord.queryId !== queryId ||
+      escrowRecord.nftItem !== nftRaw ||
+      escrowRecord.seller !== sellerRaw ||
+      escrowRecord.collection !== collectionRaw ||
+      escrowRecord.itemIndex !== itemIndex ||
+      escrowRecord.kind !== kind
+    ) {
+      return reply({ success: false, code: "ESCROW_RECORD_MISMATCH", error: "The on-chain escrow record does not match this seller, NFT Item, collection, index, and listing. The database listing was not created." }, 409, origin);
     }
 
     const publishTx = await findPublishTransaction(marketplaceRaw, sellerRaw, {
