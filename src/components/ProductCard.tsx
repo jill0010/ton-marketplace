@@ -37,7 +37,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
       return
     }
     setClaimNotice(t(
-      "Wallet connected. Secure checkout is not available yet, so no payment has been sent. Please do not transfer TON manually to the displayed escrow address.",
+      "Wallet connected. Secure checkout is not available yet, so no payment has been sent. Please do not transfer GRAM manually to the displayed escrow address.",
       "钱包已连接，但安全结账功能尚未开放，因此没有发送付款。请勿手动向页面显示的托管地址转账。"
     ))
   }
@@ -52,7 +52,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
         <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>{product.title}</h2>
         <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>{product.subtitle}</p>
         <div className="mt-3 flex items-center justify-between gap-2">
-          <p className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"} font-semibold text-emerald-300`}><GramTokenMark /><span>{product.priceTon} TON</span></p>
+          <p className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"} font-semibold text-emerald-300`}><GramTokenMark /><span>{product.priceTon} GRAM</span></p>
           <button type="button" onClick={() => void claimProduct()} className="shrink-0 rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-sky-950/20 transition hover:bg-sky-400 active:scale-[0.98]">
             {t("Claim", "认领")}
           </button>
