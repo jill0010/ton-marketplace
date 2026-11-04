@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
     const gramAmount = Number(gramAmountRaw);
     const marketUsd = Number(plan.market_usd);
     if (
-      !/^\\d+(?:\\.\\d{1,9})?$/.test(gramAmountRaw) ||
+      !/^\d+(?:\.\d{1,9})?$/.test(gramAmountRaw) ||
       !Number.isFinite(gramAmount) ||
       gramAmount <= 0 ||
       !Number.isFinite(marketUsd) ||
