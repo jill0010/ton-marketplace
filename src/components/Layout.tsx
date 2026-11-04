@@ -1,14 +1,6 @@
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { Link, Outlet } from "react-router-dom"
 import { TonConnectButton } from "@tonconnect/ui-react"
 import { useLanguage } from "../lib/useLanguage"
-
-const navClass = ({ isActive }: { isActive: boolean }) =>
-  [
-    "rounded-full px-3 py-1.5 text-sm transition",
-    isActive
-      ? "bg-white/10 text-white"
-      : "text-zinc-400 hover:bg-white/5 hover:text-white",
-  ].join(" ")
 
 export function Layout() {
   const { language, setLanguage, t } = useLanguage()
@@ -27,7 +19,7 @@ export function Layout() {
               value={language}
               onChange={(event) => setLanguage(event.target.value as typeof language)}
               aria-label="Select language"
-              className="max-w-full rounded-full border border-white/15 bg-[#151923] px-3 py-2 text-sm text-zinc-200"
+              className="max-w-full appearance-none rounded-xl border border-white/20 bg-[#151923] px-4 py-2.5 text-sm font-medium text-zinc-100 shadow-sm outline-none transition hover:border-white/35 hover:bg-[#1b2230] focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
             >
               <option value="en">English</option>
               <option value="zh">简体中文</option>
@@ -35,17 +27,6 @@ export function Layout() {
               <option value="ru">Русский</option>
               <option value="ar">العربية</option>
             </select>
-
-            <NavLink to="/" end className={navClass}>
-              {t("Home", "首页")}
-            </NavLink>
-
-            <NavLink to="/catalog" className={navClass}>
-              {t("All Products", "全部商品")}
-            </NavLink>
-            <NavLink to="/fragment-market" className={navClass}>
-              {t("Fragment Market", "Fragment 市场")}
-            </NavLink>
 
             <div className="flex items-center">
               <TonConnectButton className="wallet-connect-button" />
