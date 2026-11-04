@@ -6,6 +6,7 @@ import "@acton/tlb/maybe"
 import "@acton/types/transaction"
 
 import "@contracts/types"
+import "@contracts/RejectingMarketplaceCallback"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/NFTEscrowV2.gen"
 import "@wrappers/RejectingMarketplaceCallback.gen"
