@@ -37,3 +37,5 @@ jobs:
         run: |
           deno check supabase/functions/create-gram-premium-order/index.ts
           deno check supabase/functions/verify-gram-premium-payment/index.ts
+          deno check supabase/functions/publish-nft-product/index.ts
+          deno check supabase/functions/marketplace-v2-state/index.ts
