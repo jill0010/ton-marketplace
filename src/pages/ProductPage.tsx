@@ -138,7 +138,7 @@ export function ProductPage() {
       <p className="text-zinc-400">{product.subtitle}</p>
 
       <p className="text-3xl font-semibold text-emerald-300">
-        {product.priceTon} TON
+        {product.priceTon} GRAM
       </p>
 
       <button
