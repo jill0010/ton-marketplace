@@ -10,15 +10,25 @@ type ParsedIdentifier = {
 
 function parseIdentifier(value: string): ParsedIdentifier | null {
   const input = value.trim();
-  if (/^@[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(input)) {
-    return { type: "username", name: `@${input.slice(1).toLowerCase()}` };
+
+  // Telegram collectible usernames can be exactly four characters.
+  // Accept both "@name" and "name", then store a canonical "@name".
+  const username = input.startsWith("@") ? input.slice(1) : input;
+  if (/^[a-zA-Z][a-zA-Z0-9_]{3,31}$/.test(username)) {
+    return { type: "username", name: `@${username.toLowerCase()}` };
   }
-  if (/^\+888(?:[\s-]*\d){6,}$/.test(input)) {
+
+  // Accept common human formatting for collectible phone numbers.
+  if (/^\+?888(?:[\s-]*\d){6,}$/.test(input)) {
     return { type: "phone_number", name: `+${input.replace(/\D/g, "")}` };
   }
-  if (/^#[a-zA-Z0-9_-]{3,32}$/.test(input)) {
-    return { type: "gift", name: `#${input.slice(1)}` };
+
+  // Gift identifiers may be entered with or without the leading "#".
+  const gift = input.startsWith("#") ? input.slice(1) : input;
+  if (/^[a-zA-Z0-9_-]{3,32}$/.test(gift)) {
+    return { type: "gift", name: `#${gift}` };
   }
+
   return null;
 }
 
@@ -114,11 +124,11 @@ export function ProductAdminPage() {
             id="admin-product-identifier"
             value={identifier}
             onChange={(event) => { setIdentifier(event.target.value); setMessage(""); setSuccess(false); }}
-            placeholder="@username、+888 1234 5678 或 #123456"
+            placeholder="@abcd（支持4位用户名）、+888 1234 5678 或 #礼物编号"
             disabled={busy}
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
-          <p className="text-xs text-zinc-500">支持：@用户名、+888 号码、#礼物编号。</p>
+          <p className="text-xs text-zinc-500">支持：4–32 位用户名（可带 @）、+888 号码、礼物编号（可带 #）。</p>
         </div>
 
         <div className="space-y-2">
