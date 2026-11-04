@@ -701,6 +701,16 @@ get fun treasuryConfiguredV2(): bool {
     return MarketplaceV2Storage.load().purchaseStorage.load().treasuryConfigured;
 }
 
+get fun orderV2(orderId: uint64): MarketplaceV2Order? {
+    val purchase = MarketplaceV2Storage.load().purchaseStorage.load();
+    val orderStorage = purchase.orders.load();
+    val result = orderStorage.orders.get(orderId);
+    if (!result.isFound) {
+        return null;
+    }
+    return MarketplaceV2Order.fromCell(result.loadValue());
+}
+
 get fun productV2(productId: uint64): MarketplaceV2Product? {
     val result = MarketplaceV2Storage.load().products.get(productId);
     if (!result.isFound) {
