@@ -672,19 +672,42 @@ export function PublishPage() {
               <button
                 type="button"
                 onClick={() => void handlePublish()}
-                disabled
-
+                disabled={publishing || Boolean(pendingListing) || !validPrice}
                 className="w-full rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {t("Temporarily Unavailable", "暂未开放发布")}
+                {publishing
+                  ? t("Processing…", "处理中……")
+                  : t("Publish with on-chain escrow", "链上托管并上架")}
               </button>
+
+              {pendingListing && (
+                <button
+                  type="button"
+                  onClick={() => void runPendingListing(pendingListing)}
+                  disabled={publishing}
+                  className="w-full rounded-full border border-amber-400/30 px-5 py-3 text-sm font-medium text-amber-200 disabled:opacity-50"
+                >
+                  {pendingListing.step === "registration"
+                    ? t("Retry Escrow registration check", "重试 Escrow 登记检查")
+                    : pendingListing.step === "transfer"
+                      ? t("Continue NFT escrow transfer", "继续 NFT 托管转账")
+                      : t("Retry on-chain listing verification", "重试链上上架核验")}
+                </button>
+              )}
+
+              {listingMessage && (
+                <p role="status" className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-zinc-300">
+                  {listingMessage}
+                </p>
+              )}
 
               <p className="text-xs leading-5 text-zinc-500">
                 {t(
-                  "NFT listing remains paused until Marketplace V2 is deployed and wallet-to-contract-to-database synchronization is verified.",
-                  "Marketplace V2 合约部署及钱包、合约、数据库同步验证完成前，NFT 发布功能保持关闭。",
+                  "The listing is only published after Marketplace V2 confirms escrow registration, NFT ownership transfer, and database verification.",
+                  "只有 Marketplace V2 确认托管登记、NFT 所有权转移和数据库核验后，商品才会公开上架。",
                 )}
               </p>
+
             </section>
           )}
         </>
