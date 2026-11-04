@@ -2,12 +2,12 @@ import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
 
-import "@contracts/types"
-import "@contracts/TestMarketplaceEscrowV2"
 import "@contracts/RejectingMarketplaceCallback"
+import "@contracts/TestMarketplaceEscrowV2"
+import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
-import "@wrappers/TestMarketplaceEscrowV2.gen"
 import "@wrappers/RejectingMarketplaceCallback.gen"
+import "@wrappers/TestMarketplaceEscrowV2.gen"
 
 get fun `test Marketplace V2 returns buyer funds only after Escrow confirms seller NFT return`() {
     val owner = testing.treasury("v2FailureOwner");
