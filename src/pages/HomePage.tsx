@@ -255,7 +255,6 @@ export function HomePage() {
                       <tbody className="divide-y divide-white/10">
                         {visibleProducts.map((product) => {
                           const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
-                          const telegramUrl = "https://t.me/" + rawName
                           return (
                             <tr key={product.id} className="bg-white/[0.06] transition hover:bg-white/[0.11]">
                               <td className="px-5 py-3">
