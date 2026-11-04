@@ -21,6 +21,8 @@ ignore = []
 [scripts]
 deploy-emulation = "acton script scripts/deploy.tolk"
 deploy-testnet = "acton script scripts/deploy.tolk --net testnet"
+deploy-v2-emulation = "acton script scripts/deploy-v2.tolk"
+deploy-v2-testnet = "acton script scripts/deploy-v2.tolk --net testnet"
 
 [import-mappings]
 acton = ".acton"
