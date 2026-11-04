@@ -6,6 +6,9 @@ The V2 Marketplace and V2 NFT Escrow must be deployed as a fresh, paired deploym
 
 ## Trust and custody model
 
+- Asset kind is explicit and versioned: `1` = collectible username, `2` = collectible +888 phone number, `3` = collectible gift. The Marketplace and Escrow accept only these three kinds, and the Escrow requires the configured collection Item Code kind to match the listing.
+- Collection Item Code is still restricted to the two code hashes hardcoded in `NFTEscrowV2`; each official collection's actual on-chain code hash must be independently checked before the owner configures it. No collection is approved by the V2 deploy script.
+
 - Wallet address is the sole marketplace identity. The buyer is always the authenticated internal-message sender; no frontend-supplied buyer address is trusted.
 - A listing is purchasable only while Marketplace V2 has an authenticated Escrow deposit confirmation and the corresponding NFT is still reserved by Escrow.
 - The immutable order snapshot records buyer, seller, treasury, NFT Item, collection, item index, escrow ID, exact gross price, fee policy version, and independent operation/query IDs.
