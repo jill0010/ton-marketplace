@@ -575,6 +575,72 @@ fun onBouncedMessage(in: InMessageBounced) {
         }
         val opcode = originalSlice.loadUint(32);
 
+        if (opcode == 0x71b00101 || opcode == 0x71b00102) {
+            var purchase = storage.purchaseStorage.load();
+            var orderStorage = purchase.orders.load();
+            var payoutStorage = purchase.payoutStorage.load();
+
+            if (opcode == 0x71b00101) {
+                val bounced = lazy SellerPayoutV2.fromCell(originalBody);
+                val payoutResult = payoutStorage.payouts.get(bounced.operationId);
+                if (!payoutResult.isFound) {
+                    return;
+                }
+                var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
+                if (
+                    payout.kind != 1 || payout.orderId != bounced.orderId ||
+                    payout.queryId != bounced.queryId || payout.status != 2
+                ) {
+                    return;
+                }
+                val orderResult = orderStorage.orders.get(bounced.orderId);
+                if (!orderResult.isFound) {
+                    return;
+                }
+                var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+                if (order.deliveryStatus != 2) {
+                    return;
+                }
+                payout.status = 3;
+                order.sellerPayoutStatus = 3;
+                order.status = 4;
+                payoutStorage.payouts.set(payout.operationId, payout.toCell());
+                orderStorage.orders.set(order.id, order.toCell());
+            } else {
+                val bounced = lazy PlatformPayoutV2.fromCell(originalBody);
+                val payoutResult = payoutStorage.payouts.get(bounced.operationId);
+                if (!payoutResult.isFound) {
+                    return;
+                }
+                var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
+                if (
+                    payout.kind != 2 || payout.orderId != bounced.orderId ||
+                    payout.queryId != bounced.queryId || payout.status != 2
+                ) {
+                    return;
+                }
+                val orderResult = orderStorage.orders.get(bounced.orderId);
+                if (!orderResult.isFound) {
+                    return;
+                }
+                var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+                if (order.deliveryStatus != 2) {
+                    return;
+                }
+                payout.status = 3;
+                order.platformPayoutStatus = 3;
+                order.status = 4;
+                payoutStorage.payouts.set(payout.operationId, payout.toCell());
+                orderStorage.orders.set(order.id, order.toCell());
+            }
+
+            purchase.orders = orderStorage.toCell();
+            purchase.payoutStorage = payoutStorage.toCell();
+            storage.purchaseStorage = purchase.toCell();
+            storage.save();
+            return;
+        }
+
         if (opcode == 0x71b00001) {
             val create = lazy CreateEscrowV2.fromCell(originalBody);
             val queryResult = storage.queryToProduct.get(create.queryId);
