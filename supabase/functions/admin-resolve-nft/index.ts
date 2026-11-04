@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
       let result = await response.json() as { results?: PortalsGift[]; total_count?: number };
       let gifts = result.results ?? [];
       let lookupMethod = "tg_ids";
-      const slugParts = parsed.slug.toLowerCase().match(/^([a-z0-9_-]+?)-(\\d+)$/);
+      const slugParts = parsed.slug.toLowerCase().match(/^([a-z0-9_-]+?)-(\d+)$/);
       if (gifts.length === 0 && slugParts) {
         // Some Portals indexes resolve the Telegram gift slug but not the
         // collection-number pair. Retry by Telegram's collection item number,
