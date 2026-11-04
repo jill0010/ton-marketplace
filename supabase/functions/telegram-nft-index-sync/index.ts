@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ADMIN_USER_ID = "0744f173-3f36-438f-b265-9cb3be95ad78";
+const CRON_SECRET_SHA256 = "cc3a55f3f2ecc5bdac5e4bfc9a122c771ac441c2a12f1ab3f4b11fb64696829d";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://ton-marketplace-cvj.pages.dev",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-index-cron-secret",
@@ -37,10 +38,14 @@ Deno.serve(async (req: Request) => {
         missing_environment: missingEnvironment,
       }, 503);
     }
-    const configuredCronSecret = Deno.env.get("NFT_INDEX_CRON_SECRET") ?? "";
     const suppliedCronSecret = req.headers.get("x-index-cron-secret") ?? "";
-    const cronAuthorized = configuredCronSecret.length >= 32 && suppliedCronSecret.length >= 32
-      && suppliedCronSecret === configuredCronSecret;
+    const suppliedCronDigest = suppliedCronSecret.length >= 32
+      ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(suppliedCronSecret))
+      : new Uint8Array();
+    const suppliedCronHash = suppliedCronDigest instanceof ArrayBuffer
+      ? Array.from(new Uint8Array(suppliedCronDigest)).map((value) => value.toString(16).padStart(2, "0")).join("")
+      : "";
+    const cronAuthorized = suppliedCronHash === CRON_SECRET_SHA256;
     if (!cronAuthorized) {
       const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
       if (!token) return json({ error: "AUTH_REQUIRED" }, 401);
