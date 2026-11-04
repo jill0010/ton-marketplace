@@ -217,21 +217,6 @@ export function ProductAdminPage() {
           <p className="text-xs text-zinc-500">输入 @用户名、+888 号码或粘贴 t.me/nft 礼物链接，自动读取对应 NFT 商品资料和图片。</p>
         </div>
 
-        {profileLoading && <p className="text-xs text-sky-200">正在读取 Telegram 公开头像……</p>}
-        {profilePreview && (
-          <div className="flex items-center gap-4 rounded-xl border border-sky-400/25 bg-sky-400/[0.05] p-3">
-            {profilePreview.avatarUrl ? <img src={profilePreview.avatarUrl} alt={profilePreview.displayName} className="h-20 w-20 rounded-xl bg-black/20 object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-black/20 text-xs text-zinc-500">无公开头像</div>}
-            <div className="min-w-0">
-              <p className="font-semibold text-white">{profilePreview.displayName}</p>
-              <p className="text-sm text-sky-200">@{profilePreview.username}</p>
-              <p className="mt-1 text-xs text-zinc-400">已自动读取 Telegram 公开资料；此头像仅作标识预览，不代表已找到或核验对应的 TON NFT。</p>
-            </div>
-          </div>
-        )}
-        {parseIdentifier(identifier)?.type === "phone_number" && (
-          <p className="rounded-lg border border-amber-400/20 bg-amber-400/[0.05] p-3 text-xs leading-5 text-amber-100">已识别 +888 收藏号码。号码 Collection 已配置，但目前尚未建立号码到具体 NFT 地址的索引，因此不会把系列封面误当成该号码的 NFT 图片；需要完成号码索引后才能自动显示真实 NFT 图片。</p>
-        )}
-
         <button
           type="button"
           onClick={() => void resolveNft()}
