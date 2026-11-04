@@ -49,7 +49,6 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         owner: owner.address,
         marketplace: marketplace.address,
         records: [],
-        nextEscrowId: 1,
     });
 
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
