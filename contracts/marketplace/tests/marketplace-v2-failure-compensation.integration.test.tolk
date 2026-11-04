@@ -3,16 +3,15 @@ import "@acton/emulation/testing"
 import "@acton/testing/expect"
 
 import "@contracts/RejectingMarketplaceCallback"
-import "@contracts/TestMarketplaceEscrowV2"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/RejectingMarketplaceCallback.gen"
-import "@wrappers/TestMarketplaceEscrowV2.gen"
 
 get fun `test Marketplace V2 returns buyer funds only after Escrow confirms seller NFT return`() {
     val owner = testing.treasury("v2FailureOwner");
     val seller = testing.treasury("v2FailureSeller");
     val treasury = testing.treasury("v2FailureTreasury");
+    val fakeEscrow = testing.treasury("v2FailureEscrow");
     val nftItem = testing.treasury("v2FailureNftItem").address;
     val collection = testing.treasury("v2FailureCollection").address;
 
@@ -45,12 +44,6 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         }.toCell(),
     });
 
-    val fakeEscrow = TestMarketplaceEscrowV2.fromStorage(TestMarketplaceEscrowV2Storage {
-        owner: owner.address,
-        marketplace: marketplace.address,
-        records: [],
-    });
-
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
         controller: owner.address,
         escrow: fakeEscrow.address,
@@ -62,12 +55,11 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         marketplace.deploy(owner.address, { value: grams("0.3") }),
     ).toHaveSuccessfulDeploy({ to: marketplace.address });
     expect(
-        fakeEscrow.deploy(owner.address, { value: grams("0.3") }),
-    ).toHaveSuccessfulDeploy({ to: fakeEscrow.address });
-
-    expect(
         rejector.deploy(owner.address, { value: grams("0.3") }),
     ).toHaveSuccessfulDeploy({ to: rejector.address });
+
+    expect(marketplace.nextProductIdV2()).toEqual(1);
+    expect(marketplace.nextQueryIdV2()).toEqual(1);
 
     expect(
         marketplace.sendSetMarketplaceV2Escrow(
@@ -84,8 +76,9 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         ),
     ).toHaveSuccessfulTx();
 
-    // The test-only Escrow confirms custody, then deterministically reports
-    // a failed NFT release so the Marketplace compensation state machine runs.
+    // The test harness wallet stands in for Escrow. It confirms the deposit,
+    // then the test injects authenticated failure/return callbacks from that
+    // exact configured address to exercise the Marketplace compensation path.
     expect(
         marketplace.sendPublishProductV2(
             seller.address,
@@ -99,8 +92,21 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
             { value: grams("0.2") },
         ),
     ).toHaveSuccessfulTx();
+
+    val depositCallback = createMessage({
+        bounce: BounceMode.Only256BitsOfBody,
+        value: grams("0.03"),
+        dest: marketplace.address,
+        body: EscrowDepositedV2 {
+            escrowId: 1,
+            productId: 1,
+            nftItem,
+            seller: seller.address,
+            queryId: 1,
+        },
+    });
+    expect(net.send(fakeEscrow.address, depositCallback)).toHaveSuccessfulTx();
     expect(marketplace.productV2(1)!!.status).toEqual(2);
-    expect(marketplace.productV2(1)!!.escrowId).toEqual(1);
 
     val now = testing.getNow();
     val purchase = marketplace.sendBuyProductV2(
@@ -113,9 +119,38 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     );
     expect(purchase).toHaveSuccessfulTx();
 
-    // The Marketplace must not settle seller/platform legs on failed delivery.
-    // It first asks Escrow to return the NFT, then refunds the buyer only after
-    // the exact EscrowRefundedV2 callback is received and acknowledged.
+    val releaseFailure = createMessage({
+        bounce: BounceMode.Only256BitsOfBody,
+        value: grams("0.03"),
+        dest: marketplace.address,
+        body: EscrowReleaseFailedV2 {
+            orderId: 1,
+            productId: 1,
+            escrowId: 1,
+            queryId: 2,
+            nftItem,
+            buyer,
+        },
+    });
+    expect(net.send(fakeEscrow.address, releaseFailure)).toHaveSuccessfulTx();
+
+    // Escrow confirms the NFT has returned to the seller. Only now may the
+    // Marketplace dispatch the buyer refund.
+    val sellerReturn = createMessage({
+        bounce: BounceMode.Only256BitsOfBody,
+        value: grams("0.03"),
+        dest: marketplace.address,
+        body: EscrowRefundedV2 {
+            escrowId: 1,
+            productId: 1,
+            queryId: 6,
+            nftItem,
+            seller: seller.address,
+        },
+    });
+    expect(net.send(fakeEscrow.address, sellerReturn)).toHaveSuccessfulTx();
+
+    // The rejecting buyer contract deliberately bounces the refund transfer.
     val order = marketplace.orderV2(1);
     assert (order != null) throw ErrorsV2.InvalidRefund;
     expect(order!!.status).toEqual(6);
@@ -167,39 +202,70 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     assert (retriedRefund != null) throw ErrorsV2.InvalidPayout;
     expect(retriedRefund!!.status).toEqual(2);
 
-    // Marketplace accepts the three supported Fragment asset categories:
-    // 1=username, 2=anonymous phone number, 3=collectible gift.
+    expect(marketplace.nextProductIdV2()).toEqual(2);
+    expect(marketplace.nextQueryIdV2()).toEqual(8);
+
+    // The Marketplace supports all three Fragment asset kinds. Real collection
+    // code hashes are still configured/verified separately by the Escrow owner.
     val usernameItem = testing.treasury("v2FailureUsernameItem").address;
     val usernameCollection = testing.treasury("v2FailureUsernameCollection").address;
-    val publishUsername = marketplace.sendPublishProductV2(
-        seller.address,
-        2,
-        8,
-        usernameItem,
-        usernameCollection,
-        4243,
-        1,
-        grams("5"),
-        { value: grams("0.2") },
-    );
-    expect(publishUsername).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendPublishProductV2(
+            seller.address,
+            2,
+            8,
+            usernameItem,
+            usernameCollection,
+            4243,
+            1,
+            grams("5"),
+            { value: grams("0.2") },
+        ),
+    ).toHaveSuccessfulTx();
+    val usernameDeposit = createMessage({
+        bounce: BounceMode.Only256BitsOfBody,
+        value: grams("0.03"),
+        dest: marketplace.address,
+        body: EscrowDepositedV2 {
+            escrowId: 2,
+            productId: 2,
+            nftItem: usernameItem,
+            seller: seller.address,
+            queryId: 8,
+        },
+    });
+    expect(net.send(fakeEscrow.address, usernameDeposit)).toHaveSuccessfulTx();
     expect(marketplace.productV2(2)!!.status).toEqual(2);
     expect(marketplace.productV2(2)!!.extra.load().kind).toEqual(1);
 
     val numberItem = testing.treasury("v2FailureNumberItem").address;
     val numberCollection = testing.treasury("v2FailureNumberCollection").address;
-    val publishNumber = marketplace.sendPublishProductV2(
-        seller.address,
-        3,
-        9,
-        numberItem,
-        numberCollection,
-        4244,
-        2,
-        grams("6"),
-        { value: grams("0.2") },
-    );
-    expect(publishNumber).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendPublishProductV2(
+            seller.address,
+            3,
+            9,
+            numberItem,
+            numberCollection,
+            4244,
+            2,
+            grams("6"),
+            { value: grams("0.2") },
+        ),
+    ).toHaveSuccessfulTx();
+    val numberDeposit = createMessage({
+        bounce: BounceMode.Only256BitsOfBody,
+        value: grams("0.03"),
+        dest: marketplace.address,
+        body: EscrowDepositedV2 {
+            escrowId: 3,
+            productId: 3,
+            nftItem: numberItem,
+            seller: seller.address,
+            queryId: 9,
+        },
+    });
+    expect(net.send(fakeEscrow.address, numberDeposit)).toHaveSuccessfulTx();
     expect(marketplace.productV2(3)!!.status).toEqual(2);
     expect(marketplace.productV2(3)!!.extra.load().kind).toEqual(2);
 }
