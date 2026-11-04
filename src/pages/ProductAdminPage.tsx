@@ -1,503 +1,211 @@
-﻿
-import { useEffect, useRef, useState } from "react"
-import type { ChangeEvent } from "react"
-import type { ProductType } from "../types/product"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { TonConnectButton } from "@tonconnect/ui-react";
+import { anonymousSupabase, ensureAnonymousSession, supabase } from "../lib/supabase";
+import { useVerifiedTonWallet } from "../hooks/useVerifiedTonWallet";
 
-type DraftProduct = {
-  identifier: string
-  type: ProductType
-  title: string
-  description: string
-  priceTon: string
-}
+const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78";
 
-function identifyProduct(value: string): ProductType | null {
-  const input = value.trim()
+type Asset = {
+  address: string;
+  type: "username" | "phone_number" | "gift";
+  name: string;
+  item_index: string;
+};
 
+function parseIdentifier(value: string):
+  | { type: Asset["type"]; value: string }
+  | null {
+  const input = value.trim();
   if (/^@[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(input)) {
-    return "username"
+    return { type: "username", value: input.slice(1).toLowerCase() };
   }
-
-  if (/^\+888[0-9]+$/.test(input)) {
-    return "number"
+  if (/^\+888(?:[\s-]*\d){6,}$/.test(input)) {
+    return { type: "phone_number", value: input.replace(/\D/g, "") };
   }
-
-  return null
+  if (/^#[a-zA-Z0-9_-]{3,32}$/.test(input)) {
+    return { type: "gift", value: input.slice(1).toLowerCase() };
+  }
+  return null;
 }
 
-function getDefaultDescription(
-  identifier: string,
-  type: ProductType,
-): string {
-  if (type === "username") {
-    const username = identifier.trim().slice(1)
-
-    return `The @${username} username on Telegram. Aliases: ${username}.t.me, t.me/${username}`
+function matchesAsset(asset: Asset, identifier: { type: Asset["type"]; value: string }) {
+  if (asset.type !== identifier.type) return false;
+  const name = asset.name.trim().toLowerCase();
+  if (identifier.type === "username") {
+    return name.replace(/^@/, "") === identifier.value;
   }
-
-  if (type === "number") {
-    const number = identifier.trim()
-    const match = number.match(/^(\+888)(\d{4})(\d{4})$/)
-
-    const formattedNumber = match
-      ? `${match[1]} ${match[2]} ${match[3]}`
-      : number
-
-    return `The anonymous number ${formattedNumber} that can be used to create a Telegram account that is not tied to a SIM card.`
+  if (identifier.type === "phone_number") {
+    return name.replace(/\D/g, "") === identifier.value;
   }
-
-  return ""
-}
-
-const TYPE_LABELS: Record<ProductType, string> = {
-  username: "Telegram 收藏用户名",
-  number: "Telegram +888 收藏号码",
-  gift: "Telegram 收藏礼物",
-}
-
-const INITIAL_DRAFT: DraftProduct = {
-  identifier: "",
-  type: "username",
-  title: "",
-  description: "",
-  priceTon: "",
+  const serial = name.match(/#([a-z0-9_-]+)/i)?.[1]?.toLowerCase();
+  return serial === identifier.value ||
+    asset.item_index === identifier.value ||
+    asset.item_index.replace(/^0+/, "") === identifier.value.replace(/^0+/, "");
 }
 
 export function ProductAdminPage() {
-  const [draft, setDraft] = useState<DraftProduct>({
-    ...INITIAL_DRAFT,
-  })
+  const navigate = useNavigate();
+  const { walletAddress, connecting, verifying, proofMessage, isWalletVerified, connectAndVerifyWallet } =
+    useVerifiedTonWallet();
+  const [identifier, setIdentifier] = useState("");
+  const [price, setPrice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const [imageUrl, setImageUrl] = useState("")
-  const [imageName, setImageName] = useState("")
-  const [imageError, setImageError] = useState("")
-  const [message, setMessage] = useState("")
-  const [previewReady, setPreviewReady] = useState(false)
-  const saving = false
-  const [published, setPublished] = useState(false)
-
-  const imageInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    return () => {
-      if (imageUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(imageUrl)
-      }
+  async function handleContinue() {
+    if (busy) return;
+    const parsed = parseIdentifier(identifier);
+    if (!parsed) {
+      setMessage("格式不正确。请使用 @用户名、+888 电话号码或 #礼物编号。");
+      return;
     }
-  }, [imageUrl])
+    const amount = Number(price);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
+      setMessage("请输入大于 0 的有效 TON 售价。");
+      return;
+    }
+    if (!isWalletVerified || !walletAddress) {
+      setMessage("请先连接并完成 TON 主网钱包签名验证。");
+      return;
+    }
 
-  function handleIdentifierChange(value: string) {
-    const identifier = value.trim()
-    const detectedType = identifyProduct(identifier)
-
-    setDraft((previous) => {
-      if (!detectedType) {
-        return {
-          ...previous,
-          identifier: value,
-          description: "",
-        }
+    setBusy(true);
+    setMessage("正在核验管理员身份、钱包持有权和 Telegram 官方 NFT 集合……");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || authData.user?.id !== ADMIN_UID) {
+        throw new Error("当前账号不是授权管理员。");
       }
 
-      return {
-        ...previous,
-        identifier: value,
-        type: detectedType,
-        title: identifier,
-        description: getDefaultDescription(
-          identifier,
-          detectedType,
-        ),
+      await ensureAnonymousSession();
+      const { data, error } = await anonymousSupabase.functions.invoke(
+        "nft-wallet-assets",
+        { body: { wallet_address: walletAddress } },
+      );
+      if (error || data?.success !== true || !Array.isArray(data.items)) {
+        throw new Error(data?.error || error?.message || "无法读取已验证钱包中的 NFT。");
       }
-    })
 
-    setMessage("")
-    setPreviewReady(false)
-  }
+      const assets = data.items as Asset[];
+      const matches = assets.filter((asset) => matchesAsset(asset, parsed));
+      if (matches.length === 0) {
+        throw new Error("没有找到匹配的 NFT。请确认该资产属于当前已验证的钱包，且属于商城启用的 Telegram 官方 NFT 集合。");
+      }
+      if (matches.length > 1) {
+        throw new Error("找到多个匹配资产，无法安全确定唯一 NFT。请使用更精确的礼物编号。");
+      }
 
-  function handleImageFile(file: File, input?: HTMLInputElement) {
-    setImageError("")
-    setMessage("")
-    setPreviewReady(false)
-
-    if (!file.type.startsWith("image/")) {
-      setImageName("")
-      setImageUrl("")
-      setImageError("请选择图片文件。")
-      if (input) input.value = ""
-      return
+      const asset = matches[0];
+      const params = new URLSearchParams({
+        adminQuick: "1",
+        asset: asset.address,
+        price: String(amount),
+      });
+      navigate("/publish?" + params.toString());
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "核验失败，请稍后重试。");
+    } finally {
+      setBusy(false);
     }
-
-    if (file.size > 5 * 1024 * 1024) {
-        setImageName("")
-      setImageUrl("")
-      setImageError("图片不能超过 5 MB。")
-      if (input) input.value = ""
-      return
-    }
-
-    setImageUrl(URL.createObjectURL(file))
-    setImageName(file.name || "剪贴板图片")
-  }
-
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (file) handleImageFile(file, event.target)
-  }
-
-  useEffect(() => {
-    function handlePaste(event: ClipboardEvent) {
-      if (saving || published) return
-      const items = event.clipboardData?.items
-      if (!items) return
-
-      const item = Array.from(items).find((entry) =>
-        entry.type.startsWith("image/"),
-      )
-      const file = item?.getAsFile()
-      if (!file) return
-
-      event.preventDefault()
-      handleImageFile(file)
-    }
-
-    window.addEventListener("paste", handlePaste)
-    return () => window.removeEventListener("paste", handlePaste)
-  }, [saving, published])
-  function validateDraft(): ProductType | null {
-    if (!draft.identifier.trim()) {
-      setMessage("请先输入 Telegram 用户名或 +888 号码。")
-      return null
-    }
-
-    const detectedType = identifyProduct(draft.identifier)
-
-    if (!detectedType) {
-      setMessage(
-        "目前仅支持标准 Telegram 用户名（@开头）和 +888 数字号码。",
-      )
-      return null
-    }
-
-    if (!draft.title.trim()) {
-      setMessage("请填写商品名称。")
-      return null
-    }
-
-    if (
-      draft.priceTon.trim() === "" ||
-      !Number.isFinite(Number(draft.priceTon)) ||
-      Number(draft.priceTon) <= 0
-    ) {
-      setMessage("请输入大于 0 的有效 GRAM 售价。")
-      return null
-    }
-
-    if (imageError) {
-      setMessage("请先修正商品图片错误，或重新选择图片。")
-      return null
-    }
-
-    return detectedType
-  }
-
-  function handlePreview() {
-    const detectedType = validateDraft()
-
-    if (!detectedType) return
-
-    setDraft((previous) => ({
-      ...previous,
-      type: detectedType,
-      description: getDefaultDescription(
-        previous.identifier,
-        detectedType,
-      ),
-    }))
-
-    setPreviewReady(true)
-    setMessage("预览已生成，请检查信息后再发布。")
-  }
-
-  function handleNewProduct() {
-    if (saving) return
-
-    setDraft({ ...INITIAL_DRAFT })
-    setImageUrl("")
-    setImageName("")
-    setImageError("")
-    setMessage("")
-    setPreviewReady(false)
-    setPublished(false)
-
-    if (imageInputRef.current) {
-      imageInputRef.current.value = ""
-    }
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    })
-  }
-
-  async function handlePublish() {
-    setMessage("手动创建商品已关闭。商城只允许通过 TON 主网 Marketplace V2 托管流程上架钱包实际持有的 NFT。")
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-widest text-zinc-500">
-            TON MARKETPLACE
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">
-            上传商品
-          </h1>
+          <p className="text-xs uppercase tracking-widest text-zinc-500">TON MARKETPLACE</p>
+          <h1 className="mt-2 text-3xl font-semibold text-white">管理员快速上传</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            输入商品标识，填写售价并上传图片，检查后发布商品。
+            输入 Telegram NFT 标识和售价。图片、名称及描述均从链上 NFT 元数据读取。
           </p>
         </div>
         <button
           type="button"
           onClick={() => window.location.assign("/admin/manage-products")}
-          className="rounded-full border border-green-400/40 px-4 py-2 text-sm font-medium text-green-300 transition hover:bg-green-400/10"
+          className="rounded-full border border-green-400/40 px-4 py-2 text-sm font-medium text-green-300 hover:bg-green-400/10"
         >
           下架商品
         </button>
       </header>
 
-      <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm text-amber-200">
-        手动商品发布已停用。只有经过链上托管验证的 Telegram NFT 才能公开上架。
-      </div>
-
-      <section className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <div>
-          <label
-            htmlFor="product-identifier"
-            className="mb-2 block text-sm text-zinc-300"
-          >
-            Telegram 用户名或 +888 号码
-          </label>
-          <input
-            id="product-identifier"
-            value={draft.identifier}
-            onChange={(event) =>
-              handleIdentifierChange(event.target.value)
-            }
-            placeholder="@example 或 +88812345678"
-            disabled={saving || published}
-            className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-60"
-          />
-          <p className="mt-2 text-xs text-zinc-500">
-            当前仅识别输入格式，不代表已经核实商品真实性或所有权。
+      <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="space-y-2">
+          <h2 className="font-medium text-white">管理员钱包验证</h2>
+          {!walletAddress ? (
+            <button
+              type="button"
+              onClick={() => void connectAndVerifyWallet()}
+              disabled={connecting || verifying}
+              className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-black disabled:opacity-50"
+            >
+              {connecting ? "正在连接……" : "连接并验证 TON 主网钱包"}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="break-all rounded-xl bg-black/20 p-3 text-xs text-zinc-400">{walletAddress}</p>
+              <TonConnectButton />
+              {!isWalletVerified && (
+                <button
+                  type="button"
+                  onClick={() => void connectAndVerifyWallet()}
+                  disabled={connecting || verifying}
+                  className="w-full rounded-full border border-white/20 px-5 py-3 text-sm text-white disabled:opacity-50"
+                >
+                  {verifying ? "正在验证……" : "重新连接并验证钱包"}
+                </button>
+              )}
+            </div>
+          )}
+          {proofMessage && <p className="text-xs text-zinc-400">{proofMessage}</p>}
+          <p className="text-xs text-zinc-500">
+            只读取通过 TON Proof 验证的钱包资产；服务端还会核对官方 NFT 集合及当前持有人。
           </p>
         </div>
 
-        <div>
-          <label
-            htmlFor="product-type"
-            className="mb-2 block text-sm text-zinc-300"
-          >
-            商品类型
-          </label>
-          <select
-            id="product-type"
-            value={draft.type}
-            disabled={saving || published}
-            onChange={(event) => {
-              const type = event.target.value as ProductType
-
-              setDraft((previous) => ({
-                ...previous,
-                type,
-                description: getDefaultDescription(
-                  previous.identifier,
-                  type,
-                ),
-              }))
-              setMessage("")
-              setPreviewReady(false)
-            }}
-            className="w-full rounded-xl border border-white/15 bg-[#0b0d12] px-4 py-3 text-white disabled:opacity-60"
-          >
-            {Object.entries(TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="product-title"
-            className="mb-2 block text-sm text-zinc-300"
-          >
-            商品名称
-          </label>
+        <div className="space-y-2">
+          <label htmlFor="admin-product-identifier" className="block text-sm text-zinc-300">商品标识</label>
           <input
-            id="product-title"
-            value={draft.title}
-            onChange={(event) => {
-              setDraft((previous) => ({
-                ...previous,
-                title: event.target.value,
-              }))
-              setPreviewReady(false)
-            }}
-            placeholder="请输入商品名称"
-            disabled={saving || published}
-            className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-60"
+            id="admin-product-identifier"
+            value={identifier}
+            onChange={(event) => { setIdentifier(event.target.value); setMessage(""); }}
+            placeholder="@username、+888 1234 5678 或 #123456"
+            disabled={busy}
+            className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
+          <p className="text-xs text-zinc-500">支持：@用户名、+888 号码、#礼物编号。</p>
         </div>
 
-        <div>
-          <label
-            htmlFor="product-price"
-            className="mb-2 block text-sm text-zinc-300"
-          >
-            售价（GRAM）
-          </label>
+        <div className="space-y-2">
+          <label htmlFor="admin-product-price" className="block text-sm text-zinc-300">售价（TON）</label>
           <input
-            id="product-price"
+            id="admin-product-price"
             type="number"
             min="0"
             step="any"
-            value={draft.priceTon}
-            onChange={(event) => {
-              setDraft((previous) => ({
-                ...previous,
-                priceTon: event.target.value,
-              }))
-              setPreviewReady(false)
-            }}
-            placeholder="例如 25"
-            disabled={saving || published}
-            className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-60"
+            value={price}
+            onChange={(event) => { setPrice(event.target.value); setMessage(""); }}
+            placeholder="请输入售价"
+            disabled={busy}
+            className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
         </div>
-
-        <div>
-          <label
-            htmlFor="product-image"
-            className="mb-2 block text-sm text-zinc-300"
-          >
-            商品图片（可选，最大 5 MB）
-          </label>
-          <input
-            ref={imageInputRef}
-            id="product-image"
-            type="file"
-            accept="image/*"
-            disabled={saving || published}
-            onChange={handleImageChange}
-            className="block w-full text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-2 file:font-medium file:text-black disabled:opacity-60"
-          />
-          {imageName && (
-            <p className="mt-2 text-xs text-zinc-500">
-              已选择：{imageName}
-            </p>
-          )}
-          {imageError && (
-            <p className="mt-2 text-sm text-red-300">{imageError}</p>
-          )}
-        </div>
-
-        {imageUrl && !imageError && (
-          <div
-            className="aspect-square w-full max-w-md shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/20"
-          >
-            <img
-              src={imageUrl}
-              alt="商品图片预览"
-              className="h-full w-full object-contain"
-            />
-          </div>
-        )}
 
         <button
           type="button"
-          onClick={handlePreview}
-          disabled={saving || published}
-          className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => void handleContinue()}
+          disabled={busy || !isWalletVerified}
+          className="w-full rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-50"
         >
-          检查并生成预览
+          {busy ? "正在链上核验……" : "验证 NFT 并继续托管上架"}
         </button>
 
-        {message && (
-          <p
-            role="status"
-            className={`break-words rounded-xl border p-3 text-sm ${
-              published
-                ? "border-emerald-400/30 text-emerald-200"
-                : "border-white/10 text-zinc-200"
-            }`}
-          >
-            {message}
-          </p>
-        )}
+        {message && <p role="status" className="break-words rounded-xl border border-white/10 p-3 text-sm text-zinc-200">{message}</p>}
       </section>
 
-      {previewReady && (
-        <section className="space-y-3 rounded-2xl border border-emerald-400/20 p-5">
-          <h2 className="text-xl font-medium text-white">商品预览</h2>
-          <p className="text-sm text-zinc-400">
-            {TYPE_LABELS[draft.type]}
-          </p>
-
-          {imageUrl && (
-            <div
-              className="aspect-square w-full max-w-md shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/20"
-            >
-              <img
-                src={imageUrl}
-                alt={draft.title}
-                className="h-full w-full object-contain"
-              />
-            </div>
-          )}
-
-          <h3 className="text-2xl font-semibold text-white">
-            {draft.title}
-          </h3>
-
-          <p className="whitespace-pre-wrap break-words text-sm text-zinc-300">
-            {getDefaultDescription(draft.identifier, draft.type) ||
-              "暂无默认描述"}
-          </p>
-
-          <p className="text-xl font-semibold text-emerald-300">
-            {Number(draft.priceTon)} GRAM
-          </p>
-
-          <p className="text-xs text-zinc-500">
-            标识：{draft.identifier.trim()}
-          </p>
-
-          {!published ? (
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled
-              className="w-full rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {"仅支持链上 NFT 托管上架"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleNewProduct}
-              disabled={saving}
-              className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              录入下一件商品
-            </button>
-          )}
-        </section>
-      )}
+      <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4 text-sm leading-6 text-amber-100">
+        输入标识不会直接创建公开商品。只有后续 Marketplace V2 链上托管登记、NFT 转移和服务端核验全部成功后，商品才会公开上架。
+      </div>
     </div>
-  )
+  );
 }
-
-
