@@ -16,14 +16,6 @@ contract TestMarketplaceEscrowV2 {
     incomingMessages: TestMarketplaceEscrowV2AllowedMessage
 }
 
-fun TestMarketplaceEscrowV2Storage.load(): TestMarketplaceEscrowV2Storage {
-    return TestMarketplaceEscrowV2Storage.fromCell(contract.getData());
-}
-
-fun TestMarketplaceEscrowV2Storage.save(self) {
-    contract.setData(self.toCell());
-}
-
 fun onInternalMessage(in: InMessage) {
     val msg = lazy TestMarketplaceEscrowV2AllowedMessage.fromSlice(in.body);
     match (msg) {
