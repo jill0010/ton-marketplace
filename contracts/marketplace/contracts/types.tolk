@@ -623,6 +623,8 @@ fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
 
 // Isolated Marketplace V2 purchase, escrow delivery, payout and refund protocol.
 struct (0x71b0000A) PublishProductV2 {
+    expectedProductId: uint64
+    queryId: uint64
     nftItem: address
     collection: address
     itemIndex: uint256
