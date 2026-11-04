@@ -182,7 +182,7 @@ export function FragmentCatalogPage() {
                 <p className="text-xs text-zinc-500">{typeLabel(item.item_type, language)}</p>
                 <h2 className="truncate font-semibold text-white">{item.title}</h2>
                 <p className="text-lg font-semibold text-emerald-300">
-                  {formatGram(item.listing_kind === "auction" ? item.minimum_bid_nano : item.current_price_nano)} GRAM
+                  {formatGram(item.listing_kind === "auction" ? item.minimum_bid_nano : item.current_price_nano)} TON
                 </p>
                 {item.auction_ends_at && (
                   <p className="text-xs text-zinc-400">
