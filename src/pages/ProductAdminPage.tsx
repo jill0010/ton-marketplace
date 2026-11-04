@@ -140,7 +140,8 @@ export function ProductAdminPage() {
       PORTALS_LOOKUP_FAILED: "Portals 礼物查询接口暂时失败，请稍后重试。",
       TON_NFT_VERIFICATION_FAILED: "Portals 已找到礼物，但读取 TON 链上 NFT 失败。请稍后重试。",
       GIFT_NOT_MINTED: "Portals 找到了礼物，但它尚未铸造为 TON NFT，暂时不能作为链上 NFT 发布。",
-      IDENTIFIER_INDEX_REQUIRED: "标识格式正确，但目前还没有用户名/888号码反查索引。可以先输入该 NFT 的 TON 原始地址进行链上核验。",
+      IDENTIFIER_INDEX_REQUIRED: "当前索引尚未收录该标识。请先点击“同步用户名 / +888 NFT 索引”，同步后重新识别。",
+      NFT_IDENTIFIER_AMBIGUOUS: "索引中存在多个同名 NFT，暂不能自动选择，请输入 TON NFT 原始地址核对。",
       GIFT_NOT_FOUND_OR_NOT_MINTED: "没有找到该礼物，或者该礼物尚未铸造为 TON NFT。",
       COLLECTION_NOT_ALLOWLISTED: "NFT 地址有效，但所属 Collection 不在官方白名单中，不能作为已核验商品发布。",
     };
