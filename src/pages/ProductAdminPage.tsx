@@ -116,7 +116,24 @@ export function ProductAdminPage() {
     setMessage("");
     try {
       const { data, error } = await supabase.functions.invoke("telegram-nft-index-sync", { body: {} });
-      if (error) throw new Error(error.message || "索引同步失败。");
+      if (error) {
+        let detail = error.message || "索引同步失败。";
+        const context = (error as { context?: { clone?: () => Response; json?: () => Promise<unknown>; status?: number } }).context;
+        if (context && typeof context.json === "function") {
+          try {
+            const response = typeof context.clone === "function" ? context.clone() : context as Response;
+            const payload = await response.json() as { message?: string; error?: string; stage?: string; missing_environment?: string[] };
+            detail = [
+              payload.message || payload.error || detail,
+              payload.stage ? "执行阶段：" + payload.stage : "",
+              payload.missing_environment?.length ? "缺少配置：" + payload.missing_environment.join("、") : "",
+            ].filter(Boolean).join(" ");
+          } catch {
+            detail = detail + "（HTTP " + (context.status ?? "未知状态") + "）";
+          }
+        }
+        throw new Error(detail);
+      }
       if (!data?.success) throw new Error(data?.message || data?.error || "索引同步失败。");
       const details = Array.isArray(data.results)
         ? data.results.map((item: { asset_type?: string; synced?: number; total_synced?: number; complete?: boolean }) =>
@@ -269,7 +286,7 @@ export function ProductAdminPage() {
           disabled={syncingIndex || resolving || publishing}
           className="w-full rounded-full border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-sm font-semibold text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {syncingIndex ? "正在同步 Telegram NFT 索引……" : "同步用户名 / +888 NFT 索引（每次最多 200 项）"}
+          {syncingIndex ? "正在同步 Telegram NFT 索引……" : "同步用户名 / +888 NFT 索引（每次最多 2000 项）"}
         </button>
 
         <button
