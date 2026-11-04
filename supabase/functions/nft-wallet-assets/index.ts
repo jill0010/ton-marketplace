@@ -16,6 +16,7 @@ import { handleCors, jsonResponse } from "./shared/http.ts";
 
 type TonCenterNft = {
   address?: string;
+  index?: number | string;
   collection_address?: string;
   owner_address?: string;
   init?: boolean;
@@ -173,6 +174,14 @@ Deno.serve(async (request: Request) => {
 
       if (!isWalletOwner(nft.owner_address, walletAddress)) continue;
 
+      const itemIndex = typeof nft.index === "number" && Number.isSafeInteger(nft.index) &&
+          nft.index >= 0
+        ? String(nft.index)
+        : typeof nft.index === "string" && /^\\d+$/.test(nft.index)
+        ? nft.index
+        : null;
+      if (itemIndex === null) continue;
+
       const assetType = allowedCollections.get(collectionAddress);
       if (!assetType) continue;
 
@@ -219,6 +228,7 @@ Deno.serve(async (request: Request) => {
       items.push({
         address: itemAddress,
         collection_address: collectionAddress,
+        item_index: itemIndex,
         type: assetType,
         name,
         description,
