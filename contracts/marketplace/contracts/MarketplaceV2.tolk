@@ -238,6 +238,7 @@ fun onInternalMessage(in: InMessage) {
             order.refundStatus = 1;
             orderStorage.orders.set(order.id, order.toCell());
             orderStorage.refundQueryToOrder.set(returnQueryId, order.id);
+            purchase.refundQueryToProduct.set(returnQueryId, order.productId);
             purchase.orders = orderStorage.toCell();
 
             val productResult = storage.products.get(order.productId);
