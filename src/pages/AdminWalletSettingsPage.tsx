@@ -15,7 +15,18 @@ type WalletSettings = {
 function normalizeMainnetAddress(value: string): string {
   const input = value.trim()
   if (!input) throw new Error("请填写 TON 主网钱包地址。")
-  const parsed = Address.parse(input)
+
+  let parsed: Address
+  if (/^[A-Za-z0-9_-]{48}$/.test(input)) {
+    const friendly = Address.parseFriendly(input)
+    if (friendly.isTestOnly) {
+      throw new Error("检测到 TON 测试网地址，不能保存为主网钱包。")
+    }
+    parsed = friendly.address
+  } else {
+    parsed = Address.parse(input)
+  }
+
   return parsed.toString({ bounceable: false, urlSafe: true, testOnly: false })
 }
 
