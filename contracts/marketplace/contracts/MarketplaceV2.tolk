@@ -107,10 +107,18 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.queryId != platformPayoutQueryId) throw ErrorsV2.InvalidPurchase;
             assert (msg.queryId != buyerRefundQueryId) throw ErrorsV2.InvalidPurchase;
             assert (msg.queryId > buyerRefundQueryId) throw ErrorsV2.InvalidPurchase;
-            assert (!orderStorage.paymentQueryToOrder.get(releaseQueryId).isFound) throw ErrorsV2.InvalidPurchase;
-            assert (!orderStorage.paymentQueryToOrder.get(sellerPayoutQueryId).isFound) throw ErrorsV2.InvalidPurchase;
-            assert (!orderStorage.paymentQueryToOrder.get(platformPayoutQueryId).isFound) throw ErrorsV2.InvalidPurchase;
-            assert (!orderStorage.paymentQueryToOrder.get(buyerRefundQueryId).isFound) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(releaseQueryId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(sellerPayoutQueryId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(platformPayoutQueryId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(buyerRefundQueryId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
 
             val amounts = calculateSettlementAmounts(product.price);
             val productExtra = product.extra.load();
@@ -248,7 +256,9 @@ fun onInternalMessage(in: InMessage) {
 
             val returnQueryId = storage.nextQueryId;
             assert (returnQueryId > 0) throw ErrorsV2.InvalidRefund;
-            assert (!orderStorage.paymentQueryToOrder.get(returnQueryId).isFound) throw ErrorsV2.InvalidRefund;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(returnQueryId).isFound
+            ) throw ErrorsV2.InvalidRefund;
             assert (
                 !orderStorage.refundQueryToOrder.get(returnQueryId).isFound
             ) throw ErrorsV2.InvalidRefund;
@@ -418,7 +428,9 @@ fun onInternalMessage(in: InMessage) {
 
             val newQueryId = storage.nextQueryId;
             assert (newQueryId > 0) throw ErrorsV2.InvalidPayout;
-            assert (!orderStorage.paymentQueryToOrder.get(newQueryId).isFound) throw ErrorsV2.InvalidPayout;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(newQueryId).isFound
+            ) throw ErrorsV2.InvalidPayout;
             assert (
                 !payoutStorage.payoutQueryToOperation.get(newQueryId).isFound
             ) throw ErrorsV2.InvalidPayout;
@@ -501,7 +513,9 @@ fun onInternalMessage(in: InMessage) {
             val purchase = storage.purchaseStorage.load();
             val orderStorage = purchase.orders.load();
             assert (productId > 0 && queryId > 0) throw ErrorsV2.InvalidRelease;
-            assert (!orderStorage.paymentQueryToOrder.get(queryId).isFound) throw ErrorsV2.InvalidRelease;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(queryId).isFound
+            ) throw ErrorsV2.InvalidRelease;
 
             val product = MarketplaceV2Product {
                 id: productId,
@@ -564,7 +578,9 @@ fun onInternalMessage(in: InMessage) {
                 val existingQuery = purchase.refundQueryToProduct.get(queryId);
                 val orderStorage = purchase.orders.load();
                 assert (!existingQuery.isFound) throw ErrorsV2.InvalidRefund;
-                assert (!orderStorage.paymentQueryToOrder.get(queryId).isFound) throw ErrorsV2.InvalidRefund;
+                assert (
+                    !orderStorage.paymentQueryToOrder.get(queryId).isFound
+                ) throw ErrorsV2.InvalidRefund;
 
                 product.status = 6;
                 product.refundQueryId = queryId;
