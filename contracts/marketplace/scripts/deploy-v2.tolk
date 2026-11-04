@@ -10,6 +10,11 @@ fun main() {
     val deployer = scripts.wallet("deployer");
     val treasury = scripts.wallet("treasury");
 
+    if (deployer.address == treasury.address) {
+        println("Deployment aborted: owner and platform treasury must be different wallets");
+        return;
+    }
+
     val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
         owner: deployer.address,
         escrow: deployer.address,
