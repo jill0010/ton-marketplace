@@ -1,5 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { Address } from "npm:@ton/core";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+import { Address } from "npm:@ton/core@0.63.1";
 
 const RECEIVER_FRIENDLY = "UQBLw8lmwDXPdZXudHrTPpLAfHQW5N55aQgBuH2Lqosjpiha";
 const ALLOWED_ORIGINS = new Set([
@@ -18,7 +18,7 @@ function reply(data: Record<string, unknown>, status: number, origin: string) {
   return Response.json(data, { status, headers: cors(origin) });
 }
 
-function serviceKey() {
+function toNano(value: string | number) {\n  const raw = String(value);\n  if (!/^\\d+(?:\\.\\d{1,9})?$/.test(raw)) throw new Error("Invalid GRAM amount");\n  const [whole, fraction = ""] = raw.split(".");\n  return (BigInt(whole) * 1_000_000_000n + BigInt((fraction + "000000000").slice(0, 9))).toString();\n}\n\nfunction serviceKey() {
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
   const keys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
       orderId: order.id,
       orderNo: order.order_no,
       amount: String(order.gram_amount),
-      amountNano: (BigInt(Math.round(Number(order.gram_amount) * 1e9))).toString(),
+      amountNano: toNano(order.gram_amount),
       usdRate: Number(order.gram_usd_rate),
       paymentAddress: order.payment_address,
       buyerWallet,
