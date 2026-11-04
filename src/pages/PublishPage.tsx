@@ -509,7 +509,7 @@ export function PublishPage() {
                   htmlFor="publish-price"
                   className="block text-sm text-zinc-300"
                 >
-                  {t("Price (TON)", "售价（TON）")}
+                  {t("Price (GRAM)", "售价（GRAM）")}
                 </label>
                 <input
                   id="publish-price"
@@ -519,7 +519,7 @@ export function PublishPage() {
                   step="any"
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
-                  placeholder={t("Enter price in TON", "请输入 TON 售价")}
+                  placeholder={t("Enter price in GRAM", "请输入 GRAM 售价")}
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-400"
                 />
               </div>
