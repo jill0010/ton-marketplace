@@ -4,13 +4,14 @@ import "@acton/testing/expect"
 
 import "@contracts/types"
 import "@contracts/TestMarketplaceEscrowV2"
+import "@contracts/RejectingMarketplaceCallback"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/TestMarketplaceEscrowV2.gen"
+import "@wrappers/RejectingMarketplaceCallback.gen"
 
 get fun `test Marketplace V2 returns buyer funds only after Escrow confirms seller NFT return`() {
     val owner = testing.treasury("v2FailureOwner");
     val seller = testing.treasury("v2FailureSeller");
-    val buyer = testing.treasury("v2FailureBuyer");
     val treasury = testing.treasury("v2FailureTreasury");
     val nftItem = testing.treasury("v2FailureNftItem").address;
     val collection = testing.treasury("v2FailureCollection").address;
@@ -50,12 +51,23 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         records: [],
     });
 
+    val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
+        controller: owner.address,
+        escrow: fakeEscrow.address,
+        rejectAction: true,
+    });
+    val buyer = rejector.address;
+
     expect(
         marketplace.deploy(owner.address, { value: grams("0.3") }),
     ).toHaveSuccessfulDeploy({ to: marketplace.address });
     expect(
         fakeEscrow.deploy(owner.address, { value: grams("0.3") }),
     ).toHaveSuccessfulDeploy({ to: fakeEscrow.address });
+
+    expect(
+        rejector.deploy(owner.address, { value: grams("0.3") }),
+    ).toHaveSuccessfulDeploy({ to: rejector.address });
 
     expect(
         marketplace.sendSetMarketplaceV2Escrow(
@@ -104,9 +116,9 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     // the exact EscrowRefundedV2 callback is received and acknowledged.
     val order = marketplace.orderV2(1);
     assert (order != null) throw ErrorsV2.InvalidRefund;
-    expect(order!!.status).toEqual(8);
+    expect(order!!.status).toEqual(6);
     expect(order.deliveryStatus).toEqual(3);
-    expect(order.refundStatus).toEqual(2);
+    expect(order.refundStatus).toEqual(3);
     expect(order.sellerPayoutStatus).toEqual(1);
     expect(order.platformPayoutStatus).toEqual(1);
 
@@ -119,8 +131,8 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     val buyerRefund = marketplace.payoutV2(operations.buyerRefundOperationId);
     assert (buyerRefund != null) throw ErrorsV2.InvalidPayout;
     expect(buyerRefund!!.kind).toEqual(3);
-    expect(buyerRefund.status).toEqual(2);
-    expect(buyerRefund.beneficiary).toEqual(buyer.address);
+    expect(buyerRefund.status).toEqual(3);
+    expect(buyerRefund.beneficiary).toEqual(buyer);
     expect(buyerRefund.amount).toEqual(grams("4"));
 
     val sellerPayout = marketplace.payoutV2(operations.sellerPayoutOperationId);
@@ -128,4 +140,28 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     assert (sellerPayout != null && platformPayout != null) throw ErrorsV2.InvalidPayout;
     expect(sellerPayout!!.status).toEqual(1);
     expect(platformPayout!!.status).toEqual(1);
+
+    expect(
+        rejector.sendSetRejectCallbackV2(
+            owner.address,
+            false,
+            { value: grams("0.02") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(rejector.rejectAction()).toEqual(false);
+
+    val retryBuyerRefund = marketplace.sendRetryPayoutV2(
+        owner.address,
+        operations.buyerRefundOperationId,
+        { value: grams("0.05") },
+    );
+    expect(retryBuyerRefund).toHaveSuccessfulTx();
+
+    val refundedOrder = marketplace.orderV2(1);
+    assert (refundedOrder != null) throw ErrorsV2.InvalidPayout;
+    expect(refundedOrder!!.status).toEqual(8);
+    expect(refundedOrder.refundStatus).toEqual(2);
+    val retriedRefund = marketplace.payoutV2(operations.buyerRefundOperationId);
+    assert (retriedRefund != null) throw ErrorsV2.InvalidPayout;
+    expect(retriedRefund!!.status).toEqual(2);
 }
