@@ -189,8 +189,8 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply({ success: false, error: "Method not allowed" }, 405, origin);
 
   try {
-    const token = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!token) return reply({ success: false, error: "Authentication required" }, 401, origin);
+    const authToken = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
+    if (!authToken) return reply({ success: false, error: "Authentication required" }, 401, origin);
 
     const url = Deno.env.get("SUPABASE_URL");
     const publishable = Deno.env.get("SUPABASE_ANON_KEY") ??
@@ -204,7 +204,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const auth = createClient(url, publishable, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: authData, error: authError } = await auth.auth.getUser(token);
+    const { data: authData, error: authError } = await auth.auth.getUser(authToken);
     if (authError || !authData.user || authData.user.is_anonymous !== true) {
       return reply({ success: false, error: "A valid anonymous buyer session is required" }, 401, origin);
     }
@@ -307,9 +307,9 @@ Deno.serve(async (req: Request) => {
     });
     if (!tokenResponse.ok) return reply({ success: false, error: "Unable to verify the NFT Item owner on TON Mainnet" }, 502, origin);
     const tokenData = await tokenResponse.json();
-    const token = tokenData?.result ?? tokenData;
-    const ownerValue = token?.owner_address ?? token?.owner;
-    const collectionValue = token?.collection_address ?? token?.collection;
+    const nftItemData = tokenData?.result ?? tokenData;
+    const ownerValue = nftItemData?.owner_address ?? nftItemData?.owner;
+    const collectionValue = nftItemData?.collection_address ?? nftItemData?.collection;
     if (typeof ownerValue !== "string" || Address.parse(ownerValue).toRawString() !== escrowRaw) {
       return reply({ success: false, code: "NFT_NOT_IN_ESCROW", error: "TON Mainnet does not report the NFT Item as owned by the Marketplace Escrow." }, 409, origin);
     }
