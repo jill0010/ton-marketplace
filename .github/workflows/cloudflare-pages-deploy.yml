@@ -35,13 +35,6 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_UkxpgfGVzKlZ4te8ccUSMg_0P1EqVBg
         run: npm run build
 
-      - name: List Cloudflare Pages projects
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project list
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
