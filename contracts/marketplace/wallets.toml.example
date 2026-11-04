@@ -1,6 +1,8 @@
 # Copy to wallets.toml locally. Never commit wallets.toml or mnemonic values.
-# Set DEPLOYER_MNEMONIC and TREASURY_MNEMONIC in your local environment or secure secret store.
-# Use separate wallets: deployer owns the Marketplace/Escrow contracts; treasury receives the 3% fee.
+# Set DEPLOYER_MNEMONIC in a local secure wallet store, or use --tonconnect for the deployer.
+# For emulation/testnet, TREASURY_MNEMONIC supplies a separate treasury wallet.
+# For mainnet --tonconnect, set PLATFORM_TREASURY_ADDRESS to the public fee wallet address;
+# no treasury private key is needed. Never commit wallets.toml or mnemonic values.
 
 [wallets.deployer]
 kind = "v5r1"
