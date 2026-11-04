@@ -1,0 +1,32 @@
+name: GRAM Payment Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/create-gram-premium-order/**"
+      - "supabase/functions/verify-gram-premium-payment/**"
+      - ".github/workflows/gram-payment-functions.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/create-gram-premium-order/**"
+      - "supabase/functions/verify-gram-premium-payment/**"
+      - ".github/workflows/gram-payment-functions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check GRAM Edge Functions
+        run: |
+          deno check supabase/functions/create-gram-premium-order/index.ts
+          deno check supabase/functions/verify-gram-premium-payment/index.ts
