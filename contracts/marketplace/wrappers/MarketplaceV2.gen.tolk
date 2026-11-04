@@ -111,6 +111,21 @@ fun MarketplaceV2.sendBuyProductV2(
     return net.send(from, genericMsg);
 }
 
+fun MarketplaceV2.sendRetryPayoutV2(
+    self,
+    from: address,
+    operationId: uint64,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: RetryPayoutV2 { operationId },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun MarketplaceV2.sendCancelProductV2(
     self,
     from: address,
