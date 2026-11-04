@@ -103,9 +103,19 @@ Deno.serve(async (request: Request) => {
 
     if (body.action === "next-listing-ids") {
       const marketplace = requireConfiguredAddress("MARKETPLACE_V2_ADDRESS");
-      const [nextProductId, nextQueryId] = await Promise.all([
+      const escrow = requireConfiguredAddress("NFT_ESCROW_V2_ADDRESS");
+      const [
+        nextProductId,
+        nextQueryId,
+        escrowConfigured,
+        treasuryConfigured,
+        treasury,
+      ] = await Promise.all([
         runGetMethod(marketplace, "nextProductIdV2"),
         runGetMethod(marketplace, "nextQueryIdV2"),
+        runGetMethod(marketplace, "escrowConfiguredV2"),
+        runGetMethod(marketplace, "treasuryConfiguredV2"),
+        runGetMethod(marketplace, "treasuryV2"),
       ]);
 
       if (
@@ -119,6 +129,11 @@ Deno.serve(async (request: Request) => {
         success: true,
         next_product_id: nextProductId.toString(),
         next_query_id: nextQueryId.toString(),
+        marketplace_address: marketplace,
+        escrow_address: escrow,
+        escrow_configured: escrowConfigured === 1n,
+        treasury_configured: treasuryConfigured === 1n,
+        treasury_address: treasury.toString(),
       });
     }
 
