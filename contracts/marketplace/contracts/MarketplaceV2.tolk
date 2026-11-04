@@ -504,9 +504,7 @@ fun onInternalMessage(in: InMessage) {
             val publishExtra = msg.extra.load();
             assert (publishExtra.price > 0) throw ErrorsV2.InvalidRelease;
             assert (
-                publishExtra.kind == 1 ||
-                publishExtra.kind == 2 ||
-                publishExtra.kind == 3
+                publishExtra.kind == 1 || publishExtra.kind == 2 || publishExtra.kind == 3
             ) throw ErrorsV2.InvalidRelease;
 
             // Reserve the NFT Item before asking Escrow to create its custody record.
