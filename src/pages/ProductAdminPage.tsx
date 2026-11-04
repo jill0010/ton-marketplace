@@ -124,7 +124,24 @@ export function ProductAdminPage() {
         : "";
       setMessage(`索引同步完成。${details ? " " + details : ""} 若仍有后续页，可再次点击继续。`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "索引同步失败。");
+      let message = error instanceof Error ? error.message : "索引同步失败。";
+      const context = error && typeof error === "object" && "context" in error
+        ? (error as { context?: unknown }).context
+        : null;
+      if (context instanceof Response) {
+        try {
+          const payload = await context.clone().json() as { message?: string; error?: string; missing_environment?: string[] };
+          message = [
+            payload.message || payload.error || message,
+            payload.missing_environment?.length
+              ? `缺少配置：${payload.missing_environment.join("、")}`
+              : "",
+          ].filter(Boolean).join(" ");
+        } catch {
+          // Keep the original FunctionsHttpError message if the response is not JSON.
+        }
+      }
+      setMessage(message);
     } finally {
       setSyncingIndex(false);
     }
