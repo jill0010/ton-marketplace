@@ -222,6 +222,9 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(afterForgedTransfer.isSuccess()).toEqual(true);
     expect(afterForgedTransfer.unwrap().get(3) as address).toEqual(seller.address);
 
+    // The Escrow query index must be absent before Marketplace registration.
+    expect(escrow.escrowIdForQueryV2(1)).toEqual(0);
+
     // Publish from the real seller wallet; Marketplace reserves the item and
     // Escrow creates the pending custody record before the NFT transfer.
     expect(
@@ -244,6 +247,9 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val pendingRecord = escrow.escrowRecordV2(1);
     assert (pendingRecord != null) throw ErrorsV2.InvalidRelease;
     expect(pendingRecord!!.status).toEqual(0);
+    // The client can now prove CreateEscrowV2 was processed before it
+    // submits the separate TEP-62 ownership transfer transaction.
+    expect(escrow.escrowIdForQueryV2(1)).toEqual(1);
 
     // Execute a standard TEP-62 transfer from the seller to the escrow. The
     // allowlisted NFT Item contract itself must update ownership and emit the
