@@ -8,6 +8,7 @@ import "@acton/types/transaction"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/NFTEscrowV2.gen"
+import "@wrappers/RejectingMarketplaceCallback.gen"
 
 get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62 transfer`() {
     testing.registerLibrary(
@@ -18,7 +19,11 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val owner = testing.treasury("marketplaceV2OfficialItemOwner");
     val attacker = testing.treasury("marketplaceV2OfficialItemAttacker");
     val buyer = testing.treasury("marketplaceV2OfficialItemBuyer");
-    val treasury = testing.treasury("marketplaceV2OfficialItemTreasury");
+    val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
+        controller: owner.address,
+        escrow: owner.address,
+        rejectAction: true,
+    });
 
     val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
         owner: owner.address,
@@ -82,6 +87,10 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     ).toHaveSuccessfulDeploy({ to: escrow.address });
 
     expect(
+        rejector.deploy(owner.address, { value: grams("0.2") }),
+    ).toHaveSuccessfulDeploy({ to: rejector.address });
+
+    expect(
         marketplace.sendSetMarketplaceV2Escrow(
             owner.address,
             escrow.address,
@@ -92,11 +101,12 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(
         marketplace.sendSetMarketplaceV2Treasury(
             owner.address,
-            treasury.address,
+            rejector.address,
             { value: grams("0.02") },
         ),
     ).toHaveSuccessfulTx();
-    expect(marketplace.treasuryV2()).toEqual(treasury.address);
+    expect(marketplace.treasuryV2()).toEqual(rejector.address);
+    expect(rejector.rejectAction()).toEqual(true);
     expect(marketplace.treasuryConfiguredV2()).toEqual(true);
 
     // Register the exact allowlisted Fragment Gift Item Code and approve its collection.
@@ -393,10 +403,12 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
 
     val deliveredOrder = marketplace.orderV2(1);
     assert (deliveredOrder != null) throw ErrorsV2.InvalidDelivery;
-    expect(deliveredOrder!!.status).toEqual(5);
+    // Seller payout succeeds, while the test-only treasury deliberately
+    // fails its action phase so only the platform leg is marked Bounced.
+    expect(deliveredOrder!!.status).toEqual(4);
     expect(deliveredOrder.deliveryStatus).toEqual(2);
     expect(deliveredOrder.sellerPayoutStatus).toEqual(2);
-    expect(deliveredOrder.platformPayoutStatus).toEqual(2);
+    expect(deliveredOrder.platformPayoutStatus).toEqual(3);
     val deliveredExtra = deliveredOrder.extra.load();
     val deliveredSettlement = deliveredExtra.settlement.load();
     expect(deliveredSettlement.gross).toEqual(grams("4"));
@@ -406,6 +418,30 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         deliveredSettlement.platformFee + deliveredSettlement.sellerProceeds,
     ).toEqual(deliveredSettlement.gross);
     expect(deliveredSettlement.feeBps).toEqual(300);
+
+    val deliveredOperations = deliveredExtra.operations.load();
+    expect(rejector.rejectAction()).toEqual(true);
+    expect(
+        rejector.sendSetRejectCallbackV2(
+            owner.address,
+            false,
+            { value: grams("0.02") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(rejector.rejectAction()).toEqual(false);
+
+    val retryPlatformPayout = marketplace.sendRetryPayoutV2(
+        buyer.address,
+        deliveredOperations.platformPayoutOperationId,
+        { value: grams("0.05") },
+    );
+    expect(retryPlatformPayout).toHaveSuccessfulTx();
+
+    val settledOrder = marketplace.orderV2(1);
+    assert (settledOrder != null) throw ErrorsV2.InvalidPayout;
+    expect(settledOrder!!.status).toEqual(5);
+    expect(settledOrder.sellerPayoutStatus).toEqual(2);
+    expect(settledOrder.platformPayoutStatus).toEqual(2);
 
     expect(marketplace.productV2(1)!!.status).toEqual(3);
     expect(escrow.escrowRecordV2(1)!!.status).toEqual(3);
