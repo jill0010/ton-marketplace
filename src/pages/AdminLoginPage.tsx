@@ -1,4 +1,3 @@
-
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
@@ -11,11 +10,14 @@ export function AdminLoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
+    setNotice("")
     setLoading(true)
 
     try {
@@ -41,6 +43,29 @@ export function AdminLoginPage() {
       )
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handlePasswordReset() {
+    setError("")
+    setNotice("")
+    if (!email.trim()) {
+      setError("请先输入管理员邮箱，再点击忘记密码。")
+      return
+    }
+
+    setResetLoading(true)
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        { redirectTo: `${window.location.origin}/admin/reset-password` },
+      )
+      if (resetError) throw resetError
+      setNotice("密码重置邮件已发送。请打开最新邮件中的链接，在本页面设置新密码。")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "发送失败，请稍后重试。")
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -97,6 +122,11 @@ export function AdminLoginPage() {
               {error}
             </p>
           )}
+          {notice && (
+            <p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-sm text-emerald-300">
+              {notice}
+            </p>
+          )}
 
           <button
             type="submit"
@@ -106,6 +136,14 @@ export function AdminLoginPage() {
             {loading ? "正在登录…" : "登录管理后台"}
           </button>
         </form>
+        <button
+          type="button"
+          onClick={() => void handlePasswordReset()}
+          disabled={resetLoading}
+          className="mt-4 w-full text-center text-sm text-zinc-400 underline decoration-zinc-600 underline-offset-4 hover:text-white disabled:opacity-50"
+        >
+          {resetLoading ? "正在发送…" : "忘记密码？发送重置邮件"}
+        </button>
       </section>
     </main>
   )
