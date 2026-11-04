@@ -70,6 +70,9 @@ fun onInternalMessage(in: InMessage) {
             assert (product.id == msg.productId) throw ErrorsV2.InvalidPurchase;
             assert (product.status == 2 && product.escrowId > 0) throw ErrorsV2.InvalidPurchase;
             assert (in.senderAddress != product.seller) throw ErrorsV2.InvalidPurchase;
+            assert (in.senderAddress != storage.escrow) throw ErrorsV2.InvalidPurchase;
+            assert (in.senderAddress != contract.getAddress()) throw ErrorsV2.InvalidPurchase;
+            assert (in.senderAddress != product.nftItem) throw ErrorsV2.InvalidPurchase;
             assert (msg.expectedPrice == product.price) throw ErrorsV2.InvalidPurchase;
 
             // The exact 0.2 TON execution reserve funds escrow release, callback
@@ -912,6 +915,48 @@ fun onBouncedMessage(in: InMessageBounced) {
 
         // Listing creation bounces are accepted only from the configured Escrow.
         if (in.senderAddress != storage.escrow) {
+            return;
+        }
+
+        if (opcode == 0x71b00002) {
+            val release = lazy ReleaseEscrowV2.fromCell(originalBody);
+            var purchase = storage.purchaseStorage.load();
+            var orderStorage = purchase.orders.load();
+            val orderResult = orderStorage.orders.get(release.orderId);
+            if (!orderResult.isFound) {
+                return;
+            }
+            var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+            val extra = order.extra.load();
+            val parties = extra.parties.load();
+            val asset = extra.asset.load();
+            val operations = extra.operations.load();
+            if (
+                order.status == 2 && order.deliveryStatus == 1 &&
+                order.productId == release.productId &&
+                asset.escrowId == release.escrowId &&
+                asset.nftItem == release.nftItem &&
+                parties.buyer == release.buyer &&
+                operations.releaseQueryId == release.queryId
+            ) {
+                // Escrow rejected the release request before starting the NFT
+                // transfer. Do not guess whether custody is still intact; freeze
+                // both order and listing for explicit reconciliation.
+                order.status = 7;
+                order.deliveryStatus = 3;
+                orderStorage.orders.set(order.id, order.toCell());
+                purchase.orders = orderStorage.toCell();
+                storage.purchaseStorage = purchase.toCell();
+                val productResult = storage.products.get(order.productId);
+                if (productResult.isFound) {
+                    var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+                    if (product.status == 3) {
+                        product.status = 7;
+                        storage.products.set(product.id, product.toCell());
+                    }
+                }
+                storage.save();
+            }
             return;
         }
 
