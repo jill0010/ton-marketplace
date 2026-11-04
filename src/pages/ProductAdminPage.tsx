@@ -238,7 +238,7 @@ export function ProductAdminPage() {
             value={price}
             onChange={(event) => { setPrice(event.target.value); setMessage(""); setSuccess(false); }}
             placeholder="请输入售价"
-            disabled={busy}
+            disabled={resolving || publishing}
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
         </div>
