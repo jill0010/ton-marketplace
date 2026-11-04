@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react"
-import { Navigate, Outlet, useNavigate } from "react-router-dom"
+import { Link, Navigate, Outlet, useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 
 const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78"
@@ -79,9 +79,14 @@ export function AdminRoute() {
   return (
     <div className="min-h-svh bg-[#0b0d12] text-zinc-100">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-        <span className="text-sm font-semibold">
-          TON MARKETPLACE · 管理后台
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold">
+            TON MARKETPLACE · 管理后台
+          </span>
+          <Link to="/admin/premium-orders" className="text-sm text-zinc-300 hover:text-white">Premium 订单</Link>
+          <Link to="/admin/premium-pricing" className="text-sm text-zinc-300 hover:text-white">Premium 定价</Link>
+          <Link to="/admin/products" className="text-sm text-zinc-300 hover:text-white">商品管理</Link>
+        </div>
 
         <button
           type="button"
