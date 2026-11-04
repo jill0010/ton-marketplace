@@ -792,6 +792,16 @@ fun onBouncedMessage(in: InMessageBounced) {
     }
 }
 
+// Returns zero until the CreateEscrowV2 registration is durably stored.
+// The client must wait for this before asking the NFT Item to transfer ownership.
+get fun escrowIdForQueryV2(queryId: uint64): uint64 {
+    val result = NFTEscrowV2Storage.load().queryToEscrow.get(queryId);
+    if (!result.isFound) {
+        return 0;
+    }
+    return result.loadValue();
+}
+
 get fun assetEscrowIdV2(nftItem: address): uint64? {
     val result = NFTEscrowV2Storage.load().assetToEscrow.get(nftItem);
     if (!result.isFound) {
