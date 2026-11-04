@@ -12,7 +12,6 @@ const ALLOWED_FRAGMENT_ITEM_CODE_HASHES = new Set([
   "8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32",
   "30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251",
 ]);
-const PUBLISH_OPCODE = 0x71b0000a;
 const UINT64_MAX = (1n << 64n) - 1n;
 
 const cors = (origin: string) => ({
@@ -151,30 +150,39 @@ function parseEscrowRecord(cell: Cell) {
   };
 }
 
-function decodePublishBody(bodyBase64: string) {
-  const roots = Cell.fromBoc(Buffer.from(bodyBase64, "base64"));
-  if (roots.length !== 1) return null;
-  const slice = roots[0].beginParse();
-  if (slice.loadUint(32) !== PUBLISH_OPCODE) return null;
-  const productId = slice.loadUintBig(64);
-  const queryId = slice.loadUintBig(64);
+function parseMarketplaceProduct(cell: Cell) {
+  const slice = cell.beginParse();
+  const id = slice.loadUintBig(64);
+  const seller = slice.loadAddress();
   const nftItem = slice.loadAddress();
-  const collection = slice.loadAddress();
+  const price = slice.loadCoins();
+  const escrowId = slice.loadUintBig(64);
+  const queryId = slice.loadUintBig(64);
+  slice.loadUintBig(64); // refundQueryId
+  const status = slice.loadUint(8);
+  const createdAt = slice.loadUint(32);
   const extra = slice.loadRef().beginParse();
+  const collection = extra.loadAddress();
   const itemIndex = extra.loadUintBig(256);
   const kind = extra.loadUint(8);
-  const price = extra.loadCoins();
   extra.endParse();
   slice.endParse();
-  if (!nftItem || !collection) return null;
+
+  if (!seller || !nftItem || !collection) {
+    throw new Error("Marketplace product record contains an invalid address");
+  }
   return {
-    productId,
-    queryId,
+    id,
+    seller: seller.toRawString(),
     nftItem: nftItem.toRawString(),
+    price,
+    escrowId,
+    queryId,
+    status,
+    createdAt,
     collection: collection.toRawString(),
     itemIndex,
     kind,
-    price,
   };
 }
 
@@ -188,70 +196,6 @@ function hashHex(value: unknown): string | null {
   } catch {
     return null;
   }
-}
-
-async function findPublishTransaction(
-  marketplaceRaw: string,
-  sellerRaw: string,
-  expected: {
-    productId: bigint;
-    queryId: bigint;
-    nftItem: string;
-    collection: string;
-    itemIndex: bigint;
-    kind: number;
-    price: bigint;
-  },
-) {
-  const apiKey = Deno.env.get("TONCENTER_API_KEY");
-  if (!apiKey) throw new Error("TONCENTER_API_KEY is not configured");
-  const response = await fetch(
-    TONCENTER_BASE + "/getTransactions?address=" + encodeURIComponent(marketplaceRaw) + "&limit=100",
-    { headers: { Accept: "application/json", "X-API-Key": apiKey }, signal: AbortSignal.timeout(15000) },
-  );
-  if (!response.ok) throw new Error("TON listing transaction lookup failed (" + response.status + ")");
-  const data = await response.json();
-  if (data?.ok !== true || !Array.isArray(data.result)) {
-    throw new Error("TON Center returned an invalid marketplace transaction response");
-  }
-
-  const earliest = Date.now() - 24 * 60 * 60 * 1000;
-  for (const tx of data.result as Record<string, unknown>[]) {
-    const incoming = tx.in_msg as Record<string, unknown> | null;
-    if (!incoming || incoming.bounced === true) continue;
-    try {
-      if (Address.parse(String(incoming.destination ?? "")).toRawString() !== marketplaceRaw) continue;
-      if (Address.parse(String(incoming.source ?? "")).toRawString() !== sellerRaw) continue;
-    } catch {
-      continue;
-    }
-    const utime = Number(tx.utime);
-    if (!Number.isFinite(utime) || utime * 1000 < earliest) continue;
-    const description = tx.description as Record<string, unknown> | null;
-    if (description?.aborted === true) continue;
-    const msgData = incoming.msg_data as Record<string, unknown> | null;
-    if (typeof msgData?.body !== "string") continue;
-    let decoded: ReturnType<typeof decodePublishBody>;
-    try {
-      decoded = decodePublishBody(msgData.body);
-    } catch {
-      continue;
-    }
-    if (!decoded) continue;
-    if (
-      decoded.productId !== expected.productId ||
-      decoded.queryId !== expected.queryId ||
-      decoded.nftItem !== expected.nftItem ||
-      decoded.collection !== expected.collection ||
-      decoded.itemIndex !== expected.itemIndex ||
-      decoded.kind !== expected.kind ||
-      decoded.price !== expected.price
-    ) continue;
-    const txHash = hashHex((tx.transaction_id as Record<string, unknown> | null)?.hash);
-    if (!txHash) continue;
-    return { txHash, timestamp: new Date(utime * 1000).toISOString() };
-  }
-  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -354,14 +298,31 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, code: "COLLECTION_NOT_APPROVED", error: "This Telegram NFT collection is not approved for marketplace escrow." }, 403, origin);
     }
 
-    const [productStatus, productEscrowId, registeredEscrowId] = await Promise.all([
-      runGetMethod(marketplaceRaw, "productStatusV2", [["num", "0x" + productId.toString(16)]]),
-      runGetMethod(marketplaceRaw, "productEscrowIdV2", [["num", "0x" + productId.toString(16)]]),
-      runGetMethod(escrowRaw, "escrowIdForQueryV2", [["num", "0x" + queryId.toString(16)]]),
-    ]);
-    if (productStatus !== 2n || productEscrowId <= 0n ||
-        productEscrowId !== requestedEscrowId || registeredEscrowId !== requestedEscrowId) {
-      return reply({ success: false, code: "ESCROW_NOT_CONFIRMED", error: "The NFT is not yet confirmed as deposited in the Marketplace V2 escrow. Retry after the on-chain callback completes." }, 409, origin);
+    const productRecord = parseMarketplaceProduct(await runGetMethodCell(
+      marketplaceRaw,
+      "productV2",
+      [["num", "0x" + productId.toString(16)]],
+    ));
+    const registeredEscrowId = await runGetMethod(
+      escrowRaw,
+      "escrowIdForQueryV2",
+      [["num", "0x" + queryId.toString(16)]],
+    );
+
+    if (
+      productRecord.status !== 2 ||
+      productRecord.id !== productId ||
+      productRecord.seller !== sellerRaw ||
+      productRecord.nftItem !== nftRaw ||
+      productRecord.price !== priceNano ||
+      productRecord.escrowId !== requestedEscrowId ||
+      productRecord.queryId !== queryId ||
+      productRecord.collection !== collectionRaw ||
+      productRecord.itemIndex !== itemIndex ||
+      productRecord.kind !== kind ||
+      registeredEscrowId !== requestedEscrowId
+    ) {
+      return reply({ success: false, code: "ESCROW_NOT_CONFIRMED", error: "The Marketplace product and Escrow registration do not yet match this seller, NFT, collection, index, kind, and price." }, 409, origin);
     }
 
     const escrowRecord = parseEscrowRecord(await runGetMethodCell(
@@ -381,19 +342,6 @@ Deno.serve(async (req: Request) => {
       escrowRecord.kind !== kind
     ) {
       return reply({ success: false, code: "ESCROW_RECORD_MISMATCH", error: "The on-chain escrow record does not match this seller, NFT Item, collection, index, and listing. The database listing was not created." }, 409, origin);
-    }
-
-    const publishTx = await findPublishTransaction(marketplaceRaw, sellerRaw, {
-      productId,
-      queryId,
-      nftItem: nftRaw,
-      collection: collectionRaw,
-      itemIndex,
-      kind,
-      price: priceNano,
-    });
-    if (!publishTx) {
-      return reply({ success: false, code: "PUBLISH_TRANSACTION_NOT_FOUND", error: "The Marketplace V2 listing transaction from this verified seller was not found. The database listing was not created." }, 409, origin);
     }
 
     const nftParams = new URLSearchParams({
@@ -583,7 +531,8 @@ Deno.serve(async (req: Request) => {
         marketplace_product_id: productId.toString(),
         query_id: queryId.toString(),
         escrow_id: requestedEscrowId.toString(),
-        listing_tx_hash: publishTx.txHash,
+        marketplace_product_status: productRecord.status,
+        nft_item_code_hash: itemCodeHash,
         verified_at: now,
       },
     }, 200, origin);
