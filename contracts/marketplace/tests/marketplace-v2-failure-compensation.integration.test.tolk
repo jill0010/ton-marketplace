@@ -203,7 +203,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     );
     expect(publishUsername).toHaveSuccessfulTx();
     expect(marketplace.productV2(2)!!.status).toEqual(2);
-    expect(marketplace.productV2(2)!!.kind).toEqual(1);
+    expect(marketplace.productV2(2)!!.extra.load().kind).toEqual(1);
 
     val numberItem = testing.treasury("v2FailureNumberItem").address;
     val numberCollection = testing.treasury("v2FailureNumberCollection").address;
@@ -220,5 +220,5 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     );
     expect(publishNumber).toHaveSuccessfulTx();
     expect(marketplace.productV2(3)!!.status).toEqual(2);
-    expect(marketplace.productV2(3)!!.kind).toEqual(2);
+    expect(marketplace.productV2(3)!!.extra.load().kind).toEqual(2);
 }
