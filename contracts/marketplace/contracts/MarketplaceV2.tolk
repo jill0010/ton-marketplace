@@ -935,7 +935,6 @@ fun onBouncedMessage(in: InMessageBounced) {
                 order.status == 2 && order.deliveryStatus == 1 &&
                 order.productId == release.productId &&
                 asset.escrowId == release.escrowId &&
-                asset.nftItem == release.nftItem &&
                 parties.buyer == release.buyer &&
                 operations.releaseQueryId == release.queryId
             ) {
