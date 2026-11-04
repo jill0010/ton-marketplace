@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
 
     for (const row of (allowlist ?? []) as AllowlistRow[]) {
       try {
-        const payload = await getgemsGet(`/v1/nfts/on-sale/${encodeURIComponent(row.collection_address)}`);
+        const payload = await getgemsGet(`/v1/nfts/on-sale/${encodeURIComponent(row.collection_address)}?limit=100`);
         const items = extractItems(payload).slice(0, 100);
         itemsSeen += items.length;
         for (const item of items) {
