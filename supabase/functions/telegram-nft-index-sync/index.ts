@@ -25,7 +25,20 @@ Deno.serve(async (req: Request) => {
     const anon = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const getgemsKey = Deno.env.get("GETGEMS_API_KEY");
-    if (!url || !anon || !serviceKey || !getgemsKey) return json({ error: "SERVER_CONFIG_MISSING", message: "Supabase 或 Getgems API 配置缺失。" }, 500);
+    const missingEnvironment = [
+      !url ? "SUPABASE_URL" : null,
+      !anon ? "SUPABASE_ANON_KEY" : null,
+      !serviceKey ? "SUPABASE_SERVICE_ROLE_KEY" : null,
+      !getgemsKey ? "GETGEMS_API_KEY" : null,
+    ].filter((name): name is string => Boolean(name));
+    if (missingEnvironment.length) {
+      console.error("telegram-nft-index-sync missing environment:", missingEnvironment.join(","));
+      return json({
+        error: "SERVER_CONFIG_MISSING",
+        message: "Edge Function 缺少必要环境配置。",
+        missing_environment: missingEnvironment,
+      }, 503);
+    }
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
     if (!token) return json({ error: "AUTH_REQUIRED" }, 401);
     const authClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false } });
