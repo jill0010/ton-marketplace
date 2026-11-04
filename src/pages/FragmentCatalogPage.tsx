@@ -142,7 +142,64 @@ export function FragmentCatalogPage() {
             )}
           </p>
         </div>
-        {error ? (
+        <div className="flex flex-wrap gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => void syncGetgems()}
+              disabled={syncing}
+              className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-medium text-black transition hover:bg-emerald-300 disabled:opacity-50"
+            >
+              {syncing ? t("Syncing…", "同步中…") : t("Sync Getgems", "同步 Getgems")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void loadListings()}
+            disabled={loading}
+            className="rounded-full border border-white/15 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:opacity-50"
+          >
+            {loading ? t("Refreshing…", "刷新中…") : t("Refresh", "刷新")}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4 text-sm text-amber-100/90">
+        {t(
+          "Preview only: listings are cached from third-party sources. Orders, bids, payments and automatic delivery are not enabled. Always verify live price and availability on the original marketplace.",
+          "当前仅提供第三方市场商品预览。下单、付款和自动交付尚未启用，请以原市场实时价格和库存为准。"
+        )}
+      </div>
+
+      {syncMessage && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-zinc-300">{syncMessage}</div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {categoryOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setCategoryFilter(option.value)}
+              className={`rounded-full border px-3 py-2 text-sm transition ${
+                categoryFilter === option.value
+                  ? "border-white/40 bg-white/10 text-white"
+                  : "border-white/10 text-zinc-400 hover:bg-white/5"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-zinc-500">
+          {lastSync
+            ? t(`Latest sync: ${new Date(lastSync).toLocaleString()}`, `最近同步：${new Date(lastSync).toLocaleString()}`)
+            : t("No successful catalogue sync yet", "尚无成功的商品同步记录")}
+        </p>
+      </div>
+
+      {error ? (
         <div className="rounded-xl border border-red-500/20 p-5 text-sm text-red-300">{error}</div>
       ) : loading ? (
         <p className="py-10 text-center text-sm text-zinc-400">{t("Loading marketplace listings…", "正在读取市场商品…")}</p>
