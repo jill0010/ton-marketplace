@@ -191,7 +191,8 @@ export function ProductAdminPage() {
               <p className="break-all text-xs text-zinc-400">NFT：{resolved.address}</p>
               <p className="break-all text-xs text-zinc-400">Collection：{resolved.collection_address || "—"}</p>
               <p className="text-xs text-zinc-400">Index：{resolved.item_index || "—"}</p>
-              <p className="text-xs text-emerald-200">已确认 NFT 合约已初始化，并核对官方 Collection。</p>
+              <p className="text-xs text-emerald-200">{resolved.type === "gift" ? "已确认 TON 链上 NFT 合约已初始化；礼物身份由索引服务匹配。" : "已确认 NFT 合约已初始化，并核对官方 Telegram Collection。"}</p>
+              {resolved.source === "portals_fallback" && <p className="text-xs text-amber-200">链上未返回图片，当前图片来自 Portals 礼物目录。</p>}
               {telegramLink && <a className="text-xs text-sky-300 underline" href={telegramLink} target="_blank" rel="noreferrer">打开 Telegram 礼物链接</a>}
             </div>
           </div>
