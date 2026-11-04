@@ -632,12 +632,14 @@ fun onInternalMessage(in: InMessage) {
                 val productResult = storage.products.get(order.productId);
                 assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
                 var product = MarketplaceV2Product.fromCell(productResult.loadValue());
-                assert (product.status == 6 && product.refundQueryId == msg.queryId) throw ErrorsV2.InvalidRefund;
-                product.status = 5;
-                storage.products.set(product.id, product.toCell());
-                val listingResult = storage.assetListings.get(product.nftItem);
-                if (listingResult.isFound && listingResult.loadValue() == product.id) {
-                    storage.assetListings.delete(product.nftItem);
+                assert ((product.status == 6 || product.status == 5) && product.refundQueryId == msg.queryId) throw ErrorsV2.InvalidRefund;
+                if (product.status == 6) {
+                    product.status = 5;
+                    storage.products.set(product.id, product.toCell());
+                    val listingResult = storage.assetListings.get(product.nftItem);
+                    if (listingResult.isFound && listingResult.loadValue() == product.id) {
+                        storage.assetListings.delete(product.nftItem);
+                    }
                 }
 
                 val refundPayoutResult = payoutStorage.payouts.get(operations.buyerRefundOperationId);
