@@ -136,7 +136,7 @@ Deno.serve(async (req: Request) => {
           `金额：<b>${html(String(order.gram_amount))} GRAM</b>`,
           `交易：<code>${html(String(existing.tx_hash))}</code>`,
           "状态：待管理员人工确认并开通 Premium",
-        ].join("\\n");
+        ].join("\n");
         try {
           const notify = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
