@@ -262,9 +262,69 @@ export function HomePage() {
                     : t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
                 </p>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
-                </div>
+                {selectedType === "username" || selectedType === "number" ? (
+                  <div className="overflow-x-auto rounded-2xl border border-white/10">
+                    <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                      <thead className="bg-white/[0.05] text-xs uppercase tracking-wide text-zinc-500">
+                        <tr>
+                          <th className="px-5 py-4">{t("Name", "商品名称")}</th>
+                          <th className="px-5 py-4">{t("Username / Number", "用户名 / 号码")}</th>
+                          <th className="px-5 py-4">{t("Value", "价格")}</th>
+                          <th className="px-5 py-4">{t("Price type", "价格类型")}</th>
+                          <th className="px-5 py-4">{t("Status", "状态")}</th>
+                          <th className="px-5 py-4">{t("Auction", "拍卖")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10">
+                        {visibleProducts.map((product) => {
+                          const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
+                          const fragmentUrl = product.type === "username"
+                            ? "https://fragment.com/username/" + rawName
+                            : "https://fragment.com/number/" + rawName
+                          const isAuction = product.listingMode === "auction"
+                          const endTime = product.auctionEndsAt ? new Date(product.auctionEndsAt) : null
+                          const auctionClosing = endTime && Number.isFinite(endTime.getTime()) && endTime.getTime() > Date.now()
+                          return (
+                            <tr key={product.id} className="transition hover:bg-white/[0.035]">
+                              <td className="px-5 py-4">
+                                <Link to={"/product/" + product.id} className="font-semibold text-white hover:text-sky-300">
+                                  {product.title}
+                                </Link>
+                              </td>
+                              <td className="px-5 py-4">
+                                <a href={fragmentUrl} target="_blank" rel="noreferrer" className="text-zinc-300 hover:text-sky-300">
+                                  {product.type === "username" ? rawName + ".t.me" : "+" + rawName}
+                                </a>
+                              </td>
+                              <td className="px-5 py-4 font-semibold tabular-nums text-white">
+                                {product.priceTon.toLocaleString()} <span className="text-zinc-500">{product.currency}</span>
+                              </td>
+                              <td className="px-5 py-4 text-zinc-400">
+                                {t(isAuction ? "Starting price" : "Sale price", isAuction ? "起拍价" : "出售价格")}
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-1 text-xs text-emerald-300">
+                                  {t("For sale", "出售中")}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-xs text-zinc-400">
+                                {isAuction
+                                  ? auctionClosing
+                                    ? t("Auction closes", "拍卖结束") + " " + endTime!.toLocaleString()
+                                    : t("Auction listing", "拍卖商品")
+                                  : "—"}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
+                  </div>
+                )}
               )}
             </div>
           </div>
