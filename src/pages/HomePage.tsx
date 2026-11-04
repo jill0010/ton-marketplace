@@ -242,13 +242,14 @@ export function HomePage() {
                 </p>
               ) : (
                 selectedType === "username" || selectedType === "number" ? (
-                  <div className="overflow-x-auto rounded-2xl border border-white/10">
-                    <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+                  <div className="overflow-x-auto rounded-2xl border border-white/20 bg-white/[0.06]">
+                    <table className="w-full min-w-[560px] border-collapse text-left text-sm">
                       <thead className="bg-[#283440] text-xs font-semibold tracking-wide text-[#91a8c0]">
                         <tr>
                           <th className="px-5 py-3">{selectedType === "username" ? t("Username", "用户名") : t("Number", "号码")}</th>
                           <th className="px-5 py-4">{t("Value", "价格")}</th>
                           <th className="px-5 py-4">{t("Status", "状态")}</th>
+                          <th className="w-12 px-4 py-4" aria-label={t("Details", "详情")} />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/10">
@@ -256,18 +257,18 @@ export function HomePage() {
                           const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
                           const telegramUrl = "https://t.me/" + rawName
                           return (
-                            <tr key={product.id} className="bg-[#1d2731] transition hover:bg-[#25323e]">
+                            <tr key={product.id} className="bg-white/[0.06] transition hover:bg-white/[0.11]">
                               <td className="px-5 py-3">
-                                <div className="flex flex-col items-start">
-                                  <Link to={"/product/" + product.id} className="text-[15px] font-bold text-white hover:text-sky-300">
+                                <Link to={"/product/" + product.id} className="group inline-flex flex-col items-start">
+                                  <span className="text-[15px] font-bold text-white transition group-hover:text-sky-300">
                                     {product.type === "username" ? "@" + rawName : "+" + rawName}
-                                  </Link>
+                                  </span>
                                   {product.type === "username" && (
-                                    <a href={telegramUrl} target="_blank" rel="noreferrer" className="mt-0.5 text-xs font-medium text-[#38a9ff] hover:text-[#70c2ff]">
+                                    <span className="mt-0.5 text-xs font-medium text-[#38a9ff] transition group-hover:text-[#70c2ff]">
                                       {rawName}.t.me
-                                    </a>
+                                    </span>
                                   )}
-                                </div>
+                                </Link>
                               </td>
                               <td className="px-5 py-3">
                                 <div className="flex items-center gap-1.5 font-bold tabular-nums text-white">
@@ -280,6 +281,15 @@ export function HomePage() {
                                 <span className="text-sm font-semibold text-[#20e68a]">
                                   {t("For sale", "出售中")}
                                 </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <Link
+                                  to={"/product/" + product.id}
+                                  aria-label={t("View product details", "查看商品详情")}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xl leading-none text-[#718293] transition hover:bg-white/10 hover:text-white"
+                                >
+                                  ›
+                                </Link>
                               </td>
                             </tr>
                           )
