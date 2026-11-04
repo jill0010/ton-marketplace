@@ -10,7 +10,8 @@ Tolk/Acton contracts for the TON Market digital-asset marketplace.
 - `contracts/types.tolk` — serialized storage schemas, message ABI, and error codes.
 - `wrappers/` — Acton contract/test wrappers.
 - `tests/` — emulator integration and adversarial tests.
-- `scripts/deploy-v2.tolk` — fresh V2 deployment and initial binding script for emulation/testnet.
+- `scripts/deploy-v2.tolk` — fresh V2 deployment and initial binding script for emulation, testnet, and mainnet.
+- `wallets.toml.example` — safe local wallet configuration template using environment-backed mnemonics.
 
 ## Marketplace V2 protocol
 
@@ -44,5 +45,5 @@ Passing emulator tests are not a substitute for a testnet rehearsal or an indepe
 
 - `MarketplaceV2Storage` and `NFTEscrowV2Storage` are fresh-deployment schemas. Do not point this code at an older V1 contract address or assume serialized storage compatibility.
 - The V2 deployment script requires separately configured `deployer` and `treasury` wallets. The deployer becomes contract owner; the separate treasury wallet receives the 3% platform fee. Missing treasury configuration stops deployment before contracts are created. Review and explicitly choose both production addresses before any mainnet deployment.
-- No signing key or mnemonic belongs in this repository, GitHub source, or logs.
+- `deploy-v2-mainnet` is an explicit Acton command alias. The local `wallets.toml` must be created from `wallets.toml.example`, with separate funded deployer and treasury wallets. No signing key or mnemonic belongs in this repository, GitHub source, or logs.
 - A mainnet deployment requires a funded, authorized signer; verified production owner/treasury addresses; a testnet rehearsal against current live Fragment collections; and independent review of the compiled code, ABI, storage, and recovery paths.
