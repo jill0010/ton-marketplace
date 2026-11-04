@@ -110,10 +110,14 @@ export function ProductAdminPage() {
           try {
             const payload = await context.json() as { message?: string; error?: string; detail?: unknown };
             const primary = payload.message || (payload.error ? resolutionMessage(payload.error) : detail);
-            const extra = payload.detail && typeof payload.detail === "object"
+            const diagnostic = payload.detail && typeof payload.detail === "object"
               ? JSON.stringify(payload.detail)
               : typeof payload.detail === "string" ? payload.detail : "";
-            detail = extra ? `${primary} 诊断信息：${extra}` : primary;
+            const retryAfter = (payload as { retry_after_seconds?: unknown }).retry_after_seconds;
+            const retryMessage = typeof retryAfter === "number" && Number.isFinite(retryAfter)
+              ? ` 建议等待 ${Math.max(1, Math.ceil(retryAfter))} 秒后再试。`
+              : "";
+            detail = `${primary}${diagnostic ? ` 诊断信息：${diagnostic}` : ""}${retryMessage}`;
           } catch {
             detail = `${detail}（HTTP ${context.status ?? "未知状态"}）`;
           }
@@ -121,7 +125,10 @@ export function ProductAdminPage() {
         throw new Error(detail);
       }
       if (!data) throw new Error("NFT 查询服务返回了空响应，请检查 Supabase Edge Function 日志。");
-      if (!data.success) {\n        const detail = data.detail && typeof data.detail === "object" ? ` 诊断信息：${JSON.stringify(data.detail)}` : "";\n        throw new Error(`${data.message || resolutionMessage(data.error)}${detail}`);\n      }
+      if (!data.success) {
+        const detail = data.detail && typeof data.detail === "object" ? ` 诊断信息：${JSON.stringify(data.detail)}` : "";
+        throw new Error(`${data.message || resolutionMessage(data.error)}${detail}`);
+      }
       setResolved(data as ResolvedNft);
       setMessage("已读取并核验 NFT 链上资料。请核对图片和名称后再发布。");
     } catch (error) {
