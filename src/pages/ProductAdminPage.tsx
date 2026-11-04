@@ -139,7 +139,7 @@ export function ProductAdminPage() {
         ? data.results.map((item: { asset_type?: string; synced?: number; total_synced?: number; complete?: boolean }) =>
             `${item.asset_type === "username" ? "用户名" : "888号码"}：本次同步 ${item.synced ?? 0} 项，累计 ${item.total_synced ?? 0} 项，${item.complete ? "已完成" : "仍有后续页"}`).join("；")
         : "";
-      setMessage(`索引同步完成。${details ? " " + details : ""} 若仍有后续页，可再次点击继续。`);
+      setMessage(`立即同步完成。${details ? " " + details : ""} 后台仍会每 5 分钟自动继续同步，无需再次手动操作。`);
     } catch (error) {
       let message = error instanceof Error ? error.message : "索引同步失败。";
       const context = error && typeof error === "object" && "context" in error
@@ -266,6 +266,11 @@ export function ProductAdminPage() {
         </a>
       </header>
 
+      <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] p-4 text-sm leading-6 text-emerald-100">
+        <p className="font-semibold">后台自动同步已开启</p>
+        <p className="mt-1 text-emerald-100/80">用户名和 +888 NFT 索引由 Supabase 后台每 5 分钟自动同步一次。首次全量索引会自动续页；完成后继续定期检查最新 NFT。无需保持此页面打开，也无需手动点击同步。</p>
+      </div>
+
       <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <div className="space-y-2">
           <label htmlFor="admin-product-identifier" className="block text-sm text-zinc-300">Telegram 标识 / NFT 地址</label>
@@ -286,7 +291,7 @@ export function ProductAdminPage() {
           disabled={syncingIndex || resolving || publishing}
           className="w-full rounded-full border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-sm font-semibold text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {syncingIndex ? "正在同步 Telegram NFT 索引……" : "同步用户名 / +888 NFT 索引（每次最多 2000 项）"}
+          {syncingIndex ? "正在执行立即同步……" : "立即手动同步（可选）"}
         </button>
 
         <button
