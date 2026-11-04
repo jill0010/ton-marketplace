@@ -186,8 +186,8 @@ export function ProductPage() {
       )}
 
       <p className="flex items-center gap-2 text-3xl font-semibold text-emerald-300">
-        {product.currency === "GRAM" && <GramTokenMark className="h-7 w-7" />}
-        {product.priceTon} {product.currency}
+        <GramTokenMark className="h-7 w-7" />
+        {product.priceTon}
       </p>
 
       <button
