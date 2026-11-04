@@ -161,16 +161,15 @@ export function PublishPage() {
               ["username", "phone_number", "gift"].includes(item.type),
           ) as NftAsset[];
 
-          setAssets(validAssets);
+          const visibleAssets = adminQuickPublish && requestedAssetAddress
+            ? validAssets.filter((item) => item.address === requestedAssetAddress)
+            : validAssets;
+          setAssets(visibleAssets);
           setAssetsTruncated(data.truncated === true);
-          if (validAssets.length > 0) {
-            const requestedAsset = requestedAssetAddress
-              ? validAssets.find((item) => item.address === requestedAssetAddress)
-              : undefined;
-            setSelectedAddress(requestedAsset?.address ?? validAssets[0].address);
-            if (adminQuickPublish && requestedAssetAddress && !requestedAsset) {
-              setAssetsError("快速上传指定的 NFT 已不在当前已验证钱包中，请返回管理员页面重新核验。");
-            }
+          if (visibleAssets.length > 0) {
+            setSelectedAddress(visibleAssets[0].address);
+          } else if (adminQuickPublish && requestedAssetAddress) {
+            setAssetsError("快速上传指定的 NFT 已不在当前已验证钱包中，请返回管理员页面重新核验。");
           }
         }
       } catch (error) {
@@ -236,17 +235,16 @@ export function PublishPage() {
           ["username", "phone_number", "gift"].includes(item.type),
       ) as NftAsset[];
 
-      setAssets(validAssets);
-          setAssetsTruncated(data.truncated === true);
+      const visibleAssets = adminQuickPublish && requestedAssetAddress
+        ? validAssets.filter((item) => item.address === requestedAssetAddress)
+        : validAssets;
+      setAssets(visibleAssets);
+      setAssetsTruncated(data.truncated === true);
 
-      if (validAssets.length > 0) {
-        const requestedAsset = requestedAssetAddress
-          ? validAssets.find((item) => item.address === requestedAssetAddress)
-          : undefined;
-        setSelectedAddress(requestedAsset?.address ?? validAssets[0].address);
-        if (adminQuickPublish && requestedAssetAddress && !requestedAsset) {
-          setAssetsError("快速上传指定的 NFT 已不在当前已验证钱包中，请返回管理员页面重新核验。");
-        }
+      if (visibleAssets.length > 0) {
+        setSelectedAddress(visibleAssets[0].address);
+      } else if (adminQuickPublish && requestedAssetAddress) {
+        setAssetsError("快速上传指定的 NFT 已不在当前已验证钱包中，请返回管理员页面重新核验。");
       }
     } catch (error) {
       if (requestId === assetsRequestRef.current) {
