@@ -67,3 +67,9 @@ Configure these GitHub Actions repository secrets before dispatching:
 
 The workflow writes a temporary, permission-restricted `wallets.toml` that references the mnemonic only through the environment. It builds the production contracts, runs the mainnet deployment script, and requires the script's final escrow/treasury verification marker before reporting success. It adds the resulting public contract addresses to the GitHub Actions run summary. The workflow cannot run successfully until all three secrets are configured; no secret values belong in the repository.
 
+## Admin custody wallet settings
+
+The admin page `/admin/wallet-settings` stores only public wallet addresses for the marketplace custody wallet and platform treasury, with an admin-only audit trail. Saving a custody wallet requires a TON Connect session on mainnet whose connected address exactly matches the new custody address. Testnet-friendly addresses are rejected.
+
+The page never accepts or stores private keys or recovery phrases. It can request a native GRAM funding transfer from a separately connected mainnet wallet to the configured custody wallet; the connected wallet must approve the transaction in its own UI and pays the network fee. A database address change does not rotate a deployed smart contract, change an immutable on-chain treasury, or migrate assets. Those changes require the appropriate owner-authorized on-chain operation or a separately reviewed contract migration.
+
