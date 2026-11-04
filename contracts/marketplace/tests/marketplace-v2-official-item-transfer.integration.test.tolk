@@ -17,6 +17,8 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val seller = testing.treasury("marketplaceV2OfficialItemSeller");
     val owner = testing.treasury("marketplaceV2OfficialItemOwner");
     val attacker = testing.treasury("marketplaceV2OfficialItemAttacker");
+    val buyer = testing.treasury("marketplaceV2OfficialItemBuyer");
+    val treasury = testing.treasury("marketplaceV2OfficialItemTreasury");
 
     val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
         owner: owner.address,
@@ -86,6 +88,16 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
             { value: grams("0.02") },
         ),
     ).toHaveSuccessfulTx();
+
+    expect(
+        marketplace.sendSetMarketplaceV2Treasury(
+            owner.address,
+            treasury.address,
+            { value: grams("0.02") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(marketplace.treasuryV2()).toEqual(treasury.address);
+    expect(marketplace.treasuryConfiguredV2()).toEqual(true);
 
     // Register the exact allowlisted Fragment Gift Item Code and approve its collection.
     val officialItemCode = parseCellFromHex(
@@ -262,35 +274,104 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(activeProduct.escrowId).toEqual(1);
     expect(escrow.depositCallbackV2(1) == null).toEqual(true);
 
-    // Only the seller or Marketplace owner may cancel a deposited listing.
-    val forgedCancel = marketplace.sendCancelProductV2(
-        attacker.address,
-        1,
-        { value: grams("0.1") },
-    );
-    expect(forgedCancel).toHaveFailedTx({
-        from: attacker.address,
-        to: marketplace.address,
-        exitCode: ErrorsV2.InvalidRefund,
-    });
-    expect(marketplace.productV2(1)!!.status).toEqual(2);
-
-    // Seller cancellation returns the NFT through the real Item contract,
-    // confirms ownership via TEP-62 excesses, and ACKs the durable callback.
-    val cancel = marketplace.sendCancelProductV2(
+    // Payment is accepted only from a different wallet, for the exact listed
+    // price, before the short deadline, with the explicit execution reserve.
+    val now = testing.getNow();
+    val selfPurchase = marketplace.sendBuyProductV2(
         seller.address,
         1,
-        { value: grams("0.2") },
+        grams("4"),
+        8001,
+        now + 600,
+        { value: grams("4.2") },
     );
-    expect(cancel).toHaveSuccessfulTx();
+    expect(selfPurchase).toHaveFailedTx({
+        from: seller.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPurchase,
+    });
 
-    val afterRefund = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
-    expect(afterRefund.isSuccess()).toEqual(true);
-    expect(afterRefund.unwrap().get(3) as address).toEqual(seller.address);
+    val wrongPrice = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("3.9"),
+        8002,
+        now + 600,
+        { value: grams("4.2") },
+    );
+    expect(wrongPrice).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPurchase,
+    });
 
-    expect(marketplace.productV2(1)!!.status).toEqual(5);
-    expect(marketplace.assetProductIdV2(nftItem) == null).toEqual(true);
-    expect(escrow.escrowRecordV2(1)!!.status).toEqual(5);
+    val underpayment = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        8003,
+        now + 600,
+        { value: grams("4.1") },
+    );
+    expect(underpayment).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPayment,
+    });
+
+    val expiredPurchase = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        8004,
+        now - 1,
+        { value: grams("4.2") },
+    );
+    expect(expiredPurchase).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPurchase,
+    });
+
+    val buy = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        8005,
+        now + 600,
+        { value: grams("4.2") },
+    );
+    expect(buy).toHaveSuccessfulTx();
+
+    // The complete on-chain chain must move the actual official NFT Item to
+    // the buyer, confirm delivery through Escrow, and dispatch both payout legs.
+    val afterPurchase = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
+    expect(afterPurchase.isSuccess()).toEqual(true);
+    expect(afterPurchase.unwrap().get(3) as address).toEqual(buyer.address);
+
+    val deliveredOrder = marketplace.orderV2(1);
+    assert (deliveredOrder != null) throw ErrorsV2.InvalidDelivery;
+    expect(deliveredOrder!!.status).toEqual(5);
+    expect(deliveredOrder.deliveryStatus).toEqual(2);
+    expect(deliveredOrder.sellerPayoutStatus).toEqual(2);
+    expect(deliveredOrder.platformPayoutStatus).toEqual(2);
+
+    expect(marketplace.productV2(1)!!.status).toEqual(3);
+    expect(escrow.escrowRecordV2(1)!!.status).toEqual(3);
     expect(escrow.assetEscrowIdV2(nftItem) == null).toEqual(true);
-    expect(escrow.refundCallbackV2(1) == null).toEqual(true);
+    expect(escrow.releaseCallbackV2(1) == null).toEqual(true);
+
+    val duplicateBuy = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        8006,
+        now + 600,
+        { value: grams("4.2") },
+    );
+    expect(duplicateBuy).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPurchase,
+    });
 }
