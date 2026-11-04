@@ -10,8 +10,7 @@ import { handleCors, jsonResponse } from "../_shared/http.ts";
  * marketplace cannot deliver to a buyer.
  *
  * Do not re-enable this endpoint by restoring the previous direct-insert
- * implementation. The replacement must create an escrow-pending record,
- * verify the on-chain escrow deposit, and only then mark the product listed.
+ * implementation. The replacement must create a Marketplace V2 listing, wait for Escrow query registration, verify the on-chain NFT deposit and seller identity, and only then mirror the listing into products.
  */
 Deno.serve((request: Request) => {
   const corsResponse = handleCors(request);
@@ -23,8 +22,8 @@ Deno.serve((request: Request) => {
 
   return jsonResponse({
     success: false,
-    code: "ESCROW_FLOW_NOT_IMPLEMENTED",
+    code: "MARKETPLACE_V2_NOT_CONFIGURED",
     error:
-      "NFT publishing is temporarily unavailable. NFT escrow deposit and on-chain confirmation must be implemented before listing.",
+      "NFT publishing is disabled until Marketplace V2 is deployed and wallet-to-contract-to-database synchronization is verified.",
   }, 503);
 });
