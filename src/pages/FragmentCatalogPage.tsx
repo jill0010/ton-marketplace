@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
+import { GramTokenMark } from "../components/GramTokenMark"
 
 type CatalogListing = {
   id: string
@@ -236,7 +237,8 @@ export function FragmentCatalogPage() {
               <div className="space-y-2 p-4">
                 <p className="text-xs text-zinc-500">{typeLabel(item.item_type, language)}</p>
                 <h2 className="truncate font-semibold text-white">{item.title}</h2>
-                <p className="text-lg font-semibold text-emerald-300">
+                <p className="flex items-center gap-1.5 text-lg font-semibold text-emerald-300">
+                  {item.currency === "GRAM" && <GramTokenMark className="h-5 w-5" />}
                   {formatNano(item.current_price_nano)} {item.currency}
                 </p>
 
