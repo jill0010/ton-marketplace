@@ -297,8 +297,15 @@ export function HomePage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                     {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
+                    {Array.from({ length: visibleProducts.length === 0 ? 6 : (6 - (visibleProducts.length % 6)) % 6 }, (_, index) => (
+                      <div
+                        key={`gift-slot-${index}`}
+                        aria-hidden="true"
+                        className="aspect-[4/5] min-h-0 rounded-2xl border border-dashed border-white/10 bg-white/[0.025]"
+                      />
+                    ))}
                   </div>
                 )
               )}
