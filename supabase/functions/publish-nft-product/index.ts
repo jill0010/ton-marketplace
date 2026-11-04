@@ -208,14 +208,6 @@ Deno.serve(async (req: Request) => {
     const authToken = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
     if (!authToken) return reply({ success: false, error: "Authentication required" }, 401, origin);
 
-    if (Deno.env.get("MARKETPLACE_V2_LISTING_ENABLED") !== "true") {
-      return reply({
-        success: false,
-        code: "MARKETPLACE_V2_LISTING_PAUSED",
-        error: "Marketplace V2 NFT listings remain paused until mainnet deployment and testnet rehearsal are approved.",
-      }, 503, origin);
-    }
-
     const url = Deno.env.get("SUPABASE_URL");
     const publishable = Deno.env.get("SUPABASE_ANON_KEY") ??
       JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}").default;
