@@ -1,8 +1,8 @@
 import { handleCors, jsonResponse } from "./http.ts";
 
 /**
- * NFT publishing is intentionally disabled until the escrow-first flow is
- * implemented and verified end-to-end.
+ * NFT publishing is intentionally disabled until Marketplace V2 is deployed
+ * and wallet-to-contract-to-database synchronization is verified end-to-end.
  *
  * The previous implementation marked an NFT as "listed" while the NFT was
  * still owned by the seller wallet. That violates the marketplace's
