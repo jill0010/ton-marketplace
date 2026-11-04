@@ -122,7 +122,11 @@ fun onInternalMessage(in: InMessage) {
                 !storage.assetToEscrow.get(msg.nftItem).isFound
             ) throw ErrorsV2.AssetAlreadyEscrowed;
 
-            assert (createExtra.kind == 3) throw ErrorsV2.InvalidProductKind;
+            assert (
+                createExtra.kind == 1 ||
+                createExtra.kind == 2 ||
+                createExtra.kind == 3
+            ) throw ErrorsV2.InvalidProductKind;
             val callbacks = storage.callbacks.load();
             val collectionStorage = callbacks.collectionStorage.load();
             val collectionResult = collectionStorage.collections.get(msg.collection);
@@ -140,8 +144,9 @@ fun onInternalMessage(in: InMessage) {
                 codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
             ) throw ErrorsV2.InvalidCollectionItemCode;
 
-            // Fragment Gift Item StateInit: Config = itemIndex:uint256 + collection,
-            // Data = ref(Config) + state:Maybe ^Cell (none), deployed on workchain 0.
+            // Fragment collectible Item StateInit (TeleMint usernames/numbers and
+            // Fragment gifts): Config = itemIndex:uint256 + collection; Data =
+            // ref(Config) + state:Maybe ^Cell (none), deployed on workchain 0.
             val itemConfig = beginCell()
                 .storeUint(createExtra.itemIndex, 256)
                 .storeAddress(msg.collection)
