@@ -145,7 +145,8 @@ Deno.serve(async (req: Request) => {
         continue;
       }
       if (senderRaw !== order.buyer_wallet) continue;
-      const incomingValue = String(incoming.value ?? "");\n      if (!/^\\d+$/.test(incomingValue) || BigInt(incomingValue) !== expectedNano) continue;
+      const incomingValue = String(incoming.value ?? "");
+      if (!/^\d+$/.test(incomingValue) || BigInt(incomingValue) !== expectedNano) continue;
       const msgData = incoming.msg_data as Record<string, unknown> | null;
       const bodyBoc = typeof msgData?.body === "string" ? msgData.body : "";
       const memo = decodeComment(bodyBoc);
