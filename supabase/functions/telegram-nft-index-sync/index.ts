@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const ADMIN_USER_ID = "0744f173-3f36-438f-b265-9cb3be95ad78";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://ton-marketplace-cvj.pages.dev",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-index-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Vary": "Origin",
 };
@@ -37,11 +37,17 @@ Deno.serve(async (req: Request) => {
         missing_environment: missingEnvironment,
       }, 503);
     }
-    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-    if (!token) return json({ error: "AUTH_REQUIRED" }, 401);
-    const authClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: auth, error: authError } = await authClient.auth.getUser(token);
-    if (authError || auth.user?.id !== ADMIN_USER_ID) return json({ error: "ADMIN_ONLY" }, 403);
+    const configuredCronSecret = Deno.env.get("NFT_INDEX_CRON_SECRET") ?? "";
+    const suppliedCronSecret = req.headers.get("x-index-cron-secret") ?? "";
+    const cronAuthorized = configuredCronSecret.length >= 32 && suppliedCronSecret.length >= 32
+      && suppliedCronSecret === configuredCronSecret;
+    if (!cronAuthorized) {
+      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+      if (!token) return json({ error: "AUTH_REQUIRED" }, 401);
+      const authClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false } });
+      const { data: auth, error: authError } = await authClient.auth.getUser(token);
+      if (authError || auth.user?.id !== ADMIN_USER_ID) return json({ error: "ADMIN_ONLY" }, 403);
+    }
     const service = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: collections, error: collectionError } = await service.from("telegram_nft_collection_allowlist")
       .select("asset_type,collection_address").eq("enabled", true).eq("network", "-239");
@@ -52,16 +58,17 @@ Deno.serve(async (req: Request) => {
       if (type !== "username" && type !== "phone_number") continue;
       const { data: state } = await service.from("telegram_nft_index_sync_state").select("*")
         .eq("collection_address", collection.collection_address).maybeSingle();
-      if (state?.is_complete) {
+      const incrementalRefresh = Boolean(state?.is_complete && cronAuthorized);
+      if (state?.is_complete && !incrementalRefresh) {
         results.push({ asset_type: type, complete: true, synced: 0, total_synced: state.items_synced });
         continue;
       }
-      let offset = Number.parseInt(state?.cursor ?? "0", 10);
+      let offset = incrementalRefresh ? 0 : Number.parseInt(state?.cursor ?? "0", 10);
       if (!Number.isFinite(offset) || offset < 0) offset = 0;
       let synced = 0;
       let complete = false;
       let provider = "unknown";
-      for (let page = 0; page < 2; page++) {
+      for (let page = 0; page < (incrementalRefresh ? 1 : 2); page++) {
         const params = new URLSearchParams({ limit: "1000", offset: String(offset) });
         const apiKey = Deno.env.get("TONAPI_API_KEY");
         const tonApiUrl = `https://tonapi.io/v2/nfts/collections/${encodeURIComponent(collection.collection_address)}/items?${params}`;
@@ -166,12 +173,19 @@ Deno.serve(async (req: Request) => {
         asset_type: type,
         cursor: complete ? null : String(offset),
         is_complete: complete,
-        items_synced: Number(state?.items_synced ?? 0) + synced,
+        items_synced: incrementalRefresh ? Number(state?.items_synced ?? 0) : Number(state?.items_synced ?? 0) + synced,
         last_synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: "collection_address" });
       if (stateError) throw stateError;
-      results.push({ asset_type: type, synced, complete, total_synced: Number(state?.items_synced ?? 0) + synced, provider });
+      results.push({
+        asset_type: type,
+        synced,
+        complete: incrementalRefresh ? true : complete,
+        mode: incrementalRefresh ? "incremental_refresh" : "backfill",
+        total_synced: incrementalRefresh ? Number(state?.items_synced ?? 0) : Number(state?.items_synced ?? 0) + synced,
+        provider,
+      });
     }
     return json({ success: true, results, message: "本次每个 Collection 最多同步 2000 个 NFT；若 complete=false，可再次点击继续同步。" });
   } catch (error) {
