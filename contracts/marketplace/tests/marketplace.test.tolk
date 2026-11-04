@@ -1024,6 +1024,8 @@ get fun `test Marketplace V2 immutable order and independent payout snapshots`()
         operations: MarketplaceV2OrderOperations {
             paymentQueryId: 9001,
             releaseQueryId: 9002,
+            sellerPayoutOperationId: 70001,
+            platformPayoutOperationId: 70002,
             sellerPayoutQueryId: 9003,
             platformPayoutQueryId: 9004,
             buyerRefundQueryId: 9005,
@@ -1163,6 +1165,8 @@ get fun `test Marketplace V2 immutable order snapshot and independent payout lia
     val operations = MarketplaceV2OrderOperations {
         paymentQueryId: 101,
         releaseQueryId: 102,
+        sellerPayoutOperationId: 201,
+        platformPayoutOperationId: 202,
         sellerPayoutQueryId: 103,
         platformPayoutQueryId: 104,
         buyerRefundQueryId: 105,
