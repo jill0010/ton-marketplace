@@ -220,14 +220,47 @@ Deno.serve(async (req: Request) => {
     }
 
     if (parsed.kind === "username" || parsed.kind === "phone_number") {
+      const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      const normalized = parsed.kind === "username" ? parsed.value.replace(/^@/, "").toLowerCase() : parsed.value.replace(/\\D/g, "");
+      const { data: indexed, error: indexError } = await service
+        .from("telegram_nft_items")
+        .select("nft_address,collection_address,nft_name,image_url,description,attributes,metadata")
+        .eq("asset_type", parsed.kind)
+        .eq("normalized_identifier", normalized)
+        .limit(2);
+      if (indexError) return json({ error: "NFT_INDEX_READ_FAILED", message: "读取 Telegram NFT 索引失败。" }, 500);
+      if (!indexed?.length) {
+        const { data: syncState } = await service.from("telegram_nft_index_sync_state")
+          .select("is_complete,items_synced").eq("asset_type", parsed.kind).maybeSingle();
+        return json({
+          error: "IDENTIFIER_INDEX_REQUIRED",
+          message: "当前索引尚未收录该标识。请先在管理员快速上传页面执行“同步用户名/888号码 NFT 索引”，同步完成后重新识别。",
+          type: parsed.kind,
+          identifier: parsed.value,
+          index_items_synced: syncState?.items_synced ?? 0,
+          index_complete: syncState?.is_complete ?? false,
+        }, 503);
+      }
+      if (indexed.length > 1) return json({ error: "NFT_IDENTIFIER_AMBIGUOUS", message: "索引中存在多个同名 NFT，暂不能自动选择，请使用 NFT 原始地址核对。" }, 409);
+      const item = indexed[0];
+      const chain = await readTonNft(item.nft_address, tonApiKey);
+      if ((chain.collection_address ?? "").toLowerCase() !== item.collection_address.toLowerCase()) {
+        return json({ error: "NFT_COLLECTION_MISMATCH", message: "索引记录与 TON 链上 Collection 不一致，已阻止自动发布。" }, 409);
+      }
       return json({
-        error: "IDENTIFIER_INDEX_REQUIRED",
-        message: parsed.kind === "username"
-          ? "已识别用户名格式，但要把 @用户名反查为 NFT 地址，需要接入用户名 Collection 索引服务。"
-          : "已识别 888 号码格式，但要反查 NFT 地址，需要接入号码 Collection 索引服务。",
+        success: true,
         type: parsed.kind,
-        identifier: parsed.value,
-      }, 503);
+        address: chain.address,
+        collection_address: chain.collection_address,
+        item_index: chain.item_index,
+        name: item.nft_name,
+        description: item.description || chain.description,
+        image_url: item.image_url || chain.image_url,
+        verified_on_chain: true,
+        source: "getgems_index",
+        attributes: item.attributes,
+        metadata: item.metadata,
+      });
     }
 
     const chain = await readTonNft(parsed.value, tonApiKey);
