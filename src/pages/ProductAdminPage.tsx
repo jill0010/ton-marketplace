@@ -42,6 +42,7 @@ export function ProductAdminPage() {
   const [resolved, setResolved] = useState<ResolvedNft | null>(null);
   const [resolving, setResolving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [syncingIndex, setSyncingIndex] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   async function resolveNft() {
@@ -108,6 +109,26 @@ export function ProductAdminPage() {
     const timer = window.setTimeout(() => { void resolveNft(); }, 900);
     return () => window.clearTimeout(timer);
   }, [identifier]);
+
+  async function syncNftIndex() {
+    if (syncingIndex || resolving || publishing) return;
+    setSyncingIndex(true);
+    setMessage("");
+    try {
+      const { data, error } = await supabase.functions.invoke("telegram-nft-index-sync", { body: {} });
+      if (error) throw new Error(error.message || "索引同步失败。");
+      if (!data?.success) throw new Error(data?.message || data?.error || "索引同步失败。");
+      const details = Array.isArray(data.results)
+        ? data.results.map((item: { asset_type?: string; synced?: number; total_synced?: number; complete?: boolean }) =>
+            `${item.asset_type === "username" ? "用户名" : "888号码"}：本次同步 ${item.synced ?? 0} 项，累计 ${item.total_synced ?? 0} 项，${item.complete ? "已完成" : "仍有后续页"}`).join("；")
+        : "";
+      setMessage(`索引同步完成。${details ? " " + details : ""} 若仍有后续页，可再次点击继续。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "索引同步失败。");
+    } finally {
+      setSyncingIndex(false);
+    }
+  }
 
   function resolutionMessage(code?: string) {
     const messages: Record<string, string> = {
@@ -222,7 +243,16 @@ export function ProductAdminPage() {
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
           <p className="text-xs text-zinc-500">输入 @用户名、+888 号码或粘贴 t.me/nft 礼物链接，稍作停顿后自动识别 NFT 图片和资料。</p>
-        </div>
+        </        <button
+          type="button"
+          onClick={() => void syncNftIndex()}
+          disabled={syncingIndex || resolving || publishing}
+          className="w-full rounded-full border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-sm font-semibold text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {syncingIndex ? "正在同步 Telegram NFT 索引……" : "同步用户名 / +888 NFT 索引（每次最多 200 项）"}
+        </button>
+
+div>
 
         <button
           type="button"
