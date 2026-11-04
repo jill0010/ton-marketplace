@@ -1,95 +1,48 @@
 # TON Marketplace Contracts
 
-This directory contains an experimental Tolk/Acton implementation of the TON marketplace escrow prototype.
+Tolk/Acton contracts for the TON Market digital-asset marketplace.
 
 ## Contracts
 
-- `contracts/Marketplace.tolk` — V1 product publication, pending/active/cancelled state, and callbacks from the V1 escrow contract.
-- `contracts/MarketplaceV2.tolk` — isolated V2 listing registration, NFT Item uniqueness reservation, and authenticated NFTEscrowV2 deposit callback/ACK integration.
-- `contracts/NFTEscrow.tolk` — official collection/item-code allowlisting, NFT deposit verification, seller refunds, and retryable callbacks.
-- `contracts/types.tolk` — storage structures, message ABI and error codes.
-- `wrappers/` — generated contract wrappers.
-- `tests/` — emulation tests, including NFT deposit and refund integration.
+- `contracts/Marketplace.tolk` — legacy V1 listing and escrow flow. Do not use for new production listings.
+- `contracts/MarketplaceV2.tolk` — V2 listing, purchase, delivery, settlement, compensation, and retry state machines.
+- `contracts/NFTEscrowV2.tolk` — V2 NFT custody, official Item Code validation, TEP-62 delivery/return, and durable callbacks.
+- `contracts/types.tolk` — serialized storage schemas, message ABI, and error codes.
+- `wrappers/` — Acton contract/test wrappers.
+- `tests/` — emulator integration and adversarial tests.
+- `scripts/deploy-v2.tolk` — fresh V2 deployment and initial binding script for emulation/testnet.
 
-## Current functionality
+## Marketplace V2 protocol
 
-The V1 prototype supports:
-1. seller submits a listing request;
-2. Marketplace creates a pending product and asks Escrow to prepare a record;
-3. seller transfers the NFT to Escrow using the TEP-62 ownership transfer flow;
-4. Escrow verifies the NFT sender, previous owner, query ID and forward payload;
-5. Marketplace marks the product active after the authenticated Escrow callback;
-6. seller or Escrow owner can request a refund;
-7. refund is marked complete only after the NFT transfer response, and Marketplace cancels the product after its callback;
-8. Marketplace reserves each NFT Item address across Pending and Active listings, and releases that reservation only after the matching refund callback.
+### Listing and custody
 
-## Marketplace V2 listing status
+1. The seller's wallet sends `PublishProductV2` to MarketplaceV2. The sender address is the seller identity; product and query IDs must match the contract's current sequence values.
+2. MarketplaceV2 reserves the NFT Item address and creates a Pending product, then asks the configured NFTEscrowV2 to register the exact item, seller, collection, index, kind, and query ID.
+3. The client must wait until `NFTEscrowV2.escrowIdForQueryV2(queryId)` returns a non-zero escrow ID. Do not submit the NFT transfer before this registration barrier: official TEP-62 Item contracts update ownership before sending `ownership_assigned`, so a premature notification can bounce without rolling ownership back.
+4. Only after registration is confirmed does the seller send the standard TEP-62 transfer to NFTEscrowV2 with the exact forward-payload marker and query ID.
+5. NFTEscrowV2 validates the NFT Item sender, previous owner, collection allowlist, recognized Item Code hash, derived Item address, and exact forward payload. MarketplaceV2 activates the listing only after the authenticated deposit callback and sends the exact ACK.
+6. Seller or Marketplace owner can cancel an active listing. The listing is released only after NFTEscrowV2 confirms the NFT Item's return to the seller and the callback is acknowledged.
 
-The isolated MarketplaceV2 listing path is implemented and emulator-tested:
-1. seller identity is taken from the inbound message sender;
-2. MarketplaceV2 reserves the NFT Item address and stores a Pending product;
-3. MarketplaceV2 asks the configured NFTEscrowV2 to create a custody record;
-4. the seller must transfer the NFT Item to NFTEscrowV2;
-5. MarketplaceV2 activates the product only after an authenticated callback matching product ID, query ID, NFT Item, seller, and escrow ID;
-6. MarketplaceV2 sends the exact deposit ACK, allowing Escrow to clear its durable callback;
-7. the seller (or Marketplace owner) can cancel an Active listing; MarketplaceV2 requests the NFT return from NFTEscrowV2, and only the authenticated NFT Item `excesses` confirmation can mark the listing Cancelled and release the NFT uniqueness index;
-8. the exact refund callback is ACKed so NFTEscrowV2 can clear its durable callback record.
+The NFT wallet-assets Edge Function now includes the verified Item index needed to reproduce the official Item StateInit/address check. The Marketplace V2 state Edge Function provides server-side reads for the next listing IDs and the Escrow registration barrier. It requires the server secrets `TONCENTER_API_KEY`, `MARKETPLACE_V2_ADDRESS`, and `NFT_ESCROW_V2_ADDRESS`.
 
-NFTEscrowV2 also now sends a durable `EscrowReleaseFailedV2` callback after an exact NFT Item release bounce restores the record to Deposited. Its callback survives a bounce, can be retried by the Escrow owner, and is cleared only by an exact Marketplace ACK. The MarketplaceV2 consumer and buyer-refund/seller-return compensation are not yet implemented; buyer funds must remain disabled until those paths are complete.
+### Purchase, delivery, settlement, and compensation
 
-This is a listing/custody integration milestone only. V2 checks the approved Fragment Gift Collection, recognized Item Code hash, and Item address derived from the collection and index before creating custody. It also validates the TEP-62 forward-payload marker and exact escrow query ID before accepting an ownership notification. The dedicated `marketplace-v2-official-item-transfer.integration.test.tolk` now registers and deploys the allowlisted Fragment Item Code in the emulator through the collection deployment ABI, verifies the initial owner with `get_nft_data`, rejects a non-owner transfer attempt, executes the seller's standard TEP-62 transfer to Escrow, and verifies the Item getter reports Escrow as the new owner before asserting the deposit callback/ACK lifecycle. Other focused adversarial tests still inject malformed or forged notifications to exercise validation branches. This is emulator evidence for the recognized Item Code fixture, not a testnet/mainnet rehearsal or a guarantee covering every live Fragment collection version. V2 does not implement a buyer purchase/payment entrypoint, release NFTs through a MarketplaceV2 order, pay sellers/platform, or refund buyers. The seller cancellation/refund path is implemented and emulator-tested; bounced or uncorrelated refund requests remain fail-closed for operator review. It is not safe for production listing or purchasing.
+1. A buyer wallet sends `BuyProductV2` with the exact listed price, a unique high-range query ID, a short deadline, and the required execution reserve. The buyer identity is the inbound sender; self-purchase, wrong price, underpayment, overpayment, replay, and expired requests are rejected.
+2. MarketplaceV2 stores an immutable order snapshot and three durable payout liabilities: seller proceeds, platform fee, and buyer refund.
+3. NFTEscrowV2 transfers the actual NFT Item to the buyer. MarketplaceV2 does not settle either payout leg until the authenticated NFT release callback matches the order, product, escrow record, query, NFT Item, and buyer.
+4. Settlement is split as 97% to the seller and 3% to the configured platform treasury. Integer rounding is deterministic: the fee rounds down and the seller receives the remainder, so the two amounts always sum to the exact gross price.
+5. Seller and platform transfers are separate, independently retryable operations. A bounced leg is marked failed without undoing a successful leg; an owner-authorized retry creates a fresh query ID for that exact liability.
+6. If NFT delivery fails, NFTEscrowV2 emits a durable failure callback. MarketplaceV2 requests the NFT's return to the seller and refunds the buyer only after the exact seller-return confirmation. A bounced buyer refund remains a durable liability and can be retried.
 
-## Important: buying and settlement are not implemented
+## Verification and release status
 
-This is **not yet a complete marketplace**. There is no buyer purchase message, payment/order state machine, NFT delivery to buyer, seller payout, or 97% / 3% fee split. The `Order` structures currently present in the types are not wired into a purchase flow.
+The Contracts workflow builds the contracts, runs emulator integration tests, checks the opcode registry, runs the Tolk linter, and enforces formatting. The V2 test suite covers official Item deployment/transfer, escrow registration, successful purchase and NFT delivery, 97/3 settlement, payout bounce/retry, failed delivery, seller return, buyer refund, and refund bounce/retry.
 
-The frontend NFT publish endpoint remains fail-closed. MarketplaceV2 is source/emulator-only and must not be exposed to real users until testnet rehearsal against current live official collections, deployment, cancellation/recovery, purchase, delivery, refund, and settlement controls are complete. Do not accept real buyer funds or list real NFTs using this prototype.
+Passing emulator tests are not a substitute for a testnet rehearsal or an independent security review. Current V2 code has not been deployed to testnet or mainnet in this release process. The frontend publish endpoint remains fail-closed and the Publish page remains disabled until on-chain deployment addresses, client transaction sequencing, and database mirroring are configured and verified. Do not accept real buyer funds or expose real-asset listings yet.
 
-See [Marketplace Contract Readiness Audit](../../docs/architecture/MARKETPLACE_CONTRACT_READINESS_AUDIT_2026-11-02.md) for the full blockers and required implementation order.
+## Deployment safety
 
-The planned arbitrary-wallet payout model is documented in [Payout Finality and Bounce Recovery Decision](../../docs/architecture/TON_MARKETPLACE_PAYOUT_FINALITY_DECISION_2026-11-03.md). It does not require ordinary TON wallets to send custom acknowledgements; recipient transaction finality is verified from the chain trace.
-
-The required NFT release failure callback and buyer compensation protocol is documented in [NFT Delivery Failure and Buyer Compensation Decision](../../docs/architecture/TON_MARKETPLACE_DELIVERY_FAILURE_COMPENSATION_2026-11-03.md). MarketplaceV2 must not accept buyer funds until the Escrow failure callback, seller NFT return, and buyer refund paths are implemented and tested.
-
-## Build and test
-
-Install the Acton toolchain described by the official Acton documentation, then run from this directory:
-
-```bash
-acton build
-acton test
-acton fmt --check
-```
-
-The GitHub Contracts workflow runs the contract build, emulation tests, linter and formatter. Check the latest workflow result for the exact commit before treating a change as verified.
-
-## Storage compatibility and deployment safety
-
-- `MarketplaceStorage` now includes `assetListings: map<address, uint64>` between `products` and `orders`; an absent key means the NFT is available. This changes the serialized storage layout; it is not a drop-in compatible update for a contract initialized with the prior structure.
-- The current contract has no on-chain migration/upgrade handler that can safely reconstruct this index from existing products. Do not send the new code to an existing Marketplace address.
-- Treat this storage shape as a fresh-deployment schema only. If an older Marketplace was deployed outside this repository workflow, preserve it and design/test a separate migration or deploy a new address with an explicit user-facing cutover. Never assume an empty index for old products.
-- A fresh deployment must initialize `assetListings` as an empty map. The deployment script and test fixtures now do so.
-- Current source review does not authorize mainnet deployment.
-- Use a testnet rehearsal only after the contract ABI, storage layout, upgrade plan and security tests are reviewed.
-- Never put signing keys or mnemonic phrases in this repository.
-- Mainnet deployment or upgrade requires a separate explicit operational approval.
-
-
-Latest observed Contracts CI for the architecture branch: workflow #281 succeeded on commit `661aed983cdd0d173e7b4bd3d4e9f474bf0b3766` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
-
-
-Latest observed Contracts CI for the architecture branch: workflow #282 succeeded on commit `a122ed2ba9081b7d35d13d09ee8dbf4f732af4f8` — opcode registry check (35 declarations, no collisions), build, **99 tests in 12 files**, linter, and formatter. This includes regressions rejecting release destinations equal to the seller, Escrow itself, and the NFT Item contract. This validates the source/emulator state only; it does not authorize deployment or real-asset use.
-
-
-Latest observed Contracts CI for the architecture branch: workflow #297 succeeded on commit `5f13f31a613905cd399f9f7878e5635d0022a3e1` — opcode registry check (35 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. The additional test round-trips the V2 immutable order snapshot and separate seller/platform payout liability records. These are serialization-only types; MarketplaceV2 still has no buyer purchase entrypoint and accepts no buyer funds.
-
-
-NFTEscrowV2 has an emulator-tested seller refund primitive wired to MarketplaceV2 `CancelProductV2`: a Marketplace-authorized request transfers the NFT back to its recorded seller, only authenticated NFT Item `excesses` marks it Refunded, a correlated transfer bounce restores Deposited, and the durable callback remains until exact ACK. The real official Item integration verifies unauthorized cancellation rejection and the complete seller NFT return/callback/ACK lifecycle.
-
-Latest observed Contracts CI: workflow #322 succeeded on commit `cbc1306c0ba70dd3577b069a1bceeb3d76a8fb1c` — opcode registry check (39 declarations, no collisions), build, **100 tests in 12 files**, linter, and formatter. This validates emulator/source behavior only; no deployment or real-asset use is authorized.
-
-
-Latest observed Contracts CI: workflow #336 succeeded on commit `4a0261879a0d3be5de4a1bab5859a90dfce82d7d` — opcode registry check (**40 declarations, no collisions**), build, **100 tests in 12 files**, linter, and formatter. The official Item integration test now also exercises unauthorized cancellation rejection and the complete seller NFT return/callback/ACK lifecycle. This is emulator/source verification only; live testnet rehearsal, full purchase/payment/settlement, and production security review remain release gates.
-
-
-Latest observed Contracts CI: workflow #374 succeeded on commit `c89ee0169fb0c1e6a1b52d14680a83e3dd96b208` — opcode registry check (**43 declarations, no collisions**), build, **101 tests in 13 files**, linter, and formatter. The new release-failure callback integration test causes a real NFT Item transfer bounce, verifies the Escrow durable failure callback, forces an actual Marketplace receiver action-phase bounce, retries from the Escrow owner, and confirms the exact ACK clears the callback. MarketplaceV2 still does not consume this callback for buyer compensation, and buyer payments remain disabled.
+- `MarketplaceV2Storage` and `NFTEscrowV2Storage` are fresh-deployment schemas. Do not point this code at an older V1 contract address or assume serialized storage compatibility.
+- The V2 deployment script binds a fresh MarketplaceV2 to a fresh NFTEscrowV2 and configures the deployer as the initial treasury. Review and explicitly choose the production owner and treasury addresses before any mainnet deployment.
+- No signing key or mnemonic belongs in this repository, GitHub source, or logs.
+- A mainnet deployment requires a funded, authorized signer; verified production owner/treasury addresses; a testnet rehearsal against current live Fragment collections; and independent review of the compiled code, ABI, storage, and recovery paths.
