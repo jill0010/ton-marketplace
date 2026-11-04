@@ -41,6 +41,75 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+
+function decodeHtml(value: string): string {
+  return value.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([\da-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16))).trim();
+}
+
+function metaContent(html: string, key: string): string | null {
+  for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
+    const property = tag.match(/(?:property|name)=["']([^"']+)["']/i)?.[1]?.toLowerCase();
+    if (property !== key.toLowerCase()) continue;
+    const content = tag.match(/content=["']([^"']*)["']/i)?.[1];
+    if (content) return decodeHtml(content);
+  }
+  return null;
+}
+
+function extractGiftPageFields(html: string) {
+  const title = metaContent(html, "og:title") ?? html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? null;
+  const description = metaContent(html, "og:description") ?? metaContent(html, "description") ?? "";
+  const image = metaContent(html, "og:image") ?? metaContent(html, "twitter:image");
+  const video = metaContent(html, "og:video") ?? metaContent(html, "og:video:secure_url");
+  const plain = decodeHtml(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
+  const find = (label: string) => {
+    const match = plain.match(new RegExp(label + "\\s*:?\\s*([^|•]{1,80})", "i"));
+    return match?.[1]?.trim() ?? null;
+  };
+  const attributes: Record<string, string | null> = {
+    model: find("Model"),
+    backdrop: find("Backdrop"),
+    symbol: find("Symbol"),
+    quantity: find("Quantity"),
+    number: find("Number"),
+  };
+  return {
+    name: title ? decodeHtml(title).replace(/\s*[-|]\s*Telegram.*$/i, "").trim().slice(0, 256) : null,
+    description: description.slice(0, 2000),
+    image_url: image,
+    animated_url: video,
+    attributes,
+    page_text: plain.slice(0, 6000),
+  };
+}
+
+async function readTelegramGiftPage(slug: string) {
+  const url = "https://t.me/nft/" + encodeURIComponent(slug);
+  const response = await fetch(url, {
+    headers: { "Accept": "text/html,application/xhtml+xml", "Accept-Language": "en", "User-Agent": "Mozilla/5.0 (compatible; TONMarketplace/1.0)" },
+    redirect: "follow",
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!response.ok) throw new Error("TELEGRAM_GIFT_PAGE_HTTP_" + response.status);
+  const html = (await response.text()).slice(0, 2_000_000);
+  const fields = extractGiftPageFields(html);
+  if (!fields.image_url && !fields.name && !fields.description) throw new Error("TELEGRAM_GIFT_PAGE_METADATA_MISSING");
+  for (const key of ["image_url", "animated_url"] as const) {
+    const candidate = fields[key];
+    if (!candidate) continue;
+    try {
+      const parsed = new URL(candidate, url);
+      if (parsed.protocol !== "https:" || !(parsed.hostname === "t.me" || parsed.hostname.endsWith(".telegram.org") || parsed.hostname.endsWith(".telesco.pe"))) {
+        fields[key] = null;
+      } else fields[key] = parsed.toString();
+    } catch { fields[key] = null; }
+  }
+  return { url, ...fields };
+}
+
 function parseInput(value: string) {
   const input = value.trim();
   const link = input.match(/^https?:\/\/(?:www\.)?t\.me\/nft\/([a-zA-Z0-9_-]+)\/?$/i);
@@ -118,133 +187,36 @@ Deno.serve(async (req: Request) => {
 
     const tonApiKey = Deno.env.get("TONCENTER_API_KEY") ?? "";
     if (parsed.kind === "gift") {
-      const portalsKey = Deno.env.get("PORTALS_API_KEY") ?? "";
-      if (!portalsKey) {
-        return json({
-          error: "PORTALS_API_KEY_REQUIRED",
-          message: "礼物链接已识别，但自动解析需要 Portals Partner API。请在 Portals 的 Partner API 页面创建密钥，并添加到 Supabase Edge Function Secret：PORTALS_API_KEY。",
-          telegram_url: `https://t.me/nft/${parsed.slug}`,
-          slug: parsed.slug,
-        }, 503);
-      }
-
-      const portalsHeaders = { Authorization: `partners ${portalsKey}` };
-      const exactUrl = new URL("https://portal-market.com/partners/nfts/search");
-      exactUrl.searchParams.set("tg_ids", parsed.slug);
-      exactUrl.searchParams.set("limit", "20");
-      let response = await fetch(exactUrl, {
-        headers: portalsHeaders,
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!response.ok) {
-        const detail = (await response.text()).slice(0, 500);
-        console.error("Portals NFT search failed:", response.status, detail);
-        const code = response.status === 401
-          ? "PORTALS_KEY_INVALID"
-          : response.status === 403
-            ? "PORTALS_SUBSCRIPTION_REQUIRED"
-            : response.status === 429
-              ? "PORTALS_RATE_LIMITED"
-              : "PORTALS_LOOKUP_FAILED";
-        return json({
-          error: code,
-          message: response.status === 401
-            ? "Portals API Key 无效或已重新签发。"
-            : response.status === 403
-              ? "Portals Partner API 尚未开通套餐，或套餐已过期。"
-              : response.status === 429
-                ? "Portals API 请求过于频繁，请稍后重试。"
-                : "Portals 礼物查询接口暂时失败。",
-          detail,
-        }, response.status === 429 ? 429 : 502);
-      }
-
-      let result = await response.json() as { results?: PortalsGift[]; total_count?: number };
-      let gifts = result.results ?? [];
-      let lookupMethod = "tg_ids";
-      const slugParts = parsed.slug.toLowerCase().match(/^([a-z0-9_-]+?)-(\d+)$/);
-      if (gifts.length === 0 && slugParts) {
-        // Some Portals indexes resolve the Telegram gift slug but not the
-        // collection-number pair. Retry by Telegram's collection item number,
-        // then verify the collection name locally before accepting a match.
-        const collectionSlug = slugParts[1].replace(/[^a-z0-9]/g, "");
-        const itemNumber = Number(slugParts[2]);
-        const fallbackUrl = new URL("https://portal-market.com/partners/nfts/search");
-        fallbackUrl.searchParams.set("external_collection_number", String(itemNumber));
-        fallbackUrl.searchParams.set("mint_status", "all");
-        fallbackUrl.searchParams.set("limit", "100");
-        response = await fetch(fallbackUrl, {
-          headers: portalsHeaders,
-          signal: AbortSignal.timeout(12000),
-        });
-        if (!response.ok) {
-          const detail = (await response.text()).slice(0, 500);
-          console.error("Portals number fallback failed:", response.status, detail);
-          if (response.status === 429) {
-            const retryAfter = response.headers.get("Retry-After");
-            const rateLimitReset = response.headers.get("X-RateLimit-Reset");
-            return json({
-              error: "PORTALS_RATE_LIMITED",
-              message: "Portals API 请求频率已达到当前套餐限制。请等待限流窗口重置后再试；不要连续点击查询。",
-              detail,
-              retry_after_seconds: retryAfter && Number.isFinite(Number(retryAfter)) ? Number(retryAfter) : null,
-              rate_limit_reset: rateLimitReset,
-            }, 429);
-          }
-          if (response.status === 401 || response.status === 403) {
-            return json({
-              error: response.status === 401 ? "PORTALS_KEY_INVALID" : "PORTALS_SUBSCRIPTION_REQUIRED",
-              message: response.status === 401 ? "Portals API Key 无效或已重新签发。" : "Portals Partner API 套餐不可用或已过期。",
-              detail,
-            }, 502);
-          }
-          return json({ error: "PORTALS_LOOKUP_FAILED", message: "Portals 礼物编号备用查询失败。", detail }, 502);
-        }
-        result = await response.json() as { results?: PortalsGift[]; total_count?: number };
-        const numberResults = result.results ?? [];
-        gifts = numberResults.filter((item) => {
-          const numberMatches = Number(item.external_collection_number) === itemNumber;
-          const normalizedName = (item.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-          return numberMatches && normalizedName === collectionSlug;
-        });
-        lookupMethod = "external_collection_number_and_collection_name";
-      }
-
-      const normalizedSlug = parsed.slug.toLowerCase();
-      const returnedIds = gifts.map((item) => str(item.tg_id)).filter((value): value is string => Boolean(value));
-      console.log("Portals gift search result", JSON.stringify({ requested_slug: parsed.slug, lookup_method: lookupMethod, total_count: result.total_count ?? null, result_count: gifts.length, returned_tg_ids: returnedIds.slice(0, 20) }));
-      const exactGift = gifts.find((item) => (item.tg_id ?? "").toLowerCase() === normalizedSlug);
-      const gift = exactGift ?? (lookupMethod === "external_collection_number_and_collection_name" && gifts.length === 1 ? gifts[0] : undefined);
-      if (!gift) return json({ error: "GIFT_NOT_FOUND_OR_NOT_MINTED", message: "Portals 未找到与礼物链接对应的项目。已先按 Telegram 礼物 slug 查询；无结果时再按礼物编号和系列名称精确交叉匹配。", slug: parsed.slug, detail: { lookup_method: lookupMethod, result_count: gifts.length, total_count: result.total_count ?? null, returned_tg_ids: returnedIds.slice(0, 20) } }, 404);
-      if (!gift.ton_address) return json({ error: "GIFT_NOT_MINTED", message: "该 Telegram 礼物尚无 TON 链上 NFT 地址。", slug: parsed.slug }, 409);
-
-      let chain: Awaited<ReturnType<typeof readTonNft>>;
       try {
-        chain = await readTonNft(gift.ton_address, tonApiKey);
-      } catch (error) {
-        const detail = error instanceof Error ? error.message : "UNKNOWN_CHAIN_ERROR";
-        console.error("TON NFT verification failed:", detail);
+        const page = await readTelegramGiftPage(parsed.slug);
+        const number = parsed.slug.match(/-(\d+)$/)?.[1] ?? null;
         return json({
-          error: "TON_NFT_VERIFICATION_FAILED",
-          message: "Portals 已找到礼物，但读取 TON 链上 NFT 失败。请稍后重试。",
+          success: true,
+          type: "gift",
+          address: null,
+          collection_address: null,
+          item_index: number,
+          name: page.name ?? parsed.slug,
+          description: page.description,
+          image_url: page.image_url,
+          animated_url: page.animated_url,
+          telegram_url: page.url,
+          telegram_name: page.name,
+          attributes: page.attributes,
+          metadata: { source: "telegram_web", page_text: page.page_text },
+          verified_on_chain: false,
+          source: "telegram_web",
+        });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "TELEGRAM_GIFT_PAGE_LOOKUP_FAILED";
+        console.error("Telegram gift page lookup failed:", detail);
+        return json({
+          error: "TELEGRAM_GIFT_PAGE_LOOKUP_FAILED",
+          message: "无法从 Telegram 礼物公开页面读取图片或商品资料；本次未调用 Portals API。",
           detail,
-          telegram_url: `https://t.me/nft/${parsed.slug}`,
-          portals_image_url: gift.photo_url ?? null,
-          ton_address: gift.ton_address,
+          telegram_url: "https://t.me/nft/" + parsed.slug,
         }, 502);
       }
-      return json({
-        success: true,
-        type: "gift",
-        canonical_name: `#${gift.external_collection_number ?? parsed.slug}`,
-        telegram_url: `https://t.me/nft/${parsed.slug}`,
-        telegram_name: gift.name ?? null,
-        telegram_image_url: gift.photo_url ?? null,
-        ...chain,
-        image_url: chain.image_url ?? gift.photo_url ?? null,
-        source: chain.image_url ? "ton_chain" : "portals_fallback",
-        attributes: gift.attributes ?? [],
-      });
     }
 
     if (parsed.kind === "username" || parsed.kind === "phone_number") {
