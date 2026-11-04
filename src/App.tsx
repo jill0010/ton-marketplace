@@ -6,7 +6,6 @@ import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
 import { LanguageProvider } from "./lib/language"
 
-const CatalogPage = lazy(() => import("./pages/CatalogPage").then((module) => ({ default: module.CatalogPage })))
 const FragmentCatalogPage = lazy(() => import("./pages/FragmentCatalogPage").then((module) => ({ default: module.FragmentCatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
 const ProductPage = lazy(() => import("./pages/ProductPage").then((module) => ({ default: module.ProductPage })))
@@ -44,7 +43,7 @@ export default function App() {
 
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/catalog" element={<CatalogPage />} />
+                <Route path="/catalog" element={<Navigate to="/" replace />} />
                 <Route path="/fragment-market" element={<FragmentCatalogPage />} />
                 <Route path="/premium" element={<PremiumRoute />} />
                 <Route path="/premium/history" element={<PremiumHistoryPage />} />
