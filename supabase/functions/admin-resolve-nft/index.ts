@@ -128,11 +128,12 @@ Deno.serve(async (req: Request) => {
         }, 503);
       }
 
-      const url = new URL("https://portal-market.com/partners/nfts/search");
-      url.searchParams.set("tg_ids", parsed.slug);
-      url.searchParams.set("limit", "20");
-      const response = await fetch(url, {
-        headers: { Authorization: `partners ${portalsKey}` },
+      const portalsHeaders = { Authorization: `partners ${portalsKey}` };
+      const exactUrl = new URL("https://portal-market.com/partners/nfts/search");
+      exactUrl.searchParams.set("tg_ids", parsed.slug);
+      exactUrl.searchParams.set("limit", "20");
+      let response = await fetch(exactUrl, {
+        headers: portalsHeaders,
         signal: AbortSignal.timeout(12000),
       });
       if (!response.ok) {
@@ -157,13 +158,46 @@ Deno.serve(async (req: Request) => {
           detail,
         }, response.status === 429 ? 429 : 502);
       }
-      const result = await response.json() as { results?: PortalsGift[]; total_count?: number };
-      const gifts = result.results ?? [];
+
+      let result = await response.json() as { results?: PortalsGift[]; total_count?: number };
+      let gifts = result.results ?? [];
+      let lookupMethod = "tg_ids";
+      const slugParts = parsed.slug.toLowerCase().match(/^([a-z0-9_-]+?)-(\\d+)$/);
+      if (gifts.length === 0 && slugParts) {
+        // Some Portals indexes resolve the Telegram gift slug but not the
+        // collection-number pair. Retry by Telegram's collection item number,
+        // then verify the collection name locally before accepting a match.
+        const collectionSlug = slugParts[1].replace(/[^a-z0-9]/g, "");
+        const itemNumber = Number(slugParts[2]);
+        const fallbackUrl = new URL("https://portal-market.com/partners/nfts/search");
+        fallbackUrl.searchParams.set("external_collection_number", String(itemNumber));
+        fallbackUrl.searchParams.set("mint_status", "all");
+        fallbackUrl.searchParams.set("limit", "100");
+        response = await fetch(fallbackUrl, {
+          headers: portalsHeaders,
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) {
+          const detail = (await response.text()).slice(0, 500);
+          console.error("Portals number fallback failed:", response.status, detail);
+          return json({ error: "PORTALS_LOOKUP_FAILED", message: "Portals 礼物编号备用查询失败。", detail }, 502);
+        }
+        result = await response.json() as { results?: PortalsGift[]; total_count?: number };
+        const numberResults = result.results ?? [];
+        gifts = numberResults.filter((item) => {
+          const numberMatches = Number(item.external_collection_number) === itemNumber;
+          const normalizedName = (item.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          return numberMatches && normalizedName === collectionSlug;
+        });
+        lookupMethod = "external_collection_number_and_collection_name";
+      }
+
       const normalizedSlug = parsed.slug.toLowerCase();
       const returnedIds = gifts.map((item) => str(item.tg_id)).filter((value): value is string => Boolean(value));
-      console.log("Portals gift search result", JSON.stringify({ requested_slug: parsed.slug, total_count: result.total_count ?? null, result_count: gifts.length, returned_tg_ids: returnedIds.slice(0, 20) }));
-      const gift = gifts.find((item) => (item.tg_id ?? "").toLowerCase() === normalizedSlug);
-      if (!gift) return json({ error: "GIFT_NOT_FOUND_OR_NOT_MINTED", message: "Portals 查询已完成，但返回结果中没有与输入礼物编号完全匹配的项目。", slug: parsed.slug, detail: { result_count: gifts.length, total_count: result.total_count ?? null, returned_tg_ids: returnedIds.slice(0, 20) } }, 404);
+      console.log("Portals gift search result", JSON.stringify({ requested_slug: parsed.slug, lookup_method: lookupMethod, total_count: result.total_count ?? null, result_count: gifts.length, returned_tg_ids: returnedIds.slice(0, 20) }));
+      const exactGift = gifts.find((item) => (item.tg_id ?? "").toLowerCase() === normalizedSlug);
+      const gift = exactGift ?? (lookupMethod === "external_collection_number_and_collection_name" && gifts.length === 1 ? gifts[0] : undefined);
+      if (!gift) return json({ error: "GIFT_NOT_FOUND_OR_NOT_MINTED", message: "Portals 未找到与礼物链接对应的项目。已先按 Telegram 礼物 slug 查询；无结果时再按礼物编号和系列名称精确交叉匹配。", slug: parsed.slug, detail: { lookup_method: lookupMethod, result_count: gifts.length, total_count: result.total_count ?? null, returned_tg_ids: returnedIds.slice(0, 20) } }, 404);
       if (!gift.ton_address) return json({ error: "GIFT_NOT_MINTED", message: "该 Telegram 礼物尚无 TON 链上 NFT 地址。", slug: parsed.slug }, 409);
 
       let chain: Awaited<ReturnType<typeof readTonNft>>;
