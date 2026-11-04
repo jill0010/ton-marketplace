@@ -527,22 +527,6 @@ struct EscrowDepositCallbackV2 {
     queryId: uint64
 }
 
-struct NFTEscrowV2RecordExtra {
-    collection: address
-    itemIndex: uint256
-    kind: uint8
-}
-
-struct NFTEscrowV2Record {
-    escrowId: uint64
-    nftItem: address
-    seller: address
-    productId: uint64
-    status: uint8
-    queryId: uint64
-    extra: Cell<NFTEscrowV2RecordExtra>
-}
-
 enum NFTEscrowV2RecordStatus {
     Pending = 0
     Deposited = 1
