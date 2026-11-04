@@ -143,7 +143,7 @@ async function findPublishTransaction(
     throw new Error("TON Center returned an invalid marketplace transaction response");
   }
 
-  const earliest = Date.now() - 15 * 60 * 1000;
+  const earliest = Date.now() - 24 * 60 * 60 * 1000;
   for (const tx of data.result as Record<string, unknown>[]) {
     const incoming = tx.in_msg as Record<string, unknown> | null;
     if (!incoming || incoming.bounced === true) continue;
