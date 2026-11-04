@@ -50,10 +50,26 @@ export function ProductAdminPage() {
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || authData.user?.id !== ADMIN_UID) throw new Error("当前账号不是授权管理员，请重新登录。");
-      const { data, error } = await supabase.functions.invoke("admin-resolve-nft", {
+      const request = supabase.functions.invoke("admin-resolve-nft", {
         body: { identifier: identifier.trim() },
       });
-      if (error) throw new Error(error.message || "NFT 查询服务暂时不可用。");
+      const timeout = new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error("查询超过 20 秒仍未响应。请稍后重试；如果连续失败，请联系管理员检查 Portals API 状态。")), 20000);
+      });
+      const { data, error } = await Promise.race([request, timeout]);
+      if (error) {
+        let detail = error.message || "NFT 查询服务暂时不可用。";
+        const context = (error as { context?: unknown }).context;
+        if (context instanceof Response) {
+          try {
+            const payload = await context.clone().json() as { message?: string; error?: string; detail?: string };
+            detail = payload.message || payload.detail || payload.error || detail;
+          } catch {
+            // Keep the SDK error message when the response is not JSON.
+          }
+        }
+        throw new Error(detail);
+      }
       if (!data?.success) throw new Error(data?.message || resolutionMessage(data?.error));
       setResolved(data as ResolvedNft);
       setMessage("已读取并核验 NFT 链上资料。请核对图片和名称后再发布。");
@@ -66,7 +82,13 @@ export function ProductAdminPage() {
 
   function resolutionMessage(code?: string) {
     const messages: Record<string, string> = {
-      PORTALS_API_KEY_REQUIRED: "礼物链接已识别。要自动读取礼物资料，请先配置 Portals Partner API 密钥 PORTALS_API_KEY。",
+      PORTALS_API_KEY_REQUIRED: "礼物链接已识别，但服务器没有读取到 PORTALS_API_KEY。请检查 Supabase Edge Function Secrets。",
+      PORTALS_KEY_INVALID: "Portals API Key 无效或已重新签发，请在 Portals Partner API 页面核对密钥。",
+      PORTALS_SUBSCRIPTION_REQUIRED: "Portals Partner API 尚未开通套餐，或套餐已过期。请在 Portals Partner API 页面选择 Free 套餐。",
+      PORTALS_RATE_LIMITED: "Portals API 请求过于频繁，请等待几秒后重试。",
+      PORTALS_LOOKUP_FAILED: "Portals 礼物查询接口暂时失败，请稍后重试。",
+      TON_NFT_VERIFICATION_FAILED: "Portals 已找到礼物，但读取 TON 链上 NFT 失败。请稍后重试。",
+      GIFT_NOT_MINTED: "Portals 找到了礼物，但它尚未铸造为 TON NFT，暂时不能作为链上 NFT 发布。",
       IDENTIFIER_INDEX_REQUIRED: "标识格式正确，但目前还没有用户名/888号码反查索引。可以先输入该 NFT 的 TON 原始地址进行链上核验。",
       GIFT_NOT_FOUND_OR_NOT_MINTED: "没有找到该礼物，或者该礼物尚未铸造为 TON NFT。",
       COLLECTION_NOT_ALLOWLISTED: "NFT 地址有效，但所属 Collection 不在官方白名单中，不能作为已核验商品发布。",
