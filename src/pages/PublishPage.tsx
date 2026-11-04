@@ -1,6 +1,13 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { TonConnectButton } from "@tonconnect/ui-react";
+import { TonConnectButton, useTonConnectUI } from "@tonconnect/ui-react";
+import {
+  buildNftEscrowTransferPayload,
+  buildPublishProductV2Payload,
+  MARKETPLACE_V2_LISTING_MESSAGE_VALUE,
+  MARKETPLACE_V2_NFT_TRANSFER_MESSAGE_VALUE,
+  MarketplaceV2AssetKind,
+} from "../lib/marketplaceV2.ts";
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase.ts";
 import { useLanguage } from "../lib/useLanguage.ts";
 import { useVerifiedTonWallet } from "../hooks/useVerifiedTonWallet.ts";
@@ -15,9 +22,22 @@ type NftAsset = {
   image_url: string | null;
 };
 
+type PendingListing = {
+  asset: NftAsset;
+  productId: string;
+  queryId: string;
+  escrowId: string;
+  price: string;
+  description: string;
+  marketplaceAddress: string;
+  escrowAddress: string;
+  step: "registration" | "transfer" | "sync";
+};
+
 export function PublishPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [tonConnectUI] = useTonConnectUI();
 
   const {
     walletAddress,
@@ -38,6 +58,8 @@ export function PublishPage() {
   const [description, setDescription] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
+  const [listingMessage, setListingMessage] = useState("");
+  const [pendingListing, setPendingListing] = useState<PendingListing | null>(null);
   const assetsRequestRef = useRef(0);
   const publishRequestRef = useRef(0);
 
