@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
   if (!PROJECT_URL || !ANON_KEY || !SERVICE_ROLE_KEY) return json({ error: "SUPABASE_ENV_MISSING" }, 500);
 
   const authorization = req.headers.get("Authorization") ?? "";
-  const token = authorization.replace(/^Bearer\s+/i, "");
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : authorization.trim();
   if (!token) return json({ error: "AUTH_REQUIRED" }, 401);
 
   const authClient = createClient(PROJECT_URL, ANON_KEY, {
