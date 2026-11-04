@@ -32,9 +32,16 @@ jobs:
       - name: Build production site
         run: npm run build
 
+      - name: List Cloudflare Pages projects
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project list
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=ton-marketplace-cvj --branch=main
+          command: pages deploy dist --project-name=ton-marketplace --branch=main --commit-dirty=true
