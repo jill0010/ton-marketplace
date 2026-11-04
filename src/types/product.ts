@@ -1,11 +1,9 @@
-export const PRODUCT_TYPES = [
-  "username",
-  "number",
-  "gift",
-] as const
+export const PRODUCT_TYPES = ["username", "number", "gift"] as const
 
 export type ProductType = (typeof PRODUCT_TYPES)[number]
 export type ListingMode = "auction" | "sale"
+export type ProductCurrency = "TON" | "GRAM"
+export type DeliveryMode = "escrow" | "manual"
 
 export type Product = {
   id: string
@@ -13,6 +11,8 @@ export type Product = {
   title: string
   subtitle: string
   priceTon: number
+  currency: ProductCurrency
+  deliveryMode: DeliveryMode
   imageUrl?: string | null
   status: "listed"
   listingMode?: ListingMode
