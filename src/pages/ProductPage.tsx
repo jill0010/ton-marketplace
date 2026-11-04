@@ -2,6 +2,7 @@
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
+import { GramTokenMark } from "../components/GramTokenMark"
 import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_TYPE_LABELS_ZH,
@@ -184,7 +185,8 @@ export function ProductPage() {
         </div>
       )}
 
-      <p className="text-3xl font-semibold text-emerald-300">
+      <p className="flex items-center gap-2 text-3xl font-semibold text-emerald-300">
+        {product.currency === "GRAM" && <GramTokenMark className="h-7 w-7" />}
         {product.priceTon} {product.currency}
       </p>
 
