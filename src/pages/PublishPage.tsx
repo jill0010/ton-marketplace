@@ -9,7 +9,8 @@ import {
   MarketplaceV2AssetKind,
 } from "../lib/marketplaceV2.ts";
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase.ts";
-import { useLanguage } from "../lib/useLanguage.ts";
+import { useLanguage } from "../lib/useLanguage.ts"
+import { GramTokenMark } from "../components/GramTokenMark";
 import { useVerifiedTonWallet } from "../hooks/useVerifiedTonWallet.ts";
 
 type NftAsset = {
