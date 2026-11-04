@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78";
@@ -58,7 +58,7 @@ export function ProductAdminPage() {
       });
       let timeoutId: number | undefined;
       const timeout = new Promise<never>((_, reject) => {
-        timeoutId = window.setTimeout(() => reject(new Error("查询超过 20 秒仍未响应。请稍后重试；如果连续失败，请联系管理员检查 Portals API 状态。")), 20000);
+        timeoutId = window.setTimeout(() => reject(new Error("查询超过 20 秒仍未响应。请稍后重试或检查 Telegram 页面是否可访问。")), 20000);
       });
       let result: Awaited<typeof request>;
       try {
@@ -94,7 +94,7 @@ export function ProductAdminPage() {
         throw new Error(`${data.message || resolutionMessage(data.error)}${detail}`);
       }
       setResolved(data as ResolvedNft);
-      setMessage("已读取并核验 NFT 链上资料。请核对图片和名称后再发布。");
+      setMessage(data.source === "telegram_web" ? "已从 Telegram 礼物网页读取图片和商品资料，请核对后填写售价并发布。" : "已读取 NFT 资料，请核对图片和名称后再发布。");
     } catch (error) {
       console.error("Admin NFT lookup failed:", error);
       setMessage(error instanceof Error && error.message.trim() ? error.message : (typeof error === "string" ? error : "NFT 查询失败：服务返回了无法识别的错误，请检查 Supabase Edge Function 日志。"));
@@ -103,12 +103,18 @@ export function ProductAdminPage() {
     }
   }
 
+  useEffect(() => {
+    if (!parseIdentifier(identifier) || resolving || publishing) return;
+    const timer = window.setTimeout(() => { void resolveNft(); }, 900);
+    return () => window.clearTimeout(timer);
+  }, [identifier]);
+
   function resolutionMessage(code?: string) {
     const messages: Record<string, string> = {
-      PORTALS_API_KEY_REQUIRED: "礼物链接已识别，但服务器没有读取到 PORTALS_API_KEY。请检查 Supabase Edge Function Secrets。",
+      TELEGRAM_GIFT_PAGE_LOOKUP_FAILED: "无法从 Telegram 礼物网页读取图片或资料，请确认链接正确且页面可公开访问。",\n      PORTALS_API_KEY_REQUIRED: "旧版礼物查询配置缺失；礼物网页识别不再依赖 Portals API。",
       PORTALS_KEY_INVALID: "Portals API Key 无效或已重新签发，请在 Portals Partner API 页面核对密钥。",
       PORTALS_SUBSCRIPTION_REQUIRED: "Portals Partner API 尚未开通套餐，或套餐已过期。请在 Portals Partner API 页面选择 Free 套餐。",
-      PORTALS_RATE_LIMITED: "Portals API 请求已达到当前套餐限额。请等待限流窗口重置后再试，不要连续点击查询。",
+      PORTALS_RATE_LIMITED: "旧版 Portals 查询触发限流；当前礼物网页识别不调用 Portals API。",
       PORTALS_LOOKUP_FAILED: "Portals 礼物查询接口暂时失败，请稍后重试。",
       TON_NFT_VERIFICATION_FAILED: "Portals 已找到礼物，但读取 TON 链上 NFT 失败。请稍后重试。",
       GIFT_NOT_MINTED: "Portals 找到了礼物，但它尚未铸造为 TON NFT，暂时不能作为链上 NFT 发布。",
@@ -214,7 +220,7 @@ export function ProductAdminPage() {
             disabled={resolving || publishing}
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
-          <p className="text-xs text-zinc-500">输入 @用户名、+888 号码或粘贴 t.me/nft 礼物链接，自动读取对应 NFT 商品资料和图片。</p>
+          <p className="text-xs text-zinc-500">输入 @用户名、+888 号码或粘贴 t.me/nft 礼物链接，稍作停顿后自动识别 NFT 图片和资料。</p>
         </div>
 
         <button
