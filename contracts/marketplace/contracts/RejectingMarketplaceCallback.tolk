@@ -46,6 +46,7 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | EscrowReleasedV2
     | EscrowReleaseFailedV2
     | PlatformPayoutV2
+    | BuyerRefundV2
 
 contract RejectingMarketplaceCallback {
     author: "TON Market"
@@ -161,6 +162,19 @@ fun onInternalMessage(in: InMessage) {
                 createMessage({
                     bounce: false,
                     value: grams("1"),
+                    dest: storage.controller,
+                    body: beginCell().endCell().beginParse(),
+                }).send(SEND_MODE_REGULAR + SEND_MODE_BOUNCE_ON_ACTION_FAIL);
+            }
+        }
+
+        BuyerRefundV2 => {
+            val storage = lazy RejectingMarketplaceCallbackStorage.load();
+            if (storage.rejectAction) {
+                // Force a real action-phase no-funds bounce for the buyer refund.
+                createMessage({
+                    bounce: false,
+                    value: grams("10"),
                     dest: storage.controller,
                     body: beginCell().endCell().beginParse(),
                 }).send(SEND_MODE_REGULAR + SEND_MODE_BOUNCE_ON_ACTION_FAIL);
