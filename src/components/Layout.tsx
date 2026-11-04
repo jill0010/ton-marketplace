@@ -42,6 +42,9 @@ export function Layout() {
             <NavLink to="/catalog" className={navClass}>
               {t("All Products", "全部商品")}
             </NavLink>
+            <NavLink to="/fragment-market" className={navClass}>
+              {t("Fragment Market", "Fragment 市场")}
+            </NavLink>
 
             <div className="flex items-center">
               <TonConnectButton className="wallet-connect-button" />
