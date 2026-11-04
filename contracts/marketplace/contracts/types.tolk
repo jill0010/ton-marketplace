@@ -457,6 +457,10 @@ enum ErrorsV2 {
     InvalidNftItem = 209
     InvalidProductKind = 210
     InvalidRefund = 211
+    InvalidPurchase = 212
+    InvalidPayment = 213
+    InvalidDelivery = 214
+    InvalidPayout = 215
 }
 
 struct CreateEscrowV2Extra {
@@ -641,6 +645,20 @@ struct (0x71b00100) BuyProductV2 {
     expectedPrice: coins
     queryId: uint64
     deadline: uint32
+}
+
+// Outgoing payout envelopes carry immutable operation identities. They are
+// bounce-correlated by MarketplaceV2; beneficiaries do not need to execute them.
+struct (0x71b00101) SellerPayoutV2 {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
+}
+
+struct (0x71b00102) PlatformPayoutV2 {
+    orderId: uint64
+    operationId: uint64
+    queryId: uint64
 }
 
 // One-time treasury configuration before any order exists.
