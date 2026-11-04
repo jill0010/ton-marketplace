@@ -290,6 +290,10 @@ fun NFTEscrowV2.sendRetryReleaseFailureCallbackV2(
     return net.send(from, genericMsg);
 }
 
+fun NFTEscrowV2.escrowIdForQueryV2(self, queryId: uint64): uint64 {
+    return net.runGetMethod(self.address, "escrowIdForQueryV2", [queryId]);
+}
+
 fun NFTEscrowV2.assetEscrowIdV2(self, nftItem: address): uint64? {
     return net.runGetMethod(self.address, "assetEscrowIdV2", [nftItem]);
 }
