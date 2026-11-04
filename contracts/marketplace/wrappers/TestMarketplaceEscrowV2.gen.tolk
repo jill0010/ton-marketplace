@@ -12,7 +12,7 @@ struct TestMarketplaceEscrowV2 {
 }
 
 fun TestMarketplaceEscrowV2.fromStorage(
-    storage: TestMarketplaceEscrowV2Storage,
+    storage: NFTEscrowV2Storage,
     toShard: AddressShardingOptions? = null,
     workchain: int8 = BASECHAIN,
 ): TestMarketplaceEscrowV2 {
