@@ -48,6 +48,9 @@ jobs:
       - name: Test
         run: acton test --backtrace full
 
+      - name: Exercise V2 deployment script in emulator
+        run: acton script scripts/deploy-v2.tolk
+
       - name: Linter
         run: acton check --output-format github
 
