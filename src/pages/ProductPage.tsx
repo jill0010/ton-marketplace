@@ -193,13 +193,13 @@ export function ProductPage() {
         disabled
         className="w-full rounded-full bg-white/20 px-4 py-3 text-sm text-zinc-400"
       >
-        {t("Purchase (Payments Not Enabled)", "购买（暂未启用付款）")}
+        {t("Claim (Coming Soon)", "认领（即将开放）")}
       </button>
 
       <p className="text-xs text-zinc-500">
         {t(
-          "Payment and order creation are not enabled yet. No funds will be requested and no asset transfer will be initiated.",
-          "当前版本尚未接通下单和收款，不会请求付款，也不会发起资产转移。"
+          "Claiming and payment are not enabled yet. No funds will be requested and no asset transfer will be initiated.",
+          "当前版本尚未开放认领和付款，不会请求付款，也不会发起资产转移。"
         )}
       </p>
 
