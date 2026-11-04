@@ -1,4 +1,5 @@
 import "@acton/io"
+import "@acton/env"
 import "@acton/emulation/network"
 import "@acton/emulation/scripts"
 
@@ -8,9 +9,11 @@ import "@wrappers/NFTEscrowV2.gen"
 
 fun main() {
     val deployer = scripts.wallet("deployer");
-    val treasury = scripts.wallet("treasury");
+    // Mainnet can use one interactive TON Connect signer plus a public treasury
+    // address. Emulation/testnet can keep using a separately configured wallet.
+    val treasuryAddress = env<address>("PLATFORM_TREASURY_ADDRESS") ?? scripts.wallet("treasury").address;
 
-    if (deployer.address == treasury.address) {
+    if (deployer.address == treasuryAddress) {
         println("Deployment aborted: owner and platform treasury must be different wallets");
         return;
     }
@@ -26,7 +29,7 @@ fun main() {
         queryToProduct: [],
         purchaseStorage: MarketplaceV2PurchaseStorage {
             schemaVersion: 2,
-            treasury: treasury.address,
+            treasury: treasuryAddress,
             treasuryConfigured: false,
             nextOrderId: 1,
             nextOperationId: 1,
@@ -101,7 +104,7 @@ fun main() {
 
     val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
         deployer.address,
-        treasury.address,
+        treasuryAddress,
         { value: grams("0.05") },
     );
     if (configureTreasury.waitForFirstTransaction() == null) {
@@ -113,7 +116,7 @@ fun main() {
         println("Marketplace V2 Escrow verification failed");
         return;
     }
-    if (!marketplace.treasuryConfiguredV2() || marketplace.treasuryV2() != treasury.address) {
+    if (!marketplace.treasuryConfiguredV2() || marketplace.treasuryV2() != treasuryAddress) {
         println("Marketplace V2 Treasury verification failed");
         return;
     }
@@ -125,7 +128,7 @@ fun main() {
     println("Marketplace V2 deployed at {}", marketplace.address);
     println("NFT Escrow V2 deployed at {}", escrow.address);
     println("Marketplace owner: {}", deployer.address);
-    println("Platform treasury: {}", treasury.address);
+    println("Platform treasury: {}", treasuryAddress);
     println("Escrow binding and immutable treasury configuration verified");
     println("No collections are approved; listings remain unavailable until official collection policy is configured");
 }
