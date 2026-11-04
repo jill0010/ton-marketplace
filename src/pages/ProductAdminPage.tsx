@@ -46,7 +46,7 @@ function parseCsv(text: string): string[][] {
     } else if (ch === '"' && field.length === 0) quoted = true;
     else if (ch === ",") { row.push(field.trim()); field = ""; }
     else if (ch === "\n") { row.push(field.trim()); if (row.some((v) => v !== "")) rows.push(row); row = []; field = ""; }
-    else if (ch !== "\\r") field += ch;
+    else if (ch !== "\r") field += ch;
   }
   row.push(field.trim());
   if (row.some((v) => v !== "")) rows.push(row);
