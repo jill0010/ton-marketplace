@@ -319,6 +319,48 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
         exitCode: ErrorsV2.InvalidPayment,
     });
 
+    val overpayment = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        8007,
+        now + 600,
+        { value: grams("4.3") },
+    );
+    expect(overpayment).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPayment,
+    });
+
+    val listingQueryCollision = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        1,
+        now + 600,
+        { value: grams("4.2") },
+    );
+    expect(listingQueryCollision).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPurchase,
+    });
+
+    val reservedQueryCollision = marketplace.sendBuyProductV2(
+        buyer.address,
+        1,
+        grams("4"),
+        2,
+        now + 600,
+        { value: grams("4.2") },
+    );
+    expect(reservedQueryCollision).toHaveFailedTx({
+        from: buyer.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPurchase,
+    });
+
     val expiredPurchase = marketplace.sendBuyProductV2(
         buyer.address,
         1,
@@ -355,6 +397,15 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(deliveredOrder.deliveryStatus).toEqual(2);
     expect(deliveredOrder.sellerPayoutStatus).toEqual(2);
     expect(deliveredOrder.platformPayoutStatus).toEqual(2);
+    val deliveredExtra = deliveredOrder.extra.load();
+    val deliveredSettlement = deliveredExtra.settlement.load();
+    expect(deliveredSettlement.gross).toEqual(grams("4"));
+    expect(deliveredSettlement.platformFee).toEqual(grams("0.12"));
+    expect(deliveredSettlement.sellerProceeds).toEqual(grams("3.88"));
+    expect(
+        deliveredSettlement.platformFee + deliveredSettlement.sellerProceeds,
+    ).toEqual(deliveredSettlement.gross);
+    expect(deliveredSettlement.feeBps).toEqual(300);
 
     expect(marketplace.productV2(1)!!.status).toEqual(3);
     expect(escrow.escrowRecordV2(1)!!.status).toEqual(3);
