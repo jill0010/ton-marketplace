@@ -501,8 +501,9 @@ fun onInternalMessage(in: InMessage) {
         PublishProductV2 => {
             var storage = lazy MarketplaceV2Storage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRelease;
-            assert (msg.price > 0) throw ErrorsV2.InvalidRelease;
-            assert (msg.kind == 3) throw ErrorsV2.InvalidRelease;
+            val publishExtra = msg.extra.load();
+            assert (publishExtra.price > 0) throw ErrorsV2.InvalidRelease;
+            assert (publishExtra.kind == 3) throw ErrorsV2.InvalidRelease;
 
             // Reserve the NFT Item before asking Escrow to create its custody record.
             val existing = storage.assetListings.get(msg.nftItem);
@@ -523,7 +524,7 @@ fun onInternalMessage(in: InMessage) {
                 id: productId,
                 seller: in.senderAddress,
                 nftItem: msg.nftItem,
-                price: msg.price,
+                price: publishExtra.price,
                 escrowId: 0,
                 queryId,
                 refundQueryId: 0,
@@ -531,8 +532,8 @@ fun onInternalMessage(in: InMessage) {
                 createdAt: in.createdAt,
                 extra: MarketplaceV2ProductExtra {
                     collection: msg.collection,
-                    itemIndex: msg.itemIndex,
-                    kind: msg.kind,
+                    itemIndex: publishExtra.itemIndex,
+                    kind: publishExtra.kind,
                 }.toCell(),
             };
 
@@ -554,8 +555,8 @@ fun onInternalMessage(in: InMessage) {
                     seller: in.senderAddress,
                     queryId,
                     extra: CreateEscrowV2Extra {
-                        itemIndex: msg.itemIndex,
-                        kind: msg.kind,
+                        itemIndex: publishExtra.itemIndex,
+                        kind: publishExtra.kind,
                     }.toCell(),
                 },
             });
