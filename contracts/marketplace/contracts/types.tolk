@@ -876,6 +876,14 @@ struct TestMarketplaceEscrowV2Storage {
     records: map<uint64, Cell<TestMarketplaceEscrowV2Record>>
 }
 
+fun TestMarketplaceEscrowV2Storage.load(): TestMarketplaceEscrowV2Storage {
+    return TestMarketplaceEscrowV2Storage.fromCell(contract.getData());
+}
+
+fun TestMarketplaceEscrowV2Storage.save(self) {
+    contract.setData(self.toCell());
+}
+
 
 
 
