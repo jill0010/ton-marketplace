@@ -657,6 +657,88 @@ export function PremiumPage() {
     }
   }
 
+  async function verifyGramOrder(orderId: string) {
+    if (!orderId || checkoutBusy) return
+    setCheckoutBusy(true)
+    setCheckoutMessage(t("Checking TON Mainnet for your GRAM transfer…", "正在 TON 主网核实 GRAM 到账……"))
+    try {
+      const { data, error } = await anonymousSupabase.functions.invoke(
+        "verify-gram-premium-payment",
+        { body: { order_id: orderId } },
+      )
+      if (error) throw new Error(error.message || "Payment verification request failed")
+      if (data?.success === true && data?.paymentVerified === true) {
+        setPendingOrderId("")
+        setCheckoutMessage("Payment confirmed for order " + data.orderNo + ". Premium will be activated manually by the administrator.")
+      } else {
+        setCheckoutMessage(typeof data?.error === "string" ? data.error : "Payment has not appeared on-chain yet. Please retry shortly.")
+      }
+    } catch (error) {
+      setCheckoutMessage(error instanceof Error ? error.message : "Payment verification failed.")
+    } finally {
+      setCheckoutBusy(false)
+    }
+  }
+
+  async function buyPremiumWithGram() {
+    if (checkoutBusy) return
+    if (!isWalletVerified || !tonConnectUI.wallet || tonConnectUI.wallet.account.chain !== "-239") {
+      setCheckoutMessage(t("Connect and verify a TON Mainnet wallet first.", "请先连接并验证 TON 主网钱包。"))
+      return
+    }
+    if (!selected) {
+      setCheckoutMessage(t("Select a Premium plan first.", "请先选择 Premium 套餐。"))
+      return
+    }
+    const recipientUsername = username.trim().replace(/^@+/, "")
+    if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(recipientUsername)) {
+      setCheckoutMessage(t("Enter a valid Telegram username (5–32 characters).", "请输入有效的 Telegram 用户名（5–32 个字符）。"))
+      return
+    }
+
+    setCheckoutBusy(true)
+    setCheckoutMessage(t("Creating your GRAM order…", "正在创建 GRAM 订单……"))
+    try {
+      await ensureAnonymousSession()
+      const { data: order, error: orderError } = await anonymousSupabase.functions.invoke(
+        "create-gram-premium-order",
+        { body: { plan_id: selected.id, recipient_username: recipientUsername } },
+      )
+      if (orderError) throw new Error(orderError.message || "Unable to create order")
+      if (order?.success !== true || typeof order.orderId !== "string" ||
+          typeof order.paymentAddress !== "string" || typeof order.amountNano !== "string" ||
+          typeof order.memo !== "string") {
+        throw new Error(typeof order?.error === "string" ? order.error : "Invalid GRAM order response")
+      }
+
+      setPendingOrderId(order.orderId)
+      setCheckoutMessage(t("Confirm the native GRAM transfer in your wallet…", "请在钱包中确认原生 GRAM 转账……"))
+      const payload = beginCell().storeUint(0, 32).storeStringTail(order.memo).endCell().toBoc().toString("base64")
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{ address: order.paymentAddress, amount: order.amountNano, payload }],
+      })
+
+      setCheckoutMessage(t("Wallet submitted the transfer. Waiting for TON Mainnet confirmation…", "钱包已提交转账，正在等待 TON 主网确认……"))
+      await new Promise((resolve) => window.setTimeout(resolve, 2500))
+      const { data: verification, error: verificationError } = await anonymousSupabase.functions.invoke(
+        "verify-gram-premium-payment",
+        { body: { order_id: order.orderId } },
+      )
+      if (verificationError) throw new Error(verificationError.message || "Payment verification request failed")
+      if (verification?.success === true && verification?.paymentVerified === true) {
+        setPendingOrderId("")
+        setCheckoutMessage("Payment confirmed for order " + verification.orderNo + ". Premium will be activated manually by the administrator.")
+      } else {
+        setCheckoutMessage(typeof verification?.error === "string" ? verification.error : t("Transfer submitted. Use Check payment after the transaction appears on-chain.", "转账已提交，交易上链后请点击“核实付款”。"))
+      }
+    } catch (error) {
+      setCheckoutMessage(error instanceof Error ? error.message : "Unable to submit GRAM payment.")
+    } finally {
+      setCheckoutBusy(false)
+    }
+  }
+
   // =====================================================
   // 6. 当前套餐与验证状态
   // =====================================================
