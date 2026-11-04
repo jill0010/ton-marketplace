@@ -221,7 +221,7 @@ Deno.serve(async (req: Request) => {
 
     if (parsed.kind === "username" || parsed.kind === "phone_number") {
       const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-      const normalized = parsed.kind === "username" ? parsed.value.replace(/^@/, "").toLowerCase() : parsed.value.replace(/\\D/g, "");
+      const normalized = parsed.kind === "username" ? parsed.value.replace(/^@/, "").toLowerCase() : parsed.value.replace(/\D/g, "");
       const { data: indexed, error: indexError } = await service
         .from("telegram_nft_items")
         .select("nft_address,collection_address,nft_name,image_url,description,attributes,metadata")
