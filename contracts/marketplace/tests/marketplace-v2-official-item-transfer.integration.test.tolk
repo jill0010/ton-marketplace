@@ -227,6 +227,8 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     expect(
         marketplace.sendPublishProductV2(
             seller.address,
+            1,
+            1,
             nftItem,
             owner.address,
             itemIndex,
