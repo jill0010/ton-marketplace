@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
 const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78";
 
-type TelegramProfile = { username: string; displayName: string; bio: string | null; extra: string | null; avatarUrl: string | null; profileUrl: string; source: string; };
-
 type ResolvedNft = {
   type: "username" | "phone_number" | "gift";
-  address: string;
+  address: string | null;
   collection_address: string | null;
   item_index: string | null;
   name: string | null;
@@ -17,6 +15,9 @@ type ResolvedNft = {
   telegram_name?: string | null;
   verified_on_chain: boolean;
   source: string;
+  animated_url?: string | null;
+  attributes?: Record<string, string | null>;
+  metadata?: Record<string, unknown>;
 };
 
 function parseIdentifier(value: string) {
@@ -43,43 +44,6 @@ export function ProductAdminPage() {
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
-  const [profilePreview, setProfilePreview] = useState<TelegramProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const profileRequestId = useRef(0);
-
-  async function lookupUsernamePreview(username: string, requestId: number) {
-    setProfileLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("telegram-user-profile", {
-        body: { username },
-      });
-      if (requestId !== profileRequestId.current) return;
-      if (error || !data?.success || !data?.profile) {
-        setProfilePreview(null);
-        return;
-      }
-      setProfilePreview(data.profile as TelegramProfile);
-    } catch {
-      if (requestId === profileRequestId.current) setProfilePreview(null);
-    } finally {
-      if (requestId === profileRequestId.current) setProfileLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    const requestId = ++profileRequestId.current;
-    const parsed = parseIdentifier(identifier);
-    if (parsed?.type !== "username") {
-      profileRequestId.current += 1;
-      setProfilePreview(null);
-      setProfileLoading(false);
-      return;
-    }
-    const username = parsed.name.replace(/^@/, "");
-    const timer = window.setTimeout(() => void lookupUsernamePreview(username, requestId), 650);
-    return () => window.clearTimeout(timer);
-  }, [identifier]);
-
   async function resolveNft() {
     if (resolving || publishing) return;
     setMessage("");
@@ -164,8 +128,9 @@ export function ProductAdminPage() {
       setMessage("格式不正确。请输入 @用户名、+888 电话号码、礼物链接/编号或 TON NFT 地址。");
       return;
     }
-    if (!resolved?.verified_on_chain || !resolved.address) {
-      setMessage("请先成功查询并核验 NFT 链上资料，再发布商品。");
+    const pageBasedGift = resolved?.type === "gift" && resolved.source === "telegram_web" && Boolean(resolved.image_url);
+    if (!resolved || (!pageBasedGift && (!resolved.verified_on_chain || !resolved.address))) {
+      setMessage("请先成功读取 NFT 图片和商品资料，再发布商品。");
       return;
     }
     const amount = Number(price);
@@ -201,15 +166,16 @@ export function ProductAdminPage() {
         image_url: resolved.image_url,
         status: "listed",
         delivery_mode: "manual",
-        chain_status: "unverified",
+        chain_status: resolved.verified_on_chain ? "verified" : "unverified",
         nft_item_address: resolved.address,
         collection_address: resolved.collection_address,
         item_index: resolved.item_index,
+        product_metadata: { source: resolved.source, telegram_url: resolved.telegram_url ?? null, animated_url: resolved.animated_url ?? null, attributes: resolved.attributes ?? {}, ...(resolved.metadata ?? {}) },
       });
       if (insertError) throw new Error(`发布失败：${insertError.message}`);
 
       setSuccess(true);
-      setMessage("商品已登记并公开展示。NFT 地址及图片资料来自链上读取；交付方式为管理员人工交付，商城尚未托管 NFT。");
+      setMessage(pageBasedGift ? "礼物网页资料和图片已登记并公开展示；未调用 Portals API。交付方式为管理员人工交付，商城尚未托管 NFT。" : "商品已登记并公开展示。交付方式为管理员人工交付，商城尚未托管 NFT。");
       setIdentifier("");
       setPrice("");
       setResolved(null);
@@ -243,12 +209,12 @@ export function ProductAdminPage() {
           <input
             id="admin-product-identifier"
             value={identifier}
-            onChange={(event) => { setIdentifier(event.target.value); setResolved(null); setProfilePreview(null); setMessage(""); setSuccess(false); }}
+            onChange={(event) => { setIdentifier(event.target.value); setResolved(null); setMessage(""); setSuccess(false); }}
             placeholder="@abcd、+888号码、https://t.me/nft/victorymedal-8880 或 TON NFT 地址"
             disabled={resolving || publishing}
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
-          <p className="text-xs text-zinc-500">礼物可直接粘贴完整 t.me/nft 链接；也支持 4–32 位用户名和 +888 号码。输入 @用户名后会自动读取 Telegram 公开头像。</p>
+          <p className="text-xs text-zinc-500">输入 @用户名、+888 号码或粘贴 t.me/nft 礼物链接，自动读取对应 NFT 商品资料和图片。</p>
         </div>
 
         {profileLoading && <p className="text-xs text-sky-200">正在读取 Telegram 公开头像……</p>}
@@ -272,7 +238,7 @@ export function ProductAdminPage() {
           disabled={resolving || publishing || !identifier.trim()}
           className="w-full rounded-full border border-sky-400/40 bg-sky-400/10 px-5 py-3 text-sm font-semibold text-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {resolving ? "正在查询并核验链上 NFT……" : "查询 NFT 图片与链上资料"}
+          {resolving ? "正在读取 NFT 商品资料与图片……" : "自动识别 NFT 图片与资料"}
         </button>
 
         {resolved && (
@@ -284,11 +250,11 @@ export function ProductAdminPage() {
             )}
             <div className="min-w-0 space-y-2 text-sm">
               <p className="font-semibold text-white">{resolved.name || "Telegram NFT"}</p>
-              <p className="break-all text-xs text-zinc-400">NFT：{resolved.address}</p>
+              {resolved.address && <p className="break-all text-xs text-zinc-400">NFT：{resolved.address}</p>}
               <p className="break-all text-xs text-zinc-400">Collection：{resolved.collection_address || "—"}</p>
               <p className="text-xs text-zinc-400">Index：{resolved.item_index || "—"}</p>
-              <p className="text-xs text-emerald-200">{resolved.type === "gift" ? "已确认 TON 链上 NFT 合约已初始化；礼物身份由索引服务匹配。" : "已确认 NFT 合约已初始化，并核对官方 Telegram Collection。"}</p>
-              {resolved.source === "portals_fallback" && <p className="text-xs text-amber-200">链上未返回图片，当前图片来自 Portals 礼物目录。</p>}
+              <p className="text-xs text-emerald-200">{resolved.source === "telegram_web" ? "资料直接读取自 Telegram 礼物公开网页；未调用 Portals API。" : resolved.verified_on_chain ? "已核对 TON 链上 NFT 资料。" : "已读取公开商品资料，尚未进行链上核验。"}</p>\n              {resolved.attributes && <dl className="grid grid-cols-2 gap-2 text-xs text-zinc-300">{Object.entries(resolved.attributes).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt className="text-zinc-500">{({ model: "型号", backdrop: "背景", symbol: "符号", quantity: "数量", number: "编号" } as Record<string, string>)[key] ?? key}</dt><dd>{value}</dd></div>)}</dl>}
+
               {telegramLink && <a className="text-xs text-sky-300 underline" href={telegramLink} target="_blank" rel="noreferrer">打开 Telegram 礼物链接</a>}
             </div>
           </div>
