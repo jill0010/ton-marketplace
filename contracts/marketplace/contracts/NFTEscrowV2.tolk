@@ -123,9 +123,7 @@ fun onInternalMessage(in: InMessage) {
             ) throw ErrorsV2.AssetAlreadyEscrowed;
 
             assert (
-                createExtra.kind == 1 ||
-                createExtra.kind == 2 ||
-                createExtra.kind == 3
+                createExtra.kind == 1 || createExtra.kind == 2 || createExtra.kind == 3
             ) throw ErrorsV2.InvalidProductKind;
             val callbacks = storage.callbacks.load();
             val collectionStorage = callbacks.collectionStorage.load();
