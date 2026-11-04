@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
+import { GramTokenMark } from "../components/GramTokenMark"
 
 type PremiumOrder = {
   id: string
@@ -225,7 +226,7 @@ export function PremiumHistoryPage() {
                 <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3 sm:grid-cols-3">
                   <div>
                     <p className="text-xs text-zinc-500">{t("Amount", "金额")}</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{order.payment_method === "GRAM" ? `${Number(order.gram_amount).toFixed(2)} GRAM` : `${Number(order.usd_amount).toFixed(2)} USDT`}</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-white">{order.payment_method === "GRAM" ? <><GramTokenMark className="h-4 w-4" />{Number(order.gram_amount).toFixed(2)} GRAM</> : `${Number(order.usd_amount).toFixed(2)} USDT`}</p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500">{t("Payment method", "支付方式")}</p>
