@@ -8,6 +8,7 @@ import "@wrappers/NFTEscrowV2.gen"
 
 fun main() {
     val deployer = scripts.wallet("deployer");
+    val treasury = scripts.wallet("treasury");
 
     val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
         owner: deployer.address,
@@ -20,7 +21,7 @@ fun main() {
         queryToProduct: [],
         purchaseStorage: MarketplaceV2PurchaseStorage {
             schemaVersion: 2,
-            treasury: deployer.address,
+            treasury: treasury.address,
             treasuryConfigured: false,
             nextOrderId: 1,
             nextOperationId: 1,
@@ -95,7 +96,7 @@ fun main() {
 
     val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
         deployer.address,
-        deployer.address,
+        treasury.address,
         { value: grams("0.05") },
     );
     if (configureTreasury.waitForFirstTransaction() == null) {
@@ -107,7 +108,7 @@ fun main() {
         println("Marketplace V2 Escrow verification failed");
         return;
     }
-    if (!marketplace.treasuryConfiguredV2() || marketplace.treasuryV2() != deployer.address) {
+    if (!marketplace.treasuryConfiguredV2() || marketplace.treasuryV2() != treasury.address) {
         println("Marketplace V2 Treasury verification failed");
         return;
     }
@@ -118,7 +119,8 @@ fun main() {
 
     println("Marketplace V2 deployed at {}", marketplace.address);
     println("NFT Escrow V2 deployed at {}", escrow.address);
-    println("Marketplace owner and treasury: {}", deployer.address);
+    println("Marketplace owner: {}", deployer.address);
+    println("Platform treasury: {}", treasury.address);
     println("Escrow binding and immutable treasury configuration verified");
     println("No collections are approved; listings remain unavailable until official collection policy is configured");
 }
