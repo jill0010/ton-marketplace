@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
 import { GramTokenMark } from "../components/GramTokenMark"
@@ -26,6 +26,7 @@ function getGiftSeries(title: string): string {
 
 export function HomePage() {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const walletAddress = useTonAddress()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -151,9 +152,9 @@ export function HomePage() {
 
             if (isPremium) {
               return (
-                <Link key={category.type} to="/premium" className="rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-white transition hover:border-white/40">
+                <button key={category.type} type="button" onClick={() => navigate("/premium")} className="w-full min-w-0 rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 hover:bg-white/10">
                   <span className="font-medium">{t(category.en, category.zh)}</span>
-                </Link>
+                </button>
               )
             }
 
@@ -205,7 +206,7 @@ export function HomePage() {
         )}
 
         {!loading && !error && (
-          <div className={selectedType === "gift" ? "grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]" : "block"}>
+          <div className={selectedType === "gift" ? "grid min-w-0 max-w-full gap-5 lg:grid-cols-[230px_minmax(0,1fr)]" : "block"}>
             {selectedType === "gift" && (
               <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.025] p-4">
                 <h3 className="mb-3 text-sm font-semibold text-white">{t("Gift Collections", "礼物系列")}</h3>
@@ -235,7 +236,7 @@ export function HomePage() {
               </aside>
             )}
 
-            <div className="min-w-0">
+            <div className="w-full min-w-0 max-w-full overflow-hidden">
               {visibleProducts.length === 0 ? (
                 <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
                   {t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
@@ -297,13 +298,13 @@ export function HomePage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
+                  <div className="grid w-full min-w-0 max-w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    {visibleProducts.map((product) => <div key={product.id} className="min-w-0 max-w-full"><ProductCard product={product} compact /></div>)}
                     {Array.from({ length: visibleProducts.length === 0 ? 5 : (5 - (visibleProducts.length % 5)) % 5 }, (_, index) => (
                       <div
                         key={`gift-slot-${index}`}
                         aria-hidden="true"
-                        className="aspect-[4/5] min-h-0 rounded-2xl border border-dashed border-white/10 bg-white/[0.025]"
+                        className="aspect-[4/5] min-w-0 max-w-full rounded-2xl border border-dashed border-white/10 bg-white/[0.025]"
                       />
                     ))}
                   </div>
