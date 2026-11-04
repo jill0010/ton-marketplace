@@ -1,3 +1,5 @@
+import { Address, Cell } from "npm:@ton/core";
+import { Buffer } from "node:buffer";
 import { handleCors, jsonResponse } from "./http.ts";
 
 const TONCENTER_RUN_GET_URL = "https://toncenter.com/api/v2/runGetMethod";
@@ -36,6 +38,96 @@ function parseNumericStackValue(entry: unknown): bigint {
   } catch {
     throw new Error("TONCENTER returned an invalid numeric getter value");
   }
+}
+
+async function runGetMethodCell(
+  address: string,
+  method: string,
+  stack: unknown[] = [],
+): Promise<Cell> {
+  const apiKey = Deno.env.get("TONCENTER_API_KEY");
+  if (!apiKey) throw new Error("TONCENTER server configuration unavailable");
+
+  const response = await fetch(TONCENTER_RUN_GET_URL, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+    },
+    body: JSON.stringify({ address, method, stack }),
+  });
+  if (!response.ok) throw new Error(`TONCENTER getter request failed (${response.status})`);
+
+  const result = await response.json() as ToncenterRunGetResponse;
+  if (result.ok !== true) throw new Error("TONCENTER getter execution failed");
+  const values = result.stack ?? result.result?.stack;
+  if (!Array.isArray(values) || values.length !== 1) {
+    throw new Error("TONCENTER cell getter returned an unexpected stack");
+  }
+
+  const entry = values[0];
+  let bytes: string | undefined;
+  if (Array.isArray(entry) && entry[0] === "cell") {
+    const value = entry[1];
+    if (typeof value === "string") bytes = value;
+    else if (value && typeof value === "object" && "bytes" in value &&
+      typeof value.bytes === "string") bytes = value.bytes;
+  } else if (entry && typeof entry === "object" && "type" in entry &&
+    entry.type === "cell" && "value" in entry) {
+    const value = entry.value;
+    if (typeof value === "string") bytes = value;
+    else if (value && typeof value === "object" && "bytes" in value &&
+      typeof value.bytes === "string") bytes = value.bytes;
+  }
+
+  if (!bytes) throw new Error("TONCENTER returned an invalid escrow record cell");
+  const roots = Cell.fromBoc(Buffer.from(bytes, "base64"));
+  if (roots.length !== 1) throw new Error("TONCENTER returned an invalid escrow record BoC");
+  return roots[0];
+}
+
+type EscrowRecordSnapshot = {
+  escrowId: bigint;
+  nftItem: string;
+  seller: string;
+  productId: bigint;
+  status: number;
+  queryId: bigint;
+  collection: string;
+  itemIndex: bigint;
+  kind: number;
+};
+
+function parseEscrowRecord(cell: Cell): EscrowRecordSnapshot {
+  const slice = cell.beginParse();
+  const escrowId = slice.loadUintBig(64);
+  const nftItem = slice.loadAddress();
+  const seller = slice.loadAddress();
+  const productId = slice.loadUintBig(64);
+  const status = slice.loadUint(8);
+  const queryId = slice.loadUintBig(64);
+  const extra = slice.loadRef().beginParse();
+  const collection = extra.loadAddress();
+  const itemIndex = extra.loadUintBig(256);
+  const kind = extra.loadUint(8);
+  extra.endParse();
+  slice.endParse();
+
+  if (!nftItem || !seller || !collection) {
+    throw new Error("Escrow record contains an invalid address");
+  }
+  return {
+    escrowId,
+    nftItem: nftItem.toRawString(),
+    seller: seller.toRawString(),
+    productId,
+    status,
+    queryId,
+    collection: collection.toRawString(),
+    itemIndex,
+    kind,
+  };
 }
 
 async function runGetMethod(
@@ -155,10 +247,42 @@ Deno.serve(async (request: Request) => {
         [["num", `0x${queryId.toString(16)}`]],
       );
 
+      if (escrowId === 0n) {
+        return jsonResponse({ success: true, registered: false, escrow_id: "0" });
+      }
+
+      const recordCell = await runGetMethodCell(
+        escrow,
+        "escrowRecordV2",
+        [["num", `0x${escrowId.toString(16)}`]],
+      );
+      const record = parseEscrowRecord(recordCell);
+      const hasExpectedFields =
+        typeof body.product_id === "string" &&
+        typeof body.wallet_address === "string" &&
+        typeof body.item_address === "string" &&
+        typeof body.collection_address === "string" &&
+        typeof body.item_index === "string" &&
+        typeof body.kind === "string";
+
+      let matches = record.escrowId === escrowId && record.queryId === queryId;
+      if (hasExpectedFields) {
+        const kindMap: Record<string, number> = { username: 1, phone_number: 2, gift: 3 };
+        matches = matches &&
+          record.productId === BigInt(body.product_id) &&
+          record.seller === Address.parse(body.wallet_address).toRawString() &&
+          record.nftItem === Address.parse(body.item_address).toRawString() &&
+          record.collection === Address.parse(body.collection_address).toRawString() &&
+          record.itemIndex === BigInt(body.item_index) &&
+          record.kind === kindMap[body.kind];
+      }
+
       return jsonResponse({
         success: true,
-        registered: escrowId > 0n,
+        registered: matches && (record.status === 0 || record.status === 1),
+        record_matches: matches,
         escrow_id: escrowId.toString(),
+        record_status: record.status,
       });
     }
 
