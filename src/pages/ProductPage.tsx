@@ -137,8 +137,14 @@ export function ProductPage() {
 
       <p className="text-zinc-400">{product.subtitle}</p>
 
+      {product.deliveryMode === "manual" && (
+        <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] p-4 text-sm leading-6 text-amber-100">
+          {t("Manual delivery: the marketplace administrator coordinates the transfer after payment is enabled and confirmed.", "人工交付：付款功能开放并确认收款后，由商城管理员协调转移 NFT。")}
+        </div>
+      )}
+
       <p className="text-3xl font-semibold text-emerald-300">
-        {product.priceTon} GRAM
+        {product.priceTon} {product.currency}
       </p>
 
       <button
@@ -151,8 +157,8 @@ export function ProductPage() {
 
       <p className="text-xs text-zinc-500">
         {t(
-          "This version displays product information only. No payment or asset transfer will be initiated.",
-          "当前版本仅展示商品信息，不会发起支付或资产转移。"
+          "Payment and order creation are not enabled yet. No funds will be requested and no asset transfer will be initiated.",
+          "当前版本尚未接通下单和收款，不会请求付款，也不会发起资产转移。"
         )}
       </p>
 
