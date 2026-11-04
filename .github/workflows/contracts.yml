@@ -51,6 +51,11 @@ jobs:
       - name: Exercise V2 deployment script in emulator
         run: acton script scripts/deploy-v2.tolk
 
+      - name: Exercise public treasury address path in emulator
+        env:
+          PLATFORM_TREASURY_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000001"
+        run: acton script scripts/deploy-v2.tolk
+
       - name: Linter
         run: acton check --output-format github
 
