@@ -59,6 +59,7 @@ async function readTonNft(address: string, apiKey: string) {
   const params = new URLSearchParams({ address, limit: "1", offset: "0" });
   const response = await fetch(`https://toncenter.com/api/v3/nft/items?${params}`, {
     headers: apiKey ? { "X-API-Key": apiKey } : {},
+    signal: AbortSignal.timeout(12000),
   });
   if (!response.ok) throw new Error(`TONCENTER_HTTP_${response.status}`);
   const payload = await response.json() as TonNftResponse;
@@ -129,20 +130,55 @@ Deno.serve(async (req: Request) => {
 
       const url = new URL("https://portal-market.com/partners/nfts/search");
       url.searchParams.set("tg_ids", parsed.slug);
-      url.searchParams.set("mint_status", "minted");
-      url.searchParams.set("limit", "10");
-      const response = await fetch(url, { headers: { Authorization: `partners ${portalsKey}` } });
+      url.searchParams.set("limit", "20");
+      const response = await fetch(url, {
+        headers: { Authorization: `partners ${portalsKey}` },
+        signal: AbortSignal.timeout(12000),
+      });
       if (!response.ok) {
-        const detail = (await response.text()).slice(0, 300);
-        return json({ error: response.status === 401 ? "PORTALS_KEY_INVALID" : response.status === 403 ? "PORTALS_SUBSCRIPTION_REQUIRED" : "PORTALS_LOOKUP_FAILED", detail }, response.status === 429 ? 429 : 502);
+        const detail = (await response.text()).slice(0, 500);
+        console.error("Portals NFT search failed:", response.status, detail);
+        const code = response.status === 401
+          ? "PORTALS_KEY_INVALID"
+          : response.status === 403
+            ? "PORTALS_SUBSCRIPTION_REQUIRED"
+            : response.status === 429
+              ? "PORTALS_RATE_LIMITED"
+              : "PORTALS_LOOKUP_FAILED";
+        return json({
+          error: code,
+          message: response.status === 401
+            ? "Portals API Key 无效或已重新签发。"
+            : response.status === 403
+              ? "Portals Partner API 尚未开通套餐，或套餐已过期。"
+              : response.status === 429
+                ? "Portals API 请求过于频繁，请稍后重试。"
+                : "Portals 礼物查询接口暂时失败。",
+          detail,
+        }, response.status === 429 ? 429 : 502);
       }
-      const result = await response.json() as { results?: PortalsGift[] };
+      const result = await response.json() as { results?: PortalsGift[]; total_count?: number };
       const gifts = result.results ?? [];
-      const gift = gifts.find((item) => item.tg_id === parsed.slug);
+      const normalizedSlug = parsed.slug.toLowerCase();
+      const gift = gifts.find((item) => (item.tg_id ?? "").toLowerCase() === normalizedSlug);
       if (!gift) return json({ error: "GIFT_NOT_FOUND_OR_NOT_MINTED", message: "未找到该礼物，或它尚未铸造为 TON NFT。", slug: parsed.slug }, 404);
       if (!gift.ton_address) return json({ error: "GIFT_NOT_MINTED", message: "该 Telegram 礼物尚无 TON 链上 NFT 地址。", slug: parsed.slug }, 409);
 
-      const chain = await readTonNft(gift.ton_address, tonApiKey);
+      let chain: Awaited<ReturnType<typeof readTonNft>>;
+      try {
+        chain = await readTonNft(gift.ton_address, tonApiKey);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "UNKNOWN_CHAIN_ERROR";
+        console.error("TON NFT verification failed:", detail);
+        return json({
+          error: "TON_NFT_VERIFICATION_FAILED",
+          message: "Portals 已找到礼物，但读取 TON 链上 NFT 失败。请稍后重试。",
+          detail,
+          telegram_url: `https://t.me/nft/${parsed.slug}`,
+          portals_image_url: gift.photo_url ?? null,
+          ton_address: gift.ton_address,
+        }, 502);
+      }
       return json({
         success: true,
         type: "gift",
