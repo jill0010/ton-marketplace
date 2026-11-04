@@ -621,7 +621,7 @@ fun calculateSettlementAmounts(gross: coins): SettlementAmounts {
     };
 }
 
-// Isolated Marketplace V2 listing integration. Purchase/payment opcodes remain reserved.
+// Isolated Marketplace V2 purchase, escrow delivery, payout and refund protocol.
 struct (0x71b0000A) PublishProductV2 {
     nftItem: address
     collection: address
