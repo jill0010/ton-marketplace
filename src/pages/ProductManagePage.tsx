@@ -275,8 +275,8 @@ export function ProductManagePage() {
                   {product.name}
                 </h2>
                 <p className="inline-flex items-center gap-1.5 text-sm text-zinc-300">
-                  {product.currency === "GRAM" && <GramTokenMark className="h-4 w-4" />}
-                  {product.price} {product.currency}
+                  <GramTokenMark className="h-4 w-4" />
+                  {product.price}
                 </p>
                 <p className="text-xs text-zinc-500">
                   状态：{product.status}
