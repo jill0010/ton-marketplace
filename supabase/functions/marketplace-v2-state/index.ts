@@ -131,6 +131,7 @@ Deno.serve(async (request: Request) => {
         escrow_address: escrow,
         escrow_configured: escrowConfigured === 1n,
         treasury_configured: treasuryConfigured === 1n,
+        listing_enabled: Deno.env.get("MARKETPLACE_V2_LISTING_ENABLED") === "true",
       });
     }
 
