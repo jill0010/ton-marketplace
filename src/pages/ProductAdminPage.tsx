@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { GramTokenMark } from "../components/GramTokenMark";
 
 const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78";
 
