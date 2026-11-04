@@ -86,6 +86,9 @@ export function PremiumPage() {
   const [walletVerification, setWalletVerification] =
     useState<WalletVerification | null>(null)
   const [proofMessage, setProofMessage] = useState("")
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
+  const [checkoutMessage, setCheckoutMessage] = useState("")
+  const [pendingOrderId, setPendingOrderId] = useState("")
 
   const pendingProofRef = useRef(false)
   const verificationInProgressRef = useRef(false)
@@ -707,7 +710,6 @@ export function PremiumPage() {
             type="button"
             onClick={() => {
               setRecipient("self")
-              setUsername("")
             }}
             className={`rounded-xl border px-3 py-3 text-sm ${
               recipient === "self"
@@ -719,13 +721,13 @@ export function PremiumPage() {
           </button>
         </div>
 
-        {recipient === "other" && (
+        {(
           <div className="space-y-2">
             <label
               htmlFor="premium-username"
               className="text-sm text-zinc-300"
             >
-              {t("Telegram username", "Telegram 用户名")}
+              {t("Telegram username to receive Premium", "接收 Premium 的 Telegram 用户名")}
             </label>
 
             <input
