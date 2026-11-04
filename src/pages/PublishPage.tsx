@@ -307,9 +307,6 @@ export function PublishPage() {
             },
           );
 
-          if (data?.listing_enabled !== true) {
-            throw new Error("Marketplace V2 上架功能当前已暂停。NFT 尚未转移，待处理记录已保留。");
-          }
           if (data?.record_matches === false) {
             throw new Error("链上托管登记与当前钱包、NFT 或商品编号不匹配。为保护 NFT，已阻止转移。");
           }
@@ -318,7 +315,22 @@ export function PublishPage() {
             data.registered === true &&
             typeof data.escrow_id === "string" &&
             /^[1-9]\d*$/.test(data.escrow_id) &&
-            (data.record_status === 0 || data.record_status === 1)
+            data.record_status === 1
+          ) {
+            // The NFT is already deposited. Recovery/sync must continue even
+            // if the operator has since paused new listings.
+            registration = { escrowId: data.escrow_id, status: data.record_status };
+            break;
+          }
+          if (data?.listing_enabled !== true) {
+            throw new Error("Marketplace V2 上架功能当前已暂停。NFT 尚未转移，待处理记录已保留。");
+          }
+          if (
+            data?.success === true &&
+            data.registered === true &&
+            typeof data.escrow_id === "string" &&
+            /^[1-9]\d*$/.test(data.escrow_id) &&
+            data.record_status === 0
           ) {
             registration = { escrowId: data.escrow_id, status: data.record_status };
             break;
@@ -394,15 +406,19 @@ export function PublishPage() {
                 },
               },
             );
-            if (data?.listing_enabled !== true) {
-              throw new Error("Marketplace V2 上架功能已暂停，已阻止 NFT 转移。");
-            }
             if (data?.record_matches === false) {
               throw new Error("Escrow query ID 已被其他商品占用，已阻止 NFT 转移。");
             }
             if (data?.success === true && data.registered === true &&
-                typeof data.escrow_id === "string" &&
-                (data.record_status === 0 || data.record_status === 1)) {
+                typeof data.escrow_id === "string" && data.record_status === 1) {
+              registration = { escrowId: data.escrow_id, status: data.record_status };
+              break;
+            }
+            if (data?.listing_enabled !== true) {
+              throw new Error("Marketplace V2 上架功能已暂停，已阻止 NFT 转移。");
+            }
+            if (data?.success === true && data.registered === true &&
+                typeof data.escrow_id === "string" && data.record_status === 0) {
               registration = { escrowId: data.escrow_id, status: data.record_status };
               break;
             }
@@ -447,18 +463,22 @@ export function PublishPage() {
         if (
           preflightError ||
           preflight?.success !== true ||
-          preflight.listing_enabled !== true ||
           preflight.record_matches !== true ||
           preflight.registered !== true ||
           typeof preflight.escrow_id !== "string"
         ) {
-          throw new Error("Marketplace V2 上架开关已关闭，或链上 Escrow 登记不再匹配。为保护 NFT，已阻止转移。");
+          throw new Error("链上 Escrow 登记不可用或与当前商品不匹配。为保护 NFT，已阻止转移。");
         }
 
         if (preflight.record_status === 1) {
+          // Already deposited: continue verification even if new listings
+          // have been paused since the transfer was sent.
           current = { ...current, escrowId: preflight.escrow_id, step: "sync" };
           persistPendingListing(current);
         } else if (preflight.record_status === 0) {
+          if (preflight.listing_enabled !== true) {
+            throw new Error("Marketplace V2 上架开关已关闭。NFT 仍在卖家钱包中，未执行转移。");
+          }
           current = { ...current, escrowId: preflight.escrow_id };
           if (current.transferAttemptedAt) {
             const remaining = 30000 - (Date.now() - current.transferAttemptedAt);
