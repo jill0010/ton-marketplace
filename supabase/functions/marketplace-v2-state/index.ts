@@ -109,13 +109,11 @@ Deno.serve(async (request: Request) => {
         nextQueryId,
         escrowConfigured,
         treasuryConfigured,
-        treasury,
       ] = await Promise.all([
         runGetMethod(marketplace, "nextProductIdV2"),
         runGetMethod(marketplace, "nextQueryIdV2"),
         runGetMethod(marketplace, "escrowConfiguredV2"),
         runGetMethod(marketplace, "treasuryConfiguredV2"),
-        runGetMethod(marketplace, "treasuryV2"),
       ]);
 
       if (
@@ -133,7 +131,6 @@ Deno.serve(async (request: Request) => {
         escrow_address: escrow,
         escrow_configured: escrowConfigured === 1n,
         treasury_configured: treasuryConfigured === 1n,
-        treasury_address: treasury.toString(),
       });
     }
 
