@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.fragment_listings (
   item_type text NOT NULL CHECK (item_type IN ('username','phone_number','gift')),
   listing_kind text NOT NULL CHECK (listing_kind IN ('auction','fixed_price')),
   title text NOT NULL CHECK (length(title) BETWEEN 1 AND 256),
-  source_url text NOT NULL CHECK (source_url LIKE 'https://fragment.com/%'),
+  source_url text NOT NULL,
   image_url text CHECK (image_url IS NULL OR image_url LIKE 'https://%'),
   currency text NOT NULL DEFAULT 'TON' CHECK (currency = 'TON'),
   current_price_nano numeric(36,0) CHECK (current_price_nano IS NULL OR current_price_nano >= 0),
@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS public.fragment_listings (
     OR listing_kind = 'fixed_price'
   )
 );
+
+ALTER TABLE public.fragment_listings
+  DROP CONSTRAINT IF EXISTS fragment_listings_source_url_check;
+ALTER TABLE public.fragment_listings
+  ADD CONSTRAINT fragment_listings_source_url_check
+  CHECK (source_url LIKE 'https://fragment.com/%');
 
 CREATE INDEX IF NOT EXISTS fragment_listings_public_catalog_idx
   ON public.fragment_listings (source_status, listing_kind, item_type, synced_at DESC);
@@ -126,6 +132,7 @@ ALTER TABLE public.fragment_order_funds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fragment_order_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fragment_catalog_sync_runs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS fragment_listings_public_active_read ON public.fragment_listings;
 CREATE POLICY fragment_listings_public_active_read
   ON public.fragment_listings FOR SELECT TO anon, authenticated
   USING (source_status = 'active' AND synced_at >= now() - interval '5 minutes');
