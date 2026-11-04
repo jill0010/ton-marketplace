@@ -18,7 +18,7 @@ The V2 Marketplace and V2 NFT Escrow must be deployed as a fresh, paired deploym
 
 ## Message protocol
 
-Distinct opcodes are registered for the implemented purchase and settlement messages:
+Distinct opcodes are registered for the implemented purchase and settlement messages. `PublishProductV2` includes the seller's expected next product ID and query ID; the contract checks both against storage before creating the pending escrow record. The seller can read `nextProductIdV2` and `nextQueryIdV2` first, then use that exact query ID in the TEP-62 NFT transfer to Escrow. The publish ABI stores the variable-sized item details in a referenced cell to remain below TON's 1023-bit message-cell limit.
 - Buyer purchase request: product ID, unique replay-protected query ID, expected price, and a deadline limited to 15 minutes. The buyer is derived from the internal-message sender; there is no client-supplied buyer field.
 - Escrow release request: existing `ReleaseEscrowV2` ABI, with the order's immutable buyer and asset tuple.
 - Escrow release success/failure callbacks: existing `EscrowReleasedV2` / `EscrowReleaseFailedV2` ABI, correlated against the exact order, product, escrow, query, NFT and buyer.
