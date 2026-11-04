@@ -67,22 +67,28 @@ export function ProductAdminPage() {
       const { data, error } = result;
       if (error) {
         let detail = error.message || "NFT 查询服务暂时不可用。";
-        const context = (error as { context?: unknown }).context;
-        if (context instanceof Response) {
+        const context = (error as { context?: { json?: () => Promise<unknown>; status?: number } }).context;
+        if (context && typeof context.json === "function") {
           try {
-            const payload = await context.clone().json() as { message?: string; error?: string; detail?: string };
-            detail = payload.message || payload.detail || (payload.error ? resolutionMessage(payload.error) : detail);
+            const payload = await context.json() as { message?: string; error?: string; detail?: unknown };
+            const primary = payload.message || (payload.error ? resolutionMessage(payload.error) : detail);
+            const extra = payload.detail && typeof payload.detail === "object"
+              ? JSON.stringify(payload.detail)
+              : typeof payload.detail === "string" ? payload.detail : "";
+            detail = extra ? `${primary} 诊断信息：${extra}` : primary;
           } catch {
-            // Keep the SDK error message when the response is not JSON.
+            detail = `${detail}（HTTP ${context.status ?? "未知状态"}）`;
           }
         }
         throw new Error(detail);
       }
-      if (!data?.success) throw new Error(data?.message || resolutionMessage(data?.error));
+      if (!data) throw new Error("NFT 查询服务返回了空响应，请检查 Supabase Edge Function 日志。");
+      if (!data.success) throw new Error(data.message || resolutionMessage(data.error));
       setResolved(data as ResolvedNft);
       setMessage("已读取并核验 NFT 链上资料。请核对图片和名称后再发布。");
     } catch (error) {
-      setMessage(error instanceof Error && error.message.trim() ? error.message : "NFT 查询失败：服务返回了无法识别的错误，请检查 Supabase Edge Function 日志。");
+      console.error("Admin NFT lookup failed:", error);
+      setMessage(error instanceof Error && error.message.trim() ? error.message : (typeof error === "string" ? error : "NFT 查询失败：服务返回了无法识别的错误，请检查 Supabase Edge Function 日志。"));
     } finally {
       setResolving(false);
     }
