@@ -37,33 +37,41 @@ export function ProductAdminPage() {
   const [identifier, setIdentifier] = useState("");
   const [price, setPrice] = useState("");
   const [resolved, setResolved] = useState<ResolvedNft | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
 
   async function resolveNft() {
-    if (busy) return;
+    if (resolving || publishing) return;
     setMessage("");
     setSuccess(false);
     setResolved(null);
-    setBusy(true);
+    setResolving(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || authData.user?.id !== ADMIN_UID) throw new Error("当前账号不是授权管理员，请重新登录。");
       const request = supabase.functions.invoke("admin-resolve-nft", {
         body: { identifier: identifier.trim() },
       });
+      let timeoutId: number | undefined;
       const timeout = new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error("查询超过 20 秒仍未响应。请稍后重试；如果连续失败，请联系管理员检查 Portals API 状态。")), 20000);
+        timeoutId = window.setTimeout(() => reject(new Error("查询超过 20 秒仍未响应。请稍后重试；如果连续失败，请联系管理员检查 Portals API 状态。")), 20000);
       });
-      const { data, error } = await Promise.race([request, timeout]);
+      let result: Awaited<typeof request>;
+      try {
+        result = await Promise.race([request, timeout]);
+      } finally {
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      }
+      const { data, error } = result;
       if (error) {
         let detail = error.message || "NFT 查询服务暂时不可用。";
         const context = (error as { context?: unknown }).context;
         if (context instanceof Response) {
           try {
             const payload = await context.clone().json() as { message?: string; error?: string; detail?: string };
-            detail = payload.message || payload.detail || payload.error || detail;
+            detail = payload.message || payload.detail || (payload.error ? resolutionMessage(payload.error) : detail);
           } catch {
             // Keep the SDK error message when the response is not JSON.
           }
@@ -74,9 +82,9 @@ export function ProductAdminPage() {
       setResolved(data as ResolvedNft);
       setMessage("已读取并核验 NFT 链上资料。请核对图片和名称后再发布。");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "NFT 查询失败。");
+      setMessage(error instanceof Error && error.message.trim() ? error.message : "NFT 查询失败：服务返回了无法识别的错误，请检查 Supabase Edge Function 日志。");
     } finally {
-      setBusy(false);
+      setResolving(false);
     }
   }
 
@@ -97,7 +105,7 @@ export function ProductAdminPage() {
   }
 
   async function publishManualListing() {
-    if (busy) return;
+    if (resolving || publishing) return;
     setMessage("");
     setSuccess(false);
     const parsed = parseIdentifier(identifier);
@@ -115,7 +123,7 @@ export function ProductAdminPage() {
       return;
     }
 
-    setBusy(true);
+    setPublishing(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || authData.user?.id !== ADMIN_UID) throw new Error("当前账号不是授权管理员，请重新登录管理员账号。");
@@ -157,7 +165,7 @@ export function ProductAdminPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "发布失败，请稍后重试。");
     } finally {
-      setBusy(false);
+      setPublishing(false);
     }
   }
 
@@ -186,7 +194,7 @@ export function ProductAdminPage() {
             value={identifier}
             onChange={(event) => { setIdentifier(event.target.value); setResolved(null); setMessage(""); setSuccess(false); }}
             placeholder="@abcd、+888号码、https://t.me/nft/victorymedal-8880 或 TON NFT 地址"
-            disabled={busy}
+            disabled={resolving || publishing}
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
           <p className="text-xs text-zinc-500">礼物可直接粘贴完整 t.me/nft 链接；也支持 4–32 位用户名和 +888 号码。</p>
@@ -195,10 +203,10 @@ export function ProductAdminPage() {
         <button
           type="button"
           onClick={() => void resolveNft()}
-          disabled={busy || !identifier.trim()}
+          disabled={resolving || publishing || !identifier.trim()}
           className="w-full rounded-full border border-sky-400/40 bg-sky-400/10 px-5 py-3 text-sm font-semibold text-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy ? "正在查询并核验链上 NFT……" : "查询 NFT 图片与链上资料"}
+          {resolving ? "正在查询并核验链上 NFT……" : "查询 NFT 图片与链上资料"}
         </button>
 
         {resolved && (
@@ -238,10 +246,10 @@ export function ProductAdminPage() {
         <button
           type="button"
           onClick={() => void publishManualListing()}
-          disabled={busy || !resolved}
+          disabled={resolving || publishing || !resolved}
           className="w-full rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy ? "正在登记商品……" : "确认发布（人工交付）"}
+          {publishing ? "正在登记商品……" : "确认发布（人工交付）"}
         </button>
 
         {message && (
