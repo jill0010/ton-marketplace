@@ -248,7 +248,7 @@ Deno.serve(async (request: Request) => {
       );
 
       if (escrowId === 0n) {
-        return jsonResponse({ success: true, registered: false, escrow_id: "0" });
+        return jsonResponse({ success: true, registered: false, escrow_id: "0", listing_enabled: Deno.env.get("MARKETPLACE_V2_LISTING_ENABLED") === "true" });
       }
 
       const recordCell = await runGetMethodCell(
@@ -283,6 +283,7 @@ Deno.serve(async (request: Request) => {
         record_matches: matches,
         escrow_id: escrowId.toString(),
         record_status: record.status,
+        listing_enabled: Deno.env.get("MARKETPLACE_V2_LISTING_ENABLED") === "true",
       });
     }
 
