@@ -926,7 +926,7 @@ export function PublishPage() {
                   htmlFor="publish-price"
                   className="block text-sm text-zinc-300"
                 >
-                  {t("Price (GRAM)", "售价（GRAM）")}
+                  <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Price (GRAM)", "售价（GRAM）")}</span>
                 </label>
                 <input
                   id="publish-price"
