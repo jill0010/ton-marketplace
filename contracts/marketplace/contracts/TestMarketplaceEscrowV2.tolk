@@ -16,31 +16,31 @@ contract TestMarketplaceEscrowV2 {
     incomingMessages: TestMarketplaceEscrowV2AllowedMessage
 }
 
+fun TestMarketplaceEscrowV2Storage.load(): TestMarketplaceEscrowV2Storage {
+    return TestMarketplaceEscrowV2Storage.fromCell(contract.getData());
+}
+
+fun TestMarketplaceEscrowV2Storage.save(self) {
+    contract.setData(self.toCell());
+}
+
 fun onInternalMessage(in: InMessage) {
     val msg = lazy TestMarketplaceEscrowV2AllowedMessage.fromSlice(in.body);
     match (msg) {
         CreateEscrowV2 => {
             var storage = lazy TestMarketplaceEscrowV2Storage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRelease;
-            val escrowId = storage.nextEscrowId;
+            val escrowId = msg.productId;
             val existing = storage.records.get(escrowId);
             assert (!existing.isFound) throw ErrorsV2.AssetAlreadyEscrowed;
-            val createExtra = msg.extra.load();
             val record = TestMarketplaceEscrowV2Record {
-                escrowId,
+                productId: msg.productId,
                 nftItem: msg.nftItem,
                 seller: msg.seller,
-                productId: msg.productId,
-                status: 1,
                 queryId: msg.queryId,
-                extra: TestMarketplaceEscrowV2RecordExtra {
-                    collection: msg.collection,
-                    itemIndex: createExtra.itemIndex,
-                    kind: createExtra.kind,
-                }.toCell(),
+                status: 1,
             };
             storage.records.set(escrowId, record.toCell());
-            storage.nextEscrowId = escrowId + 1;
             storage.save();
 
             val callback = createMessage({
@@ -66,7 +66,6 @@ fun onInternalMessage(in: InMessage) {
             val record = TestMarketplaceEscrowV2Record.fromCell(recordResult.loadValue());
             assert (record.productId == msg.productId) throw ErrorsV2.InvalidRelease;
             assert (record.status == 1) throw ErrorsV2.InvalidRelease;
-            assert (record.queryId != 0) throw ErrorsV2.InvalidRelease;
 
             // Simulate an authenticated release failure from Escrow. The real
             // NFTEscrowV2 emits this only after the official NFT Item transfer bounces.
@@ -91,12 +90,12 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
             val recordResult = storage.records.get(msg.escrowId);
             assert (recordResult.isFound) throw ErrorsV2.InvalidRefund;
-            val record = TestMarketplaceEscrowV2Record.fromCell(recordResult.loadValue());
+            var record = TestMarketplaceEscrowV2Record.fromCell(recordResult.loadValue());
             assert (record.productId == msg.productId) throw ErrorsV2.InvalidRefund;
             assert (record.seller == msg.seller) throw ErrorsV2.InvalidRefund;
-            var updatedRecord = record;
-            updatedRecord.status = 5;
-            storage.records.set(msg.escrowId, updatedRecord.toCell());
+            assert (record.status == 1) throw ErrorsV2.InvalidRefund;
+            record.status = 5;
+            storage.records.set(msg.escrowId, record.toCell());
             storage.save();
 
             val refunded = createMessage({
