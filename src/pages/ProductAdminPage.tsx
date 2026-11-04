@@ -19,6 +19,56 @@ type ResolvedNft = {
   attributes?: Record<string, string | null>;
   metadata?: Record<string, unknown>;
 };
+type BatchRow = {
+  enabled: string;
+  identifier: string;
+  price: string;
+  currency: string;
+  listing_type: string;
+  auction_end_at: string;
+  description: string;
+  rowNumber: number;
+};
+type BatchResult = { rowNumber: number; identifier: string; status: "published" | "staged" | "failed" | "skipped"; message: string };
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  const input = text.replace(/^\\uFEFF/, "");
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (quoted) {
+      if (ch === '"' && input[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else field += ch;
+    } else if (ch === '"' && field.length === 0) quoted = true;
+    else if (ch === ",") { row.push(field.trim()); field = ""; }
+    else if (ch === "\\n") { row.push(field.trim()); if (row.some((v) => v !== "")) rows.push(row); row = []; field = ""; }
+    else if (ch !== "\\r") field += ch;
+  }
+  row.push(field.trim());
+  if (row.some((v) => v !== "")) rows.push(row);
+  if (quoted) throw new Error("CSV 文件存在未闭合的双引号。");
+  return rows;
+}
+
+function downloadBatchTemplate() {
+  const csv = [
+    "enabled,identifier,price,currency,listing_type,auction_end_at,description",
+    'false,@example_username,10,TON,sale,,用户名示例（请替换标识和价格）',
+    'false,+88812345678,25,TON,auction,2026-12-01T12:00:00Z,+888 示例（拍卖仅暂存，尚未开放链上竞价）',
+  ].join("\\r\\n");
+  const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "ton-marketplace-bulk-listing-template.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 
 function parseIdentifier(value: string) {
   const input = value.trim();
@@ -45,6 +95,137 @@ export function ProductAdminPage() {
   const [syncingIndex, setSyncingIndex] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
+  const [batchFileName, setBatchFileName] = useState("");
+  const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
+  const [batchRunning, setBatchRunning] = useState(false);
+
+
+  async function loadBatchFile(file?: File) {
+    setBatchRows([]);
+    setBatchResults([]);
+    setBatchFileName("");
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setMessage("CSV 文件不能超过 2 MB。"); return; }
+    try {
+      const matrix = parseCsv(await file.text());
+      if (!matrix.length) throw new Error("CSV 文件为空。");
+      const headers = matrix[0].map((v) => v.trim().toLowerCase());
+      const required = ["enabled", "identifier", "price", "currency", "listing_type", "auction_end_at", "description"];
+      const missing = required.filter((h) => !headers.includes(h));
+      if (missing.length) throw new Error("模板缺少列：" + missing.join("、"));
+      if (matrix.length - 1 > 200) throw new Error("单次最多处理 200 行，请拆分文件。");
+      const rows = matrix.slice(1).map((cells, index) => {
+        const get = (key: string) => cells[headers.indexOf(key)] ?? "";
+        return {
+          enabled: get("enabled").toLowerCase(),
+          identifier: get("identifier"),
+          price: get("price"),
+          currency: get("currency").toUpperCase(),
+          listing_type: get("listing_type").toLowerCase(),
+          auction_end_at: get("auction_end_at"),
+          description: get("description"),
+          rowNumber: index + 2,
+        };
+      });
+      setBatchRows(rows);
+      setBatchFileName(file.name);
+      setMessage(`已读取 ${rows.length} 行。模板示例行默认 disabled，不会发布；请将需要处理的行 enabled 改为 true。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "读取 CSV 文件失败。");
+    }
+  }
+
+  async function publishBatch() {
+    if (batchRunning || !batchRows.length) return;
+    const active = batchRows.filter((r) => ["true", "1", "yes", "是"].includes(r.enabled));
+    if (!active.length) { setMessage("没有启用的行。请将需要发布的行 enabled 设置为 true。"); return; }
+    if (active.length > 200) { setMessage("单次最多处理 200 行。"); return; }
+    setBatchRunning(true);
+    setBatchResults([]);
+    setMessage("");
+    const results: BatchResult[] = [];
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || authData.user?.id !== ADMIN_UID) throw new Error("当前账号不是授权管理员，请重新登录。");
+      for (const row of batchRows) {
+        if (!["true", "1", "yes", "是"].includes(row.enabled)) {
+          results.push({ rowNumber: row.rowNumber, identifier: row.identifier, status: "skipped", message: "未启用，已跳过" });
+          continue;
+        }
+        try {
+          const parsed = parseIdentifier(row.identifier);
+          if (!parsed || parsed.type === "gift") throw new Error("批量模板目前只支持 @用户名和 +888 号码。");
+          const amount = Number(row.price);
+          if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) throw new Error("售价必须是大于 0 的有效数字。");
+          if (row.currency !== "TON" && row.currency !== "GRAM") throw new Error("币种只支持 TON 或 GRAM。");
+          if (row.listing_type !== "sale" && row.listing_type !== "auction") throw new Error("listing_type 只能填写 sale 或 auction。");
+          let auctionEnd: string | null = null;
+          if (row.listing_type === "auction") {
+            const date = new Date(row.auction_end_at);
+            if (!row.auction_end_at || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) throw new Error("拍卖结束时间必须填写未来的 ISO 时间，例如 2026-12-01T12:00:00Z。");
+            auctionEnd = date.toISOString();
+          }
+          const { data, error } = await supabase.functions.invoke("admin-resolve-nft", { body: { identifier: row.identifier.trim() } });
+          if (error) throw new Error(error.message || "NFT 识别失败。");
+          if (!data?.success) throw new Error(data?.message || data?.error || "NFT 未通过识别。");
+          const nft = data as ResolvedNft;
+          if (nft.type !== parsed.type || !nft.address || !nft.verified_on_chain || !nft.image_url) throw new Error("NFT 类型、链上地址、图片或链上核验不符合发布要求。");
+          const productName = nft.name || parsed.name;
+          const { data: existing, error: duplicateError } = await supabase.from("products").select("id").eq("nft_item_address", nft.address).limit(1);
+          if (duplicateError) throw new Error("检查重复 NFT 失败：" + duplicateError.message);
+          if (existing?.length) throw new Error("该 NFT 地址已存在于商品表，已跳过重复发布。");
+          const isAuction = row.listing_type === "auction";
+          const { error: insertError } = await supabase.from("products").insert({
+            name: productName,
+            type: parsed.type,
+            description: row.description || nft.description || "",
+            price: amount,
+            currency: row.currency,
+            image_url: nft.image_url,
+            status: isAuction ? "draft" : "listed",
+            delivery_mode: "manual",
+            chain_status: "verified",
+            nft_item_address: nft.address,
+            collection_address: nft.collection_address,
+            item_index: nft.item_index,
+            listing_kind: isAuction ? "auction" : "fixed_price",
+            auction_ends_at: auctionEnd,
+            minimum_bid: isAuction ? amount : null,
+            product_metadata: {
+              source: nft.source,
+              batch_import: true,
+              listing_type: row.listing_type,
+              auction_pending_contract: isAuction,
+              telegram_url: nft.telegram_url ?? null,
+              animated_url: nft.animated_url ?? null,
+              attributes: nft.attributes ?? {},
+              ...(nft.metadata ?? {}),
+            },
+          });
+          if (insertError) throw new Error("数据库写入失败：" + insertError.message);
+          results.push({
+            rowNumber: row.rowNumber,
+            identifier: row.identifier,
+            status: isAuction ? "staged" : "published",
+            message: isAuction ? "已保存为草稿；链上拍卖合约及竞价功能尚未启用，未公开上架。" : "已通过链上核验并发布到商城（人工交付）。",
+          });
+        } catch (error) {
+          results.push({ rowNumber: row.rowNumber, identifier: row.identifier, status: "failed", message: error instanceof Error ? error.message : "处理失败" });
+        }
+        setBatchResults([...results]);
+      }
+      const published = results.filter((r) => r.status === "published").length;
+      const staged = results.filter((r) => r.status === "staged").length;
+      const failed = results.filter((r) => r.status === "failed").length;
+      setMessage(`批量处理完成：成功上架 ${published} 条；拍卖草稿 ${staged} 条；失败 ${failed} 条。拍卖草稿不会展示给买家，必须先完成链上拍卖功能。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "批量发布失败。");
+    } finally {
+      setBatchRunning(false);
+    }
+  }
+
   async function resolveNft() {
     if (resolving || publishing) return;
     setMessage("");
@@ -270,6 +451,28 @@ export function ProductAdminPage() {
         <p className="font-semibold">后台自动同步已开启</p>
         <p className="mt-1 text-emerald-100/80">用户名和 +888 NFT 索引由 Supabase 后台每 5 分钟自动同步一次。首次全量索引会自动续页；完成后继续定期检查最新 NFT。无需保持此页面打开，也无需手动点击同步。</p>
       </div>
+
+
+      <section className="space-y-4 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-5">
+        <div>
+          <h2 className="text-xl font-semibold text-white">文件批量发布</h2>
+          <p className="mt-1 text-sm leading-6 text-zinc-400">下载 CSV 模板，在 Excel 中填写用户名、+888 号码、售价和出售/拍卖类型，再上传文件。系统逐行调用 NFT 链上核验并写入商品数据库。</p>
+        </div>
+        <button type="button" onClick={downloadBatchTemplate} className="rounded-full border border-sky-300/40 px-4 py-2 text-sm font-semibold text-sky-200 hover:bg-sky-300/10">下载 Export 模板（CSV / Excel 可打开）</button>
+        <label className="block space-y-2 text-sm text-zinc-300">
+          <span>上传填写完成的 CSV 文件（最多 200 行 / 2 MB）</span>
+          <input type="file" accept=".csv,text/csv" disabled={batchRunning} onChange={(event) => void loadBatchFile(event.target.files?.[0])} className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-zinc-100" />
+        </label>
+        {batchFileName && <p className="text-xs text-zinc-400">文件：{batchFileName} · 共 {batchRows.length} 行 · 启用 {batchRows.filter((r) => ["true","1","yes","是"].includes(r.enabled)).length} 行</p>}
+        {batchRows.length > 0 && <div className="max-h-64 overflow-auto rounded-lg border border-white/10">
+          <table className="w-full text-left text-xs">
+            <thead className="sticky top-0 bg-zinc-900 text-zinc-400"><tr><th className="p-2">行</th><th className="p-2">标识</th><th className="p-2">价格</th><th className="p-2">类型</th><th className="p-2">状态</th></tr></thead>
+            <tbody>{batchRows.map((r) => <tr key={r.rowNumber} className="border-t border-white/5"><td className="p-2">{r.rowNumber}</td><td className="p-2">{r.identifier || "—"}</td><td className="p-2">{r.price} {r.currency}</td><td className="p-2">{r.listing_type}</td><td className="p-2">{["true","1","yes","是"].includes(r.enabled) ? "待处理" : "跳过"}</td></tr>)}</tbody>
+          </table>
+        </div>}
+        <button type="button" onClick={() => void publishBatch()} disabled={batchRunning || !batchRows.some((r) => ["true","1","yes","是"].includes(r.enabled))} className="w-full rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{batchRunning ? "正在逐行核验并处理……" : "确认批量处理并发布"}</button>
+        {batchResults.length > 0 && <div className="max-h-72 space-y-2 overflow-auto rounded-lg border border-white/10 p-3">{batchResults.map((r) => <div key={r.rowNumber} className="text-xs"><p className="font-medium text-white">第 {r.rowNumber} 行 · {r.identifier} · {r.status === "published" ? "已上架" : r.status === "staged" ? "拍卖草稿" : r.status === "skipped" ? "已跳过" : "失败"}</p><p className="mt-1 text-zinc-400">{r.message}</p></div>)}</div>}
+      </section>
 
       <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <div className="space-y-2">
