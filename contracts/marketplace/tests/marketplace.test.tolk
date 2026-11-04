@@ -1247,7 +1247,6 @@ get fun `test Marketplace V2 immutable order snapshot and independent payout lia
     expect(decodedSellerPayout.queryId == decodedPlatformPayout.queryId).toEqual(false);
 }
 
-
 // V2 fresh-deployment storage schema must round-trip every purchase and payout index.
 get fun `test Marketplace V2 versioned purchase storage round-trips`() {
     val owner = testing.treasury("v2StorageOwner");
