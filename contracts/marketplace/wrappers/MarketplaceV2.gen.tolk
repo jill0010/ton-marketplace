@@ -77,6 +77,8 @@ fun MarketplaceV2.sendSetMarketplaceV2Treasury(
 fun MarketplaceV2.sendPublishProductV2(
     self,
     from: address,
+    expectedProductId: uint64,
+    queryId: uint64,
     nftItem: address,
     collection: address,
     itemIndex: uint256,
@@ -88,7 +90,15 @@ fun MarketplaceV2.sendPublishProductV2(
         bounce: config.bounce,
         value: config.value,
         dest: self.address,
-        body: PublishProductV2 { nftItem, collection, itemIndex, kind, price },
+        body: PublishProductV2 {
+            expectedProductId,
+            queryId,
+            nftItem,
+            collection,
+            itemIndex,
+            kind,
+            price,
+        },
     });
     return net.send(from, genericMsg);
 }
@@ -143,6 +153,14 @@ fun MarketplaceV2.sendCancelProductV2(
 
 fun MarketplaceV2.ownerV2(self): address {
     return net.runGetMethod(self.address, "ownerV2");
+}
+
+fun MarketplaceV2.nextProductIdV2(self): uint64 {
+    return net.runGetMethod(self.address, "nextProductIdV2");
+}
+
+fun MarketplaceV2.nextQueryIdV2(self): uint64 {
+    return net.runGetMethod(self.address, "nextQueryIdV2");
 }
 
 fun MarketplaceV2.escrowV2(self): address {
