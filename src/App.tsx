@@ -13,6 +13,7 @@ const PublishPage = lazy(() => import("./pages/PublishPage").then((module) => ({
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
+const AdminResetPasswordPage = lazy(() => import("./pages/AdminResetPasswordPage").then((module) => ({ default: module.AdminResetPasswordPage })))
 const PremiumRoute = lazy(() => import("./components/PremiumRoute").then((module) => ({ default: module.PremiumRoute })))
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
 const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
@@ -37,6 +38,7 @@ export default function App() {
           >
             <Routes>
               <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin/reset-password" element={<AdminResetPasswordPage />} />
 
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
