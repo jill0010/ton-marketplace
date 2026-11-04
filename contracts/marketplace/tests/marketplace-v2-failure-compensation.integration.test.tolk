@@ -108,6 +108,8 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     expect(
         marketplace.sendPublishProductV2(
             seller.address,
+            1,
+            1,
             nftItem,
             collection,
             4242,
