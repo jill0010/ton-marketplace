@@ -169,7 +169,7 @@ export function FragmentCatalogPage() {
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4 text-sm text-amber-100/90">
         {t(
           "Preview only: listings are cached from third-party sources. Orders, bids, payments and automatic delivery are not enabled. Always verify live price and availability on the original marketplace.",
-          "当前仅提供第三方市场商品预览。下单、竞拍、付款和自动交付尚未启用，请以原市场实时价格和库存为准。"
+          "当前仅提供第三方市场商品预览。下单、付款和自动交付尚未启用，请以原市场实时价格和库存为准。"
         )}
       </div>
 
