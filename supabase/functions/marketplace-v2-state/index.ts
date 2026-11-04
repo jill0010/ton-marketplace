@@ -1,4 +1,4 @@
-import { handleCors, jsonResponse } from "../_shared/http.ts";
+import { handleCors, jsonResponse } from "./http.ts";
 
 const TONCENTER_RUN_GET_URL = "https://toncenter.com/api/v2/runGetMethod";
 const UINT64_MAX = (1n << 64n) - 1n;
