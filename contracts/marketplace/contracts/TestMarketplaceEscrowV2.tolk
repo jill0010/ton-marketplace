@@ -89,7 +89,7 @@ fun onInternalMessage(in: InMessage) {
         }
 
         RefundEscrowV2 => {
-            val storage = lazy NFTEscrowV2Storage.load();
+            var storage = lazy NFTEscrowV2Storage.load();
             assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
             val recordResult = storage.records.get(msg.escrowId);
             assert (recordResult.isFound) throw ErrorsV2.InvalidRefund;
