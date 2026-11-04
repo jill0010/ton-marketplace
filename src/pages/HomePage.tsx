@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
+import { GramTokenMark } from "../components/GramTokenMark"
 import { getListedProducts } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
 import type { Product, ProductType } from "../types/product"
@@ -243,9 +244,9 @@ export function HomePage() {
                 selectedType === "username" || selectedType === "number" ? (
                   <div className="overflow-x-auto rounded-2xl border border-white/10">
                     <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-                      <thead className="bg-white/[0.05] text-xs uppercase tracking-wide text-zinc-500">
+                      <thead className="bg-[#283440] text-xs font-semibold tracking-wide text-[#91a8c0]">
                         <tr>
-                          <th className="px-5 py-4">{selectedType === "username" ? t("Username", "用户名") : t("Number", "号码")}</th>
+                          <th className="px-5 py-3">{selectedType === "username" ? t("Username", "用户名") : t("Number", "号码")}</th>
                           <th className="px-5 py-4">{t("Value", "价格")}</th>
                           <th className="px-5 py-4">{t("Status", "状态")}</th>
                         </tr>
@@ -255,24 +256,28 @@ export function HomePage() {
                           const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
                           const telegramUrl = "https://t.me/" + rawName
                           return (
-                            <tr key={product.id} className="transition hover:bg-white/[0.035]">
-                              <td className="px-5 py-4">
+                            <tr key={product.id} className="bg-[#1d2731] transition hover:bg-[#25323e]">
+                              <td className="px-5 py-3">
                                 <div className="flex flex-col items-start">
-                                  <Link to={"/product/" + product.id} className="font-semibold text-white hover:text-sky-300">
+                                  <Link to={"/product/" + product.id} className="text-[15px] font-bold text-white hover:text-sky-300">
                                     {product.type === "username" ? "@" + rawName : "+" + rawName}
                                   </Link>
                                   {product.type === "username" && (
-                                    <a href={telegramUrl} target="_blank" rel="noreferrer" className="mt-0.5 text-xs text-sky-400 hover:text-sky-300">
+                                    <a href={telegramUrl} target="_blank" rel="noreferrer" className="mt-0.5 text-xs font-medium text-[#38a9ff] hover:text-[#70c2ff]">
                                       {rawName}.t.me
                                     </a>
                                   )}
                                 </div>
                               </td>
-                              <td className="px-5 py-4 font-semibold tabular-nums text-white">
-                                {product.priceTon.toLocaleString()} <span className="text-zinc-500">{product.currency}</span>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-1.5 font-bold tabular-nums text-white">
+                                  {product.currency === "GRAM" && <GramTokenMark className="h-4 w-4" />}
+                                  <span>{product.priceTon.toLocaleString()} <span className="text-[#9aabba]">{product.currency}</span></span>
+                                </div>
+                                <p className="mt-0.5 text-xs text-[#9aabba]">{t("Sale price", "出售价格")}</p>
                               </td>
-                              <td className="px-5 py-4">
-                                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-1 text-xs text-emerald-300">
+                              <td className="px-5 py-3">
+                                <span className="text-sm font-semibold text-[#20e68a]">
                                   {t("For sale", "出售中")}
                                 </span>
                               </td>
