@@ -19,7 +19,6 @@ type CatalogListing = {
   synced_at: string
 }
 
-type KindFilter = "all" | "auction" | "fixed_price"
 type CategoryFilter = "all" | "username" | "phone_number" | "gift"
 const ADMIN_USER_ID = "0744f173-3f36-438f-b265-9cb3be95ad78"
 
@@ -53,7 +52,6 @@ function sourceLabel(source: CatalogListing["source"], language: string) {
 export function FragmentCatalogPage() {
   const { language, t } = useLanguage()
   const [listings, setListings] = useState<CatalogListing[]>([])
-  const [kindFilter, setKindFilter] = useState<KindFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -69,6 +67,7 @@ export function FragmentCatalogPage() {
       .from("marketplace_source_listings")
       .select("id,source,source_item_id,item_type,listing_kind,title,source_url,image_url,currency,current_price_nano,minimum_bid_nano,auction_ends_at,synced_at")
       .eq("source_status", "active")
+      .eq("listing_kind", "fixed_price")
       .gte("synced_at", freshAfter)
       .order("synced_at", { ascending: false })
       .limit(300)
@@ -114,9 +113,8 @@ export function FragmentCatalogPage() {
 
   const visibleListings = useMemo(() => listings.filter((item) => {
     const categoryMatches = categoryFilter === "all" || item.item_type === categoryFilter
-    const kindMatches = kindFilter === "all" || item.listing_kind === kindFilter
-    return categoryMatches && kindMatches
-  }), [categoryFilter, kindFilter, listings])
+    return categoryMatches
+  }), [categoryFilter, listings])
 
   const lastSync = listings.reduce<string | null>((latest, item) => {
     if (!latest || item.synced_at > latest) return item.synced_at
@@ -144,81 +142,7 @@ export function FragmentCatalogPage() {
             )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => void syncGetgems()}
-              disabled={syncing}
-              className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-medium text-black transition hover:bg-emerald-300 disabled:opacity-50"
-            >
-              {syncing ? t("Syncing…", "同步中…") : t("Sync Getgems", "同步 Getgems")}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void loadListings()}
-            disabled={loading}
-            className="rounded-full border border-white/15 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:opacity-50"
-          >
-            {loading ? t("Refreshing…", "刷新中…") : t("Refresh", "刷新")}
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4 text-sm text-amber-100/90">
-        {t(
-          "Preview only: listings are cached from third-party sources. Orders, bids, payments and automatic delivery are not enabled. Always verify live price and availability on the original marketplace.",
-          "当前仅提供第三方市场商品预览。下单、付款和自动交付尚未启用，请以原市场实时价格和库存为准。"
-        )}
-      </div>
-
-      {syncMessage && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-zinc-300">{syncMessage}</div>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {categoryOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setCategoryFilter(option.value)}
-              className={`rounded-full border px-3 py-2 text-sm transition ${
-                categoryFilter === option.value
-                  ? "border-white/40 bg-white/10 text-white"
-                  : "border-white/10 text-zinc-400 hover:bg-white/5"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-zinc-500">
-          {lastSync
-            ? t(`Latest sync: ${new Date(lastSync).toLocaleString()}`, `最近同步：${new Date(lastSync).toLocaleString()}`)
-            : t("No successful catalogue sync yet", "尚无成功的商品同步记录")}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(["all", "auction", "fixed_price"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setKindFilter(value)}
-            className={`rounded-full border px-4 py-2 text-sm transition ${
-              kindFilter === value
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/10 text-zinc-400 hover:bg-white/5"
-            }`}
-          >
-            {value === "all" ? t("All listings", "全部商品") : value === "auction" ? t("Auctions", "竞拍") : t("Fixed price", "一口价")}
-          </button>
-        ))}
-      </div>
-
-      {error ? (
+        {error ? (
         <div className="rounded-xl border border-red-500/20 p-5 text-sm text-red-300">{error}</div>
       ) : loading ? (
         <p className="py-10 text-center text-sm text-zinc-400">{t("Loading marketplace listings…", "正在读取市场商品…")}</p>
@@ -246,7 +170,7 @@ export function FragmentCatalogPage() {
                   <div className="flex h-full items-center justify-center text-4xl text-zinc-600">◇</div>
                 )}
                 <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white">
-                  {item.listing_kind === "auction" ? t("Auction", "竞拍") : t("Fixed price", "一口价")}
+                  {t("For sale", "出售中")}
                 </span>
                 <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white">
                   {sourceLabel(item.source, language)}
@@ -256,13 +180,9 @@ export function FragmentCatalogPage() {
                 <p className="text-xs text-zinc-500">{typeLabel(item.item_type, language)}</p>
                 <h2 className="truncate font-semibold text-white">{item.title}</h2>
                 <p className="text-lg font-semibold text-emerald-300">
-                  {formatNano(item.listing_kind === "auction" ? (item.minimum_bid_nano ?? item.current_price_nano) : item.current_price_nano)} {item.currency}
+                  {formatNano(item.current_price_nano)} {item.currency}
                 </p>
-                {item.auction_ends_at && (
-                  <p className="text-xs text-zinc-400">
-                    {t("Ends", "结束时间")}: {new Date(item.auction_ends_at).toLocaleString()}
-                  </p>
-                )}
+
                 <a href={item.source_url} target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-white/15 px-3 py-2 text-sm text-white hover:bg-white/10">
                   {t("View source listing", "查看原市场商品")} ↗
                 </a>
