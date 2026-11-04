@@ -31,6 +31,7 @@ type PendingListing = {
   description: string;
   marketplaceAddress: string;
   escrowAddress: string;
+  sellerWallet: string;
   step: "registration" | "transfer" | "sync";
 };
 
@@ -220,77 +221,173 @@ export function PublishPage() {
     priceNumber > 0 &&
     priceNumber <= 1000000000;
 
-  async function handlePublish() {
-    if (!isWalletVerified || !selectedAsset || !validPrice || publishing) {
+  async function runPendingListing(pending: PendingListing) {
+    if (publishing) return;
+    if (!isWalletVerified || walletAddress !== pending.sellerWallet) {
+      setPublishError(t("Reconnect and verify the same seller wallet to continue.", "请重新连接并验证原上架钱包后继续。"));
       return;
     }
-
-    const requestId = ++publishRequestRef.current;
-    const publishWalletAddress = walletAddress;
-
     setPublishing(true);
     setPublishError("");
-
     try {
       await ensureAnonymousSession();
+      let current = pending;
 
-      if (
-        requestId !== publishRequestRef.current ||
-        walletAddress !== publishWalletAddress ||
-        !isWalletVerified
-      ) {
-        return;
+      if (current.step === "registration") {
+        setListingMessage(t("Waiting for the Marketplace Escrow registration…", "正在等待商城 Escrow 托管登记……"));
+        let escrowId = "";
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          const { data, error } = await anonymousSupabase.functions.invoke(
+            "marketplace-v2-state",
+            { body: { action: "escrow-registration", query_id: current.queryId } },
+          );
+          if (error) throw new Error(error.message || "无法读取 Escrow 登记状态");
+          if (data?.success === true && data.registered === true &&
+              typeof data.escrow_id === "string" && /^[1-9]\d*$/.test(data.escrow_id)) {
+            escrowId = data.escrow_id;
+            break;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+        if (!escrowId) throw new Error(t("Escrow registration is not visible yet. Retry this check; do not create another listing.", "暂未查到 Escrow 登记。请重试此检查，不要重新创建上架请求。"));
+        current = { ...current, escrowId, step: "transfer" };
+        setPendingListing(current);
       }
 
-      const { data, error } = await anonymousSupabase.functions.invoke(
-        "publish-nft-product",
-        {
-          body: {
-            item_address: selectedAsset.address,
-            price: priceNumber,
-            description: description.trim(),
+      if (current.step === "transfer") {
+        setListingMessage(t("Confirm the NFT transfer to Marketplace Escrow in your wallet…", "请在钱包中确认将 NFT 转入商城托管合约……"));
+        const { data: owned, error: ownedError } = await anonymousSupabase.functions.invoke(
+          "nft-wallet-assets",
+          { body: { wallet_address: current.sellerWallet } },
+        );
+        if (ownedError || owned?.success !== true || !Array.isArray(owned.items)) {
+          throw new Error("Unable to re-check NFT ownership before escrow transfer.");
+        }
+        const stillOwned = owned.items.some((item: NftAsset) => item.address === current.asset.address);
+        if (!stillOwned) {
+          current = { ...current, step: "sync" };
+          setPendingListing(current);
+        } else {
+          const transferPayload = buildNftEscrowTransferPayload(
+            BigInt(current.queryId),
+            current.escrowAddress,
+            current.sellerWallet,
+          );
+          await tonConnectUI.sendTransaction({
+            validUntil: Math.floor(Date.now() / 1000) + 300,
+            messages: [{
+              address: current.asset.address,
+              amount: MARKETPLACE_V2_NFT_TRANSFER_MESSAGE_VALUE.toString(),
+              payload: transferPayload,
+            }],
+          });
+          current = { ...current, step: "sync" };
+          setPendingListing(current);
+        }
+      }
+
+      if (current.step === "sync") {
+        setListingMessage(t("Verifying NFT escrow ownership and synchronizing the product…", "正在核实 NFT 托管所有权并同步商品目录……"));
+        await new Promise((resolve) => window.setTimeout(resolve, 2500));
+        const { data, error } = await anonymousSupabase.functions.invoke(
+          "publish-nft-product",
+          {
+            body: {
+              wallet_address: current.sellerWallet,
+              item_address: current.asset.address,
+              collection_address: current.asset.collection_address,
+              item_index: current.asset.item_index,
+              kind: current.asset.type,
+              price: current.price,
+              name: current.asset.name,
+              description: current.description,
+              image_url: current.asset.image_url,
+              product_id: current.productId,
+              query_id: current.queryId,
+              escrow_id: current.escrowId,
+            },
           },
-        },
-      );
-
-      if (
-        requestId !== publishRequestRef.current ||
-        walletAddress !== publishWalletAddress ||
-        !isWalletVerified
-      ) {
-        return;
-      }
-
-      if (error) {
-        throw new Error(
-          typeof data?.error === "string"
-            ? data.error
-            : error.message || "商品发布失败",
         );
+        if (error || data?.success !== true || typeof data.product?.id !== "string") {
+          throw new Error(typeof data?.error === "string" ? data.error : error?.message || "On-chain escrow verification is still pending. Retry verification; do not transfer the NFT again.");
+        }
+        setPendingListing(null);
+        setListingMessage(t("NFT escrow confirmed. Your listing is live.", "NFT 托管已确认，商品已成功上架。"));
+        navigate(`/product/${data.product.id}`);
       }
-
-      if (
-        data?.success !== true ||
-        typeof data.product?.id !== "string"
-      ) {
-        throw new Error(
-          typeof data?.error === "string"
-            ? data.error
-            : "服务器没有返回有效的商品编号",
-        );
-      }
-
-      navigate(`/product/${data.product.id}`);
     } catch (error) {
-      if (requestId === publishRequestRef.current) {
-        setPublishError(
-          error instanceof Error ? error.message : "商品发布失败，请稍后重试。",
-        );
-      }
+      setPublishError(error instanceof Error ? error.message : "NFT listing failed.");
     } finally {
-      if (requestId === publishRequestRef.current) {
-        setPublishing(false);
+      setPublishing(false);
+    }
+  }
+
+  async function handlePublish() {
+    if (!isWalletVerified || !walletAddress || !selectedAsset || !validPrice ||
+        publishing || pendingListing) return;
+    const sellerWallet = walletAddress;
+    setPublishing(true);
+    setPublishError("");
+    setListingMessage(t("Checking Marketplace V2 deployment readiness…", "正在检查 Marketplace V2 部署状态……"));
+    try {
+      await ensureAnonymousSession();
+      const { data: state, error: stateError } = await anonymousSupabase.functions.invoke(
+        "marketplace-v2-state",
+        { body: { action: "next-listing-ids" } },
+      );
+      if (stateError) throw new Error(stateError.message || "Unable to read Marketplace V2 state");
+      if (state?.success !== true || typeof state.marketplace_address !== "string" ||
+          typeof state.escrow_address !== "string" || typeof state.next_product_id !== "string" ||
+          typeof state.next_query_id !== "string") {
+        throw new Error(typeof state?.error === "string" ? state.error : "Marketplace V2 mainnet contracts are not configured.");
       }
+      if (state.escrow_configured !== true || state.treasury_configured !== true) {
+        throw new Error(t("Marketplace V2 Escrow and platform treasury must both be configured before listing.", "上架前必须完成 Marketplace V2 Escrow 和平台金库配置。"));
+      }
+
+      const kind = selectedAsset.type === "username"
+        ? MarketplaceV2AssetKind.Username
+        : selectedAsset.type === "phone_number"
+          ? MarketplaceV2AssetKind.PhoneNumber
+          : MarketplaceV2AssetKind.Gift;
+      const productId = BigInt(state.next_product_id);
+      const queryId = BigInt(state.next_query_id);
+      const payload = buildPublishProductV2Payload({
+        expectedProductId: productId,
+        queryId,
+        nftItem: selectedAsset.address,
+        collection: selectedAsset.collection_address,
+        itemIndex: BigInt(selectedAsset.item_index),
+        kind,
+        priceTon: price,
+      });
+      setListingMessage(t("Confirm the Marketplace V2 listing request in your wallet…", "请在钱包中确认 Marketplace V2 上架请求……"));
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{
+          address: state.marketplace_address,
+          amount: MARKETPLACE_V2_LISTING_MESSAGE_VALUE.toString(),
+          payload,
+        }],
+      });
+      const pending: PendingListing = {
+        asset: selectedAsset,
+        productId: productId.toString(),
+        queryId: queryId.toString(),
+        escrowId: "0",
+        price,
+        description: description.trim(),
+        marketplaceAddress: state.marketplace_address,
+        escrowAddress: state.escrow_address,
+        sellerWallet,
+        step: "registration",
+      };
+      setPendingListing(pending);
+      setPublishing(false);
+      await runPendingListing(pending);
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : "NFT listing failed.");
+      setPublishing(false);
     }
   }
 
