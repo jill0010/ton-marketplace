@@ -43,8 +43,12 @@ function asUint64(value: bigint, field: string): bigint {
 
 export function createMarketplaceV2PaymentQueryId(now = Date.now()): bigint {
   // Payment query IDs live above the Marketplace's monotonically allocated
-  // listing/release/payout query namespace.
-  return asUint64(BigInt(now), "queryId");
+  // listing/release/payout query namespace. Add random entropy so two buyers
+  // creating orders in the same millisecond do not reuse the same query ID.
+  const entropy = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(entropy);
+  const queryId = BigInt(now) * 1_000_000n + BigInt(entropy[0] % 1_000_000);
+  return asUint64(queryId, "queryId");
 }
 
 export function buildPublishProductV2Payload(
@@ -111,6 +115,9 @@ export function buildNftEscrowTransferPayload(
 export function buildBuyProductV2Payload(input: BuyProductV2Input): string {
   const productId = asUint64(input.productId, "productId");
   const queryId = asUint64(input.queryId, "queryId");
+  if (input.expectedPriceNano <= 0n) {
+    throw new Error("Purchase price must be positive");
+  }
   if (!Number.isInteger(input.deadline) || input.deadline <= 0 || input.deadline > 0xffff_ffff) {
     throw new Error("deadline must fit uint32");
   }
