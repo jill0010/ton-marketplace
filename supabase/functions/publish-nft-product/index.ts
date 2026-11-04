@@ -230,7 +230,7 @@ Deno.serve(async (req: Request) => {
     const auth = createClient(url, publishable, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await auth.auth.getUser(authToken);
     if (authError || !authData.user || authData.user.is_anonymous !== true) {
-      return reply({ success: false, error: "A valid anonymous buyer session is required" }, 401, origin);
+      return reply({ success: false, error: "A valid anonymous seller session is required" }, 401, origin);
     }
 
     const body = await req.json();
@@ -501,7 +501,7 @@ Deno.serve(async (req: Request) => {
         name,
         type: assetType,
         description,
-        price: Number(priceRaw),
+        price: priceRaw,
         currency: "GRAM",
         image_url: imageUrl,
         status: "listed",
