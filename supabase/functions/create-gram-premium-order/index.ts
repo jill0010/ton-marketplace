@@ -18,7 +18,14 @@ function reply(data: Record<string, unknown>, status: number, origin: string) {
   return Response.json(data, { status, headers: cors(origin) });
 }
 
-function toNano(value: string | number) {\n  const raw = String(value);\n  if (!/^\\d+(?:\\.\\d{1,9})?$/.test(raw)) throw new Error("Invalid GRAM amount");\n  const [whole, fraction = ""] = raw.split(".");\n  return (BigInt(whole) * 1_000_000_000n + BigInt((fraction + "000000000").slice(0, 9))).toString();\n}\n\nfunction serviceKey() {
+function toNano(value: string | number) {
+  const raw = String(value);
+  if (!/^\d+(?:\.\d{1,9})?$/.test(raw)) throw new Error("Invalid GRAM amount");
+  const [whole, fraction = ""] = raw.split(".");
+  return (BigInt(whole) * 1_000_000_000n + BigInt((fraction + "000000000").slice(0, 9))).toString();
+}
+
+function serviceKey() {
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
   const keys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
