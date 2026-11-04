@@ -420,3 +420,6 @@ verify_jwt = true
 
 [functions.verify-usdt-payment]
 verify_jwt = true
+
+[functions.marketplace-v2-state]
+verify_jwt = true
