@@ -12,6 +12,8 @@ type DatabaseProduct = {
   product_metadata?: Record<string, unknown> | null
   status: string
   delivery_mode: string
+  listing_kind?: string | null
+  auction_ends_at?: string | null
   created_at: string
 }
 
@@ -40,12 +42,13 @@ function toProduct(item: DatabaseProduct): Product | null {
     imageUrl: item.image_url,
     productMetadata: item.product_metadata ?? undefined,
     status: "listed",
-    listingMode: "sale",
+    listingMode: item.listing_kind === "auction" ? "auction" : "sale",
+    auctionEndsAt: item.auction_ends_at ?? null,
     createdAt: item.created_at,
   }
 }
 
-const PRODUCT_SELECT = "id, name, type, description, price, currency, image_url, product_metadata, status, delivery_mode, created_at"
+const PRODUCT_SELECT = "id, name, type, description, price, currency, image_url, product_metadata, status, delivery_mode, listing_kind, auction_ends_at, created_at"
 
 export async function getListedProducts(): Promise<Product[]> {
   const { data, error } = await supabase
