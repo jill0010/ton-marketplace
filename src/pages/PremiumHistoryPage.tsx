@@ -10,6 +10,8 @@ type PremiumOrder = {
   recipient_username: string
   plan_name: string
   usd_amount: number | string
+  gram_amount: number | string
+  gram_usd_rate: number | string
   payment_method: string
   status: string
   created_at: string
@@ -71,7 +73,7 @@ export function PremiumHistoryPage() {
       await ensureAnonymousSession()
       const { data, error: ordersError } = await anonymousSupabase
         .from("premium_orders")
-        .select("id, order_no, recipient_username, plan_name, usd_amount, payment_method, status, created_at, expires_at, paid_at, completed_at")
+        .select("id, order_no, recipient_username, plan_name, usd_amount, gram_amount, gram_usd_rate, payment_method, status, created_at, expires_at, paid_at, completed_at")
         .order("created_at", { ascending: false })
         .limit(100)
 
@@ -179,11 +181,11 @@ export function PremiumHistoryPage() {
                 <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3 sm:grid-cols-3">
                   <div>
                     <p className="text-xs text-zinc-500">{t("Amount", "金额")}</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{Number(order.usd_amount).toFixed(2)} USDT</p>
+                    <p className="mt-1 text-sm font-semibold text-white">{order.payment_method === "GRAM" ? `${Number(order.gram_amount).toFixed(2)} GRAM` : `${Number(order.usd_amount).toFixed(2)} USDT`}</p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500">{t("Payment method", "支付方式")}</p>
-                    <p className="mt-1 text-sm text-white">{order.payment_method === "USDT_TRC20" ? "USDT · TRC20" : order.payment_method}</p>
+                    <p className="mt-1 text-sm text-white">{order.payment_method === "USDT_TRC20" ? "USDT · TRC20" : order.payment_method === "GRAM" ? "GRAM · TON Mainnet" : order.payment_method}</p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500">{t("Created", "创建时间")}</p>
@@ -193,7 +195,7 @@ export function PremiumHistoryPage() {
                 {payment && (
                   <div className="space-y-1 border-t border-white/10 pt-3">
                     <p className="text-xs text-zinc-500">{t("Transaction ID", "交易哈希（TxID）")}</p>
-                    <a href={`https://tronscan.org/#/transaction/${encodeURIComponent(payment.tx_hash)}`} target="_blank" rel="noreferrer" className="block break-all text-xs text-sky-300 hover:underline">
+                    <a href={`https://tonviewer.com/transaction/${encodeURIComponent(payment.tx_hash)}`} target="_blank" rel="noreferrer" className="block break-all text-xs text-sky-300 hover:underline">
                       {payment.tx_hash}
                     </a>
                     <p className="text-xs text-zinc-500">
