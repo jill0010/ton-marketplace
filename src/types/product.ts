@@ -14,6 +14,7 @@ export type Product = {
   currency: ProductCurrency
   deliveryMode: DeliveryMode
   imageUrl?: string | null
+  productMetadata?: Record<string, unknown>
   status: "listed"
   listingMode?: ListingMode
   createdAt: string
