@@ -862,10 +862,6 @@ struct MarketplaceV2Storage {
     purchaseStorage: Cell<MarketplaceV2PurchaseStorage>
 }
 
-
-
-
-
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
     return MarketplaceV2Storage.fromCell(contract.getData());
 }
