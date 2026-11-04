@@ -8,6 +8,7 @@ import { useVerifiedTonWallet } from "../hooks/useVerifiedTonWallet.ts";
 type NftAsset = {
   address: string;
   collection_address: string;
+  item_index: string;
   type: "username" | "phone_number" | "gift";
   name: string;
   description: string;
@@ -93,6 +94,8 @@ export function PublishPage() {
             (item: NftAsset) =>
               typeof item.address === "string" &&
               typeof item.collection_address === "string" &&
+              typeof item.item_index === "string" &&
+              /^\d+$/.test(item.item_index) &&
               ["username", "phone_number", "gift"].includes(item.type),
           ) as NftAsset[];
 
@@ -160,6 +163,8 @@ export function PublishPage() {
         (item: NftAsset) =>
           typeof item.address === "string" &&
           typeof item.collection_address === "string" &&
+          typeof item.item_index === "string" &&
+          /^\d+$/.test(item.item_index) &&
           ["username", "phone_number", "gift"].includes(item.type),
       ) as NftAsset[];
 
