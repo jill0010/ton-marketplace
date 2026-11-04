@@ -14,6 +14,7 @@ type MarketplaceV2AllowedMessage =
     | BuyProductV2
     | RetryPayoutV2
     | EscrowReleasedV2
+    | EscrowReleaseFailedV2
     | PublishProductV2
     | CancelProductV2
     | EscrowDepositedV2
@@ -89,6 +90,7 @@ fun onInternalMessage(in: InMessage) {
             val buyerRefundQueryId = releaseQueryId + 3;
             val sellerPayoutOperationId = purchase.nextOperationId;
             val platformPayoutOperationId = sellerPayoutOperationId + 1;
+            val buyerRefundOperationId = platformPayoutOperationId + 1;
             assert (orderId > 0 && releaseQueryId > 0) throw ErrorsV2.InvalidPurchase;
             assert (sellerPayoutOperationId > 0) throw ErrorsV2.InvalidPurchase;
             assert (msg.queryId != releaseQueryId) throw ErrorsV2.InvalidPurchase;
@@ -103,6 +105,7 @@ fun onInternalMessage(in: InMessage) {
                 releaseQueryId,
                 sellerPayoutOperationId,
                 platformPayoutOperationId,
+                buyerRefundOperationId,
                 sellerPayoutQueryId,
                 platformPayoutQueryId,
                 buyerRefundQueryId,
@@ -160,18 +163,29 @@ fun onInternalMessage(in: InMessage) {
                 status: 1,
                 createdAt: in.createdAt,
             };
+            val buyerRefund = MarketplaceV2Payout {
+                orderId,
+                operationId: buyerRefundOperationId,
+                queryId: buyerRefundQueryId,
+                beneficiary: in.senderAddress,
+                amount: amounts.gross,
+                kind: 3,
+                status: 0,
+                createdAt: in.createdAt,
+            };
 
             orderStorage.orders.set(orderId, order.toCell());
             orderStorage.productToOrder.set(msg.productId, orderId);
             orderStorage.paymentQueryToOrder.set(msg.queryId, orderId);
             payoutStorage.payouts.set(sellerPayoutOperationId, sellerPayout.toCell());
             payoutStorage.payouts.set(platformPayoutOperationId, platformPayout.toCell());
+            payoutStorage.payouts.set(buyerRefundOperationId, buyerRefund.toCell());
             payoutStorage.payoutQueryToOperation.set(sellerPayoutQueryId, sellerPayoutOperationId);
             payoutStorage.payoutQueryToOperation.set(platformPayoutQueryId, platformPayoutOperationId);
             purchase.orders = orderStorage.toCell();
             purchase.payoutStorage = payoutStorage.toCell();
             purchase.nextOrderId = orderId + 1;
-            purchase.nextOperationId = platformPayoutOperationId + 1;
+            purchase.nextOperationId = buyerRefundOperationId + 1;
             storage.purchaseStorage = purchase.toCell();
             storage.nextQueryId = buyerRefundQueryId + 1;
 
@@ -193,6 +207,77 @@ fun onInternalMessage(in: InMessage) {
                 },
             });
             release.send(SEND_MODE_REGULAR);
+        }
+
+        EscrowReleaseFailedV2 => {
+            var storage = lazy MarketplaceV2Storage.load();
+            var purchase = storage.purchaseStorage.load();
+            var orderStorage = purchase.orders.load();
+            assert (storage.escrowConfigured) throw ErrorsV2.InvalidDelivery;
+            assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidDelivery;
+
+            val orderResult = orderStorage.orders.get(msg.orderId);
+            assert (orderResult.isFound) throw ErrorsV2.InvalidDelivery;
+            var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+            val extra = order.extra.load();
+            val parties = extra.parties.load();
+            val asset = extra.asset.load();
+            val operations = extra.operations.load();
+            assert (order.status == 2 && order.deliveryStatus == 1) throw ErrorsV2.InvalidDelivery;
+            assert (order.productId == msg.productId) throw ErrorsV2.InvalidDelivery;
+            assert (asset.escrowId == msg.escrowId) throw ErrorsV2.InvalidDelivery;
+            assert (asset.nftItem == msg.nftItem) throw ErrorsV2.InvalidDelivery;
+            assert (parties.buyer == msg.buyer) throw ErrorsV2.InvalidDelivery;
+            assert (operations.releaseQueryId == msg.queryId) throw ErrorsV2.InvalidDelivery;
+
+            val returnQueryId = storage.nextQueryId;
+            assert (returnQueryId > 0) throw ErrorsV2.InvalidRefund;
+            assert (!orderStorage.refundQueryToOrder.get(returnQueryId).isFound) throw ErrorsV2.InvalidRefund;
+            order.status = 6;
+            order.deliveryStatus = 3;
+            order.refundStatus = 1;
+            orderStorage.orders.set(order.id, order.toCell());
+            orderStorage.refundQueryToOrder.set(returnQueryId, order.id);
+            purchase.orders = orderStorage.toCell();
+
+            val productResult = storage.products.get(order.productId);
+            assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+            assert (product.status == 3 && product.nftItem == msg.nftItem) throw ErrorsV2.InvalidRefund;
+            product.status = 6;
+            product.refundQueryId = returnQueryId;
+            storage.products.set(product.id, product.toCell());
+            storage.purchaseStorage = purchase.toCell();
+            storage.nextQueryId = returnQueryId + 1;
+            storage.save();
+
+            val returnNft = createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.05"),
+                dest: storage.escrow,
+                body: RefundEscrowV2 {
+                    escrowId: msg.escrowId,
+                    productId: msg.productId,
+                    queryId: returnQueryId,
+                    seller: parties.seller,
+                },
+            });
+            returnNft.send(SEND_MODE_REGULAR);
+
+            val ack = createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.escrow,
+                body: EscrowReleaseFailureAckV2 {
+                    orderId: msg.orderId,
+                    productId: msg.productId,
+                    escrowId: msg.escrowId,
+                    queryId: msg.queryId,
+                    nftItem: msg.nftItem,
+                    buyer: msg.buyer,
+                },
+            });
+            ack.send(SEND_MODE_REGULAR);
         }
 
         EscrowReleasedV2 => {
