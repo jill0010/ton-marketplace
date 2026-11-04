@@ -6,10 +6,16 @@ on:
       - main
       - master
       - architecture/unified-trading-v1
+    paths:
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
   pull_request:
     branches:
       - main
       - master
+    paths:
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
   workflow_dispatch:
 
 concurrency:
