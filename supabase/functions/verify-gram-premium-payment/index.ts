@@ -1,5 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { Address, Cell } from "npm:@ton/core";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+import { Address, Cell } from "npm:@ton/core@0.63.1";
 import { Buffer } from "node:buffer";
 
 const RECEIVER_FRIENDLY = "UQBLw8lmwDXPdZXudHrTPpLAfHQW5N55aQgBuH2Lqosjpiha";
@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
         continue;
       }
       if (senderRaw !== order.buyer_wallet) continue;
-      if (BigInt(String(incoming.value ?? "0")) !== expectedNano) continue;
+      const incomingValue = String(incoming.value ?? "");\n      if (!/^\\d+$/.test(incomingValue) || BigInt(incomingValue) !== expectedNano) continue;
       const msgData = incoming.msg_data as Record<string, unknown> | null;
       const bodyBoc = typeof msgData?.body === "string" ? msgData.body : "";
       const memo = decodeComment(bodyBoc);
