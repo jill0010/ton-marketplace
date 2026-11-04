@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
+import { GramTokenMark } from "../components/GramTokenMark"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
 
@@ -209,17 +210,17 @@ export function AssetsPage() {
             {mode === "auction" ? (
               <div className="space-y-3">
                 <label className="block space-y-2 text-sm text-zinc-300">
-                  {t("Minimum bid (TON)", "最低出价（TON）")}
+                  {t("Minimum bid", "最低出价")}
                   <input inputMode="decimal" value={minimumBid} onChange={(event) => setMinimumBid(event.target.value)} placeholder="0.1" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
                 </label>
                 <label className="block space-y-2 text-sm text-zinc-300">
-                  {t("Maximum bid (optional, TON)", "最高出价（选填，TON）")}
+                  {t("Maximum bid (optional)", "最高出价（选填）")}
                   <input inputMode="decimal" value={maximumBid} onChange={(event) => setMaximumBid(event.target.value)} placeholder={t("No maximum", "不设最高价")} className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
                 </label>
               </div>
             ) : (
               <label className="block space-y-2 text-sm text-zinc-300">
-                {t("Sale price (TON)", "出售价格（TON）")}
+                {t("Sale price", "出售价格")}
                 <input inputMode="decimal" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="1.0" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
               </label>
             )}
