@@ -79,9 +79,15 @@ fun onInternalMessage(in: InMessage) {
 
             var orderStorage = purchase.orders.load();
             var payoutStorage = purchase.payoutStorage.load();
-            assert (!orderStorage.productToOrder.get(msg.productId).isFound) throw ErrorsV2.InvalidPurchase;
-            assert (!orderStorage.paymentQueryToOrder.get(msg.queryId).isFound) throw ErrorsV2.InvalidPurchase;
-            assert (!payoutStorage.payoutQueryToOperation.get(msg.queryId).isFound) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !orderStorage.productToOrder.get(msg.productId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !orderStorage.paymentQueryToOrder.get(msg.queryId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
+            assert (
+                !payoutStorage.payoutQueryToOperation.get(msg.queryId).isFound
+            ) throw ErrorsV2.InvalidPurchase;
 
             val orderId = purchase.nextOrderId;
             val releaseQueryId = storage.nextQueryId;
@@ -181,7 +187,9 @@ fun onInternalMessage(in: InMessage) {
             payoutStorage.payouts.set(platformPayoutOperationId, platformPayout.toCell());
             payoutStorage.payouts.set(buyerRefundOperationId, buyerRefund.toCell());
             payoutStorage.payoutQueryToOperation.set(sellerPayoutQueryId, sellerPayoutOperationId);
-            payoutStorage.payoutQueryToOperation.set(platformPayoutQueryId, platformPayoutOperationId);
+            payoutStorage
+                .payoutQueryToOperation
+                .set(platformPayoutQueryId, platformPayoutOperationId);
             purchase.orders = orderStorage.toCell();
             purchase.payoutStorage = payoutStorage.toCell();
             purchase.nextOrderId = orderId + 1;
@@ -232,7 +240,9 @@ fun onInternalMessage(in: InMessage) {
 
             val returnQueryId = storage.nextQueryId;
             assert (returnQueryId > 0) throw ErrorsV2.InvalidRefund;
-            assert (!orderStorage.refundQueryToOrder.get(returnQueryId).isFound) throw ErrorsV2.InvalidRefund;
+            assert (
+                !orderStorage.refundQueryToOrder.get(returnQueryId).isFound
+            ) throw ErrorsV2.InvalidRefund;
             order.status = 6;
             order.deliveryStatus = 3;
             order.refundStatus = 1;
@@ -244,7 +254,9 @@ fun onInternalMessage(in: InMessage) {
             val productResult = storage.products.get(order.productId);
             assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
             var product = MarketplaceV2Product.fromCell(productResult.loadValue());
-            assert (product.status == 3 && product.nftItem == msg.nftItem) throw ErrorsV2.InvalidRefund;
+            assert (
+                product.status == 3 && product.nftItem == msg.nftItem
+            ) throw ErrorsV2.InvalidRefund;
             product.status = 6;
             product.refundQueryId = returnQueryId;
             storage.products.set(product.id, product.toCell());
@@ -304,12 +316,20 @@ fun onInternalMessage(in: InMessage) {
             assert (operations.releaseQueryId == msg.queryId) throw ErrorsV2.InvalidDelivery;
 
             val sellerPayoutResult = payoutStorage.payouts.get(operations.sellerPayoutOperationId);
-            val platformPayoutResult = payoutStorage.payouts.get(operations.platformPayoutOperationId);
-            assert (sellerPayoutResult.isFound && platformPayoutResult.isFound) throw ErrorsV2.InvalidPayout;
+            val platformPayoutResult = payoutStorage
+                .payouts
+                .get(operations.platformPayoutOperationId);
+            assert (
+                sellerPayoutResult.isFound && platformPayoutResult.isFound
+            ) throw ErrorsV2.InvalidPayout;
             var sellerPayout = MarketplaceV2Payout.fromCell(sellerPayoutResult.loadValue());
             var platformPayout = MarketplaceV2Payout.fromCell(platformPayoutResult.loadValue());
-            assert (sellerPayout.status == 1 && platformPayout.status == 1) throw ErrorsV2.InvalidPayout;
-            assert (sellerPayout.orderId == order.id && platformPayout.orderId == order.id) throw ErrorsV2.InvalidPayout;
+            assert (
+                sellerPayout.status == 1 && platformPayout.status == 1
+            ) throw ErrorsV2.InvalidPayout;
+            assert (
+                sellerPayout.orderId == order.id && platformPayout.orderId == order.id
+            ) throw ErrorsV2.InvalidPayout;
 
             sellerPayout.status = 2;
             platformPayout.status = 2;
@@ -379,7 +399,9 @@ fun onInternalMessage(in: InMessage) {
             assert (orderResult.isFound) throw ErrorsV2.InvalidPayout;
             var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
             if (payout.kind == 3) {
-                assert (order.deliveryStatus == 3 && order.refundStatus == 3) throw ErrorsV2.InvalidPayout;
+                assert (
+                    order.deliveryStatus == 3 && order.refundStatus == 3
+                ) throw ErrorsV2.InvalidPayout;
             } else {
                 assert (order.deliveryStatus == 2) throw ErrorsV2.InvalidPayout;
                 assert (payout.kind == 1 || payout.kind == 2) throw ErrorsV2.InvalidPayout;
@@ -387,7 +409,9 @@ fun onInternalMessage(in: InMessage) {
 
             val newQueryId = storage.nextQueryId;
             assert (newQueryId > 0) throw ErrorsV2.InvalidPayout;
-            assert (!payoutStorage.payoutQueryToOperation.get(newQueryId).isFound) throw ErrorsV2.InvalidPayout;
+            assert (
+                !payoutStorage.payoutQueryToOperation.get(newQueryId).isFound
+            ) throw ErrorsV2.InvalidPayout;
             payout.queryId = newQueryId;
             payout.status = 2;
             payoutStorage.payouts.set(payout.operationId, payout.toCell());
@@ -633,7 +657,10 @@ fun onInternalMessage(in: InMessage) {
                 val productResult = storage.products.get(order.productId);
                 assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
                 var product = MarketplaceV2Product.fromCell(productResult.loadValue());
-                assert ((product.status == 6 || product.status == 5) && product.refundQueryId == msg.queryId) throw ErrorsV2.InvalidRefund;
+                assert (
+                    (product.status == 6 || product.status == 5) &&
+                    product.refundQueryId == msg.queryId
+                ) throw ErrorsV2.InvalidRefund;
                 if (product.status == 6) {
                     product.status = 5;
                     storage.products.set(product.id, product.toCell());
@@ -643,10 +670,14 @@ fun onInternalMessage(in: InMessage) {
                     }
                 }
 
-                val refundPayoutResult = payoutStorage.payouts.get(operations.buyerRefundOperationId);
+                val refundPayoutResult = payoutStorage
+                    .payouts
+                    .get(operations.buyerRefundOperationId);
                 assert (refundPayoutResult.isFound) throw ErrorsV2.InvalidPayout;
                 var refundPayout = MarketplaceV2Payout.fromCell(refundPayoutResult.loadValue());
-                assert (refundPayout.kind == 3 && refundPayout.beneficiary == parties.buyer) throw ErrorsV2.InvalidPayout;
+                assert (
+                    refundPayout.kind == 3 && refundPayout.beneficiary == parties.buyer
+                ) throw ErrorsV2.InvalidPayout;
                 assert (refundPayout.amount > 0) throw ErrorsV2.InvalidPayout;
                 if (refundPayout.status == 0) {
                     refundPayout.queryId = operations.buyerRefundQueryId;
@@ -655,7 +686,9 @@ fun onInternalMessage(in: InMessage) {
                     order.status = 8;
                     orderStorage.orders.set(order.id, order.toCell());
                     payoutStorage.payouts.set(refundPayout.operationId, refundPayout.toCell());
-                    payoutStorage.payoutQueryToOperation.set(refundPayout.queryId, refundPayout.operationId);
+                    payoutStorage
+                        .payoutQueryToOperation
+                        .set(refundPayout.queryId, refundPayout.operationId);
                     purchase.orders = orderStorage.toCell();
                     purchase.payoutStorage = payoutStorage.toCell();
                     storage.purchaseStorage = purchase.toCell();
@@ -673,7 +706,9 @@ fun onInternalMessage(in: InMessage) {
                     });
                     buyerRefund.send(SEND_MODE_PAY_FEES_SEPARATELY);
                 } else {
-                    assert (refundPayout.status == 2 || refundPayout.status == 3) throw ErrorsV2.InvalidPayout;
+                    assert (
+                        refundPayout.status == 2 || refundPayout.status == 3
+                    ) throw ErrorsV2.InvalidPayout;
                 }
 
                 val orderRefundAck = createMessage({
@@ -779,7 +814,8 @@ fun onBouncedMessage(in: InMessageBounced) {
                 var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
                 if (
                     payout.kind != 1 || payout.orderId != bounced.orderId ||
-                    payout.queryId != bounced.queryId || payout.status != 2
+                    payout.queryId != bounced.queryId ||
+                    payout.status != 2
                 ) {
                     return;
                 }
@@ -805,7 +841,8 @@ fun onBouncedMessage(in: InMessageBounced) {
                 var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
                 if (
                     payout.kind != 2 || payout.orderId != bounced.orderId ||
-                    payout.queryId != bounced.queryId || payout.status != 2
+                    payout.queryId != bounced.queryId ||
+                    payout.status != 2
                 ) {
                     return;
                 }
@@ -831,7 +868,8 @@ fun onBouncedMessage(in: InMessageBounced) {
                 var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
                 if (
                     payout.kind != 3 || payout.orderId != bounced.orderId ||
-                    payout.queryId != bounced.queryId || payout.status != 2
+                    payout.queryId != bounced.queryId ||
+                    payout.status != 2
                 ) {
                     return;
                 }
