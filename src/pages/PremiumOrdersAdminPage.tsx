@@ -101,27 +101,48 @@ export function PremiumOrdersAdminPage() {
     setMessage("")
     try {
       const now = new Date().toISOString()
-      const { error: paymentError } = await supabase
-        .from("premium_payments")
-        .update({ admin_confirmed: true, admin_confirmed_at: now })
-        .eq("id", payment.id)
-        .eq("admin_confirmed", false)
-      if (paymentError) throw paymentError
-      const { error: orderError } = await supabase
+
+      // Make this action safely retryable if either write previously succeeded.
+      if (!payment.admin_confirmed) {
+        const { error: paymentError } = await supabase
+          .from("premium_payments")
+          .update({ admin_confirmed: true, admin_confirmed_at: now })
+          .eq("id", payment.id)
+          .eq("admin_confirmed", false)
+        if (paymentError) throw paymentError
+      }
+
+      const { data: updatedOrder, error: orderError } = await supabase
         .from("premium_orders")
         .update({ status: "paid", updated_at: now })
         .eq("id", order.id)
-        .eq("status", "payment_detected")
+        .in("status", ["payment_detected", "paid"])
+        .select("id, status")
+        .maybeSingle()
       if (orderError) throw orderError
-      const { error: logError } = await supabase.from("premium_order_logs").insert({
-        order_id: order.id,
-        actor_id: ADMIN_UID,
-        action: "admin_confirmed_payment",
-        old_status: order.status,
-        new_status: "paid",
-        note: "Administrator confirmed the on-chain GRAM payment.",
-      })
-      if (logError) console.error("Premium payment audit log failed", logError.message)
+
+      if (!updatedOrder) {
+        const { data: currentOrder, error: currentOrderError } = await supabase
+          .from("premium_orders")
+          .select("status")
+          .eq("id", order.id)
+          .maybeSingle()
+        if (currentOrderError || currentOrder?.status !== "paid") {
+          throw currentOrderError ?? new Error("The order could not be moved to the paid state. Retry this action.")
+        }
+      }
+
+      if (!payment.admin_confirmed || order.status !== "paid") {
+        const { error: logError } = await supabase.from("premium_order_logs").insert({
+          order_id: order.id,
+          actor_id: ADMIN_UID,
+          action: "admin_confirmed_payment",
+          old_status: order.status,
+          new_status: "paid",
+          note: "Administrator confirmed the on-chain GRAM payment.",
+        })
+        if (logError) console.error("Premium payment audit log failed", logError.message)
+      }
       setMessage("订单 " + order.order_no + " 已确认收款。请完成 Telegram Premium 人工开通后，再标记为已完成。")
       await loadOrders()
     } catch (cause) {
@@ -143,27 +164,51 @@ export function PremiumOrdersAdminPage() {
     const input = inputs[order.id] ?? { reference: "", note: "" }
     const now = new Date().toISOString()
     try {
-      const { error: orderError } = await supabase
+      // Write the delivery receipt first. If the order update then fails,
+      // the administrator can retry without creating a duplicate receipt.
+      const { data: existingDelivery, error: existingDeliveryError } = await supabase
+        .from("premium_delivery_logs")
+        .select("id")
+        .eq("order_id", order.id)
+        .maybeSingle()
+      if (existingDeliveryError) throw existingDeliveryError
+
+      if (!existingDelivery) {
+        const { error: deliveryError } = await supabase.from("premium_delivery_logs").insert({
+          order_id: order.id,
+          recipient_username: order.recipient_username,
+          plan_name: order.plan_name,
+          delivery_method: "manual_telegram",
+          delivery_reference: input.reference.trim() || null,
+          operator_id: ADMIN_UID,
+          delivered_at: now,
+          delivery_status: "completed",
+          note: input.note.trim() || "Manually activated by administrator.",
+        })
+        if (deliveryError) throw deliveryError
+      }
+
+      const { data: updatedOrder, error: orderError } = await supabase
         .from("premium_orders")
         .update({ status: "completed", completed_at: now, updated_at: now })
         .eq("id", order.id)
-        .in("status", ["paid", "processing"])
+        .in("status", ["paid", "processing", "completed"])
+        .select("id, status")
+        .maybeSingle()
       if (orderError) throw orderError
 
-      const { error: deliveryError } = await supabase.from("premium_delivery_logs").insert({
-        order_id: order.id,
-        recipient_username: order.recipient_username,
-        plan_name: order.plan_name,
-        delivery_method: "manual_telegram",
-        delivery_reference: input.reference.trim() || null,
-        operator_id: ADMIN_UID,
-        delivered_at: now,
-        delivery_status: "completed",
-        note: input.note.trim() || "Manually activated by administrator.",
-      })
-      if (deliveryError) {
-        setError("订单已标记完成，但写入开通记录失败：" + deliveryError.message)
-      } else {
+      if (!updatedOrder) {
+        const { data: currentOrder, error: currentOrderError } = await supabase
+          .from("premium_orders")
+          .select("status")
+          .eq("id", order.id)
+          .maybeSingle()
+        if (currentOrderError || currentOrder?.status !== "completed") {
+          throw currentOrderError ?? new Error("The order could not be marked completed. Retry this action.")
+        }
+      }
+
+      if (!existingDelivery) {
         const { error: logError } = await supabase.from("premium_order_logs").insert({
           order_id: order.id,
           actor_id: ADMIN_UID,
@@ -173,8 +218,8 @@ export function PremiumOrdersAdminPage() {
           note: input.note.trim() || "Manually activated by administrator.",
         })
         if (logError) console.error("Premium delivery audit log failed", logError.message)
-        setMessage("订单 " + order.order_no + " 已记录为人工开通完成。")
       }
+      setMessage("订单 " + order.order_no + " 已记录为人工开通完成。")
       await loadOrders()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "记录 Premium 开通失败。")
@@ -210,7 +255,7 @@ export function PremiumOrdersAdminPage() {
           const amount = order.payment_method === "GRAM"
             ? Number(order.gram_amount).toFixed(2) + " GRAM"
             : Number(order.usd_amount ?? 0).toFixed(2) + " USDT"
-          const canConfirm = order.status === "payment_detected" && payment?.chain_status === "confirmed" && !payment.admin_confirmed
+          const canConfirm = order.status === "payment_detected" && payment?.chain_status === "confirmed"
           const canComplete = order.status === "paid" || order.status === "processing"
           const input = inputs[order.id] ?? { reference: "", note: "" }
           return (
