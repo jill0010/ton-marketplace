@@ -563,22 +563,6 @@ struct NFTEscrowV2CallbackStorage {
     collectionStorage: Cell<NFTEscrowV2CollectionStorage>
 }
 
-struct NFTEscrowV2RecordExtra {
-    collection: address
-    itemIndex: uint256
-    kind: uint8
-}
-
-struct NFTEscrowV2Record {
-    escrowId: uint64
-    nftItem: address
-    seller: address
-    productId: uint64
-    status: uint8
-    queryId: uint64
-    extra: Cell<NFTEscrowV2RecordExtra>
-}
-
 struct NFTEscrowV2Storage {
     owner: address
     marketplace: address
