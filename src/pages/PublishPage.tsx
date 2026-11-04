@@ -564,8 +564,8 @@ export function PublishPage() {
 
               <p className="text-xs leading-5 text-zinc-500">
                 {t(
-                  "NFT listing is paused until escrow deposit and on-chain confirmation are implemented.",
-                  "NFT 发布功能暂时关闭，待 NFT 托管入库及链上确认流程完成后开放。",
+                  "NFT listing remains paused until Marketplace V2 is deployed and wallet-to-contract-to-database synchronization is verified.",
+                  "Marketplace V2 合约部署及钱包、合约、数据库同步验证完成前，NFT 发布功能保持关闭。",
                 )}
               </p>
             </section>
