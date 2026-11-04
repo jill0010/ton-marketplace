@@ -39,7 +39,7 @@ The NFT wallet-assets Edge Function now includes the verified Item index needed 
 
 The Contracts workflow builds the contracts, runs emulator integration tests, checks the opcode registry, runs the Tolk linter, and enforces formatting. The V2 test suite covers official Item deployment/transfer, escrow registration, successful purchase and NFT delivery, 97/3 settlement, payout bounce/retry, failed delivery, seller return, buyer refund, and refund bounce/retry.
 
-Passing emulator tests are not a substitute for a testnet rehearsal or an independent security review. Current V2 code has not been deployed to testnet or mainnet in this release process. The frontend publish endpoint remains fail-closed and the Publish page remains disabled until on-chain deployment addresses, client transaction sequencing, and database mirroring are configured and verified. Do not accept real buyer funds or expose real-asset listings yet.
+Passing emulator tests are not a substitute for a testnet rehearsal or an independent security review. Current V2 code has not been deployed to testnet or mainnet in this release process. The Publish page listing flow is implemented but gated by MARKETPLACE_V2_LISTING_ENABLED and the on-chain Escrow collection policy. The publish-nft-product endpoint only mirrors a fully verified on-chain product, Escrow record, and NFT ownership state. The buyer purchase button remains disabled; frontend purchase, order synchronization, and buyer delivery confirmation are not yet enabled. Do not accept real buyer funds or expose real-asset listings yet.
 
 ## Deployment safety
 
