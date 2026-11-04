@@ -152,6 +152,38 @@ async function readTonNft(address: string, apiKey: string) {
   };
 }
 
+function allowedImageHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  const domains = ["telegram.org", "telesco.pe", "tonapi.io", "fragment.com", "ipfs.io", "nftstorage.link", "dweb.link", "pinata.cloud", "ton.org"];
+  return host === "t.me" || host === "cloudflare-ipfs.com" || domains.some((domain) => host === domain || host.endsWith("." + domain));
+}
+
+async function storeNftImage(service: ReturnType<typeof createClient>, source: string | null, storageKey: string): Promise<string> {
+  if (!source) throw new Error("NFT_IMAGE_MISSING");
+  let normalized = source.trim();
+  if (normalized.startsWith("ipfs://")) normalized = "https://ipfs.io/ipfs/" + normalized.slice(7).replace("ipfs/", "");
+  const sourceUrl = new URL(normalized);
+  if (sourceUrl.protocol !== "https:" || !allowedImageHost(sourceUrl.hostname)) throw new Error("NFT_IMAGE_HOST_NOT_ALLOWED");
+  const response = await fetch(sourceUrl, { redirect: "follow", signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error("NFT_IMAGE_HTTP_" + response.status);
+  const finalUrl = new URL(response.url || sourceUrl.toString());
+  if (finalUrl.protocol !== "https:" || !allowedImageHost(finalUrl.hostname)) throw new Error("NFT_IMAGE_REDIRECT_NOT_ALLOWED");
+  const contentType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/avif": "avif" };
+  const extension = extensions[contentType];
+  if (!extension) throw new Error("NFT_IMAGE_UNSUPPORTED_CONTENT_TYPE");
+  const declaredSize = Number(response.headers.get("content-length") || 0);
+  if (declaredSize > 8 * 1024 * 1024) throw new Error("NFT_IMAGE_TOO_LARGE");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error("NFT_IMAGE_TOO_LARGE_OR_EMPTY");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(storageKey));
+  const hash = Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
+  const path = "nft/" + hash + "." + extension;
+  const { error } = await service.storage.from("product-images").upload(path, bytes, { contentType, upsert: true, cacheControl: "31536000" });
+  if (error) throw new Error("NFT_IMAGE_STORAGE_FAILED: " + error.message);
+  return service.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
@@ -177,6 +209,7 @@ Deno.serve(async (req: Request) => {
     });
     const { data: auth, error: authError } = await authClient.auth.getUser(token);
     if (authError || auth.user?.id !== ADMIN_USER_ID) return json({ error: "ADMIN_ONLY" }, 403);
+    const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
     const body = await req.json().catch(() => null) as { identifier?: unknown } | null;
     if (!body || typeof body.identifier !== "string" || body.identifier.length > 256) {
@@ -190,6 +223,7 @@ Deno.serve(async (req: Request) => {
       try {
         const page = await readTelegramGiftPage(parsed.slug);
         const number = parsed.slug.match(/-(\d+)$/)?.[1] ?? null;
+        const storedImage = await storeNftImage(service, page.image_url, "gift:" + parsed.slug);
         return json({
           success: true,
           type: "gift",
@@ -198,7 +232,7 @@ Deno.serve(async (req: Request) => {
           item_index: number,
           name: page.name ?? parsed.slug,
           description: page.description,
-          image_url: page.image_url,
+          image_url: storedImage,
           animated_url: page.animated_url,
           telegram_url: page.url,
           telegram_name: page.name,
@@ -220,7 +254,6 @@ Deno.serve(async (req: Request) => {
     }
 
     if (parsed.kind === "username" || parsed.kind === "phone_number") {
-      const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
       const normalized = parsed.kind === "username" ? parsed.value.replace(/^@/, "").toLowerCase() : parsed.value.replace(/\D/g, "");
       const { data: indexed, error: indexError } = await service
         .from("telegram_nft_items")
@@ -247,6 +280,7 @@ Deno.serve(async (req: Request) => {
       if ((chain.collection_address ?? "").toLowerCase() !== item.collection_address.toLowerCase()) {
         return json({ error: "NFT_COLLECTION_MISMATCH", message: "索引记录与 TON 链上 Collection 不一致，已阻止自动发布。" }, 409);
       }
+      const storedImage = await storeNftImage(service, item.image_url || chain.image_url, parsed.kind + ":" + normalized);
       return json({
         success: true,
         type: parsed.kind,
@@ -255,16 +289,16 @@ Deno.serve(async (req: Request) => {
         item_index: chain.item_index,
         name: item.nft_name,
         description: item.description || chain.description,
-        image_url: item.image_url || chain.image_url,
+        image_url: storedImage,
         verified_on_chain: true,
-        source: "getgems_index",
+        source: "tonapi_or_toncenter_index",
         attributes: item.attributes,
         metadata: item.metadata,
       });
     }
 
     const chain = await readTonNft(parsed.value, tonApiKey);
-    const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const storedImage = await storeNftImage(service, chain.image_url, "address:" + parsed.value);
     const { data: allowlist, error: allowlistError } = await service
       .from("telegram_nft_collection_allowlist")
       .select("asset_type,collection_address")
@@ -276,7 +310,7 @@ Deno.serve(async (req: Request) => {
     );
     if (!matched) return json({ error: "COLLECTION_NOT_ALLOWLISTED", message: "NFT 存在于 TON 链上，但其 Collection 不在商城已核验的 Telegram 官方 Collection 白名单中。" }, 409);
 
-    return json({ success: true, type: matched.asset_type, ...chain, source: "ton_chain" });
+    return json({ success: true, type: matched.asset_type, ...chain, image_url: storedImage, source: "ton_chain" });
   } catch (error) {
     console.error("admin-resolve-nft:", error);
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
