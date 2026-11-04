@@ -456,7 +456,8 @@ export function ProductAdminPage() {
       <section className="space-y-4 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-5">
         <div>
           <h2 className="text-xl font-semibold text-white">文件批量发布</h2>
-          <p className="mt-1 text-sm leading-6 text-zinc-400">下载 CSV 模板，在 Excel 中填写用户名、+888 号码、售价和出售/拍卖类型，再上传文件。系统逐行调用 NFT 链上核验并写入商品数据库。</p>
+          <p className="mt-1 text-sm leading-6 text-zinc-400">下载 CSV 模板（Excel 可打开），填写用户名、+888 号码、售价和出售/拍卖类型，再上传文件。系统逐行调用 NFT 链上核验并写入商品数据库。</p>
+          <p className="mt-2 text-xs leading-5 text-amber-200/90">填写规则：enabled 填 true 才会处理；listing_type 填 sale 或 auction；currency 填 TON 或 GRAM。出售商品会直接公开上架。拍卖目前只保存为草稿并等待链上拍卖功能接入，不会展示给买家或接受竞价。标识暂支持 @用户名和 +888 号码。</p>
         </div>
         <button type="button" onClick={downloadBatchTemplate} className="rounded-full border border-sky-300/40 px-4 py-2 text-sm font-semibold text-sky-200 hover:bg-sky-300/10">下载 Export 模板（CSV / Excel 可打开）</button>
         <label className="block space-y-2 text-sm text-zinc-300">
