@@ -1070,6 +1070,30 @@ get fun orderV2(orderId: uint64): MarketplaceV2Order? {
     return MarketplaceV2Order.fromCell(result.loadValue());
 }
 
+get fun productStatusV2(productId: uint64): uint8? {
+    val result = MarketplaceV2Storage.load().products.get(productId);
+    if (!result.isFound) {
+        return null;
+    }
+    return MarketplaceV2Product.fromCell(result.loadValue()).status;
+}
+
+get fun productEscrowIdV2(productId: uint64): uint64? {
+    val result = MarketplaceV2Storage.load().products.get(productId);
+    if (!result.isFound) {
+        return null;
+    }
+    return MarketplaceV2Product.fromCell(result.loadValue()).escrowId;
+}
+
+get fun productQueryIdV2(productId: uint64): uint64? {
+    val result = MarketplaceV2Storage.load().products.get(productId);
+    if (!result.isFound) {
+        return null;
+    }
+    return MarketplaceV2Product.fromCell(result.loadValue()).queryId;
+}
+
 get fun productV2(productId: uint64): MarketplaceV2Product? {
     val result = MarketplaceV2Storage.load().products.get(productId);
     if (!result.isFound) {
