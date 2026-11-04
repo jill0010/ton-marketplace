@@ -231,7 +231,7 @@ Deno.serve(async (req: Request) => {
       if (indexError) return json({ error: "NFT_INDEX_READ_FAILED", message: "读取 Telegram NFT 索引失败。" }, 500);
       if (!indexed?.length) {
         const { data: syncState } = await service.from("telegram_nft_index_sync_state")
-          .select("is_complete,items_synced").eq("asset_type", parsed.kind).maybeSingle();
+          .select("is_complete,items_synced").eq("asset_type", parsed.kind).limit(1).maybeSingle();
         return json({
           error: "IDENTIFIER_INDEX_REQUIRED",
           message: "当前索引尚未收录该标识。请先在管理员快速上传页面执行“同步用户名/888号码 NFT 索引”，同步完成后重新识别。",
