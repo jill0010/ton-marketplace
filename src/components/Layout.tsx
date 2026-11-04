@@ -17,8 +17,9 @@ export function Layout() {
     <div className="min-h-svh bg-[#0b0d12] text-zinc-100">
       <header className="border-b border-white/10">
         <div className="mx-auto flex max-w-6xl min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <Link to="/" className="text-sm font-semibold tracking-wide">
-            NFT Market
+          <Link to="/" className="inline-flex items-center" aria-label="NFT MARKET">
+            <img src="/fragment-wordmark.svg" alt="FRAGMENT" className="h-8 w-auto max-w-[190px]" />
+            <span className="sr-only">NFT MARKET</span>
           </Link>
 
           <nav className="flex min-w-0 flex-wrap items-center gap-2">
