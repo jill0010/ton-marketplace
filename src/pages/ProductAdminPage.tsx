@@ -454,7 +454,7 @@ export function ProductAdminPage() {
         {batchRows.length > 0 && <div className="max-h-64 overflow-auto rounded-lg border border-white/10">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-zinc-900 text-zinc-400"><tr><th className="p-2">行</th><th className="p-2">标识</th><th className="p-2">价格</th><th className="p-2">状态</th></tr></thead>
-            <tbody>{batchRows.map((r) => <tr key={r.rowNumber} className="border-t border-white/5"><td className="p-2">{r.rowNumber}</td><td className="p-2">{r.identifier || "—"}</td><td className="p-2">{r.price} {r.currency}</td><td className="p-2">{["true","1","yes","是"].includes(r.enabled) ? "待处理" : "跳过"}</td></tr>)}</tbody>
+            <tbody>{batchRows.map((r) => <tr key={r.rowNumber} className="border-t border-white/5"><td className="p-2">{r.rowNumber}</td><td className="p-2">{r.identifier || "—"}</td><td className="p-2"><span className="inline-flex items-center gap-1">{r.currency === "GRAM" && <GramTokenMark className="h-3.5 w-3.5" />}{r.price} {r.currency}</span></td><td className="p-2">{["true","1","yes","是"].includes(r.enabled) ? "待处理" : "跳过"}</td></tr>)}</tbody>
           </table>
         </div>}
         <button type="button" onClick={() => void publishBatch()} disabled={batchRunning || !batchRows.some((r) => ["true","1","yes","是"].includes(r.enabled))} className="w-full rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{batchRunning ? "正在逐行核验并处理……" : "确认批量处理并发布"}</button>
