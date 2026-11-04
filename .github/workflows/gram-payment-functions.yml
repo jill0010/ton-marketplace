@@ -6,6 +6,8 @@ on:
     paths:
       - "supabase/functions/create-gram-premium-order/**"
       - "supabase/functions/verify-gram-premium-payment/**"
+      - "supabase/functions/publish-nft-product/**"
+      - "supabase/functions/marketplace-v2-state/**"
       - ".github/workflows/gram-payment-functions.yml"
   pull_request:
     paths:
