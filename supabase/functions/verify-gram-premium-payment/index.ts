@@ -100,11 +100,71 @@ Deno.serve(async (req: Request) => {
 
     const { data: existing } = await admin
       .from("premium_payments")
-      .select("id, order_id, tx_hash, chain_status, telegram_notified_at")
+      .select("id, order_id, tx_hash, chain_status, telegram_notified_at, chain_timestamp")
       .eq("order_id", order.id)
       .maybeSingle();
     if (existing?.chain_status === "confirmed") {
-      return reply({ success: true, paymentVerified: true, orderNo: order.order_no, txHash: existing.tx_hash, alreadyVerified: true }, 200, origin);
+      // Repair the order mirror if a previous request recorded the payment
+      // but failed before updating the order row.
+      if (["pending", "payment_submitted", "payment_detected"].includes(order.status)) {
+        const paidAt = existing.chain_timestamp ?? new Date().toISOString();
+        const { error: repairError } = await admin
+          .from("premium_orders")
+          .update({
+            status: "payment_detected",
+            paid_at: paidAt,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id)
+          .eq("user_id", authData.user.id)
+          .in("status", ["pending", "payment_submitted", "payment_detected"]);
+        if (repairError) {
+          console.error("GRAM order recovery update failed", repairError.message);
+          return reply({ success: false, error: "The payment is recorded, but order status recovery failed. Retry verification or contact support." }, 500, origin);
+        }
+      }
+
+      let telegramNotified = Boolean(existing.telegram_notified_at);
+      const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      const chatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
+      if (!telegramNotified && botToken && chatId) {
+        const message = [
+          "✅ <b>TON 主网 GRAM 原生币收款已确认</b>",
+          `订单：<code>${html(order.order_no)}</code>`,
+          `接收用户：@<b>${html(order.recipient_username)}</b>`,
+          `套餐：<b>${html(order.plan_name)}</b>`,
+          `金额：<b>${html(String(order.gram_amount))} GRAM</b>`,
+          `交易：<code>${html(String(existing.tx_hash))}</code>`,
+          "状态：待管理员人工确认并开通 Premium",
+        ].join("\\n");
+        try {
+          const notify = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML", disable_web_page_preview: true }),
+            signal: AbortSignal.timeout(10000),
+          });
+          const result = await notify.json();
+          telegramNotified = notify.ok && result?.ok === true;
+          if (telegramNotified) {
+            await admin
+              .from("premium_payments")
+              .update({ telegram_notified_at: new Date().toISOString() })
+              .eq("id", existing.id);
+          }
+        } catch (error) {
+          console.error("GRAM payment recovery Telegram notification failed", error);
+        }
+      }
+
+      return reply({
+        success: true,
+        paymentVerified: true,
+        orderNo: order.order_no,
+        txHash: existing.tx_hash,
+        telegramNotified,
+        alreadyVerified: true,
+      }, 200, origin);
     }
     if (!["pending", "payment_submitted", "payment_detected"].includes(order.status)) {
       return reply({ success: false, error: "This order is not awaiting payment" }, 409, origin);
@@ -202,6 +262,9 @@ Deno.serve(async (req: Request) => {
         });
       if (paymentInsertError) {
         console.error("GRAM payment insert failed", paymentInsertError.message);
+        if (paymentInsertError.code === "23505") {
+          return reply({ success: false, error: "This on-chain transaction has already been recorded. Retry payment verification to refresh this order." }, 409, origin);
+        }
         return reply({ success: false, error: "Unable to record the verified GRAM payment; contact support with the order number" }, 500, origin);
       }
     }
@@ -212,7 +275,10 @@ Deno.serve(async (req: Request) => {
       .eq("id", order.id)
       .eq("user_id", authData.user.id)
       .in("status", ["pending", "payment_submitted", "payment_detected"]);
-    if (updateError) console.error("GRAM order status update failed", updateError.message);
+    if (updateError) {
+      console.error("GRAM order status update failed", updateError.message);
+      return reply({ success: false, error: "The GRAM transfer is recorded, but the order status could not be updated. Retry payment verification; the recorded transfer will not be charged again." }, 500, origin);
+    }
 
     const { data: payment } = await admin
       .from("premium_payments")
@@ -229,7 +295,7 @@ Deno.serve(async (req: Request) => {
         "✅ <b>TON 主网 GRAM 原生币收款已确认</b>",
         `订单：<code>${html(order.order_no)}</code>`,
         `接收用户：@<b>${html(order.recipient_username)}</b>`,
-        `套餐：${html(order.plan_name)}</b>`,
+        `套餐：<b>${html(order.plan_name)}</b>`,
         `金额：<b>${html(String(order.gram_amount))} GRAM</b>`,
         `交易：<code>${txHash}</code>`,
         "状态：待管理员人工确认并开通 Premium",
