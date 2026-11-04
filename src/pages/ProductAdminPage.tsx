@@ -2,11 +2,6 @@
 import { useEffect, useRef, useState } from "react"
 import type { ChangeEvent } from "react"
 import type { ProductType } from "../types/product"
-import { supabase } from "../lib/supabase"
-
-function toDatabaseProductType(type: ProductType): string {
-  return type === "number" ? "phone_number" : type
-}
 
 type DraftProduct = {
   identifier: string
@@ -67,8 +62,6 @@ const INITIAL_DRAFT: DraftProduct = {
   description: "",
   priceTon: "",
 }
-
-const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78"
 
 export function ProductAdminPage() {
   const [draft, setDraft] = useState<DraftProduct>({
@@ -253,104 +246,7 @@ export function ProductAdminPage() {
   }
 
   async function handlePublish() {
-    if (saving || published) return
-
-    const detectedType = validateDraft()
-
-    if (!detectedType) return
-
-    setSaving(true)
-    setMessage("正在保存商品，请稍候……")
-
-    let uploadedPath: string | null = null
-
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        throw new Error("管理员登录已失效，请重新登录后再试。")
-      }
-
-      if (user.id !== ADMIN_UID) {
-        throw new Error("当前账号不是授权管理员，无法发布商品。")
-      }
-
-      let publicImageUrl: string | null = null
-
-      if (imageFile) {
-        const extension = imageFile.name.includes(".")
-          ? imageFile.name.split(".").pop()?.toLowerCase() || "img"
-          : "img"
-
-        uploadedPath = `products/${crypto.randomUUID()}.${extension}`
-
-        const { error: uploadError } = await supabase.storage
-          .from("product-images")
-          .upload(uploadedPath, imageFile, {
-            upsert: false,
-            contentType: imageFile.type,
-          })
-
-        if (uploadError) {
-          throw new Error(`图片上传失败：${uploadError.message}`)
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from("product-images")
-          .getPublicUrl(uploadedPath)
-
-        publicImageUrl = publicUrlData.publicUrl
-      }
-
-      const { data: insertedProduct, error: insertError } = await supabase
-        .from("products")
-        .insert({
-          name: draft.title.trim(),
-          type: toDatabaseProductType(detectedType),
-          description:
-            getDefaultDescription(draft.identifier, detectedType) || null,
-          price: Number(draft.priceTon),
-          currency: "GRAM",
-          image_url: publicImageUrl,
-          status: "listed",
-        })
-        .select("id")
-        .single()
-
-      if (insertError) {
-        throw new Error(`商品保存失败：${insertError.message}`)
-      }
-
-      setPublished(true)
-      setPreviewReady(true)
-      setMessage(
-        `发布成功！商品已保存到数据库。商品编号：${insertedProduct.id}`,
-      )
-    } catch (error) {
-      if (uploadedPath) {
-        const { error: cleanupError } = await supabase.storage
-          .from("product-images")
-          .remove([uploadedPath])
-
-        if (cleanupError) {
-          console.error(
-            "清理未使用的商品图片失败：",
-            cleanupError.message,
-          )
-        }
-      }
-
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "发布失败，请检查网络和 Supabase 配置。",
-      )
-    } finally {
-      setSaving(false)
-    }
+    setMessage("手动创建商品已关闭。商城只允许通过 TON 主网 Marketplace V2 托管流程上架钱包实际持有的 NFT。")
   }
 
   return (
@@ -377,7 +273,7 @@ export function ProductAdminPage() {
       </header>
 
       <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm text-amber-200">
-        发布后商品将写入 Supabase，并设置为上架状态。请确认商品信息和所有权后再发布。
+        手动商品发布已停用。只有经过链上托管验证的 Telegram NFT 才能公开上架。
       </div>
 
       <section className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
