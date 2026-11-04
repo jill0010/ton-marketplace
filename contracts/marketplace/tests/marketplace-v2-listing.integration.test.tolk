@@ -237,6 +237,8 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     // A second attempt is accepted into Marketplace pending state, then rejected again by Escrow.
     val retryPublish = marketplace.sendPublishProductV2(
         attacker.address,
+        2,
+        2,
         nftItem.address,
         owner.address,
         0,
@@ -265,6 +267,8 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
 
     val validPublish = marketplace.sendPublishProductV2(
         seller.address,
+        3,
+        3,
         validNftItem,
         owner.address,
         validItemIndex,
