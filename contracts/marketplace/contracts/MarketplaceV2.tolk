@@ -503,7 +503,11 @@ fun onInternalMessage(in: InMessage) {
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRelease;
             val publishExtra = msg.extra.load();
             assert (publishExtra.price > 0) throw ErrorsV2.InvalidRelease;
-            assert (publishExtra.kind == 3) throw ErrorsV2.InvalidRelease;
+            assert (
+                publishExtra.kind == 1 ||
+                publishExtra.kind == 2 ||
+                publishExtra.kind == 3
+            ) throw ErrorsV2.InvalidRelease;
 
             // Reserve the NFT Item before asking Escrow to create its custody record.
             val existing = storage.assetListings.get(msg.nftItem);
