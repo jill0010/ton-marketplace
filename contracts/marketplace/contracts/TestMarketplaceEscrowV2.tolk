@@ -1,18 +1,5 @@
 import "types"
 
-struct TestMarketplaceEscrowV2Record {
-    productId: uint64
-    nftItem: address
-    seller: address
-    queryId: uint64
-}
-
-struct TestMarketplaceEscrowV2Storage {
-    owner: address
-    marketplace: address
-    records: map<uint64, Cell<TestMarketplaceEscrowV2Record>>
-}
-
 type TestMarketplaceEscrowV2AllowedMessage =
     | CreateEscrowV2
     | ReleaseEscrowV2
