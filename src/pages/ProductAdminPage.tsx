@@ -24,12 +24,10 @@ type BatchRow = {
   identifier: string;
   price: string;
   currency: string;
-  listing_type: string;
-  auction_end_at: string;
   description: string;
   rowNumber: number;
 };
-type BatchResult = { rowNumber: number; identifier: string; status: "published" | "staged" | "failed" | "skipped"; message: string };
+type BatchResult = { rowNumber: number; identifier: string; status: "published" | "failed" | "skipped"; message: string };
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -56,9 +54,9 @@ function parseCsv(text: string): string[][] {
 
 function downloadBatchTemplate() {
   const csv = [
-    "enabled,identifier,price,currency,listing_type,auction_end_at,description",
-    'false,@example_username,10,TON,sale,,用户名示例（请替换标识和价格）',
-    'false,+88812345678,25,TON,auction,2026-12-01T12:00:00Z,+888 示例（拍卖仅暂存，尚未开放链上竞价）',
+    "enabled,identifier,price,currency,description",
+    "false,@example_username,10,TON,用户名示例（请替换标识和价格）",
+    "false,+88812345678,25,TON,+888号码示例（请替换标识和价格）",
   ].join("\r\n");
   const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -111,7 +109,7 @@ export function ProductAdminPage() {
       const matrix = parseCsv(await file.text());
       if (!matrix.length) throw new Error("CSV 文件为空。");
       const headers = matrix[0].map((v) => v.trim().toLowerCase());
-      const required = ["enabled", "identifier", "price", "currency", "listing_type", "auction_end_at", "description"];
+      const required = ["enabled", "identifier", "price", "currency", "description"];
       const missing = required.filter((h) => !headers.includes(h));
       if (missing.length) throw new Error("模板缺少列：" + missing.join("、"));
       if (matrix.length - 1 > 200) throw new Error("单次最多处理 200 行，请拆分文件。");
@@ -122,8 +120,6 @@ export function ProductAdminPage() {
           identifier: get("identifier"),
           price: get("price"),
           currency: get("currency").toUpperCase(),
-          listing_type: get("listing_type").toLowerCase(),
-          auction_end_at: get("auction_end_at"),
           description: get("description"),
           rowNumber: index + 2,
         };
@@ -159,13 +155,6 @@ export function ProductAdminPage() {
           const amount = Number(row.price);
           if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) throw new Error("售价必须是大于 0 的有效数字。");
           if (row.currency !== "TON" && row.currency !== "GRAM") throw new Error("币种只支持 TON 或 GRAM。");
-          if (row.listing_type !== "sale" && row.listing_type !== "auction") throw new Error("listing_type 只能填写 sale 或 auction。");
-          let auctionEnd: string | null = null;
-          if (row.listing_type === "auction") {
-            const date = new Date(row.auction_end_at);
-            if (!row.auction_end_at || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) throw new Error("拍卖结束时间必须填写未来的 ISO 时间，例如 2026-12-01T12:00:00Z。");
-            auctionEnd = date.toISOString();
-          }
           const { data, error } = await supabase.functions.invoke("admin-resolve-nft", { body: { identifier: row.identifier.trim() } });
           if (error) throw new Error(error.message || "NFT 识别失败。");
           if (!data?.success) throw new Error(data?.message || data?.error || "NFT 未通过识别。");
@@ -175,7 +164,6 @@ export function ProductAdminPage() {
           const { data: existing, error: duplicateError } = await supabase.from("products").select("id").eq("nft_item_address", nft.address).limit(1);
           if (duplicateError) throw new Error("检查重复 NFT 失败：" + duplicateError.message);
           if (existing?.length) throw new Error("该 NFT 地址已存在于商品表，已跳过重复发布。");
-          const isAuction = row.listing_type === "auction";
           const { error: insertError } = await supabase.from("products").insert({
             name: productName,
             type: parsed.type,
@@ -183,20 +171,19 @@ export function ProductAdminPage() {
             price: amount,
             currency: row.currency,
             image_url: nft.image_url,
-            status: isAuction ? "draft" : "listed",
+            status: "listed",
             delivery_mode: "manual",
             chain_status: "verified",
             nft_item_address: nft.address,
             collection_address: nft.collection_address,
             item_index: nft.item_index,
-            listing_kind: isAuction ? "auction" : "fixed_price",
-            auction_ends_at: auctionEnd,
-            minimum_bid: isAuction ? amount : null,
+            listing_kind: "fixed_price",
+            auction_ends_at: null,
+            minimum_bid: null,
             product_metadata: {
               source: nft.source,
               batch_import: true,
-              listing_type: row.listing_type,
-              auction_pending_contract: isAuction,
+              listing_type: "sale",
               telegram_url: nft.telegram_url ?? null,
               animated_url: nft.animated_url ?? null,
               attributes: nft.attributes ?? {},
@@ -207,8 +194,8 @@ export function ProductAdminPage() {
           results.push({
             rowNumber: row.rowNumber,
             identifier: row.identifier,
-            status: isAuction ? "staged" : "published",
-            message: isAuction ? "已保存为草稿；链上拍卖合约及竞价功能尚未启用，未公开上架。" : "已通过链上核验并发布到商城（人工交付）。",
+            status: "published",
+            message: "已通过链上核验并发布到商城（人工交付）。",
           });
         } catch (error) {
           results.push({ rowNumber: row.rowNumber, identifier: row.identifier, status: "failed", message: error instanceof Error ? error.message : "处理失败" });
@@ -216,9 +203,8 @@ export function ProductAdminPage() {
         setBatchResults([...results]);
       }
       const published = results.filter((r) => r.status === "published").length;
-      const staged = results.filter((r) => r.status === "staged").length;
       const failed = results.filter((r) => r.status === "failed").length;
-      setMessage(`批量处理完成：成功上架 ${published} 条；拍卖草稿 ${staged} 条；失败 ${failed} 条。拍卖草稿不会展示给买家，必须先完成链上拍卖功能。`);
+      setMessage(`批量处理完成：成功上架 ${published} 条；失败 ${failed} 条。`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "批量发布失败。");
     } finally {
@@ -456,8 +442,8 @@ export function ProductAdminPage() {
       <section className="space-y-4 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-5">
         <div>
           <h2 className="text-xl font-semibold text-white">文件批量发布</h2>
-          <p className="mt-1 text-sm leading-6 text-zinc-400">下载 CSV 模板（Excel 可打开），填写用户名、+888 号码、售价和出售/拍卖类型，再上传文件。系统逐行调用 NFT 链上核验并写入商品数据库。</p>
-          <p className="mt-2 text-xs leading-5 text-amber-200/90">填写规则：enabled 填 true 才会处理；listing_type 填 sale 或 auction；currency 填 TON 或 GRAM。出售商品会直接公开上架。拍卖目前只保存为草稿并等待链上拍卖功能接入，不会展示给买家或接受竞价。标识暂支持 @用户名和 +888 号码。</p>
+          <p className="mt-1 text-sm leading-6 text-zinc-400">下载 CSV 模板（Excel 可打开），填写用户名、+888 号码、售价和币种，再上传文件。系统逐行调用 NFT 链上核验并写入商品数据库。</p>
+          <p className="mt-2 text-xs leading-5 text-amber-200/90">填写规则：enabled 填 true 才会处理；currency 填 TON 或 GRAM。当前仅支持固定售价出售，不处理拍卖。标识暂支持 @用户名和 +888 号码。</p>
         </div>
         <button type="button" onClick={downloadBatchTemplate} className="rounded-full border border-sky-300/40 px-4 py-2 text-sm font-semibold text-sky-200 hover:bg-sky-300/10">下载 Export 模板（CSV / Excel 可打开）</button>
         <label className="block space-y-2 text-sm text-zinc-300">
@@ -467,12 +453,12 @@ export function ProductAdminPage() {
         {batchFileName && <p className="text-xs text-zinc-400">文件：{batchFileName} · 共 {batchRows.length} 行 · 启用 {batchRows.filter((r) => ["true","1","yes","是"].includes(r.enabled)).length} 行</p>}
         {batchRows.length > 0 && <div className="max-h-64 overflow-auto rounded-lg border border-white/10">
           <table className="w-full text-left text-xs">
-            <thead className="sticky top-0 bg-zinc-900 text-zinc-400"><tr><th className="p-2">行</th><th className="p-2">标识</th><th className="p-2">价格</th><th className="p-2">类型</th><th className="p-2">状态</th></tr></thead>
-            <tbody>{batchRows.map((r) => <tr key={r.rowNumber} className="border-t border-white/5"><td className="p-2">{r.rowNumber}</td><td className="p-2">{r.identifier || "—"}</td><td className="p-2">{r.price} {r.currency}</td><td className="p-2">{r.listing_type}</td><td className="p-2">{["true","1","yes","是"].includes(r.enabled) ? "待处理" : "跳过"}</td></tr>)}</tbody>
+            <thead className="sticky top-0 bg-zinc-900 text-zinc-400"><tr><th className="p-2">行</th><th className="p-2">标识</th><th className="p-2">价格</th><th className="p-2">状态</th></tr></thead>
+            <tbody>{batchRows.map((r) => <tr key={r.rowNumber} className="border-t border-white/5"><td className="p-2">{r.rowNumber}</td><td className="p-2">{r.identifier || "—"}</td><td className="p-2">{r.price} {r.currency}</td><td className="p-2">{["true","1","yes","是"].includes(r.enabled) ? "待处理" : "跳过"}</td></tr>)}</tbody>
           </table>
         </div>}
         <button type="button" onClick={() => void publishBatch()} disabled={batchRunning || !batchRows.some((r) => ["true","1","yes","是"].includes(r.enabled))} className="w-full rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{batchRunning ? "正在逐行核验并处理……" : "确认批量处理并发布"}</button>
-        {batchResults.length > 0 && <div className="max-h-72 space-y-2 overflow-auto rounded-lg border border-white/10 p-3">{batchResults.map((r) => <div key={r.rowNumber} className="text-xs"><p className="font-medium text-white">第 {r.rowNumber} 行 · {r.identifier} · {r.status === "published" ? "已上架" : r.status === "staged" ? "拍卖草稿" : r.status === "skipped" ? "已跳过" : "失败"}</p><p className="mt-1 text-zinc-400">{r.message}</p></div>)}</div>}
+        {batchResults.length > 0 && <div className="max-h-72 space-y-2 overflow-auto rounded-lg border border-white/10 p-3">{batchResults.map((r) => <div key={r.rowNumber} className="text-xs"><p className="font-medium text-white">第 {r.rowNumber} 行 · {r.identifier} · {r.status === "published" ? "已上架" : r.status === "skipped" ? "已跳过" : "失败"}</p><p className="mt-1 text-zinc-400">{r.message}</p></div>)}</div>}
       </section>
 
       <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
