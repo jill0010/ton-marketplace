@@ -190,7 +190,7 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
-      const giftPayload = await getgemsGet("/v1/nfts/offchain/on-sale/gifts");
+      const giftPayload = await getgemsGet("/v1/nfts/offchain/on-sale/gifts?limit=100");
       const giftItems = extractItems(giftPayload).slice(0, 100);
       itemsSeen += giftItems.length;
       for (const item of giftItems) {
