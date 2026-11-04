@@ -17,6 +17,7 @@ export type Product = {
   productMetadata?: Record<string, unknown>
   status: "listed"
   listingMode?: ListingMode
+  auctionEndsAt?: string | null
   createdAt: string
 }
 
