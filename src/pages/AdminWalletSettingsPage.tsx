@@ -93,7 +93,14 @@ export function AdminWalletSettingsPage() {
       if (userError || userData.user?.id !== ADMIN_UID) {
         throw new Error("管理员身份验证失败，请重新登录。")
       }
+      if (!wallet || !connectedAddress || !isMainnetWallet) {
+        throw new Error("请连接准备设为托管钱包的 TON 主网钱包，以验证地址控制权。")
+      }
       const nextCustody = normalizeMainnetAddress(custodyAddress)
+      const connectedMainnetAddress = normalizeMainnetAddress(connectedAddress)
+      if (nextCustody !== connectedMainnetAddress) {
+        throw new Error("托管地址必须与当前已连接并验证为主网的钱包一致。请切换到新钱包后再保存。")
+      }
       const nextTreasury = treasuryAddress.trim()
         ? normalizeMainnetAddress(treasuryAddress)
         : null
