@@ -16,26 +16,40 @@ export function AdminResetPasswordPage() {
 
   useEffect(() => {
     let active = true
+    let settled = false
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!active) return
-        setHasSession(session?.user.id === ADMIN_UID)
-        setChecking(false)
-      },
-    )
+    const finishCheck = (session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null, failure?: string) => {
+      if (!active || settled) return
+      settled = true
+      if (failure) setError(failure)
+      setHasSession(session?.user.id === ADMIN_UID)
+      setChecking(false)
+      window.clearTimeout(timeoutId)
+    }
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      finishCheck(session)
+    })
+
+    const timeoutId = window.setTimeout(() => {
+      finishCheck(
+        null,
+        "验证重置链接超时。链接可能已失效，或浏览器未能完成验证。请返回登录页重新发送一封密码重置邮件，再使用最新邮件中的链接。",
+      )
+    }, 15000)
 
     void supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      if (!active) return
-      if (sessionError) {
-        setError("无法验证重置链接，请重新发送密码重置邮件。")
-      }
-      setHasSession(data.session?.user.id === ADMIN_UID)
-      setChecking(false)
+      finishCheck(
+        data.session,
+        sessionError ? "无法验证重置链接，请返回登录页重新发送密码重置邮件。" : undefined,
+      )
+    }).catch(() => {
+      finishCheck(null, "验证重置链接时发生错误。请返回登录页重新发送密码重置邮件。")
     })
 
     return () => {
       active = false
+      window.clearTimeout(timeoutId)
       listener.subscription.unsubscribe()
     }
   }, [])
@@ -80,7 +94,9 @@ export function AdminResetPasswordPage() {
           <p className="mt-4 text-sm text-zinc-400">正在验证重置链接…</p>
         ) : !hasSession ? (
           <div className="mt-5 space-y-4">
-            <p className="text-sm text-zinc-300">重置链接无效、已过期，或不是管理员账号的链接。请返回登录页重新发送密码重置邮件。</p>
+            <p role="alert" className="text-sm text-zinc-300">
+              {error || "重置链接无效、已过期，或不是管理员账号的链接。请返回登录页重新发送密码重置邮件。"}
+            </p>
             <button type="button" onClick={() => navigate("/admin/login")} className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-black">返回管理员登录</button>
           </div>
         ) : (
