@@ -185,4 +185,40 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     val retriedRefund = marketplace.payoutV2(operations.buyerRefundOperationId);
     assert (retriedRefund != null) throw ErrorsV2.InvalidPayout;
     expect(retriedRefund!!.status).toEqual(2);
+
+    // Marketplace accepts the three supported Fragment asset categories:
+    // 1=username, 2=anonymous phone number, 3=collectible gift.
+    val usernameItem = testing.treasury("v2FailureUsernameItem").address;
+    val usernameCollection = testing.treasury("v2FailureUsernameCollection").address;
+    val publishUsername = marketplace.sendPublishProductV2(
+        seller.address,
+        2,
+        8,
+        usernameItem,
+        usernameCollection,
+        4243,
+        1,
+        grams("5"),
+        { value: grams("0.2") },
+    );
+    expect(publishUsername).toHaveSuccessfulTx();
+    expect(marketplace.productV2(2)!!.status).toEqual(2);
+    expect(marketplace.productV2(2)!!.kind).toEqual(1);
+
+    val numberItem = testing.treasury("v2FailureNumberItem").address;
+    val numberCollection = testing.treasury("v2FailureNumberCollection").address;
+    val publishNumber = marketplace.sendPublishProductV2(
+        seller.address,
+        3,
+        9,
+        numberItem,
+        numberCollection,
+        4244,
+        2,
+        grams("6"),
+        { value: grams("0.2") },
+    );
+    expect(publishNumber).toHaveSuccessfulTx();
+    expect(marketplace.productV2(3)!!.status).toEqual(2);
+    expect(marketplace.productV2(3)!!.kind).toEqual(2);
 }
