@@ -89,6 +89,14 @@ Deno.serve(async (req: Request) => {
     } catch {
       return reply({ success: false, error: "The verified wallet record is invalid" }, 409, origin);
     }
+    const verifiedAt = new Date(wallet.verified_at).getTime();
+    if (!Number.isFinite(verifiedAt) || verifiedAt > Date.now() + 30_000 || Date.now() - verifiedAt > 600_000) {
+      return reply({
+        success: false,
+        code: "WALLET_PROOF_EXPIRED",
+        error: "Wallet verification expired. Reconnect and verify your TON wallet before creating a payment order.",
+      }, 403, origin);
+    }
 
     const { data: plan, error: planError } = await admin
       .from("premium_pricing")
@@ -97,11 +105,19 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (planError || !plan) return reply({ success: false, error: "Premium pricing is unavailable" }, 503, origin);
 
-    const gramAmount = Number(plan.gram_price);
+    const gramAmountRaw = String(plan.gram_price).trim();
+    const gramAmount = Number(gramAmountRaw);
     const marketUsd = Number(plan.market_usd);
-    if (!Number.isFinite(gramAmount) || gramAmount <= 0 || !Number.isFinite(marketUsd) || marketUsd <= 0) {
+    if (
+      !/^\\d+(?:\\.\\d{1,9})?$/.test(gramAmountRaw) ||
+      !Number.isFinite(gramAmount) ||
+      gramAmount <= 0 ||
+      !Number.isFinite(marketUsd) ||
+      marketUsd <= 0
+    ) {
       return reply({ success: false, error: "Invalid Premium pricing configuration" }, 503, origin);
     }
+    const amountNano = toNano(gramAmountRaw).toString();
 
     const quoteResponse = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd&include_last_updated_at=true",
@@ -131,7 +147,7 @@ Deno.serve(async (req: Request) => {
         market_usd: marketUsd,
         usd_amount: Number((gramAmount * rate).toFixed(8)),
         gram_usd_rate: rate,
-        gram_amount: gramAmount,
+        gram_amount: gramAmountRaw,
         payment_address: RECEIVER_FRIENDLY,
         payment_method: "GRAM",
         status: "pending",
@@ -180,7 +196,7 @@ Deno.serve(async (req: Request) => {
       orderId: order.id,
       orderNo: order.order_no,
       amount: String(order.gram_amount),
-      amountNano: toNano(order.gram_amount),
+      amountNano,
       usdRate: Number(order.gram_usd_rate),
       paymentAddress: order.payment_address,
       buyerWallet,
