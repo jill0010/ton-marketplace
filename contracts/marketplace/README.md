@@ -54,3 +54,16 @@ Passing emulator tests are not a substitute for a testnet rehearsal or an indepe
 - Keep this flag unset/false until a successful testnet rehearsal covers the real Telegram collection Item code hashes, escrow registration barrier, NFT ownership transfer, database mirror, and recovery path.
 - publish-nft-product is deliberately a verification-and-sync endpoint, not a new-listing gate. It must remain able to mirror an already deposited NFT even if the UI rollout flag is later disabled; blocking recovery after custody transfer could strand a seller's NFT.
 - The actual on-chain permission gate is the Escrow collection status and approved Item Code mapping. Do not enable those collection policies until the exact mainnet Item code has been independently verified. The public Telegram username and +888 rows in telegram_nft_collection_allowlist currently enable wallet asset discovery only. Gift collections remain disabled until each collection is independently verified.
+
+### GitHub Actions mainnet deployment
+
+The repository includes a manually dispatched workflow at `.github/workflows/deploy-marketplace-v2-mainnet.yml`. It does not deploy on push. The operator must explicitly check the irreversible-mainnet-deployment confirmation input.
+
+Configure these GitHub Actions repository secrets before dispatching:
+
+- `DEPLOYER_MNEMONIC` — the dedicated, funded V5R1 deployment wallet mnemonic. Never paste it into chat or commit it.
+- `PLATFORM_TREASURY_ADDRESS` — the public address that receives the Marketplace V2 3% fee. It must be controlled by the project owner and must differ from the deployer wallet.
+- `TONCENTER_MAINNET_API_KEY` — a TON Center mainnet API key.
+
+The workflow writes a temporary, permission-restricted `wallets.toml` that references the mnemonic only through the environment. It builds the production contracts, runs the mainnet deployment script, and requires the script's final escrow/treasury verification marker before reporting success. It adds the resulting public contract addresses to the GitHub Actions run summary. The workflow cannot run successfully until all three secrets are configured; no secret values belong in the repository.
+
