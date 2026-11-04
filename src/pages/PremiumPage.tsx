@@ -8,6 +8,7 @@ import {
 } from "@tonconnect/ui-react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "../lib/useLanguage"
+import { GramTokenMark } from "../components/GramTokenMark"
 import {
   anonymousSupabase,
   ensureAnonymousSession,
@@ -915,7 +916,8 @@ export function PremiumPage() {
                       {t("Discount price", "优惠价格")}
                     </p>
 
-                    <p className="text-lg font-semibold text-emerald-300">
+                    <p className="inline-flex items-center justify-end gap-1.5 text-lg font-semibold text-emerald-300">
+                      <GramTokenMark className="h-5 w-5" />
                       {plan.gramPrice.toFixed(2)} GRAM
                     </p>
 
@@ -1051,10 +1053,7 @@ export function PremiumPage() {
         </div>
 
         <div className="rounded-xl border border-sky-400 bg-sky-400/10 px-4 py-3 font-medium text-white">
-          <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs">
-            G
-          </span>
-          GRAM
+          <GramTokenMark className="mr-2 h-6 w-6" />GRAM
         </div>
 
         {/* 订单价格预览 */}
@@ -1079,10 +1078,8 @@ export function PremiumPage() {
 
           <div className="flex justify-between gap-3 text-zinc-400">
             <span>{t("Discount price", "优惠价格")}</span>
-            <span className="font-semibold text-emerald-300">
-              {selected
-                ? `${selected.gramPrice.toFixed(2)} GRAM`
-                : "—"}
+            <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-300">
+              {selected ? <><GramTokenMark className="h-4 w-4" />{selected.gramPrice.toFixed(2)} GRAM</> : "—"}
             </span>
           </div>
 
