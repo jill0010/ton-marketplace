@@ -114,15 +114,18 @@ fun onInternalMessage(in: InMessage) {
         }
 
         EscrowDepositAckV2 => {
-            assert (in.senderAddress == TestMarketplaceEscrowV2Storage.load().marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
+            val storage = lazy TestMarketplaceEscrowV2Storage.load();
+            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
         }
 
         EscrowReleaseFailureAckV2 => {
-            assert (in.senderAddress == TestMarketplaceEscrowV2Storage.load().marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
+            val storage = lazy TestMarketplaceEscrowV2Storage.load();
+            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidReleaseConfirmation;
         }
 
         EscrowRefundAckV2 => {
-            assert (in.senderAddress == TestMarketplaceEscrowV2Storage.load().marketplace) throw ErrorsV2.InvalidRefund;
+            val storage = lazy TestMarketplaceEscrowV2Storage.load();
+            assert (in.senderAddress == storage.marketplace) throw ErrorsV2.InvalidRefund;
         }
     }
 }
