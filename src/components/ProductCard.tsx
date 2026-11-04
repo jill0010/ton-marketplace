@@ -35,9 +35,9 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
       <div className={compact ? "p-3" : "p-4"}>
         {!compact && <p className="text-xs tracking-wider text-zinc-500">{typeLabel}</p>}
         <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>{product.title}</h2>
-        <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>{product.subtitle}</p>
+        <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>{product.subtitle || (product.deliveryMode === "manual" ? t("Manual delivery by seller", "管理员人工交付") : "")}</p>
         <div className="mt-3 flex items-center justify-between gap-2">
-          <p className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"} font-semibold text-emerald-300`}><GramTokenMark /><span>{product.priceTon} GRAM</span></p>
+          <p className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"} font-semibold text-emerald-300`}>{product.currency === "GRAM" && <GramTokenMark />}<span>{product.priceTon} {product.currency}</span></p>
           <Link to={`/product/${product.id}`} className="shrink-0 rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-sky-950/20 transition hover:bg-sky-400 active:scale-[0.98]">
             {t("Details", "详情")}
           </Link>
