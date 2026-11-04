@@ -43,6 +43,6 @@ Passing emulator tests are not a substitute for a testnet rehearsal or an indepe
 ## Deployment safety
 
 - `MarketplaceV2Storage` and `NFTEscrowV2Storage` are fresh-deployment schemas. Do not point this code at an older V1 contract address or assume serialized storage compatibility.
-- The V2 deployment script binds a fresh MarketplaceV2 to a fresh NFTEscrowV2 and configures the deployer as the initial treasury. Review and explicitly choose the production owner and treasury addresses before any mainnet deployment.
+- The V2 deployment script requires separately configured `deployer` and `treasury` wallets. The deployer becomes contract owner; the separate treasury wallet receives the 3% platform fee. Missing treasury configuration stops deployment before contracts are created. Review and explicitly choose both production addresses before any mainnet deployment.
 - No signing key or mnemonic belongs in this repository, GitHub source, or logs.
 - A mainnet deployment requires a funded, authorized signer; verified production owner/treasury addresses; a testnet rehearsal against current live Fragment collections; and independent review of the compiled code, ABI, storage, and recovery paths.
