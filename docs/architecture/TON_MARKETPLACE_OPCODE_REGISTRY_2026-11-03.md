@@ -1,7 +1,7 @@
 # TON Marketplace Contract Opcode Registry
 
 Date: 2026-11-03
-Status: V2 protocol registry; purchase and settlement opcodes are reserved, not implemented.
+Status: V2 protocol registry; purchase and settlement handlers are being integrated and remain gated on emulator and testnet verification.
 
 This registry is the canonical opcode allocation record for contract messages in this repository. Any new Tolk message with an explicit 32-bit opcode must be added here and checked against this table before code generation or wrapper updates.
 
@@ -65,17 +65,17 @@ These opcodes are already implemented and must not be reassigned.
 
 ## Reserved purchase and settlement messages
 
-The following assignments are reserved only: no contract currently accepts or emits these messages. `PayoutSettledV2` is not part of the default arbitrary-wallet payout model; the beneficiary wallet does not automatically send an acknowledgement. `DispatchPayoutV2` is reserved for permissionless dispatch of a stored payout liability.
+`PayoutSettledV2` is not part of the default arbitrary-wallet payout model; the beneficiary wallet does not automatically send an acknowledgement. `DispatchPayoutV2` remains reserved; bounced payouts are retried with `RetryPayoutV2`.
 
 | Opcode | Message | Direction | Status |
 |---|---|---|---|
-| `0x71b00100` | `BuyProductV2` | Buyer → MarketplaceV2 | ABI declared; handler pending |
-| `0x71b00101` | `SellerPayoutV2` | MarketplaceV2 → Seller | Reserved |
-| `0x71b00102` | `PlatformPayoutV2` | MarketplaceV2 → Treasury | Reserved |
-| `0x71b00103` | `RetryPayoutV2` | Operator → MarketplaceV2 | ABI declared; handler pending |
-| `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer | Reserved |
+| `0x71b00100` | `BuyProductV2` | Buyer → MarketplaceV2 | Implemented in source; CI verification pending |
+| `0x71b00101` | `SellerPayoutV2` | MarketplaceV2 → Seller | Implemented in source; bounce-correlated |
+| `0x71b00102` | `PlatformPayoutV2` | MarketplaceV2 → Treasury | Implemented in source; bounce-correlated |
+| `0x71b00103` | `RetryPayoutV2` | Permissionless caller → MarketplaceV2 | Implemented in source; bounced liability only |
+| `0x71b00104` | `BuyerRefundV2` | MarketplaceV2 → Buyer | Implemented in source; bounce-correlated |
 | `0x71b00105` | `PayoutSettledV2` | Beneficiary → MarketplaceV2 | Reserved |
-| `0x71b00106` | `DispatchPayoutV2` | Permissionless caller → MarketplaceV2 | ABI declared; handler pending |
+| `0x71b00106` | `DispatchPayoutV2` | Permissionless caller → MarketplaceV2 | Reserved; retry uses `RetryPayoutV2` |
 | `0x71b00107` | `SetMarketplaceV2Treasury` | Owner → MarketplaceV2 | Implemented (one-time immutable configuration) |
 
 ## Allocation rules
