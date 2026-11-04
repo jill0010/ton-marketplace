@@ -1,0 +1,13 @@
+# Copy to wallets.toml locally. Never commit wallets.toml or mnemonic values.
+# Set DEPLOYER_MNEMONIC and TREASURY_MNEMONIC in your local environment or secure secret store.
+# Use separate wallets: deployer owns the Marketplace/Escrow contracts; treasury receives the 3% fee.
+
+[wallets.deployer]
+kind = "v5r1"
+workchain = 0
+keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+[wallets.treasury]
+kind = "v5r1"
+workchain = 0
+keys = { mnemonic-env = "TREASURY_MNEMONIC" }
