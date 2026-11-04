@@ -45,30 +45,12 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         }.toCell(),
     });
 
-    val fakeEscrow = TestMarketplaceEscrowV2.fromStorage(NFTEscrowV2Storage {
+    val fakeEscrow = TestMarketplaceEscrowV2.fromStorage(TestMarketplaceEscrowV2Storage {
         owner: owner.address,
         marketplace: marketplace.address,
         records: [],
-        assetToEscrow: [],
         nextEscrowId: 1,
-        queryToEscrow: [],
-        callbacks: NFTEscrowV2CallbackStorage {
-            depositCallbacks: [],
-            releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
-                pendingReleases: [],
-                releaseCallbacks: [],
-                releaseFailureCallbacks: [],
-            }.toCell(),
-            refundStorage: NFTEscrowV2RefundCallbackStorage {
-                pendingRefunds: [],
-                refundCallbacks: [],
-            }.toCell(),
-            collectionStorage: NFTEscrowV2CollectionStorage {
-                collections: [],
-                collectionItemCodes: [],
-            }.toCell(),
-        }.toCell(),
-    });
+    });;
 
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
         controller: owner.address,
