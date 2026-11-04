@@ -138,6 +138,13 @@ Deno.serve(async (req: Request) => {
         destination = Address.parse(String(incoming.destination ?? "")).toRawString();
       } catch { continue; }
       if (destination !== RECEIVER_RAW) continue;
+      let senderRaw: string;
+      try {
+        senderRaw = Address.parse(String(incoming.source ?? "")).toRawString();
+      } catch {
+        continue;
+      }
+      if (senderRaw !== order.buyer_wallet) continue;
       if (BigInt(String(incoming.value ?? "0")) !== expectedNano) continue;
       const msgData = incoming.msg_data as Record<string, unknown> | null;
       const bodyBoc = typeof msgData?.body === "string" ? msgData.body : "";
