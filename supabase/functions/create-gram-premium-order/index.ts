@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
         "🆕 <b>新的 GRAM Premium 订单</b>",
         `订单：<code>${html(order.order_no)}</code>`,
         `接收用户：@<b>${html(username)}</b>`,
-        `套餐：${html(plan.period)}</b>`,
+        `套餐：<b>${html(plan.period)}</b>`,
         `金额：<b>${html(String(order.gram_amount))} GRAM</b>`,
         `买家钱包：<code>${html(buyerWallet)}</code>`,
         `收款地址：<code>${html(RECEIVER_FRIENDLY)}</code>`,
