@@ -58,6 +58,8 @@ export function PremiumHistoryPage() {
   const [payments, setPayments] = useState<PremiumPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [checkingOrderId, setCheckingOrderId] = useState("")
+  const [actionMessage, setActionMessage] = useState("")
 
   const loadHistory = useCallback(async () => {
     if (!walletAddress) {
@@ -102,6 +104,43 @@ export function PremiumHistoryPage() {
     void loadHistory()
   }, [loadHistory])
 
+  async function verifyOrderPayment(order: PremiumOrder) {
+    if (checkingOrderId) return
+    setCheckingOrderId(order.id)
+    setActionMessage("")
+    try {
+      await ensureAnonymousSession()
+      const { data, error: verifyError } = await anonymousSupabase.functions.invoke(
+        "verify-gram-premium-payment",
+        { body: { order_id: order.id } },
+      )
+      if (verifyError) throw verifyError
+      if (data?.success === true && data?.paymentVerified === true) {
+        setActionMessage(
+          t(
+            `Order ${data.orderNo} is confirmed on TON Mainnet. Premium activation is pending administrator review.`,
+            `订单 ${data.orderNo} 已在 TON 主网确认到账，等待管理员审核并开通 Premium。`,
+          ),
+        )
+        await loadHistory()
+      } else {
+        setActionMessage(
+          typeof data?.error === "string"
+            ? data.error
+            : t("The transfer is not confirmed yet. Please retry shortly.", "暂未查到对应链上转账，请稍后重试。"),
+        )
+      }
+    } catch (cause) {
+      setActionMessage(
+        cause instanceof Error
+          ? cause.message
+          : t("Unable to verify this payment right now.", "暂时无法核实这笔付款。"),
+      )
+    } finally {
+      setCheckingOrderId("")
+    }
+  }
+
   const paymentByOrder = new Map(payments.map((payment) => [payment.order_id, payment]))
 
   return (
@@ -139,6 +178,11 @@ export function PremiumHistoryPage() {
         <div role="alert" className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-300">
           {error}
         </div>
+      )}
+      {actionMessage && (
+        <p role="status" className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-300">
+          {actionMessage}
+        </p>
       )}
 
       {loading && <p className="py-8 text-center text-sm text-zinc-400">{t("Loading transaction history…", "正在读取交易记录…")}</p>}
@@ -203,6 +247,19 @@ export function PremiumHistoryPage() {
                     </p>
                   </div>
                 )}
+                {order.payment_method === "GRAM" &&
+                  ["pending", "payment_submitted", "payment_detected"].includes(order.status) && (
+                    <button
+                      type="button"
+                      onClick={() => void verifyOrderPayment(order)}
+                      disabled={Boolean(checkingOrderId)}
+                      className="rounded-full border border-sky-400/30 px-4 py-2 text-xs font-medium text-sky-200 hover:bg-sky-400/10 disabled:opacity-50"
+                    >
+                      {checkingOrderId === order.id
+                        ? t("Checking TON Mainnet…", "正在核实 TON 主网……")
+                        : t("Check on-chain payment", "核实链上付款")}
+                    </button>
+                  )}
                 {order.completed_at && (
                   <p className="text-xs text-emerald-300">{t("Completed", "完成时间")}：{formatDate(order.completed_at, language)}</p>
                 )}
