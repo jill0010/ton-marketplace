@@ -111,7 +111,8 @@ export function ProductAdminPage() {
 
   function resolutionMessage(code?: string) {
     const messages: Record<string, string> = {
-      TELEGRAM_GIFT_PAGE_LOOKUP_FAILED: "无法从 Telegram 礼物网页读取图片或资料，请确认链接正确且页面可公开访问。",\n      PORTALS_API_KEY_REQUIRED: "旧版礼物查询配置缺失；礼物网页识别不再依赖 Portals API。",
+      TELEGRAM_GIFT_PAGE_LOOKUP_FAILED: "无法从 Telegram 礼物网页读取图片或资料，请确认链接正确且页面可公开访问。",
+      PORTALS_API_KEY_REQUIRED: "旧版礼物查询配置缺失；礼物网页识别不再依赖 Portals API。",
       PORTALS_KEY_INVALID: "Portals API Key 无效或已重新签发，请在 Portals Partner API 页面核对密钥。",
       PORTALS_SUBSCRIPTION_REQUIRED: "Portals Partner API 尚未开通套餐，或套餐已过期。请在 Portals Partner API 页面选择 Free 套餐。",
       PORTALS_RATE_LIMITED: "旧版 Portals 查询触发限流；当前礼物网页识别不调用 Portals API。",
@@ -244,7 +245,8 @@ export function ProductAdminPage() {
               {resolved.address && <p className="break-all text-xs text-zinc-400">NFT：{resolved.address}</p>}
               <p className="break-all text-xs text-zinc-400">Collection：{resolved.collection_address || "—"}</p>
               <p className="text-xs text-zinc-400">Index：{resolved.item_index || "—"}</p>
-              <p className="text-xs text-emerald-200">{resolved.source === "telegram_web" ? "资料直接读取自 Telegram 礼物公开网页；未调用 Portals API。" : resolved.verified_on_chain ? "已核对 TON 链上 NFT 资料。" : "已读取公开商品资料，尚未进行链上核验。"}</p>\n              {resolved.attributes && <dl className="grid grid-cols-2 gap-2 text-xs text-zinc-300">{Object.entries(resolved.attributes).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt className="text-zinc-500">{({ model: "型号", backdrop: "背景", symbol: "符号", quantity: "数量", number: "编号" } as Record<string, string>)[key] ?? key}</dt><dd>{value}</dd></div>)}</dl>}
+              <p className="text-xs text-emerald-200">{resolved.source === "telegram_web" ? "资料直接读取自 Telegram 礼物公开网页；未调用 Portals API。" : resolved.verified_on_chain ? "已核对 TON 链上 NFT 资料。" : "已读取公开商品资料，尚未进行链上核验。"}</p>
+              {resolved.attributes && <dl className="grid grid-cols-2 gap-2 text-xs text-zinc-300">{Object.entries(resolved.attributes).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt className="text-zinc-500">{({ model: "型号", backdrop: "背景", symbol: "符号", quantity: "数量", number: "编号" } as Record<string, string>)[key] ?? key}</dt><dd>{value}</dd></div>)}</dl>}
 
               {telegramLink && <a className="text-xs text-sky-300 underline" href={telegramLink} target="_blank" rel="noreferrer">打开 Telegram 礼物链接</a>}
             </div>
