@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
         }
         const items = payload.nft_items ?? [];
         const rows = items.flatMap((item) => {
-          const metadata = (item.metadata && typeof item.metadata === "object" ? item.metadata : {}) as Record<string, unknown>;
+          const metadata = (item.metadata && typeof item.metadata === "object" ? item.metadata : item.content && typeof item.content === "object" ? item.content : {}) as Record<string, unknown>;
           const address = typeof item.address === "string" ? item.address : "";
           const name = typeof metadata.name === "string" ? metadata.name.trim()
             : typeof item.name === "string" ? item.name.trim() : "";
@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
             : typeof item.image === "string" ? item.image
             : typeof previews[0]?.url === "string" ? previews[0].url : null;
           const image = rawImage?.startsWith("ipfs://")
-            ? "https://ipfs.io/ipfs/" + rawImage.slice(7).replace(/^ipfs\\//, "")
+            ? "https://ipfs.io/ipfs/" + rawImage.slice(7).replace("ipfs/", "")
             : rawImage;
           return [{
             nft_address: address,
