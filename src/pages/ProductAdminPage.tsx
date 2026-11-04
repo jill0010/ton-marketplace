@@ -47,8 +47,7 @@ export function ProductAdminPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const profileRequestId = useRef(0);
 
-  async function lookupUsernamePreview(username: string) {
-    const requestId = ++profileRequestId.current;
+  async function lookupUsernamePreview(username: string, requestId: number) {
     setProfileLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("telegram-user-profile", {
@@ -68,6 +67,7 @@ export function ProductAdminPage() {
   }
 
   useEffect(() => {
+    const requestId = ++profileRequestId.current;
     const parsed = parseIdentifier(identifier);
     if (parsed?.type !== "username") {
       profileRequestId.current += 1;
@@ -76,7 +76,7 @@ export function ProductAdminPage() {
       return;
     }
     const username = parsed.name.replace(/^@/, "");
-    const timer = window.setTimeout(() => void lookupUsernamePreview(username), 650);
+    const timer = window.setTimeout(() => void lookupUsernamePreview(username, requestId), 650);
     return () => window.clearTimeout(timer);
   }, [identifier]);
 
