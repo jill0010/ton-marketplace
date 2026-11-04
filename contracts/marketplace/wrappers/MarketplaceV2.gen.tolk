@@ -181,6 +181,18 @@ fun MarketplaceV2.treasuryConfiguredV2(self): bool {
     return net.runGetMethod(self.address, "treasuryConfiguredV2");
 }
 
+fun MarketplaceV2.productStatusV2(self, productId: uint64): uint8? {
+    return net.runGetMethod(self.address, "productStatusV2", [productId]);
+}
+
+fun MarketplaceV2.productEscrowIdV2(self, productId: uint64): uint64? {
+    return net.runGetMethod(self.address, "productEscrowIdV2", [productId]);
+}
+
+fun MarketplaceV2.productQueryIdV2(self, productId: uint64): uint64? {
+    return net.runGetMethod(self.address, "productQueryIdV2", [productId]);
+}
+
 fun MarketplaceV2.productV2(self, productId: uint64): MarketplaceV2Product? {
     return net.runGetMethod(self.address, "productV2", [productId]);
 }
