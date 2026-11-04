@@ -160,8 +160,10 @@ Deno.serve(async (req: Request) => {
       const result = await response.json() as { results?: PortalsGift[]; total_count?: number };
       const gifts = result.results ?? [];
       const normalizedSlug = parsed.slug.toLowerCase();
+      const returnedIds = gifts.map((item) => str(item.tg_id)).filter((value): value is string => Boolean(value));
+      console.log("Portals gift search result", JSON.stringify({ requested_slug: parsed.slug, total_count: result.total_count ?? null, result_count: gifts.length, returned_tg_ids: returnedIds.slice(0, 20) }));
       const gift = gifts.find((item) => (item.tg_id ?? "").toLowerCase() === normalizedSlug);
-      if (!gift) return json({ error: "GIFT_NOT_FOUND_OR_NOT_MINTED", message: "未找到该礼物，或它尚未铸造为 TON NFT。", slug: parsed.slug }, 404);
+      if (!gift) return json({ error: "GIFT_NOT_FOUND_OR_NOT_MINTED", message: "Portals 查询已完成，但返回结果中没有与输入礼物编号完全匹配的项目。", slug: parsed.slug, detail: { result_count: gifts.length, total_count: result.total_count ?? null, returned_tg_ids: returnedIds.slice(0, 20) } }, 404);
       if (!gift.ton_address) return json({ error: "GIFT_NOT_MINTED", message: "该 Telegram 礼物尚无 TON 链上 NFT 地址。", slug: parsed.slug }, 409);
 
       let chain: Awaited<ReturnType<typeof readTonNft>>;
