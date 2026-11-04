@@ -941,29 +941,31 @@ export function PublishPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="publish-description"
-                  className="block text-sm text-zinc-300"
-                >
-                  {t("Description (Optional)", "商品描述（选填）")}
-                </label>
-                <textarea
-                  id="publish-description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  maxLength={2000}
-                  rows={4}
-                  placeholder={t(
-                    "Describe your collectible...",
-                    "填写商品介绍...",
-                  )}
-                  className="w-full resize-y rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-400"
-                />
-                <p className="text-right text-xs text-zinc-500">
-                  {description.length}/2000
-                </p>
-              </div>
+              {!adminQuickPublish && (
+                <div className="space-y-2">
+                  <label
+                    htmlFor="publish-description"
+                    className="block text-sm text-zinc-300"
+                  >
+                    {t("Description (Optional)", "商品描述（选填）")}
+                  </label>
+                  <textarea
+                    id="publish-description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    maxLength={2000}
+                    rows={4}
+                    placeholder={t(
+                      "Describe your collectible...",
+                      "填写商品介绍...",
+                    )}
+                    className="w-full resize-y rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-400"
+                  />
+                  <p className="text-right text-xs text-zinc-500">
+                    {description.length}/2000
+                  </p>
+                </div>
+              )}
 
               {publishError && (
                 <p className="text-sm text-red-300">{publishError}</p>
