@@ -191,6 +191,8 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     // A malicious NFT Item with an unrelated code/address cannot enter custody.
     val publish = marketplace.sendPublishProductV2(
         seller.address,
+        1,
+        1,
         nftItem.address,
         owner.address,
         0,
