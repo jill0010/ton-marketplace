@@ -579,6 +579,30 @@ struct NFTEscrowV2CallbackStorage {
     collectionStorage: Cell<NFTEscrowV2CollectionStorage>
 }
 
+struct TestMarketplaceEscrowV2Record {
+    escrowId: uint64
+    nftItem: address
+    seller: address
+    productId: uint64
+    status: uint8
+    queryId: uint64
+}
+
+struct TestMarketplaceEscrowV2Storage {
+    owner: address
+    marketplace: address
+    records: map<uint64, Cell<TestMarketplaceEscrowV2Record>>
+    nextEscrowId: uint64
+}
+
+fun TestMarketplaceEscrowV2Storage.load(): TestMarketplaceEscrowV2Storage {
+    return TestMarketplaceEscrowV2Storage.fromCell(contract.getData());
+}
+
+fun TestMarketplaceEscrowV2Storage.save(self) {
+    contract.setData(self.toCell());
+}
+
 struct NFTEscrowV2Storage {
     owner: address
     marketplace: address
