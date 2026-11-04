@@ -510,6 +510,8 @@ fun onInternalMessage(in: InMessage) {
 
             val productId = storage.nextProductId;
             val queryId = storage.nextQueryId;
+            assert (msg.expectedProductId == productId) throw ErrorsV2.InvalidRelease;
+            assert (msg.queryId == queryId) throw ErrorsV2.InvalidRelease;
             val purchase = storage.purchaseStorage.load();
             val orderStorage = purchase.orders.load();
             assert (productId > 0 && queryId > 0) throw ErrorsV2.InvalidRelease;
@@ -1017,6 +1019,14 @@ fun onBouncedMessage(in: InMessageBounced) {
 
 get fun ownerV2(): address {
     return MarketplaceV2Storage.load().owner;
+}
+
+get fun nextProductIdV2(): uint64 {
+    return MarketplaceV2Storage.load().nextProductId;
+}
+
+get fun nextQueryIdV2(): uint64 {
+    return MarketplaceV2Storage.load().nextQueryId;
 }
 
 get fun escrowV2(): address {
