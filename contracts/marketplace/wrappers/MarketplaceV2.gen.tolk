@@ -59,6 +59,21 @@ fun MarketplaceV2.sendSetMarketplaceV2Escrow(
     return net.send(from, genericMsg);
 }
 
+fun MarketplaceV2.sendSetMarketplaceV2Treasury(
+    self,
+    from: address,
+    treasury: address,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: SetMarketplaceV2Treasury { treasury },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun MarketplaceV2.sendPublishProductV2(
     self,
     from: address,
@@ -103,6 +118,14 @@ fun MarketplaceV2.escrowV2(self): address {
 
 fun MarketplaceV2.escrowConfiguredV2(self): bool {
     return net.runGetMethod(self.address, "escrowConfiguredV2");
+}
+
+fun MarketplaceV2.treasuryV2(self): address {
+    return net.runGetMethod(self.address, "treasuryV2");
+}
+
+fun MarketplaceV2.treasuryConfiguredV2(self): bool {
+    return net.runGetMethod(self.address, "treasuryConfiguredV2");
 }
 
 fun MarketplaceV2.productV2(self, productId: uint64): MarketplaceV2Product? {
