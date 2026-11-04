@@ -210,17 +210,17 @@ export function AssetsPage() {
             {mode === "auction" ? (
               <div className="space-y-3">
                 <label className="block space-y-2 text-sm text-zinc-300">
-                  {t("Minimum bid", "最低出价")}
+                  <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Minimum bid", "最低出价")}</span>
                   <input inputMode="decimal" value={minimumBid} onChange={(event) => setMinimumBid(event.target.value)} placeholder="0.1" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
                 </label>
                 <label className="block space-y-2 text-sm text-zinc-300">
-                  {t("Maximum bid (optional)", "最高出价（选填）")}
+                  <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Maximum bid (optional)", "最高出价（选填）")}</span>
                   <input inputMode="decimal" value={maximumBid} onChange={(event) => setMaximumBid(event.target.value)} placeholder={t("No maximum", "不设最高价")} className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
                 </label>
               </div>
             ) : (
               <label className="block space-y-2 text-sm text-zinc-300">
-                {t("Sale price", "出售价格")}
+                <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Sale price", "出售价格")}</span>
                 <input inputMode="decimal" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="1.0" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
               </label>
             )}
