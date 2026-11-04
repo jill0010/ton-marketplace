@@ -29,7 +29,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
         <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>{product.subtitle || (product.deliveryMode === "manual" ? t("Manual delivery by seller", "管理员人工交付") : "")}</p>
         <div className="mt-3 flex items-center justify-between gap-2">
           <p className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"} font-semibold text-emerald-300`}><GramTokenMark className="h-5 w-5" /><span>{product.priceTon}</span></p>
-          <Link to={`/product/${product.id}`} className="shrink-0 rounded-lg px-4 py-2 text-sm font-bold shadow-lg transition active:scale-[0.98] ${product.type === "gift" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-sky-500 text-white shadow-sky-950/20 hover:bg-sky-400"}">
+          <Link to={`/product/${product.id}`} className={`shrink-0 rounded-lg px-4 py-2 text-sm font-bold shadow-lg transition active:scale-[0.98] ${product.type === "gift" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-sky-500 text-white shadow-sky-950/20 hover:bg-sky-400"}`}>
             {product.type === "gift" ? t("Sell", "出售") : t("Details", "详情")}
           </Link>
         </div>
