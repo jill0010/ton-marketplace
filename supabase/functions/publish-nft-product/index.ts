@@ -1,4 +1,4 @@
-import { handleCors, jsonResponse } from "../_shared/http.ts";
+import { handleCors, jsonResponse } from "./http.ts";
 
 /**
  * NFT publishing is intentionally disabled until the escrow-first flow is
