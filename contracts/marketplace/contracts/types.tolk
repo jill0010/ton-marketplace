@@ -761,6 +761,8 @@ struct MarketplaceV2OrderSettlement {
 struct MarketplaceV2OrderOperations {
     paymentQueryId: uint64
     releaseQueryId: uint64
+    sellerPayoutOperationId: uint64
+    platformPayoutOperationId: uint64
     sellerPayoutQueryId: uint64
     platformPayoutQueryId: uint64
     buyerRefundQueryId: uint64
