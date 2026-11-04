@@ -47,3 +47,9 @@ Passing emulator tests are not a substitute for a testnet rehearsal or an indepe
 - The deployer becomes Marketplace/Escrow owner. The 3% fee treasury is a separate public address and must not equal the deployer. For emulator/testnet, the script can use the separate `treasury` wallet in `wallets.toml`; for mainnet TON Connect, set `PLATFORM_TREASURY_ADDRESS` to the chosen public address so no treasury private key is needed.
 - `deploy-v2-mainnet` uses a configured local deployer wallet. `deploy-v2-mainnet-tonconnect` uses Acton's interactive TON Connect signer. With TON Connect, run the script locally and approve the deployment in your wallet; the assistant cannot sign or approve wallet transactions. Never send a mnemonic or private key in chat, commit it to GitHub, or place it in application logs.
 - A mainnet deployment requires a funded, authorized deployer signer; a verified production treasury address; a successful testnet rehearsal against current live Fragment collections; and independent review of the compiled code, ABI, storage, and recovery paths.
+
+## Production listing rollout gate
+
+- Supabase Edge Functions `marketplace-v2-state` and `publish-nft-product` expose a server-side listing kill switch. NFT listing is rejected unless the Supabase secret `MARKETPLACE_V2_LISTING_ENABLED=true` is explicitly set.
+- Keep this flag unset/false until a successful testnet rehearsal covers the real Telegram collection Item code hashes, escrow registration barrier, NFT ownership transfer, database mirror, and recovery path. The UI flag is not a substitute for the server-side check.
+- The public Telegram username and +888 collection rows in `telegram_nft_collection_allowlist` enable wallet asset discovery only. They do not bypass the on-chain Escrow collection/code-hash allowlist. Gift collections remain disabled until each collection is independently verified.
