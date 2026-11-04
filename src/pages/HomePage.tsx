@@ -262,7 +262,7 @@ export function HomePage() {
                     : t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
                 </p>
               ) : (
-                {selectedType === "username" || selectedType === "number" ? (
+                selectedType === "username" || selectedType === "number" ? (
                   <div className="overflow-x-auto rounded-2xl border border-white/10">
                     <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                       <thead className="bg-white/[0.05] text-xs uppercase tracking-wide text-zinc-500">
@@ -324,7 +324,7 @@ export function HomePage() {
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
                   </div>
-                )}
+                )
               )}
             </div>
           </div>
