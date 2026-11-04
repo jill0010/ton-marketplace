@@ -70,11 +70,10 @@ export function ProductAdminPage() {
 
   const [imageUrl, setImageUrl] = useState("")
   const [imageName, setImageName] = useState("")
-  const [imageFile, setImageFile] = useState<File | null>(null)
   const [imageError, setImageError] = useState("")
   const [message, setMessage] = useState("")
   const [previewReady, setPreviewReady] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const saving = false
   const [published, setPublished] = useState(false)
 
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -122,7 +121,6 @@ export function ProductAdminPage() {
     setPreviewReady(false)
 
     if (!file.type.startsWith("image/")) {
-      setImageFile(null)
       setImageName("")
       setImageUrl("")
       setImageError("请选择图片文件。")
@@ -131,15 +129,13 @@ export function ProductAdminPage() {
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setImageFile(null)
-      setImageName("")
+        setImageName("")
       setImageUrl("")
       setImageError("图片不能超过 5 MB。")
       if (input) input.value = ""
       return
     }
 
-    setImageFile(file)
     setImageUrl(URL.createObjectURL(file))
     setImageName(file.name || "剪贴板图片")
   }
