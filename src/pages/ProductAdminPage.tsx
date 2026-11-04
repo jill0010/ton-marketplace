@@ -484,10 +484,10 @@ export function ProductAdminPage() {
             <button
               type="button"
               onClick={handlePublish}
-              disabled={saving}
+              disabled
               className="w-full rounded-full bg-emerald-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "正在发布……" : "确认并发布商品"}
+              {"仅支持链上 NFT 托管上架"}
             </button>
           ) : (
             <button
