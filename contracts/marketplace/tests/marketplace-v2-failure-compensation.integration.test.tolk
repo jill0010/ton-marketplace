@@ -123,7 +123,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
 
     val now = testing.getNow();
     val purchase = marketplace.sendBuyProductV2(
-        buyer.address,
+        buyer,
         1,
         grams("4"),
         1001,
