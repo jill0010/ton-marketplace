@@ -44,7 +44,8 @@ function str(value: unknown): string | null {
 function parseInput(value: string) {
   const input = value.trim();
   const link = input.match(/^https?:\/\/(?:www\.)?t\.me\/nft\/([a-zA-Z0-9_-]+)\/?$/i);
-  const bareSlug = input.match(/^([a-zA-Z][a-zA-Z0-9_-]*-\\d{1,12})$/)?.[1];\n  const slug = link?.[1] ?? (input.startsWith("t.me/nft/") ? input.slice("t.me/nft/".length).replace(/\/$/, "") : bareSlug ?? null);
+  const bareSlug = input.match(/^([a-zA-Z][a-zA-Z0-9_-]*-\d{1,12})$/)?.[1];
+  const slug = link?.[1] ?? (input.startsWith("t.me/nft/") ? input.slice("t.me/nft/".length).replace(/\/$/, "") : bareSlug ?? null);
   if (slug && /^[a-zA-Z0-9_-]{3,128}$/.test(slug)) return { kind: "gift" as const, slug };
   if (/^@[a-zA-Z][a-zA-Z0-9_]{3,31}$/.test(input)) return { kind: "username" as const, value: input.toLowerCase() };
   if (/^\+?888[\s-]*[0-9][\s-]*[0-9][\s-]*[0-9][\s-]*[0-9][\s-]*[0-9][\s-]*[0-9]+$/.test(input)) {
