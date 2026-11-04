@@ -29,7 +29,7 @@ function toProductType(type: string): ProductType | null {
 
 function toProduct(item: DatabaseProduct): Product | null {
   const productType = toProductType(item.type)
-  if (!productType || item.currency !== "TON") {
+  if (!productType || (item.currency !== "GRAM" && item.currency !== "TON")) {
     return null
   }
 
