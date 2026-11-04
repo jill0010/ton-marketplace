@@ -24,6 +24,7 @@ deploy-testnet = "acton script scripts/deploy.tolk --net testnet"
 deploy-v2-emulation = "acton script scripts/deploy-v2.tolk"
 deploy-v2-testnet = "acton script scripts/deploy-v2.tolk --net testnet"
 deploy-v2-mainnet = "acton script scripts/deploy-v2.tolk --net mainnet"
+deploy-v2-mainnet-tonconnect = "acton script scripts/deploy-v2.tolk --net mainnet --tonconnect"
 
 [import-mappings]
 acton = ".acton"
