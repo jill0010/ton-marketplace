@@ -460,7 +460,7 @@ get fun `test Marketplace V2 rejects NFT Items not derived from an approved offi
     expect(wrongKind).toHaveFailedTx({
         from: marketplace.address,
         to: escrow.address,
-        exitCode: ErrorsV2.InvalidProductKind,
+        exitCode: ErrorsV2.InvalidCollectionItemCode,
     });
 
     val unapprovedCollection = escrow.sendCreateEscrowV2(
