@@ -11,11 +11,14 @@ export const MARKETPLACE_V2_LISTING_MESSAGE_VALUE = toNano("0.2");
 export const MARKETPLACE_V2_NFT_TRANSFER_MESSAGE_VALUE = toNano("0.2");
 export const MARKETPLACE_V2_NFT_FORWARD_AMOUNT = toNano("0.05");
 
-export enum MarketplaceV2AssetKind {
-  Username = 1,
-  PhoneNumber = 2,
-  Gift = 3,
-}
+export const MarketplaceV2AssetKind = {
+  Username: 1,
+  PhoneNumber: 2,
+  Gift: 3,
+} as const;
+
+export type MarketplaceV2AssetKind =
+  typeof MarketplaceV2AssetKind[keyof typeof MarketplaceV2AssetKind];
 
 export type PublishProductV2Input = {
   expectedProductId: bigint;
