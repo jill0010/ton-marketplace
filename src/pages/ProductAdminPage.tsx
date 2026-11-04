@@ -243,7 +243,9 @@ export function ProductAdminPage() {
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
           />
           <p className="text-xs text-zinc-500">输入 @用户名、+888 号码或粘贴 t.me/nft 礼物链接，稍作停顿后自动识别 NFT 图片和资料。</p>
-        </        <button
+        </div>
+
+        <button
           type="button"
           onClick={() => void syncNftIndex()}
           disabled={syncingIndex || resolving || publishing}
@@ -251,8 +253,6 @@ export function ProductAdminPage() {
         >
           {syncingIndex ? "正在同步 Telegram NFT 索引……" : "同步用户名 / +888 NFT 索引（每次最多 200 项）"}
         </button>
-
-div>
 
         <button
           type="button"
