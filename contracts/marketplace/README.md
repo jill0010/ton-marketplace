@@ -50,6 +50,7 @@ Passing emulator tests are not a substitute for a testnet rehearsal or an indepe
 
 ## Production listing rollout gate
 
-- Supabase Edge Functions `marketplace-v2-state` and `publish-nft-product` expose a server-side listing kill switch. NFT listing is rejected unless the Supabase secret `MARKETPLACE_V2_LISTING_ENABLED=true` is explicitly set.
-- Keep this flag unset/false until a successful testnet rehearsal covers the real Telegram collection Item code hashes, escrow registration barrier, NFT ownership transfer, database mirror, and recovery path. The UI flag is not a substitute for the server-side check.
-- The public Telegram username and +888 collection rows in `telegram_nft_collection_allowlist` enable wallet asset discovery only. They do not bypass the on-chain Escrow collection/code-hash allowlist. Gift collections remain disabled until each collection is independently verified.
+- The marketplace-v2-state endpoint exposes the rollout flag. The frontend will not initiate a new listing unless the Supabase secret MARKETPLACE_V2_LISTING_ENABLED=true is explicitly set. The state endpoint also rechecks this flag immediately before NFT ownership transfer.
+- Keep this flag unset/false until a successful testnet rehearsal covers the real Telegram collection Item code hashes, escrow registration barrier, NFT ownership transfer, database mirror, and recovery path.
+- publish-nft-product is deliberately a verification-and-sync endpoint, not a new-listing gate. It must remain able to mirror an already deposited NFT even if the UI rollout flag is later disabled; blocking recovery after custody transfer could strand a seller's NFT.
+- The actual on-chain permission gate is the Escrow collection status and approved Item Code mapping. Do not enable those collection policies until the exact mainnet Item code has been independently verified. The public Telegram username and +888 rows in telegram_nft_collection_allowlist currently enable wallet asset discovery only. Gift collections remain disabled until each collection is independently verified.
