@@ -7,6 +7,11 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
 ]);
 const TONCENTER_BASE = "https://toncenter.com/api/v2";
+const TONCENTER_V3_BASE = "https://toncenter.com/api/v3";
+const ALLOWED_FRAGMENT_ITEM_CODE_HASHES = new Set([
+  "8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32",
+  "30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251",
+]);
 const PUBLISH_OPCODE = 0x71b0000a;
 const UINT64_MAX = (1n << 64n) - 1n;
 
@@ -175,9 +180,10 @@ function decodePublishBody(bodyBase64: string) {
 
 function hashHex(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
+  const normalized = value.startsWith("0x") ? value.slice(2) : value;
+  if (/^[0-9a-f]{64}$/i.test(normalized)) return normalized.toLowerCase();
   try {
-    const decoded = Buffer.from(value, "base64");
+    const decoded = Buffer.from(normalized, "base64");
     return decoded.length === 32 ? decoded.toString("hex") : null;
   } catch {
     return null;
@@ -313,12 +319,10 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, error: "GRAM listing price is outside the allowed range" }, 400, origin);
     }
 
-    const name = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
-    const description = typeof body?.description === "string" ? body.description.trim().slice(0, 2000) : "";
-    const imageUrl = typeof body?.image_url === "string" && body.image_url.startsWith("https://")
-      ? body.image_url.slice(0, 2048)
-      : null;
-    if (!name) return reply({ success: false, error: "NFT display name is required" }, 400, origin);
+    const requestedName = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
+    const requestedDescription = typeof body?.description === "string"
+      ? body.description.trim().slice(0, 2000)
+      : "";
 
     const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
     const sellerRaw = sellerAddress.toRawString();
@@ -392,23 +396,141 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, code: "PUBLISH_TRANSACTION_NOT_FOUND", error: "The Marketplace V2 listing transaction from this verified seller was not found. The database listing was not created." }, 409, origin);
     }
 
-    const tokenResponse = await fetch(TONCENTER_BASE + "/getTokenData", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
-      body: JSON.stringify({ address: nftRaw }),
-      signal: AbortSignal.timeout(12000),
+    const nftParams = new URLSearchParams({
+      address: nftRaw,
+      collection_address: collectionRaw,
+      limit: "1",
     });
-    if (!tokenResponse.ok) return reply({ success: false, error: "Unable to verify the NFT Item owner on TON Mainnet" }, 502, origin);
-    const tokenData = await tokenResponse.json();
-    const nftItemData = tokenData?.result ?? tokenData;
-    const ownerValue = nftItemData?.owner_address ?? nftItemData?.owner;
-    const collectionValue = nftItemData?.collection_address ?? nftItemData?.collection;
+    const nftResponse = await fetch(
+      TONCENTER_V3_BASE + "/nft/items?" + nftParams.toString(),
+      {
+        headers: { Accept: "application/json", "X-API-Key": apiKey },
+        signal: AbortSignal.timeout(12000),
+      },
+    );
+    if (!nftResponse.ok) {
+      return reply({ success: false, error: "Unable to verify the NFT Item on TON Mainnet" }, 502, origin);
+    }
+    const nftData = await nftResponse.json();
+    const nftItemData = Array.isArray(nftData?.nft_items)
+      ? nftData.nft_items.find((item: Record<string, unknown>) => {
+        try {
+          return Address.parse(String(item.address ?? "")).toRawString() === nftRaw;
+        } catch {
+          return false;
+        }
+      })
+      : null;
+    if (!nftItemData) {
+      return reply({ success: false, code: "NFT_ITEM_NOT_FOUND", error: "TON Center could not find this NFT Item in the specified collection." }, 409, origin);
+    }
+
+    const ownerValue = nftItemData.owner_address;
+    const collectionValue = nftItemData.collection_address;
     if (typeof ownerValue !== "string" || Address.parse(ownerValue).toRawString() !== escrowRaw) {
       return reply({ success: false, code: "NFT_NOT_IN_ESCROW", error: "TON Mainnet does not report the NFT Item as owned by the Marketplace Escrow." }, 409, origin);
     }
-    if (typeof collectionValue === "string" && Address.parse(collectionValue).toRawString() !== collectionRaw) {
+    if (typeof collectionValue !== "string" || Address.parse(collectionValue).toRawString() !== collectionRaw) {
       return reply({ success: false, code: "NFT_COLLECTION_MISMATCH", error: "The NFT Item collection does not match the approved collection." }, 409, origin);
     }
+    if (
+      nftItemData.init !== true ||
+      nftItemData.on_sale === true ||
+      String(nftItemData.index ?? "") !== itemIndex.toString()
+    ) {
+      return reply({ success: false, code: "NFT_ITEM_STATE_MISMATCH", error: "The indexed NFT Item state does not match the submitted Item Index." }, 409, origin);
+    }
+
+    const itemCodeHash = hashHex(nftItemData.code_hash);
+    if (!itemCodeHash || !ALLOWED_FRAGMENT_ITEM_CODE_HASHES.has(itemCodeHash)) {
+      return reply({ success: false, code: "NFT_ITEM_CODE_NOT_APPROVED", error: "This NFT Item code hash is not approved by the Marketplace V2 escrow contract." }, 403, origin);
+    }
+
+    const metadata = nftData?.metadata && typeof nftData.metadata === "object"
+      ? nftData.metadata as Record<string, Record<string, unknown>>
+      : {};
+    const addressBook = nftData?.address_book && typeof nftData.address_book === "object"
+      ? nftData.address_book as Record<string, Record<string, unknown>>
+      : {};
+
+    const metadataFor = (targetRaw: string) => {
+      for (const [address, value] of Object.entries(metadata)) {
+        try {
+          if (Address.parse(address).toRawString() === targetRaw) return value;
+        } catch {
+          continue;
+        }
+      }
+      return undefined;
+    };
+    const itemMetadata = metadataFor(nftRaw);
+    const collectionMetadata = metadataFor(collectionRaw);
+    const verifiedMetadata = (
+      value: Record<string, unknown> | undefined,
+      expectedType: string,
+    ) => {
+      const info = Array.isArray(value?.token_info)
+        ? value.token_info[0] as Record<string, unknown> | undefined
+        : undefined;
+      return value?.is_indexed === true &&
+        info?.type === expectedType &&
+        info?.valid === true &&
+        info?.is_scam === false &&
+        info?.is_nsfw === false
+        ? info
+        : undefined;
+    };
+    const itemInfo = verifiedMetadata(itemMetadata, "nft_items");
+    const collectionInfo = verifiedMetadata(collectionMetadata, "nft_collections");
+    if (!itemInfo || !collectionInfo) {
+      return reply({ success: false, code: "NFT_METADATA_NOT_VERIFIED", error: "TON Center has not verified this NFT Item and collection metadata." }, 403, origin);
+    }
+
+    if (assetType === "phone_number") {
+      let hasTeleitem = false;
+      for (const [address, entry] of Object.entries(addressBook)) {
+        try {
+          if (
+            Address.parse(address).toRawString() === nftRaw &&
+            Array.isArray(entry.interfaces) &&
+            entry.interfaces.includes("teleitem")
+          ) {
+            hasTeleitem = true;
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
+      if (!hasTeleitem) {
+        return reply({ success: false, code: "TELEITEM_INTERFACE_MISSING", error: "This collectible number does not expose the required Telegram teleitem interface." }, 403, origin);
+      }
+    }
+
+    const content = nftItemData.content && typeof nftItemData.content === "object"
+      ? nftItemData.content as Record<string, unknown>
+      : {};
+    const name = (typeof itemInfo.name === "string" && itemInfo.name.trim()
+      ? itemInfo.name.trim()
+      : typeof content.name === "string" && content.name.trim()
+      ? content.name.trim()
+      : requestedName || nftRaw).slice(0, 120);
+    const metadataDescription = typeof itemInfo.description === "string"
+      ? itemInfo.description
+      : typeof content.description === "string"
+      ? content.description
+      : "";
+    const description = (requestedDescription || metadataDescription).slice(0, 2000);
+    const imageCandidate = typeof itemInfo.image === "string"
+      ? itemInfo.image
+      : typeof content.image === "string"
+      ? content.image
+      : typeof content.image_url === "string"
+      ? content.image_url
+      : "";
+    const imageUrl = imageCandidate.startsWith("https://")
+      ? imageCandidate.slice(0, 2048)
+      : null;
 
     const { data: existing, error: existingError } = await admin
       .from("products")
