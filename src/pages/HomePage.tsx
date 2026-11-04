@@ -271,8 +271,8 @@ export function HomePage() {
                               </td>
                               <td className="px-5 py-3">
                                 <div className="flex items-center gap-1.5 font-bold tabular-nums text-white">
-                                  {product.currency === "GRAM" && <GramTokenMark className="h-4 w-4" />}
-                                  <span>{product.priceTon.toLocaleString()} <span className="text-[#9aabba]">{product.currency}</span></span>
+                                  <GramTokenMark className="h-4 w-4" />
+                                  <span>{product.priceTon.toLocaleString()}</span>
                                 </div>
                                 <p className="mt-0.5 text-xs text-[#9aabba]">{t("Sale price", "出售价格")}</p>
                               </td>
