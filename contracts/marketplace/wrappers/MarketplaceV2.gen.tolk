@@ -93,6 +93,24 @@ fun MarketplaceV2.sendPublishProductV2(
     return net.send(from, genericMsg);
 }
 
+fun MarketplaceV2.sendBuyProductV2(
+    self,
+    from: address,
+    productId: uint64,
+    expectedPrice: coins,
+    queryId: uint64,
+    deadline: uint32,
+    config: SendParams = {},
+): SendResultList {
+    val genericMsg = createMessage({
+        bounce: config.bounce,
+        value: config.value,
+        dest: self.address,
+        body: BuyProductV2 { productId, expectedPrice, queryId, deadline },
+    });
+    return net.send(from, genericMsg);
+}
+
 fun MarketplaceV2.sendCancelProductV2(
     self,
     from: address,
@@ -130,6 +148,10 @@ fun MarketplaceV2.treasuryConfiguredV2(self): bool {
 
 fun MarketplaceV2.productV2(self, productId: uint64): MarketplaceV2Product? {
     return net.runGetMethod(self.address, "productV2", [productId]);
+}
+
+fun MarketplaceV2.orderV2(self, orderId: uint64): MarketplaceV2Order? {
+    return net.runGetMethod(self.address, "orderV2", [orderId]);
 }
 
 fun MarketplaceV2.assetProductIdV2(self, nftItem: address): uint64? {
