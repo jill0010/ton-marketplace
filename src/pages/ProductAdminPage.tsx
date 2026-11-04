@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 const ADMIN_UID = "0744f173-3f36-438f-b265-9cb3be95ad78";
+
+type TelegramProfile = { username: string; displayName: string; bio: string | null; extra: string | null; avatarUrl: string | null; profileUrl: string; source: string; };
 
 type ResolvedNft = {
   type: "username" | "phone_number" | "gift";
@@ -41,6 +43,42 @@ export function ProductAdminPage() {
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [profilePreview, setProfilePreview] = useState<TelegramProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const profileRequestId = useRef(0);
+
+  async function lookupUsernamePreview(username: string) {
+    const requestId = ++profileRequestId.current;
+    setProfileLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("telegram-user-profile", {
+        body: { username },
+      });
+      if (requestId !== profileRequestId.current) return;
+      if (error || !data?.success || !data?.profile) {
+        setProfilePreview(null);
+        return;
+      }
+      setProfilePreview(data.profile as TelegramProfile);
+    } catch {
+      if (requestId === profileRequestId.current) setProfilePreview(null);
+    } finally {
+      if (requestId === profileRequestId.current) setProfileLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const parsed = parseIdentifier(identifier);
+    if (parsed?.type !== "username") {
+      profileRequestId.current += 1;
+      setProfilePreview(null);
+      setProfileLoading(false);
+      return;
+    }
+    const username = parsed.name.replace(/^@/, "");
+    const timer = window.setTimeout(() => void lookupUsernamePreview(username), 650);
+    return () => window.clearTimeout(timer);
+  }, [identifier]);
 
   async function resolveNft() {
     if (resolving || publishing) return;
@@ -83,7 +121,7 @@ export function ProductAdminPage() {
         throw new Error(detail);
       }
       if (!data) throw new Error("NFT 查询服务返回了空响应，请检查 Supabase Edge Function 日志。");
-      if (!data.success) throw new Error(data.message || resolutionMessage(data.error));
+      if (!data.success) {\n        const detail = data.detail && typeof data.detail === "object" ? ` 诊断信息：${JSON.stringify(data.detail)}` : "";\n        throw new Error(`${data.message || resolutionMessage(data.error)}${detail}`);\n      }
       setResolved(data as ResolvedNft);
       setMessage("已读取并核验 NFT 链上资料。请核对图片和名称后再发布。");
     } catch (error) {
@@ -99,7 +137,7 @@ export function ProductAdminPage() {
       PORTALS_API_KEY_REQUIRED: "礼物链接已识别，但服务器没有读取到 PORTALS_API_KEY。请检查 Supabase Edge Function Secrets。",
       PORTALS_KEY_INVALID: "Portals API Key 无效或已重新签发，请在 Portals Partner API 页面核对密钥。",
       PORTALS_SUBSCRIPTION_REQUIRED: "Portals Partner API 尚未开通套餐，或套餐已过期。请在 Portals Partner API 页面选择 Free 套餐。",
-      PORTALS_RATE_LIMITED: "Portals API 请求过于频繁，请等待几秒后重试。",
+      PORTALS_RATE_LIMITED: "Portals API 请求已达到当前套餐限额。请等待限流窗口重置后再试，不要连续点击查询。",
       PORTALS_LOOKUP_FAILED: "Portals 礼物查询接口暂时失败，请稍后重试。",
       TON_NFT_VERIFICATION_FAILED: "Portals 已找到礼物，但读取 TON 链上 NFT 失败。请稍后重试。",
       GIFT_NOT_MINTED: "Portals 找到了礼物，但它尚未铸造为 TON NFT，暂时不能作为链上 NFT 发布。",
@@ -198,7 +236,7 @@ export function ProductAdminPage() {
           <input
             id="admin-product-identifier"
             value={identifier}
-            onChange={(event) => { setIdentifier(event.target.value); setResolved(null); setMessage(""); setSuccess(false); }}
+            onChange={(event) => { setIdentifier(event.target.value); setResolved(null); setProfilePreview(null); setMessage(""); setSuccess(false); }}
             placeholder="@abcd、+888号码、https://t.me/nft/victorymedal-8880 或 TON NFT 地址"
             disabled={resolving || publishing}
             className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-white/40 disabled:opacity-50"
