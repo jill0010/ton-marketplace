@@ -108,6 +108,21 @@ export function ProductPage() {
       ? PRODUCT_TYPE_LABELS[product.type]
       : PRODUCT_TYPE_LABELS_ZH[product.type]
 
+  const metadata = product.productMetadata ?? {}
+  const animatedUrl = typeof metadata.animated_url === "string" ? metadata.animated_url : null
+  const telegramUrl = typeof metadata.telegram_url === "string" ? metadata.telegram_url : null
+  const rawAttributes = metadata.attributes
+  const attributes = rawAttributes && typeof rawAttributes === "object" && !Array.isArray(rawAttributes)
+    ? Object.entries(rawAttributes as Record<string, unknown>).filter(([, value]) => typeof value === "string" && value.trim())
+    : []
+  const attributeLabels: Record<string, [string, string]> = {
+    model: ["Model", "型号"],
+    backdrop: ["Backdrop", "背景"],
+    symbol: ["Symbol", "符号"],
+    quantity: ["Quantity", "数量"],
+    number: ["Number", "编号"],
+  }
+
   return (
     <div className="mx-auto max-w-xl space-y-6 rounded-3xl border border-white/10 p-6">
       <p className="text-xs uppercase tracking-wider text-zinc-500">
@@ -125,6 +140,32 @@ export function ProductPage() {
             }}
           />
         </div>
+      )}
+
+      {animatedUrl && (
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+          <video src={animatedUrl} controls playsInline preload="metadata" className="max-h-[520px] w-full object-contain" />
+        </div>
+      )}
+
+      {attributes.length > 0 && (
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <h2 className="mb-3 text-sm font-semibold text-white">{t("Collectible attributes", "收藏品属性")}</h2>
+          <dl className="grid grid-cols-2 gap-3">
+            {attributes.map(([key, value]) => (
+              <div key={key} className="min-w-0">
+                <dt className="text-xs text-zinc-500">{attributeLabels[key]?.[language === "en" ? 0 : 1] ?? key}</dt>
+                <dd className="mt-1 break-words text-sm text-zinc-200">{String(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {telegramUrl && (
+        <a href={telegramUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-sky-300 underline">
+          {t("View original Telegram gift page", "查看 Telegram 原始礼物页面")}
+        </a>
       )}
 
       {product.type === "username" && (
