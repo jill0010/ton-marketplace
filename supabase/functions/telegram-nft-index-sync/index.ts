@@ -65,17 +65,25 @@ Deno.serve(async (req: Request) => {
         const params = new URLSearchParams({ limit: "1000", offset: String(offset) });
         const apiKey = Deno.env.get("TONAPI_API_KEY");
         const tonApiUrl = `https://tonapi.io/v2/nfts/collections/${encodeURIComponent(collection.collection_address)}/items?${params}`;
-        let response = await fetch(tonApiUrl, {
-          headers: { Accept: "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-          signal: AbortSignal.timeout(25000),
-        });
+        let response: Response | null = null;
         let payload: { nft_items?: Array<Record<string, unknown>> } | null = null;
-        if (response.ok) {
-          payload = await response.json() as { nft_items?: Array<Record<string, unknown>> };
-          if (!Array.isArray(payload.nft_items)) payload = null;
+        let tonApiFailure = "TONAPI_UNAVAILABLE";
+        try {
+          response = await fetch(tonApiUrl, {
+            headers: { Accept: "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+            signal: AbortSignal.timeout(25000),
+          });
+          if (response.ok) {
+            payload = await response.json() as { nft_items?: Array<Record<string, unknown>> };
+            if (!Array.isArray(payload.nft_items)) payload = null;
+          } else {
+            tonApiFailure = "TONAPI_HTTP_" + response.status;
+          }
+        } catch (error) {
+          tonApiFailure = error instanceof Error ? error.message : "TONAPI_NETWORK_ERROR";
         }
         if (!payload) {
-          console.warn("TonAPI unavailable; falling back to TON Center", response.status);
+          console.warn("TonAPI unavailable; falling back to TON Center:", tonApiFailure);
           const fallbackParams = new URLSearchParams({
             collection_address: collection.collection_address,
             limit: "1000",
@@ -86,7 +94,7 @@ Deno.serve(async (req: Request) => {
             headers: { Accept: "application/json", ...(centerKey ? { "X-API-Key": centerKey } : {}) },
             signal: AbortSignal.timeout(25000),
           });
-          if (!response.ok) throw new Error(`NFT_INDEX_SOURCES_FAILED: TonAPI and TONCenter HTTP ${response.status}`);
+          if (!response.ok) throw new Error(`NFT_INDEX_SOURCES_FAILED: ${tonApiFailure}; TONCenter HTTP ${response.status}`);
           payload = await response.json() as { nft_items?: Array<Record<string, unknown>> };
           if (!Array.isArray(payload.nft_items)) throw new Error("NFT_INDEX_SOURCES_BAD_RESPONSE");
           provider = "toncenter";
