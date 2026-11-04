@@ -314,7 +314,7 @@ export function PublishPage() {
             data?.success === true &&
             data.registered === true &&
             typeof data.escrow_id === "string" &&
-            /^[1-9]\\d*$/.test(data.escrow_id) &&
+            /^[1-9]\d*$/.test(data.escrow_id) &&
             (data.record_status === 0 || data.record_status === 1)
           ) {
             registration = { escrowId: data.escrow_id, status: data.record_status };
