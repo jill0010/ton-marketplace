@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
         const apiKey = Deno.env.get("TONAPI_API_KEY");
         const tonApiUrl = `https://tonapi.io/v2/nfts/collections/${encodeURIComponent(collection.collection_address)}/items?${params}`;
         let response: Response | null = null;
-        let payload: { nft_items?: Array<Record<string, unknown>> } | null = null;
+        let payload: { nft_items?: Array<Record<string, unknown>>; metadata?: Record<string, { token_info?: Array<Record<string, unknown>> }> } | null = null;
         let tonApiFailure = "TONAPI_UNAVAILABLE";
         try {
           response = await fetch(tonApiUrl, {
@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
             signal: AbortSignal.timeout(25000),
           });
           if (response.ok) {
-            payload = await response.json() as { nft_items?: Array<Record<string, unknown>> };
+            payload = await response.json() as { nft_items?: Array<Record<string, unknown>>; metadata?: Record<string, { token_info?: Array<Record<string, unknown>> }> };
             if (!Array.isArray(payload.nft_items)) payload = null;
           } else {
             tonApiFailure = "TONAPI_HTTP_" + response.status;
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
             signal: AbortSignal.timeout(25000),
           });
           if (!response.ok) throw new Error(`NFT_INDEX_SOURCES_FAILED: ${tonApiFailure}; TONCenter HTTP ${response.status}`);
-          payload = await response.json() as { nft_items?: Array<Record<string, unknown>> };
+          payload = await response.json() as { nft_items?: Array<Record<string, unknown>>; metadata?: Record<string, { token_info?: Array<Record<string, unknown>> }> };
           if (!Array.isArray(payload.nft_items)) throw new Error("NFT_INDEX_SOURCES_BAD_RESPONSE");
           provider = "toncenter";
         } else {
@@ -103,8 +103,11 @@ Deno.serve(async (req: Request) => {
         }
         const items = payload.nft_items ?? [];
         const rows = items.flatMap((item) => {
-          const metadata = (item.metadata && typeof item.metadata === "object" ? item.metadata : item.content && typeof item.content === "object" ? item.content : {}) as Record<string, unknown>;
           const address = typeof item.address === "string" ? item.address : "";
+          const itemMetadata = (item.metadata && typeof item.metadata === "object" ? item.metadata : item.content && typeof item.content === "object" ? item.content : {}) as Record<string, unknown>;
+          const indexedMetadata = address && payload?.metadata && typeof payload.metadata === "object"
+            ? payload.metadata[address]?.token_info?.[0] ?? {} : {};
+          const metadata = { ...itemMetadata, ...indexedMetadata };
           const name = typeof metadata.name === "string" ? metadata.name.trim()
             : typeof item.name === "string" ? item.name.trim() : "";
           if (!address || !name) return [];
@@ -132,6 +135,20 @@ Deno.serve(async (req: Request) => {
             synced_at: new Date().toISOString(),
           }];
         });
+        if (items.length > 0 && rows.length === 0) {
+          const sample = items[0] ?? {};
+          const sampleAddress = typeof sample.address === "string" ? sample.address : "";
+          const sampleIndexed = sampleAddress && payload?.metadata && typeof payload.metadata === "object"
+            ? payload.metadata[sampleAddress]?.token_info?.[0] ?? {} : {};
+          const sampleContent = (sample.metadata && typeof sample.metadata === "object" ? sample.metadata
+            : sample.content && typeof sample.content === "object" ? sample.content : {}) as Record<string, unknown>;
+          const diagnostic = "NFT_METADATA_PARSE_EMPTY: provider=" + provider
+            + "; item_keys=" + Object.keys(sample).join(",")
+            + "; item_metadata_keys=" + Object.keys(sampleContent).join(",")
+            + "; indexed_metadata_keys=" + Object.keys(sampleIndexed).join(",")
+            + "; sample_address_present=" + Boolean(sampleAddress);
+          throw new Error(diagnostic);
+        }
         if (rows.length) {
           const { error: upsertError } = await service.from("telegram_nft_items").upsert(rows, { onConflict: "nft_address" });
           if (upsertError) throw upsertError;
