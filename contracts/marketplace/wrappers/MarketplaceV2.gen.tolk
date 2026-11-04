@@ -95,11 +95,7 @@ fun MarketplaceV2.sendPublishProductV2(
             queryId,
             nftItem,
             collection,
-            extra: PublishProductV2Extra {
-                itemIndex,
-                kind,
-                price,
-            }.toCell(),
+            extra: PublishProductV2Extra { itemIndex, kind, price }.toCell(),
         },
     });
     return net.send(from, genericMsg);
