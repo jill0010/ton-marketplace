@@ -3,7 +3,7 @@ import "types"
 contract MarketplaceV2 {
     author: "TON Market"
     version: "2.0.0"
-    description: "Isolated Marketplace V2 listing and escrow callback integration"
+    description: "Wallet-authenticated NFT purchase, escrow delivery, payout and compensation"
     storage: MarketplaceV2Storage
     incomingMessages: MarketplaceV2AllowedMessage
 }
