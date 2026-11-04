@@ -30,6 +30,9 @@ jobs:
         run: npm ci
 
       - name: Build production site
+        env:
+          VITE_SUPABASE_URL: https://qmvvlkierfiogituccbo.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_UkxpgfGVzKlZ4te8ccUSMg_0P1EqVBg
         run: npm run build
 
       - name: List Cloudflare Pages projects
