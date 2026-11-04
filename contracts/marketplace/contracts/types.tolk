@@ -848,6 +848,21 @@ struct MarketplaceV2Storage {
     purchaseStorage: Cell<MarketplaceV2PurchaseStorage>
 }
 
+// Storage for the deterministic test-only Escrow used by failure-path integration tests.
+struct TestMarketplaceEscrowV2Storage {
+    owner: address
+    marketplace: address
+    records: map<uint64, Cell<TestMarketplaceEscrowV2Record>>
+}
+
+struct TestMarketplaceEscrowV2Record {
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
+
 fun MarketplaceV2Storage.load(): MarketplaceV2Storage {
     return MarketplaceV2Storage.fromCell(contract.getData());
 }
