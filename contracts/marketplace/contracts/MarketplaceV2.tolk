@@ -584,8 +584,86 @@ fun onInternalMessage(in: InMessage) {
         EscrowRefundedV2 => {
             var storage = lazy MarketplaceV2Storage.load();
             var purchase = storage.purchaseStorage.load();
+            var orderStorage = purchase.orders.load();
+            var payoutStorage = purchase.payoutStorage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidRefund;
             assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidRefund;
+
+            val orderQueryResult = orderStorage.refundQueryToOrder.get(msg.queryId);
+            if (orderQueryResult.isFound) {
+                val orderId = orderQueryResult.loadValue();
+                val orderResult = orderStorage.orders.get(orderId);
+                assert (orderResult.isFound) throw ErrorsV2.InvalidRefund;
+                var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+                val extra = order.extra.load();
+                val parties = extra.parties.load();
+                val asset = extra.asset.load();
+                val operations = extra.operations.load();
+                assert (order.productId == msg.productId) throw ErrorsV2.InvalidRefund;
+                assert (asset.escrowId == msg.escrowId) throw ErrorsV2.InvalidRefund;
+                assert (asset.nftItem == msg.nftItem) throw ErrorsV2.InvalidRefund;
+                assert (parties.seller == msg.seller) throw ErrorsV2.InvalidRefund;
+                assert (order.deliveryStatus == 3) throw ErrorsV2.InvalidRefund;
+
+                val productResult = storage.products.get(order.productId);
+                assert (productResult.isFound) throw ErrorsV2.InvalidRefund;
+                var product = MarketplaceV2Product.fromCell(productResult.loadValue());
+                assert (product.status == 6 && product.refundQueryId == msg.queryId) throw ErrorsV2.InvalidRefund;
+                product.status = 5;
+                storage.products.set(product.id, product.toCell());
+                val listingResult = storage.assetListings.get(product.nftItem);
+                if (listingResult.isFound && listingResult.loadValue() == product.id) {
+                    storage.assetListings.delete(product.nftItem);
+                }
+
+                val refundPayoutResult = payoutStorage.payouts.get(operations.buyerRefundOperationId);
+                assert (refundPayoutResult.isFound) throw ErrorsV2.InvalidPayout;
+                var refundPayout = MarketplaceV2Payout.fromCell(refundPayoutResult.loadValue());
+                assert (refundPayout.kind == 3 && refundPayout.beneficiary == parties.buyer) throw ErrorsV2.InvalidPayout;
+                assert (refundPayout.amount > 0) throw ErrorsV2.InvalidPayout;
+                if (refundPayout.status == 0) {
+                    refundPayout.queryId = operations.buyerRefundQueryId;
+                    refundPayout.status = 2;
+                    order.refundStatus = 2;
+                    order.status = 8;
+                    orderStorage.orders.set(order.id, order.toCell());
+                    payoutStorage.payouts.set(refundPayout.operationId, refundPayout.toCell());
+                    payoutStorage.payoutQueryToOperation.set(refundPayout.queryId, refundPayout.operationId);
+                    purchase.orders = orderStorage.toCell();
+                    purchase.payoutStorage = payoutStorage.toCell();
+                    storage.purchaseStorage = purchase.toCell();
+                    storage.save();
+
+                    val buyerRefund = createMessage({
+                        bounce: BounceMode.RichBounce,
+                        value: refundPayout.amount,
+                        dest: refundPayout.beneficiary,
+                        body: BuyerRefundV2 {
+                            orderId: refundPayout.orderId,
+                            operationId: refundPayout.operationId,
+                            queryId: refundPayout.queryId,
+                        },
+                    });
+                    buyerRefund.send(SEND_MODE_PAY_FEES_SEPARATELY);
+                } else {
+                    assert (refundPayout.status == 2 || refundPayout.status == 3) throw ErrorsV2.InvalidPayout;
+                }
+
+                val orderRefundAck = createMessage({
+                    bounce: BounceMode.Only256BitsOfBody,
+                    value: grams("0.03"),
+                    dest: storage.escrow,
+                    body: EscrowRefundAckV2 {
+                        escrowId: msg.escrowId,
+                        productId: msg.productId,
+                        queryId: msg.queryId,
+                        nftItem: msg.nftItem,
+                        seller: msg.seller,
+                    },
+                });
+                orderRefundAck.send(SEND_MODE_REGULAR);
+                return;
+            }
 
             val queryResult = purchase.refundQueryToProduct.get(msg.queryId);
             assert (queryResult.isFound) throw ErrorsV2.InvalidRefund;
