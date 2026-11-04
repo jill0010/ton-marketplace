@@ -61,7 +61,7 @@ export async function getListedProducts(): Promise<Product[]> {
 
   return (data as DatabaseProduct[]).flatMap((item) => {
     const product = toProduct(item)
-    return product ? [product] : []
+    return product && product.listingMode !== "auction" ? [product] : []
   })
 }
 
