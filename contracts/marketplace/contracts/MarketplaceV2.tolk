@@ -790,7 +790,7 @@ fun onInternalMessage(in: InMessage) {
 fun onBouncedMessage(in: InMessageBounced) {
     var storage = lazy MarketplaceV2Storage.load();
 
-    if (!storage.escrowConfigured || in.senderAddress != storage.escrow) {
+    if (!storage.escrowConfigured) {
         return;
     }
     if (in.bouncedBody.remainingBitsCount() < 32) {
@@ -826,6 +826,7 @@ fun onBouncedMessage(in: InMessageBounced) {
                 var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
                 if (
                     payout.kind != 1 || payout.orderId != bounced.orderId ||
+                    payout.beneficiary != in.senderAddress ||
                     payout.queryId != bounced.queryId ||
                     payout.status != 2
                 ) {
@@ -853,6 +854,7 @@ fun onBouncedMessage(in: InMessageBounced) {
                 var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
                 if (
                     payout.kind != 2 || payout.orderId != bounced.orderId ||
+                    payout.beneficiary != in.senderAddress ||
                     payout.queryId != bounced.queryId ||
                     payout.status != 2
                 ) {
@@ -880,6 +882,7 @@ fun onBouncedMessage(in: InMessageBounced) {
                 var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
                 if (
                     payout.kind != 3 || payout.orderId != bounced.orderId ||
+                    payout.beneficiary != in.senderAddress ||
                     payout.queryId != bounced.queryId ||
                     payout.status != 2
                 ) {
@@ -904,6 +907,11 @@ fun onBouncedMessage(in: InMessageBounced) {
             purchase.payoutStorage = payoutStorage.toCell();
             storage.purchaseStorage = purchase.toCell();
             storage.save();
+            return;
+        }
+
+        // Listing creation bounces are accepted only from the configured Escrow.
+        if (in.senderAddress != storage.escrow) {
             return;
         }
 
