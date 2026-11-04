@@ -25,6 +25,10 @@ function toNano(value: string | number) {
   return (BigInt(whole) * 1_000_000_000n + BigInt((fraction + "000000000").slice(0, 9))).toString();
 }
 
+function html(value: string) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
 function serviceKey() {
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
@@ -141,8 +145,38 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, error: "Unable to create GRAM Premium order" }, 500, origin);
     }
 
+    let telegramNotified = false;
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const chatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
+    if (botToken && chatId) {
+      const message = [
+        "🆕 <b>新的 GRAM Premium 订单</b>",
+        `订单：<code>${html(order.order_no)}</code>`,
+        `接收用户：@<b>${html(username)}</b>`,
+        `套餐：${html(plan.period)}</b>`,
+        `金额：<b>${html(String(order.gram_amount))} GRAM</b>`,
+        `买家钱包：<code>${html(buyerWallet)}</code>`,
+        `收款地址：<code>${html(RECEIVER_FRIENDLY)}</code>`,
+        `有效期至：${html(order.expires_at)}`,
+        "状态：等待买家支付",
+      ].join("\n");
+      try {
+        const notify = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML", disable_web_page_preview: true }),
+          signal: AbortSignal.timeout(10000),
+        });
+        const result = await notify.json();
+        telegramNotified = notify.ok && result?.ok === true;
+      } catch (error) {
+        console.error("New GRAM Premium order Telegram notification failed", error);
+      }
+    }
+
     return reply({
       success: true,
+      telegramNotified,
       orderId: order.id,
       orderNo: order.order_no,
       amount: String(order.gram_amount),
