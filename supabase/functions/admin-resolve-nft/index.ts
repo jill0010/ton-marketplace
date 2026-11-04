@@ -180,6 +180,24 @@ Deno.serve(async (req: Request) => {
         if (!response.ok) {
           const detail = (await response.text()).slice(0, 500);
           console.error("Portals number fallback failed:", response.status, detail);
+          if (response.status === 429) {
+            const retryAfter = response.headers.get("Retry-After");
+            const rateLimitReset = response.headers.get("X-RateLimit-Reset");
+            return json({
+              error: "PORTALS_RATE_LIMITED",
+              message: "Portals API 请求频率已达到当前套餐限制。请等待限流窗口重置后再试；不要连续点击查询。",
+              detail,
+              retry_after_seconds: retryAfter && Number.isFinite(Number(retryAfter)) ? Number(retryAfter) : null,
+              rate_limit_reset: rateLimitReset,
+            }, 429);
+          }
+          if (response.status === 401 || response.status === 403) {
+            return json({
+              error: response.status === 401 ? "PORTALS_KEY_INVALID" : "PORTALS_SUBSCRIPTION_REQUIRED",
+              message: response.status === 401 ? "Portals API Key 无效或已重新签发。" : "Portals Partner API 套餐不可用或已过期。",
+              detail,
+            }, 502);
+          }
           return json({ error: "PORTALS_LOOKUP_FAILED", message: "Portals 礼物编号备用查询失败。", detail }, 502);
         }
         result = await response.json() as { results?: PortalsGift[]; total_count?: number };
