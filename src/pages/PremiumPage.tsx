@@ -1123,19 +1123,36 @@ export function PremiumPage() {
           </p>
         </div>
 
-        {/* 真实付款功能暂时关闭 */}
         <button
           type="button"
-          disabled
-          className="w-full cursor-not-allowed rounded-full bg-white/10 px-4 py-3 text-sm font-semibold text-zinc-500"
+          onClick={buyPremiumWithGram}
+          disabled={checkoutBusy || !isWalletVerified || loading || Boolean(loadError) || !selected}
+          className="w-full rounded-full bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
         >
-          {t("Gift Telegram Premium", "赠送 Telegram Premium")}
+          {checkoutBusy ? t("Processing…", "处理中……") : t("Pay with GRAM", "使用 GRAM 付款")}
         </button>
+
+        {pendingOrderId && (
+          <button
+            type="button"
+            onClick={() => void verifyGramOrder(pendingOrderId)}
+            disabled={checkoutBusy}
+            className="w-full rounded-full border border-white/15 px-4 py-3 text-sm font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
+          >
+            {t("Check payment", "核实付款")}
+          </button>
+        )}
+
+        {checkoutMessage && (
+          <p role="status" className="break-words rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-zinc-300">
+            {checkoutMessage}
+          </p>
+        )}
 
         <p className="text-center text-xs text-zinc-500">
           {t(
-            "Purchases are not enabled in this preview.",
-            "当前预览版本尚未启用购买功能。",
+            "Native GRAM on TON Mainnet only. Payment is checked on-chain; Premium activation is handled manually.",
+            "仅支持 TON 主网原生 GRAM。系统会核实链上到账，Premium 由管理员人工开通。",
           )}
         </p>
       </section>
