@@ -106,7 +106,7 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.queryId != sellerPayoutQueryId) throw ErrorsV2.InvalidPurchase;
             assert (msg.queryId != platformPayoutQueryId) throw ErrorsV2.InvalidPurchase;
             assert (msg.queryId != buyerRefundQueryId) throw ErrorsV2.InvalidPurchase;
-            assert (msg.queryId < releaseQueryId || msg.queryId > buyerRefundQueryId) throw ErrorsV2.InvalidPurchase;
+            assert (msg.queryId > buyerRefundQueryId) throw ErrorsV2.InvalidPurchase;
             assert (!orderStorage.paymentQueryToOrder.get(releaseQueryId).isFound) throw ErrorsV2.InvalidPurchase;
             assert (!orderStorage.paymentQueryToOrder.get(sellerPayoutQueryId).isFound) throw ErrorsV2.InvalidPurchase;
             assert (!orderStorage.paymentQueryToOrder.get(platformPayoutQueryId).isFound) throw ErrorsV2.InvalidPurchase;
