@@ -273,7 +273,8 @@ export function ProductManagePage() {
                 <h2 className="break-words font-medium text-white">
                   {product.name}
                 </h2>
-                <p className="text-sm text-zinc-300">
+                <p className="inline-flex items-center gap-1.5 text-sm text-zinc-300">
+                  {product.currency === "GRAM" && <GramTokenMark className="h-4 w-4" />}
                   {product.price} {product.currency}
                 </p>
                 <p className="text-xs text-zinc-500">
