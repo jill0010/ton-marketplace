@@ -14,7 +14,7 @@ const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((mod
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
 const AdminResetPasswordPage = lazy(() => import("./pages/AdminResetPasswordPage").then((module) => ({ default: module.AdminResetPasswordPage })))
-const PremiumRoute = lazy(() => import("./components/PremiumRoute").then((module) => ({ default: module.PremiumRoute })))
+const PremiumPage = lazy(() => import("./pages/PremiumPage").then((module) => ({ default: module.PremiumPage })))
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
 const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
 const PremiumOrdersAdminPage = lazy(() => import("./pages/PremiumOrdersAdminPage").then((module) => ({ default: module.PremiumOrdersAdminPage })))
@@ -45,7 +45,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/catalog" element={<Navigate to="/" replace />} />
                 <Route path="/fragment-market" element={<FragmentCatalogPage />} />
-                <Route path="/premium" element={<PremiumRoute />} />
+                <Route path="/premium" element={<PremiumPage />} />
                 <Route path="/premium/history" element={<PremiumHistoryPage />} />
                 <Route path="/product/:id" element={<ProductPage />} />
                 <Route path="/publish" element={<PublishPage />} />
