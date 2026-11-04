@@ -66,7 +66,7 @@ function extractGiftPageFields(html: string) {
   const video = metaContent(html, "og:video") ?? metaContent(html, "og:video:secure_url");
   const plain = decodeHtml(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
   const find = (label: string) => {
-    const match = plain.match(new RegExp(label + "\\s*:?\\s*([^|•]{1,80})", "i"));
+    const match = plain.match(new RegExp(label + "\\s*:?\\s*([^|•]{1,80}?)(?=\\s+(?:Model|Backdrop|Symbol|Quantity|Number)\\s*:?|[|•]|$)", "i"));
     return match?.[1]?.trim() ?? null;
   };
   const attributes: Record<string, string | null> = {
@@ -102,7 +102,7 @@ async function readTelegramGiftPage(slug: string) {
     if (!candidate) continue;
     try {
       const parsed = new URL(candidate, url);
-      if (parsed.protocol !== "https:" || !(parsed.hostname === "t.me" || parsed.hostname.endsWith(".telegram.org") || parsed.hostname.endsWith(".telesco.pe"))) {
+      if (parsed.protocol !== "https:" || !(parsed.hostname === "t.me" || parsed.hostname === "telegram.org" || parsed.hostname.endsWith(".telegram.org") || parsed.hostname.endsWith(".telesco.pe"))) {
         fields[key] = null;
       } else fields[key] = parsed.toString();
     } catch { fields[key] = null; }
