@@ -377,7 +377,12 @@ fun onInternalMessage(in: InMessage) {
             val orderResult = orderStorage.orders.get(payout.orderId);
             assert (orderResult.isFound) throw ErrorsV2.InvalidPayout;
             var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
-            assert (order.deliveryStatus == 2) throw ErrorsV2.InvalidPayout;
+            if (payout.kind == 3) {
+                assert (order.deliveryStatus == 3 && order.refundStatus == 3) throw ErrorsV2.InvalidPayout;
+            } else {
+                assert (order.deliveryStatus == 2) throw ErrorsV2.InvalidPayout;
+                assert (payout.kind == 1 || payout.kind == 2) throw ErrorsV2.InvalidPayout;
+            }
 
             val newQueryId = storage.nextQueryId;
             assert (newQueryId > 0) throw ErrorsV2.InvalidPayout;
@@ -388,11 +393,18 @@ fun onInternalMessage(in: InMessage) {
             payoutStorage.payoutQueryToOperation.set(newQueryId, payout.operationId);
             if (payout.kind == 1) {
                 order.sellerPayoutStatus = 2;
-            } else {
-                assert (payout.kind == 2) throw ErrorsV2.InvalidPayout;
+            } else if (payout.kind == 2) {
                 order.platformPayoutStatus = 2;
+            } else {
+                order.refundStatus = 2;
             }
-            order.status = 5;
+            if (payout.kind == 3) {
+                order.status = 8;
+            } else if (order.sellerPayoutStatus == 2 && order.platformPayoutStatus == 2) {
+                order.status = 5;
+            } else {
+                order.status = 4;
+            }
             orderStorage.orders.set(order.id, order.toCell());
             purchase.orders = orderStorage.toCell();
             purchase.payoutStorage = payoutStorage.toCell();
@@ -412,12 +424,24 @@ fun onInternalMessage(in: InMessage) {
                     },
                 });
                 transfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
-            } else {
+            } else if (payout.kind == 2) {
                 val transfer = createMessage({
                     bounce: BounceMode.RichBounce,
                     value: payout.amount,
                     dest: payout.beneficiary,
                     body: PlatformPayoutV2 {
+                        orderId: payout.orderId,
+                        operationId: payout.operationId,
+                        queryId: payout.queryId,
+                    },
+                });
+                transfer.send(SEND_MODE_PAY_FEES_SEPARATELY);
+            } else {
+                val transfer = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: payout.amount,
+                    dest: payout.beneficiary,
+                    body: BuyerRefundV2 {
                         orderId: payout.orderId,
                         operationId: payout.operationId,
                         queryId: payout.queryId,
@@ -738,7 +762,7 @@ fun onBouncedMessage(in: InMessageBounced) {
         }
         val opcode = originalSlice.loadUint(32);
 
-        if (opcode == 0x71b00101 || opcode == 0x71b00102) {
+        if (opcode == 0x71b00101 || opcode == 0x71b00102 || opcode == 0x71b00104) {
             var purchase = storage.purchaseStorage.load();
             var orderStorage = purchase.orders.load();
             var payoutStorage = purchase.payoutStorage.load();
@@ -769,7 +793,7 @@ fun onBouncedMessage(in: InMessageBounced) {
                 order.status = 4;
                 payoutStorage.payouts.set(payout.operationId, payout.toCell());
                 orderStorage.orders.set(order.id, order.toCell());
-            } else {
+            } else if (opcode == 0x71b00102) {
                 val bounced = lazy PlatformPayoutV2.fromCell(originalBody);
                 val payoutResult = payoutStorage.payouts.get(bounced.operationId);
                 if (!payoutResult.isFound) {
@@ -793,6 +817,32 @@ fun onBouncedMessage(in: InMessageBounced) {
                 payout.status = 3;
                 order.platformPayoutStatus = 3;
                 order.status = 4;
+                payoutStorage.payouts.set(payout.operationId, payout.toCell());
+                orderStorage.orders.set(order.id, order.toCell());
+            } else {
+                val bounced = lazy BuyerRefundV2.fromCell(originalBody);
+                val payoutResult = payoutStorage.payouts.get(bounced.operationId);
+                if (!payoutResult.isFound) {
+                    return;
+                }
+                var payout = MarketplaceV2Payout.fromCell(payoutResult.loadValue());
+                if (
+                    payout.kind != 3 || payout.orderId != bounced.orderId ||
+                    payout.queryId != bounced.queryId || payout.status != 2
+                ) {
+                    return;
+                }
+                val orderResult = orderStorage.orders.get(bounced.orderId);
+                if (!orderResult.isFound) {
+                    return;
+                }
+                var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
+                if (order.deliveryStatus != 3 || order.refundStatus != 2) {
+                    return;
+                }
+                payout.status = 3;
+                order.refundStatus = 3;
+                order.status = 6;
                 payoutStorage.payouts.set(payout.operationId, payout.toCell());
                 orderStorage.orders.set(order.id, order.toCell());
             }
