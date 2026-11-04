@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
+import { GramTokenMark } from "../components/GramTokenMark"
 
 type PremiumOrder = {
   id: string
@@ -253,7 +254,7 @@ export function PremiumOrdersAdminPage() {
         {orders.map((order) => {
           const payment = paymentByOrder.get(order.id)
           const amount = order.payment_method === "GRAM"
-            ? Number(order.gram_amount).toFixed(2) + " GRAM"
+            ? <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{Number(order.gram_amount).toFixed(2)} GRAM</span>
             : Number(order.usd_amount ?? 0).toFixed(2) + " USDT"
           const canConfirm = order.status === "payment_detected" && payment?.chain_status === "confirmed"
           const canComplete = order.status === "paid" || order.status === "processing"
