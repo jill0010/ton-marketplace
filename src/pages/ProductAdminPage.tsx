@@ -36,7 +36,7 @@ function parseCsv(text: string): string[][] {
   let row: string[] = [];
   let field = "";
   let quoted = false;
-  const input = text.replace(/^\\uFEFF/, "");
+  const input = text.replace(/^\uFEFF/, "");
   for (let i = 0; i < input.length; i++) {
     const ch = input[i];
     if (quoted) {
@@ -45,7 +45,7 @@ function parseCsv(text: string): string[][] {
       else field += ch;
     } else if (ch === '"' && field.length === 0) quoted = true;
     else if (ch === ",") { row.push(field.trim()); field = ""; }
-    else if (ch === "\\n") { row.push(field.trim()); if (row.some((v) => v !== "")) rows.push(row); row = []; field = ""; }
+    else if (ch === "\n") { row.push(field.trim()); if (row.some((v) => v !== "")) rows.push(row); row = []; field = ""; }
     else if (ch !== "\\r") field += ch;
   }
   row.push(field.trim());
@@ -59,8 +59,8 @@ function downloadBatchTemplate() {
     "enabled,identifier,price,currency,listing_type,auction_end_at,description",
     'false,@example_username,10,TON,sale,,用户名示例（请替换标识和价格）',
     'false,+88812345678,25,TON,auction,2026-12-01T12:00:00Z,+888 示例（拍卖仅暂存，尚未开放链上竞价）',
-  ].join("\\r\\n");
-  const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  ].join("\r\n");
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
