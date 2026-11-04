@@ -200,7 +200,7 @@ export function ProductAdminPage() {
       !Number.isFinite(Number(draft.priceTon)) ||
       Number(draft.priceTon) <= 0
     ) {
-      setMessage("请输入大于 0 的有效 TON 售价。")
+      setMessage("请输入大于 0 的有效 GRAM 售价。")
       return null
     }
 
@@ -313,7 +313,7 @@ export function ProductAdminPage() {
           description:
             getDefaultDescription(draft.identifier, detectedType) || null,
           price: Number(draft.priceTon),
-          currency: "TON",
+          currency: "GRAM",
           image_url: publicImageUrl,
           status: "listed",
         })
@@ -466,7 +466,7 @@ export function ProductAdminPage() {
             htmlFor="product-price"
             className="mb-2 block text-sm text-zinc-300"
           >
-            售价（TON）
+            售价（GRAM）
           </label>
           <input
             id="product-price"
@@ -577,7 +577,7 @@ export function ProductAdminPage() {
           </p>
 
           <p className="text-xl font-semibold text-emerald-300">
-            {Number(draft.priceTon)} TON
+            {Number(draft.priceTon)} GRAM
           </p>
 
           <p className="text-xs text-zinc-500">
