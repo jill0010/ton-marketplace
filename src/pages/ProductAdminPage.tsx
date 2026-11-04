@@ -192,8 +192,8 @@ export function ProductAdminPage() {
       return;
     }
     const pageBasedGift = resolved?.type === "gift" && resolved.source === "telegram_web" && Boolean(resolved.image_url);
-    if (!resolved || (!pageBasedGift && (!resolved.verified_on_chain || !resolved.address))) {
-      setMessage("请先成功读取 NFT 图片和商品资料，再发布商品。");
+    if (!resolved || !resolved.image_url || (!pageBasedGift && (!resolved.verified_on_chain || !resolved.address))) {
+      setMessage("请先成功读取 NFT 原图并保存到商城图片库，再发布商品。");
       return;
     }
     const amount = Number(price);
