@@ -1,5 +1,5 @@
-import "@acton/io"
 import "@acton/env"
+import "@acton/io"
 import "@acton/emulation/network"
 import "@acton/emulation/scripts"
 
@@ -11,7 +11,8 @@ fun main() {
     val deployer = scripts.wallet("deployer");
     // Mainnet can use one interactive TON Connect signer plus a public treasury
     // address. Emulation/testnet can keep using a separately configured wallet.
-    val treasuryAddress = env<address>("PLATFORM_TREASURY_ADDRESS") ?? scripts.wallet("treasury").address;
+    val treasuryAddress = env<address>("PLATFORM_TREASURY_ADDRESS") ??
+        scripts.wallet("treasury").address;
 
     if (deployer.address == treasuryAddress) {
         println("Deployment aborted: owner and platform treasury must be different wallets");
