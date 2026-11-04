@@ -297,9 +297,9 @@ export function HomePage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {visibleProducts.map((product) => <ProductCard key={product.id} product={product} compact />)}
-                    {Array.from({ length: visibleProducts.length === 0 ? 6 : (6 - (visibleProducts.length % 6)) % 6 }, (_, index) => (
+                    {Array.from({ length: visibleProducts.length === 0 ? 5 : (5 - (visibleProducts.length % 5)) % 5 }, (_, index) => (
                       <div
                         key={`gift-slot-${index}`}
                         aria-hidden="true"
