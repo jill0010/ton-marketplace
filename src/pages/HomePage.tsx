@@ -4,7 +4,7 @@ import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
 import { getListedProducts } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
-import type { Product, ProductType, ListingMode } from "../types/product"
+import type { Product, ProductType } from "../types/product"
 
 const HOME_CATEGORIES = [
   { type: "number", en: "Numbers", zh: "匿名号码" },
@@ -31,7 +31,6 @@ export function HomePage() {
   const [error, setError] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<ProductType | null>("number")
-  const [listingMode, setListingMode] = useState<ListingMode>("sale")
   const [priceDescending, setPriceDescending] = useState(true)
   const [selectedGiftSeries, setSelectedGiftSeries] = useState<string | null>(null)
   const [giftSeriesQuery, setGiftSeriesQuery] = useState("")
@@ -77,7 +76,7 @@ export function HomePage() {
     const query = searchQuery.trim().toLowerCase()
     const result = products.filter((product) => {
       if (selectedType && product.type !== selectedType) return false
-      if ((product.listingMode ?? "sale") !== listingMode) return false
+      if (product.listingMode === "auction") return false
       if (selectedType === "gift" && selectedGiftSeries &&
         getGiftSeries(product.title) !== selectedGiftSeries) return false
       if (!query) return true
@@ -87,12 +86,11 @@ export function HomePage() {
     return result.sort((a, b) =>
       priceDescending ? b.priceTon - a.priceTon : a.priceTon - b.priceTon
     )
-  }, [products, searchQuery, selectedType, listingMode, selectedGiftSeries, priceDescending])
+  }, [products, searchQuery, selectedType, selectedGiftSeries, priceDescending])
 
   function selectCategory(type: ProductType) {
     setSelectedType(type)
     setSelectedGiftSeries(null)
-    setListingMode("sale")
   }
 
   const selectedTitle = selectedType
@@ -181,24 +179,6 @@ export function HomePage() {
           <h2 className="text-xl font-semibold tracking-tight text-white">{selectedTitle}</h2>
           {selectedType && (
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
-                <button
-                  type="button"
-                  aria-pressed={listingMode === "auction"}
-                  onClick={() => setListingMode("auction")}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listingMode === "auction" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"}`}
-                >
-                  {t("Auction", "拍卖")}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={listingMode === "sale"}
-                  onClick={() => setListingMode("sale")}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listingMode === "sale" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"}`}
-                >
-                  {t("For Sale", "出售")}
-                </button>
-              </div>
               <button
                 type="button"
                 onClick={() => setPriceDescending((current) => !current)}
@@ -257,22 +237,17 @@ export function HomePage() {
             <div className="min-w-0">
               {visibleProducts.length === 0 ? (
                 <p className="rounded-2xl border border-white/10 p-5 text-sm text-zinc-400">
-                  {listingMode === "auction"
-                    ? t("No auctions are listed yet.", "目前暂无拍卖商品。")
-                    : t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
+                  {t("No matching products. Try another keyword or collection.", "没有找到匹配商品，请更换关键词或系列。")}
                 </p>
               ) : (
                 selectedType === "username" || selectedType === "number" ? (
                   <div className="overflow-x-auto rounded-2xl border border-white/10">
-                    <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                    <table className="w-full min-w-[520px] border-collapse text-left text-sm">
                       <thead className="bg-white/[0.05] text-xs uppercase tracking-wide text-zinc-500">
                         <tr>
-                          <th className="px-5 py-4">{t("Name", "商品名称")}</th>
-                          <th className="px-5 py-4">{t("Username / Number", "用户名 / 号码")}</th>
+                          <th className="px-5 py-4">{selectedType === "username" ? t("Username", "用户名") : t("Number", "号码")}</th>
                           <th className="px-5 py-4">{t("Value", "价格")}</th>
-                          <th className="px-5 py-4">{t("Price type", "价格类型")}</th>
                           <th className="px-5 py-4">{t("Status", "状态")}</th>
-                          <th className="px-5 py-4">{t("Auction", "拍卖")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/10">
@@ -281,14 +256,16 @@ export function HomePage() {
                           const fragmentUrl = product.type === "username"
                             ? "https://fragment.com/username/" + rawName
                             : "https://fragment.com/number/" + rawName
-                          const isAuction = product.listingMode === "auction"
-                          const endTime = product.auctionEndsAt ? new Date(product.auctionEndsAt) : null
-                          const auctionClosing = endTime && Number.isFinite(endTime.getTime()) && endTime.getTime() > Date.now()
                           return (
                             <tr key={product.id} className="transition hover:bg-white/[0.035]">
                               <td className="px-5 py-4">
-                                <Link to={"/product/" + product.id} className="font-semibold text-white hover:text-sky-300">
-                                  {product.title}
+                                <Link to={"/product/" + product.id} className="inline-flex flex-col items-start">
+                                  <span className="font-semibold text-white hover:text-sky-300">
+                                    {product.type === "username" ? "@" + rawName : "+" + rawName}
+                                  </span>
+                                  {product.type === "username" && (
+                                    <span className="mt-0.5 text-xs text-sky-400 hover:text-sky-300">{rawName}.t.me</span>
+                                  )}
                                 </Link>
                               </td>
                               <td className="px-5 py-4">
@@ -299,20 +276,10 @@ export function HomePage() {
                               <td className="px-5 py-4 font-semibold tabular-nums text-white">
                                 {product.priceTon.toLocaleString()} <span className="text-zinc-500">{product.currency}</span>
                               </td>
-                              <td className="px-5 py-4 text-zinc-400">
-                                {t(isAuction ? "Starting price" : "Sale price", isAuction ? "起拍价" : "出售价格")}
-                              </td>
                               <td className="px-5 py-4">
                                 <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-1 text-xs text-emerald-300">
                                   {t("For sale", "出售中")}
                                 </span>
-                              </td>
-                              <td className="px-5 py-4 text-xs text-zinc-400">
-                                {isAuction
-                                  ? auctionClosing
-                                    ? t("Auction closes", "拍卖结束") + " " + endTime!.toLocaleString()
-                                    : t("Auction listing", "拍卖商品")
-                                  : "—"}
                               </td>
                             </tr>
                           )
