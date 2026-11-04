@@ -176,8 +176,8 @@ Deno.serve(async (req: Request) => {
       const { error: stateError } = await service.from("telegram_nft_index_sync_state").upsert({
         collection_address: collection.collection_address,
         asset_type: type,
-        cursor: complete ? null : String(offset),
-        is_complete: complete,
+        cursor: incrementalRefresh || complete ? null : String(offset),
+        is_complete: incrementalRefresh ? true : complete,
         items_synced: incrementalRefresh ? Number(state?.items_synced ?? 0) : Number(state?.items_synced ?? 0) + synced,
         last_synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
