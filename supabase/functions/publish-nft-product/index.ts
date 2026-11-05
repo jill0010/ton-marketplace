@@ -426,7 +426,7 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, code: "NFT_METADATA_NOT_VERIFIED", error: "TON Center has not verified this NFT Item and collection metadata." }, 403, origin);
     }
 
-    if (assetType === "phone_number") {
+    if (assetType === "username" || assetType === "phone_number") {
       let hasTeleitem = false;
       for (const [address, entry] of Object.entries(addressBook)) {
         try {
@@ -443,7 +443,11 @@ Deno.serve(async (req: Request) => {
         }
       }
       if (!hasTeleitem) {
-        return reply({ success: false, code: "TELEITEM_INTERFACE_MISSING", error: "This collectible number does not expose the required Telegram teleitem interface." }, 403, origin);
+        return reply({
+          success: false,
+          code: "TELEITEM_INTERFACE_MISSING",
+          error: "This Telegram collectible does not expose the required teleitem interface.",
+        }, 403, origin);
       }
     }
 
