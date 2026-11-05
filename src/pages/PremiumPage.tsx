@@ -870,7 +870,7 @@ export function PremiumPage() {
         <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight sm:text-4xl">{t("Buy Telegram Premium", "购买 Telegram Premium")}
           <img src="/premium-star-original.svg" alt="Telegram Premium" className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
         </h1>
-        <p className="text-sm leading-relaxed text-slate-300">Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.</p>
+        <p className="text-sm leading-relaxed text-slate-300">{t("Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.", "使用您的加密货币钱包为自己或您的朋友和同事购买 Telegram Premium 会员资格。")}</p>
       </div>
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[#13171c] p-5">
         <h2 className="px-4 text-sm font-semibold">{t("Choose recipient", "选择接收人")}</h2>
