@@ -10,6 +10,7 @@ on:
       - "contracts/**"
       - "supabase/functions/publish-nft-product/**"
       - ".github/workflows/contracts.yml"
+      - ".github/workflows/deploy-marketplace-v2-mainnet.yml"
   pull_request:
     branches:
       - main
