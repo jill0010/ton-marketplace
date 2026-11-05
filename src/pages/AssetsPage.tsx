@@ -18,6 +18,33 @@ type NftAsset = {
 type ListingMode = "auction" | "sale"
 
 const ESCROW_ADDRESS = "UQC5nJds9rVxaDKAT-lQeJOzBlVXRj79xqUJ2k1eN4cLdWph"
+const ASSET_CACHE_TTL_MS = 60_000
+
+type CachedAssets = { savedAt: number; items: NftAsset[]; truncated: boolean }
+
+function readAssetCache(walletAddress: string): CachedAssets | null {
+  try {
+    const raw = sessionStorage.getItem(`ton-marketplace:wallet-assets:${walletAddress.toLowerCase()}`)
+    if (!raw) return null
+    const cached = JSON.parse(raw) as CachedAssets
+    if (!Array.isArray(cached.items) || typeof cached.savedAt !== "number") return null
+    if (Date.now() - cached.savedAt > ASSET_CACHE_TTL_MS) return null
+    return cached
+  } catch {
+    return null
+  }
+}
+
+function writeAssetCache(walletAddress: string, items: NftAsset[], truncated: boolean) {
+  try {
+    sessionStorage.setItem(
+      `ton-marketplace:wallet-assets:${walletAddress.toLowerCase()}`,
+      JSON.stringify({ savedAt: Date.now(), items, truncated } satisfies CachedAssets),
+    )
+  } catch {
+    // Storage can be unavailable or full; live wallet reads must still work.
+  }
+}
 
 export function AssetsPage() {
   const { t } = useLanguage()
@@ -58,6 +85,12 @@ export function AssetsPage() {
       return
     }
 
+    const cached = readAssetCache(walletAddress)
+    if (cached) {
+      // Render the last successful wallet snapshot immediately while refreshing.
+      setAssets(cached.items)
+      setTruncated(cached.truncated)
+    }
     setLoading(true)
     setError("")
     setNotice("")
@@ -78,6 +111,7 @@ export function AssetsPage() {
       )
       setAssets(valid)
       setTruncated(data.truncated === true)
+      writeAssetCache(walletAddress, valid, data.truncated === true)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "读取钱包资产失败")
     } finally {
