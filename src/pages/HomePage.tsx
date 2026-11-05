@@ -33,6 +33,7 @@ export function HomePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<ProductType | null>("number")
   const [priceDescending, setPriceDescending] = useState(true)
+  const [priceSortActive, setPriceSortActive] = useState(false)
   const [selectedGiftSeries, setSelectedGiftSeries] = useState<string | null>(null)
   const [giftSeriesQuery, setGiftSeriesQuery] = useState("")
 
@@ -84,10 +85,13 @@ export function HomePage() {
       return [product.title, product.subtitle, product.id]
         .some((field) => field.toLowerCase().includes(query))
     })
-    return result.sort((a, b) =>
-      priceDescending ? b.priceTon - a.priceTon : a.priceTon - b.priceTon
-    )
-  }, [products, searchQuery, selectedType, selectedGiftSeries, priceDescending])
+    return result.sort((a, b) => {
+      if (priceSortActive) {
+        return priceDescending ? b.priceTon - a.priceTon : a.priceTon - b.priceTon
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [products, searchQuery, selectedType, selectedGiftSeries, priceDescending, priceSortActive])
 
   function selectCategory(type: ProductType) {
     setSelectedType(type)
@@ -180,12 +184,12 @@ export function HomePage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setPriceDescending((current) => !current)}
+                onClick={() => { setPriceSortActive(true); setPriceDescending((current) => !current) }}
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
                 aria-label={t("Toggle price ranking order", "切换价格排行顺序")}
               >
                 {t("Price Ranking", "价格排行")}
-                <span className="text-sky-300">{priceDescending ? "↓" : "↑"}</span>
+                <span className="text-sky-300">{priceSortActive ? (priceDescending ? "↓" : "↑") : ""}</span>
               </button>
             </div>
           )}
