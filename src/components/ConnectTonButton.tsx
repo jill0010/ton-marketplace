@@ -25,15 +25,15 @@ function MenuIcon({ name }: { name: MenuItem["icon"] }) {
     case "profile":
       return <svg viewBox="0 0 24 24" {...common}><circle cx="12" cy="12" r="9.5" /><circle cx="12" cy="9" r="3" /><path d="M6.8 18.2a5.7 5.7 0 0 1 10.4 0" /></svg>
     case "assets":
-      return <svg viewBox="0 0 24 24" {...common}><rect x="3" y="5" width="18" height="14" rx="1.8" /><path d="M3 8.2h18" /><rect x="9.2" y="10.2" width="5.6" height="4.1" rx="0.8" /></svg>
+      return <svg viewBox="0 0 24 24" {...common}><rect x="2.8" y="3.7" width="18.4" height="16.6" rx="1.4" /><path d="M9.2 3.7v4.6h5.6V3.7" /><path d="M9.2 8.3h5.6" /><path d="M11.1 12.1h1.8" /></svg>
     case "bids":
-      return <svg viewBox="0 0 24 24" {...common}><circle cx="12" cy="12" r="9.5" /><path d="M7 6.5h10L12 17.5 7 6.5Z" /></svg>
+      return <svg viewBox="0 0 24 24" {...common}><circle cx="12" cy="12" r="9.5" /><path d="M7.3 6.6h9.4L12 17.4 7.3 6.6Z" /><path d="M12 6.6v10.8" /></svg>
     case "numbers":
-      return <svg viewBox="0 0 24 24" {...common}><path d="M6.4 3.1c1.2-.4 2.4.3 2.8 1.5l.8 2.2c.3.8 0 1.7-.7 2.3l-1.2 1a14 14 0 0 0 6.8 6.8l1-1.2c.6-.7 1.5-1 2.3-.7l2.2.8c1.2.4 1.9 1.6 1.5 2.8l-.5 1.3c-.5 1.3-1.8 2-3.2 1.8C9.8 21 3 14.2 2.3 5.8 2.2 4.4 2.9 3.1 4.2 2.6l2.2-.8Z" /><rect x="15.2" y="2.2" width="6.2" height="6.2" rx="1.1" /><path d="M16.9 2.2v-1a1.4 1.4 0 0 1 2.8 0v1" /></svg>
+      return <svg viewBox="0 0 24 24" {...common}><path d="M6.1 3.2c1.1-.3 2.2.3 2.6 1.4l.8 2.1c.3.8.1 1.6-.6 2.2l-1.2 1a13.6 13.6 0 0 0 6.4 6.4l1-1.2c.6-.7 1.4-.9 2.2-.6l2.1.8c1.1.4 1.7 1.5 1.4 2.6l-.5 1.5c-.4 1.2-1.7 1.9-2.9 1.7C9.4 20.2 3.8 14.6 3 6.6 2.8 5.4 3.5 4.1 4.7 3.7l1.4-.5Z" /><rect x="15.1" y="2.4" width="6.1" height="6.1" rx="1.1" /><path d="M16.7 2.4V1.7a1.45 1.45 0 0 1 2.9 0v.7" /></svg>
     case "sessions":
-      return <svg viewBox="0 0 24 24" {...common}><rect x="3.5" y="3" width="15.5" height="15" rx="1.5" /><path d="M1.5 21h15.5" /><rect x="16.5" y="8.5" width="6" height="11.5" rx="1.1" /></svg>
+      return <svg viewBox="0 0 24 24" {...common}><rect x="4.1" y="2.8" width="15.1" height="14.2" rx="1.3" /><path d="M1.8 20.1h14.4" /><rect x="17.2" y="8.3" width="5" height="11.2" rx="1" /></svg>
     case "logout":
-      return <svg viewBox="0 0 24 24" {...common}><path d="M13 3.5H5.2A2.2 2.2 0 0 0 3 5.7v12.6a2.2 2.2 0 0 0 2.2 2.2H13" /><path d="M12 8l4 4-4 4M7 12h9" /><path d="M16 12h5" /></svg>
+      return <svg viewBox="0 0 24 24" {...common}><path d="M13.2 3.1H5.1a2 2 0 0 0-2 2v13.8a2 2 0 0 0 2 2h8.1" /><path d="M13.1 8.1 17 12l-3.9 3.9" /><path d="M8.2 12H17" /></svg>
   }
 }
 
