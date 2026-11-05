@@ -54,7 +54,7 @@ export function AssetsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [truncated, setTruncated] = useState(false)
-  const [mode, setMode] = useState<ListingMode | null>(null)
+  const [mode, setMode] = useState<"sale" | null>(null)
   const [selected, setSelected] = useState<NftAsset | null>(null)
   const [salePrice, setSalePrice] = useState("")
   const [notice, setNotice] = useState("")
