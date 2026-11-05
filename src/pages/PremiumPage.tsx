@@ -749,7 +749,7 @@ export function PremiumPage() {
     }
     const recipientUsername = username.trim().replace(/^@+/, "")
     if (!/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(recipientUsername)) {
-      setCheckoutMessage(t("Enter a valid Telegram username (4–32 characters).", "请输入有效的 Telegram 用户名（5–32 个字符）。"))
+      setCheckoutMessage(t("Enter a valid Telegram username (4–32 characters).", "请输入有效的 Telegram 用户名（4–32 个字符）。"))
       return
     }
 
@@ -856,12 +856,13 @@ export function PremiumPage() {
 
 
   return (
-    <div className="mx-auto min-h-screen max-w-xl space-y-6 bg-[#1b2229] px-3 py-5 text-white sm:px-5">
-      <section className="space-y-3">
+    <div className="mx-auto min-h-screen max-w-2xl space-y-6 bg-[#0b0d12] px-4 py-7 text-white sm:px-6">
+      <h1 className="px-1 text-2xl font-bold tracking-tight">{t("Buy Telegram Premium", "购买 Telegram Premium")} <span aria-hidden="true">✦</span></h1>
+      <section className="space-y-3 rounded-2xl border border-white/10 bg-[#13171c] p-5">
         <h2 className="px-4 text-sm font-semibold">{t("Choose recipient", "选择接收人")}</h2>
         <div className="flex items-center gap-3 rounded-xl bg-[#252f39] px-4 py-3">
           <span className="text-zinc-400">⌕</span>
-          <input id="premium-username" value={username} onChange={(event) => setUsername(event.target.value.replace(/^@+/, ""))} placeholder={t("Enter Telegram username...", "输入 Telegram 用户名...")} autoComplete="off" maxLength={33} className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
+          <input id="premium-username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t("Enter Telegram username...", "输入 Telegram 用户名...")} autoComplete="off" maxLength={33} className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
         </div>
         {(profileLookupState === "waiting" || profileLookupState === "loading") && <p className="px-4 text-xs text-sky-300">{profileLookupState === "waiting" ? t("Preparing profile lookup…", "准备查询资料……") : t("Looking up Telegram profile…", "正在查询 Telegram 资料……")}</p>}
         {profileLookupState === "error" && <p className="px-4 text-xs text-amber-300">{profileLookupMessage}</p>}
@@ -873,33 +874,31 @@ export function PremiumPage() {
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between px-4"><h2 className="text-sm font-semibold">{t("Choose duration", "选择会员时长")}</h2><span className="rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-400">{t("UP TO -72%", "最高优惠 -72%")}</span></div>
+        <h2 className="px-1 text-sm font-semibold">{t("Choose duration", "选择持续时间")}</h2>
         {!loading && !loadError && plans.map((plan) => {
           const active = selectedPlan === plan.id
           const discount = ({ month: 18, quarter: 30, "half-year": 57, year: 72 } as Record<string, number>)[plan.id] ?? 0
-          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left ${active ? "border-sky-400 bg-[#25313c]" : "border-transparent bg-[#252f39]"}`}>
+          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`grid w-full grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border px-4 py-3.5 text-left ${active ? "border-sky-400 bg-[#13171c]" : "border-white/10 bg-[#13171c] hover:border-white/20"}`}>
             <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-sky-400" : "border-slate-500"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />}</span>
-            <span className="min-w-0 flex-1 text-sm font-semibold">{t(plan.period, plan.periodZh)}</span>
-            <span className="rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold">-{discount}%</span>
-            <span className="whitespace-nowrap text-sm font-semibold">◆ ${plan.marketUsd.toFixed(2)}</span>
+            <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">{t(plan.period, plan.periodZh)} <span className="rounded-full bg-sky-500 px-2 py-1 text-[10px] font-bold text-white">-{discount}%</span></span>
+            <span className="whitespace-nowrap text-xs text-slate-400">Ton价格</span>
+            <span className="whitespace-nowrap text-sm font-bold">${plan.marketUsd.toFixed(2)}</span>
           </button>
         })}
         {loading && <p className="px-4 text-xs text-slate-400">{t("Loading plans…", "正在加载套餐……")}</p>}
         {loadError && <p className="px-4 text-xs text-red-300">{loadError}</p>}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="px-4 text-sm font-semibold">{t("Payment Method", "支付方式")}</h2>
+      <section className="space-y-4 rounded-2xl border border-white/10 bg-[#13171c] p-5">
+        <h2 className="text-sm font-semibold">{t("Payment Method", "付款方式")}</h2>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-3 text-sm font-semibold ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#25313c] text-sky-300" : "border-transparent bg-[#252f39]"}`}>◆ GRAM</button>
-          <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-3 text-sm font-semibold ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#25313c] text-emerald-300" : "border-transparent bg-[#252f39]"}`}>₮ USDT · TRC20</button>
+          <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-4 text-left text-sm font-semibold ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#0f1216]" : "border-white/10 bg-[#0f1216]"}`}><span className="block">GRAM</span><span className="mt-1 block text-xs font-normal text-slate-400">TON 网络</span></button>
+          <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-4 text-left text-sm font-semibold ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#0f1216]" : "border-white/10 bg-[#0f1216]"}`}><span className="block">USDT</span><span className="mt-1 block text-xs font-normal text-slate-400">TRC20</span></button>
         </div>
       </section>
 
       {paymentMethod === "GRAM" ? <section className="space-y-3">
-        <div className="flex items-center justify-between rounded-xl bg-[#252f39] p-3"><div className="min-w-0"><p className="text-sm font-semibold">{t("TON wallet", "TON 钱包")}</p><p className="mt-1 truncate text-xs text-slate-400">{walletAddress || t("Connect wallet to pay with GRAM", "连接钱包后使用 GRAM 付款")}</p><p className={`mt-1 text-xs ${isWalletVerified ? "text-emerald-300" : "text-amber-300"}`}>{isWalletVerified ? t("Wallet verified", "钱包已验证") : proofMessage || t("Wallet verification required", "需要验证钱包")}</p></div>
-          {!walletAddress ? <button type="button" onClick={connectAndVerifyWallet} disabled={connecting || verifying} className="shrink-0 rounded-lg bg-sky-500 px-3 py-2 text-xs font-semibold disabled:opacity-50">{connecting || verifying ? t("Connecting…", "连接中……") : t("Connect", "连接钱包")}</button> : <TonConnectButton />}
-        </div>
+        <div className="flex items-center justify-between gap-3"><span className="text-xs text-slate-400">{proofMessage || (isWalletVerified ? t("TON wallet connected and verified", "TON 钱包已连接并验证") : t("Connect a TON wallet to pay with GRAM", "使用 GRAM 付款需要连接 TON 钱包"))}</span>{!walletAddress ? <button type="button" onClick={connectAndVerifyWallet} disabled={connecting || verifying} className="shrink-0 rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold disabled:opacity-50">{connecting || verifying ? t("Connecting…", "连接中……") : t("Connect wallet", "连接钱包")}</button> : <TonConnectButton />}</div>
         {selected && <p className="text-right text-sm text-slate-300">GRAM: <b className="text-white">{selected.gramPrice.toFixed(2)}</b></p>}
         <button type="button" onClick={buyPremiumWithGram} disabled={checkoutBusy || !isWalletVerified || loading || Boolean(loadError) || !selected} className="w-full rounded-xl bg-sky-500 px-4 py-3 font-semibold text-white disabled:opacity-40">{checkoutBusy ? t("Processing…", "处理中……") : t("Gift Telegram Premium", "赠送 Telegram Premium")}</button>
         {pendingOrderId && <button type="button" onClick={() => void verifyGramOrder(pendingOrderId)} disabled={checkoutBusy} className="w-full rounded-xl border border-white/15 px-4 py-2 text-sm">{t("Check payment", "核实付款")}</button>}
