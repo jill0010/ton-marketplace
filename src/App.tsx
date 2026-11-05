@@ -9,6 +9,7 @@ import { LanguageProvider } from "./lib/language"
 
 const FragmentCatalogPage = lazy(() => import("./pages/FragmentCatalogPage").then((module) => ({ default: module.FragmentCatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
+const AssetsPage = lazy(() => import("./pages/AssetsPage").then((module) => ({ default: module.AssetsPage })))
 const ProductPage = lazy(() => import("./pages/ProductPage").then((module) => ({ default: module.ProductPage })))
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
@@ -57,6 +58,7 @@ export default function App() {
 
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/assets" element={<RouteErrorBoundary><AssetsPage /></RouteErrorBoundary>} />
                 <Route path="/catalog" element={<Navigate to="/" replace />} />
                 <Route path="/fragment-market" element={<FragmentCatalogPage />} />
                 <Route path="/premium" element={<RouteErrorBoundary><PremiumPage /></RouteErrorBoundary>} />
