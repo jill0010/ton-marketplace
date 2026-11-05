@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_mainnet_deployment:
-        description: "I understand this broadcasts irreversible transactions and spends mainnet GRAM."
+        description: "I understand this broadcasts irreversible TON mainnet transactions and spends mainnet TON for deployment fees."
         required: true
         type: boolean
         default: false
