@@ -4,6 +4,7 @@ import { TonConnectUIProvider } from "@tonconnect/ui-react"
 import { Layout } from "./components/Layout"
 import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary"
 import { LanguageProvider } from "./lib/language"
 
 const FragmentCatalogPage = lazy(() => import("./pages/FragmentCatalogPage").then((module) => ({ default: module.FragmentCatalogPage })))
@@ -44,7 +45,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/catalog" element={<Navigate to="/" replace />} />
                 <Route path="/fragment-market" element={<FragmentCatalogPage />} />
-                <Route path="/premium" element={<PremiumPage />} />
+                <Route path="/premium" element={<RouteErrorBoundary><PremiumPage /></RouteErrorBoundary>} />
                 <Route path="/premium/history" element={<PremiumHistoryPage />} />
                 <Route path="/product/:id" element={<ProductPage />} />
                 <Route path="/publish" element={<Navigate to="/" replace />} />
