@@ -41,6 +41,42 @@ const TRANSLATIONS: Partial<Record<Language, Record<string, string>>> = {
     "Numbers": "匿名號碼",
     "Gifts": "收藏禮物",
   },
+  ja: {
+    "Home": "ホーム", "All Products": "すべての商品", "View All Products": "すべての商品を見る",
+    "Publish Product": "商品を出品", "Connect wallet": "ウォレットを接続", "Connect TON Wallet": "TONウォレットを接続",
+    "Payment Method": "支払い方法", "Wallet verified": "ウォレット確認済み", "Verification required": "認証が必要です",
+    "Not connected": "未接続", "Preparing...": "準備中...", "Verifying...": "確認中...",
+    "Telegram Premium": "Telegram Premium", "View Details": "詳細を見る", "Listed Products": "出品中の商品",
+    "Loading products…": "商品を読み込み中…", "Retry": "再試行", "Loading…": "読み込み中…",
+    "Usernames": "ユーザー名", "Numbers": "番号", "Gifts": "ギフト", "Sell": "販売",
+    "My Assets": "マイアセット", "My Profile": "マイプロフィール", "My Bids": "入札履歴",
+    "My Numbers": "マイナンバー", "Active Sessions": "アクティブセッション", "Log out": "ログアウト",
+    "Select language": "言語を選択", "Back to marketplace": "マーケットプレイスに戻る",
+  },
+  fr: {
+    "Home": "Accueil", "All Products": "Tous les produits", "View All Products": "Voir tous les produits",
+    "Publish Product": "Publier un produit", "Connect wallet": "Connecter le portefeuille", "Connect TON Wallet": "Connecter le portefeuille TON",
+    "Payment Method": "Mode de paiement", "Wallet verified": "Portefeuille vérifié", "Verification required": "Vérification requise",
+    "Not connected": "Non connecté", "Preparing...": "Préparation...", "Verifying...": "Vérification...",
+    "Telegram Premium": "Telegram Premium", "View Details": "Voir les détails", "Listed Products": "Produits en vente",
+    "Loading products…": "Chargement des produits…", "Retry": "Réessayer", "Loading…": "Chargement…",
+    "Usernames": "Noms d’utilisateur", "Numbers": "Numéros", "Gifts": "Cadeaux", "Sell": "Vendre",
+    "My Assets": "Mes actifs", "My Profile": "Mon profil", "My Bids": "Mes offres",
+    "My Numbers": "Mes numéros", "Active Sessions": "Sessions actives", "Log out": "Déconnexion",
+    "Select language": "Choisir la langue", "Back to marketplace": "Retour à la marketplace",
+  },
+  es: {
+    "Home": "Inicio", "All Products": "Todos los productos", "View All Products": "Ver todos los productos",
+    "Publish Product": "Publicar producto", "Connect wallet": "Conectar cartera", "Connect TON Wallet": "Conectar cartera TON",
+    "Payment Method": "Método de pago", "Wallet verified": "Cartera verificada", "Verification required": "Verificación necesaria",
+    "Not connected": "No conectada", "Preparing...": "Preparando...", "Verifying...": "Verificando...",
+    "Telegram Premium": "Telegram Premium", "View Details": "Ver detalles", "Listed Products": "Productos publicados",
+    "Loading products…": "Cargando productos…", "Retry": "Reintentar", "Loading…": "Cargando…",
+    "Usernames": "Nombres de usuario", "Numbers": "Números", "Gifts": "Regalos", "Sell": "Vender",
+    "My Assets": "Mis activos", "My Profile": "Mi perfil", "My Bids": "Mis ofertas",
+    "My Numbers": "Mis números", "Active Sessions": "Sesiones activas", "Log out": "Cerrar sesión",
+    "Select language": "Seleccionar idioma", "Back to marketplace": "Volver al mercado",
+  },
   ru: {
     "Default sorting": "Сортировка по умолчанию",
     "Price: Low to High": "Цена: по возрастанию",
@@ -117,7 +153,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     try {
       const saved = localStorage.getItem("ton-marketplace-language")
-      return saved === "zh" || saved === "zh-TW" || saved === "ru" || saved === "ar"
+      return saved === "zh" || saved === "zh-TW" || saved === "ru" || saved === "ar" || saved === "ja" || saved === "fr" || saved === "es"
         ? saved
         : "en"
     } catch {
@@ -143,7 +179,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang =
       language === "zh" ? "zh-CN" :
-      language === "zh-TW" ? "zh-TW" : language
+      language === "zh-TW" ? "zh-TW" : language === "ja" ? "ja" : language === "fr" ? "fr" : language === "es" ? "es" : language
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr"
   }, [language])
 
