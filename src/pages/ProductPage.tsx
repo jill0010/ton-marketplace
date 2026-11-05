@@ -116,7 +116,10 @@ export function ProductPage() {
         paymentAddress: data.paymentAddress,
         expiresAt: data.expiresAt,
       })
-      setCheckoutMessage("订单已创建，请在有效期内完成付款。")
+      setPaymentVerified(data.paymentVerified === true)
+      setCheckoutMessage(data.paymentVerified === true
+        ? "该订单已确认收款，正在等待管理员人工交付。"
+        : "订单已创建，请在有效期内完成付款。")
     } catch (cause) {
       setCheckoutMessage(cause instanceof Error ? cause.message : "创建订单失败。")
     } finally {
