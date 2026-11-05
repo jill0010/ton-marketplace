@@ -55,6 +55,18 @@ Passing emulator tests are not a substitute for a testnet rehearsal or an indepe
 - publish-nft-product is deliberately a verification-and-sync endpoint, not a new-listing gate. It must remain able to mirror an already deposited NFT even if the UI rollout flag is later disabled; blocking recovery after custody transfer could strand a seller's NFT.
 - The actual on-chain permission gate is the Escrow collection status and approved Item Code mapping. Do not enable those collection policies until the exact mainnet Item code has been independently verified. The public Telegram username and +888 rows in telegram_nft_collection_allowlist currently enable wallet asset discovery only. Gift collections remain disabled until each collection is independently verified.
 
+### GitHub Actions testnet rehearsal
+
+The repository provides a separately gated workflow at `.github/workflows/deploy-marketplace-v2-testnet.yml`. Run this before any mainnet deployment. It deploys fresh Marketplace V2 and NFT Escrow V2 contracts to TON Testnet, configures the escrow binding and immutable treasury, and records both public contract addresses in the workflow summary.
+
+Configure these repository secrets for the testnet workflow:
+
+- `TESTNET_DEPLOYER_MNEMONIC` — a dedicated testnet-only V5R1 deployer wallet mnemonic. Never reuse a mainnet mnemonic.
+- `PLATFORM_TREASURY_TESTNET_ADDRESS` — a testnet treasury address different from the deployer.
+- `TONCENTER_TESTNET_API_KEY` — a TON Center testnet API key.
+
+The testnet workflow does not enable any NFT collection and does not make listings available. A successful deployment is only the start of rehearsal: test official collection Item code hashes, seller deposit, buyer purchase, NFT delivery, both payout legs, failure compensation, and recovery against the deployed testnet addresses before requesting mainnet release.
+
 ### GitHub Actions mainnet deployment
 
 The repository includes a manually dispatched workflow at `.github/workflows/deploy-marketplace-v2-mainnet.yml`. It does not deploy on push. The operator must explicitly check the irreversible-mainnet-deployment confirmation input.
