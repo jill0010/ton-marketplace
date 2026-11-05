@@ -189,15 +189,13 @@ Deno.serve(async (request: Request) => {
       );
       const results = await Promise.all(pageNumbers.map(fetchNftPage));
 
-      lastPageSize = 0;
-      for (const result of results) {
-        const resultSize = mergePage(result);
-        if (resultSize > lastPageSize) lastPageSize = resultSize;
-      }
+      const pageSizes = results.map((result) => mergePage(result));
+      lastPageSize = pageSizes[pageSizes.length - 1] ?? 0;
       pagesFetched += batchSize;
 
       // A short page marks the end of the result set. Do not request further offsets.
-      if (results.some((result) => (result.nft_items ?? []).length < pageSize)) {
+      if (pageSizes.some((size) => size < pageSize)) {
+        lastPageSize = 0;
         break;
       }
     }
