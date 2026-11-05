@@ -5,6 +5,7 @@ import { ProductCard } from "../components/ProductCard"
 import { GramTokenMark } from "../components/GramTokenMark"
 import { getListedProducts } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
+import { formatTelegramNumber } from "../lib/formatTelegramNumber"
 import type { Product, ProductType } from "../types/product"
 
 const HOME_CATEGORIES = [
@@ -257,11 +258,24 @@ export function HomePage() {
                         {visibleProducts.map((product) => {
                           const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
                           return (
-                            <tr key={product.id} className="bg-white/[0.06] transition hover:bg-white/[0.11]">
+                            <tr key={product.id} className="cursor-pointer bg-white/[0.06] transition hover:bg-white/[0.11] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400"
+                              role="link"
+                              tabIndex={0}
+                              aria-label={t("View product details", "查看商品详情") + ": " + product.title}
+                              onClick={(event) => {
+                                if ((event.target as HTMLElement).closest("a, button, input, select, textarea")) return
+                                navigate("/product/" + product.id)
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault()
+                                  navigate("/product/" + product.id)
+                                }
+                              }}>
                               <td className="px-5 py-3">
                                 <Link to={"/product/" + product.id} className="group inline-flex flex-col items-start">
                                   <span className="text-[15px] font-bold text-white transition group-hover:text-sky-300">
-                                    {product.type === "username" ? "@" + rawName : "+" + rawName}
+                                    {product.type === "username" ? "@" + rawName : formatTelegramNumber("+" + rawName)}
                                   </span>
                                   {product.type === "username" && (
                                     <span className="mt-0.5 text-xs font-medium text-[#38a9ff] transition group-hover:text-[#70c2ff]">
