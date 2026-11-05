@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
-import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
+import { useTonAddress, useTonConnectUI, useTonWallet } from "@tonconnect/ui-react"
 import { GramTokenMark } from "../components/GramTokenMark"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
@@ -22,6 +22,7 @@ const ESCROW_ADDRESS = "UQC5nJds9rVxaDKAT-lQeJOzBlVXRj79xqUJ2k1eN4cLdWph"
 export function AssetsPage() {
   const { t } = useLanguage()
   const walletAddress = useTonAddress()
+  const wallet = useTonWallet()
   const [tonConnectUI] = useTonConnectUI()
   const [searchParams, setSearchParams] = useSearchParams()
   const [assets, setAssets] = useState<NftAsset[]>([])
@@ -48,6 +49,12 @@ export function AssetsPage() {
   async function loadAssets() {
     if (!walletAddress) {
       setAssets([])
+      return
+    }
+
+    if (wallet?.account.chain !== "-239") {
+      setAssets([])
+      setError(t("Switch your connected wallet to TON Mainnet to read its assets.", "请将已连接的钱包切换到 TON 主网后再读取资产。"))
       return
     }
 
@@ -82,7 +89,7 @@ export function AssetsPage() {
     void loadAssets()
     // Load public on-chain NFT holdings as soon as TON Connect provides the wallet address.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletAddress])
+  }, [walletAddress, wallet?.account.chain])
 
   function openListing(asset: NftAsset, nextMode: ListingMode) {
     setSelected(asset)
