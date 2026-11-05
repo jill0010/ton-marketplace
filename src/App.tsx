@@ -9,7 +9,6 @@ import { LanguageProvider } from "./lib/language"
 const FragmentCatalogPage = lazy(() => import("./pages/FragmentCatalogPage").then((module) => ({ default: module.FragmentCatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
 const ProductPage = lazy(() => import("./pages/ProductPage").then((module) => ({ default: module.ProductPage })))
-const PublishPage = lazy(() => import("./pages/PublishPage").then((module) => ({ default: module.PublishPage })))
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
@@ -48,7 +47,7 @@ export default function App() {
                 <Route path="/premium" element={<PremiumPage />} />
                 <Route path="/premium/history" element={<PremiumHistoryPage />} />
                 <Route path="/product/:id" element={<ProductPage />} />
-                <Route path="/publish" element={<PublishPage />} />
+                <Route path="/publish" element={<Navigate to="/" replace />} />
 
                 <Route element={<AdminRoute />}>
                   <Route path="/admin/products" element={<ProductAdminPage />} />
