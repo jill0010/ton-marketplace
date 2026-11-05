@@ -429,3 +429,6 @@ verify_jwt = true
 
 [functions.create-usdt-premium-order]
 verify_jwt = true
+
+[functions.admin-confirm-usdt-payment]
+verify_jwt = true
