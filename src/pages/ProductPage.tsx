@@ -2,6 +2,7 @@
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
 import { useLanguage } from "../lib/useLanguage"
+import { formatTelegramNumber } from "../lib/formatTelegramNumber"
 import { GramTokenMark } from "../components/GramTokenMark"
 import {
   PRODUCT_TYPE_LABELS,
@@ -175,7 +176,7 @@ export function ProductPage() {
         </p>
       )}
 
-      <h1 className="text-4xl font-medium text-white">{product.title}</h1>
+      <h1 className="text-4xl font-medium text-white">{product.type === "number" ? formatTelegramNumber(product.title) : product.title}</h1>
 
       <p className="text-zinc-400">{product.subtitle}</p>
 
