@@ -87,6 +87,7 @@ export function AdminRoute() {
           <Link to="/admin/premium-pricing" className="text-sm text-zinc-300 hover:text-white">Premium 定价</Link>
           <Link to="/admin/products" className="text-sm text-zinc-300 hover:text-white">商品管理</Link>
           <Link to="/admin/product-orders" className="text-sm text-zinc-300 hover:text-white">商品交付</Link>
+          <Link to="/admin/marketplace-orders" className="text-sm text-zinc-300 hover:text-white">交易托管</Link>
           <Link to="/admin/wallet-settings" className="text-sm text-zinc-300 hover:text-white">托管钱包</Link>
         </div>
 
