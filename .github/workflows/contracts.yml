@@ -50,6 +50,11 @@ jobs:
       - name: Check Fragment NFT Item code policy
         run: node scripts/check-fragment-item-code-policy.mjs
 
+      - name: Check official Fragment NFT libraries on Testnet (read-only)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: node scripts/check-testnet-fragment-libraries.mjs
+
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
