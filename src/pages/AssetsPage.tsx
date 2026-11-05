@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { useTonAddress, useTonConnectUI, useTonWallet } from "@tonconnect/ui-react"
-import { GramTokenMark } from "../components/GramTokenMark"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
 
@@ -15,7 +14,6 @@ type NftAsset = {
   image_url: string | null
 }
 
-type ListingMode = "auction" | "sale"
 
 const ESCROW_ADDRESS = "UQC5nJds9rVxaDKAT-lQeJOzBlVXRj79xqUJ2k1eN4cLdWph"
 const ASSET_CACHE_TTL_MS = 60_000
@@ -58,8 +56,6 @@ export function AssetsPage() {
   const [truncated, setTruncated] = useState(false)
   const [mode, setMode] = useState<ListingMode | null>(null)
   const [selected, setSelected] = useState<NftAsset | null>(null)
-  const [minimumBid, setMinimumBid] = useState("")
-  const [maximumBid, setMaximumBid] = useState("")
   const [salePrice, setSalePrice] = useState("")
   const [notice, setNotice] = useState("")
 
@@ -125,11 +121,9 @@ export function AssetsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletAddress, wallet?.account.chain])
 
-  function openListing(asset: NftAsset, nextMode: ListingMode) {
+  function openListing(asset: NftAsset) {
     setSelected(asset)
-    setMode(nextMode)
-    setMinimumBid("")
-    setMaximumBid("")
+    setMode("sale")
     setSalePrice("")
     setNotice("")
   }
@@ -138,10 +132,6 @@ export function AssetsPage() {
 
   function submitListingIntent() {
     if (!selected || !mode) return
-    if (mode === "auction" && (!validAmount(minimumBid) || (maximumBid && (!validAmount(maximumBid) || Number(maximumBid) < Number(minimumBid))))) {
-      setNotice(t("Enter a valid minimum bid. The maximum bid is optional and must not be below the minimum.", "请输入有效的最低出价。最高出价为选填，且不能低于最低出价。"))
-      return
-    }
     if (mode === "sale" && !validAmount(salePrice)) {
       setNotice(t("Enter a valid sale price.", "请输入有效的出售价格。"))
       return
@@ -219,14 +209,9 @@ export function AssetsPage() {
                     <h2 className="mt-1 break-words font-semibold text-white">{asset.name}</h2>
                     <p className="mt-1 break-all text-[11px] text-zinc-500">{asset.address}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => openListing(asset, "auction")} className="rounded-xl bg-sky-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-sky-400">
-                      {t("Auction", "拍卖")}
-                    </button>
-                    <button type="button" onClick={() => openListing(asset, "sale")} className="rounded-xl border border-sky-400/40 px-3 py-2.5 text-sm font-semibold text-sky-300 hover:bg-sky-400/10">
-                      {t("Sell", "出售")}
-                    </button>
-                  </div>
+                  <button type="button" onClick={() => openListing(asset)} className="w-full rounded-xl border border-sky-400/40 px-3 py-2.5 text-sm font-semibold text-sky-300 hover:bg-sky-400/10">
+                    {t("Sell", "出售")}
+                  </button>
                 </div>
               </article>
             ))}
@@ -242,29 +227,16 @@ export function AssetsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs text-sky-300">{typeLabel(selected.type)}</p>
-                <h2 id="asset-listing-title" className="mt-1 text-xl font-semibold text-white">{mode === "auction" ? t("Create auction", "发起拍卖") : t("Set sale price", "设置出售价格")}</h2>
+                <h2 id="asset-listing-title" className="mt-1 text-xl font-semibold text-white">{t("Set sale price", "设置出售价格")}</h2>
                 <p className="mt-1 text-sm text-zinc-400">{selected.name}</p>
               </div>
               <button type="button" onClick={() => setMode(null)} aria-label="Close" className="rounded-full px-3 py-1 text-xl text-zinc-400 hover:bg-white/10">×</button>
             </div>
 
-            {mode === "auction" ? (
-              <div className="space-y-3">
-                <label className="block space-y-2 text-sm text-zinc-300">
-                  <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Minimum bid", "最低出价")}</span>
-                  <input inputMode="decimal" value={minimumBid} onChange={(event) => setMinimumBid(event.target.value)} placeholder="0.1" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
-                </label>
-                <label className="block space-y-2 text-sm text-zinc-300">
-                  <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Maximum bid (optional)", "最高出价（选填）")}</span>
-                  <input inputMode="decimal" value={maximumBid} onChange={(event) => setMaximumBid(event.target.value)} placeholder={t("No maximum", "不设最高价")} className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
-                </label>
-              </div>
-            ) : (
-              <label className="block space-y-2 text-sm text-zinc-300">
-                <span className="inline-flex items-center gap-1.5"><GramTokenMark className="h-4 w-4" />{t("Sale price", "出售价格")}</span>
-                <input inputMode="decimal" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="1.0" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
-              </label>
-            )}
+            <label className="block space-y-2 text-sm text-zinc-300">
+              <span>{t("Sale price", "出售价格")}</span>
+              <input inputMode="decimal" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="1.0" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-sky-400" />
+            </label>
 
             <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-5 text-amber-100">
               <p className="font-semibold">{t("Escrow transfer is not active yet", "托管转移功能尚未开放")}</p>
