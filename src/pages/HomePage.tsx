@@ -254,7 +254,7 @@ export function HomePage() {
                         {visibleProducts.map((product) => {
                           const rawName = product.title.replace(/^@/, "").replace(/^\+/, "")
                           return (
-                            <tr key={product.id} className="cursor-pointer bg-white/[0.06] transition hover:bg-white/[0.11] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400"
+                            <tr key={product.id} className="cursor-pointer bg-white/[0.06] hover:bg-white/[0.11] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400"
                               role="link"
                               tabIndex={0}
                               aria-label={t("View product details", "查看商品详情") + ": " + product.title}
