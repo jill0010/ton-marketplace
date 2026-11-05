@@ -50,3 +50,8 @@ body {
 .wallet-connect-trigger:hover {
   background: #0088d1;
 }
+
+/* Round only the visible TON Connect button corners; leave its logo untouched. */
+.wallet-connect-shape [data-tc-connect-button="true"] {
+  border-radius: 10px !important;
+}
