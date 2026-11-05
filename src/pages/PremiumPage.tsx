@@ -908,12 +908,12 @@ export function PremiumPage() {
         <h2 className="text-sm font-semibold">{t("Payment Method", "付款方式")}</h2>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
-            <GramTokenMark className="h-5 w-5" />
-            <span>GRAM <span className="font-normal text-slate-400">TON</span></span>
+            <GramTokenMark className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-bold">GRAM <span className="text-sm font-normal text-slate-400">TON</span></span>
           </button>
           <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
-            <img src="/usdt-logo.png" alt="" aria-hidden="true" className="h-6 w-6 shrink-0 object-contain" />
-            <span>USDT <span className="text-xs font-normal">TRC-20</span></span>
+            <img src="/usdt-logo.png" alt="" aria-hidden="true" className="h-5 w-5 shrink-0 object-contain" />
+            <span className="text-sm font-bold">USDT <span className="text-sm font-normal text-slate-400">TRC-20</span></span>
           </button>
         </div>
       </section>
