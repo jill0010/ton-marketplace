@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
+import { useTonAddress } from "@tonconnect/ui-react"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
 import { GramTokenMark } from "../components/GramTokenMark"
@@ -54,7 +54,6 @@ function formatDate(value: string | null, language: string) {
 export function PremiumHistoryPage() {
   const { t, language } = useLanguage()
   const walletAddress = useTonAddress()
-  const [tonConnectUI] = useTonConnectUI()
   const [orders, setOrders] = useState<PremiumOrder[]>([])
   const [payments, setPayments] = useState<PremiumPayment[]>([])
   const [loading, setLoading] = useState(true)
