@@ -153,6 +153,31 @@ export function PremiumOrdersAdminPage() {
     }
   }
 
+  async function confirmUsdtPayment(order: PremiumOrder) {
+    if (busyOrder) return
+    const txHash = (inputs[order.id]?.reference ?? "").trim()
+    if (!/^[0-9a-fA-F]{64}$/.test(txHash)) {
+      setError("请输入有效的 64 位 TRON 交易哈希后再确认收款。")
+      return
+    }
+    setBusyOrder(order.id)
+    setError("")
+    setMessage("")
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-confirm-usdt-payment", {
+        body: { order_id: order.id, tx_hash: txHash },
+      })
+      if (error) throw new Error(error.message || "USDT payment confirmation failed")
+      if (data?.success !== true) throw new Error(typeof data?.error === "string" ? data.error : "USDT payment confirmation failed")
+      setMessage("订单 " + order.order_no + " 已确认 USDT 收款。" + (data.telegramNotified ? " Telegram 机器人已播报。" : " 机器人通知未能确认送达。") + "请完成人工开通后标记为已完成。")
+      await loadOrders()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "确认 USDT 收款失败。")
+    } finally {
+      setBusyOrder("")
+    }
+  }
+
   async function completeDelivery(order: PremiumOrder) {
     if (busyOrder) return
     if (order.status !== "paid" && order.status !== "processing") {
@@ -289,6 +314,16 @@ export function PremiumOrdersAdminPage() {
                 </div>
               )}
 
+              {order.payment_method === "USDT_TRC20" && order.status === "pending" && (
+                <div className="space-y-2 border-t border-white/10 pt-3">
+                  <label className="block space-y-1 text-xs text-zinc-400">
+                    TRON transaction hash (64 hex characters)
+                    <input value={input.reference} onChange={(event) => setInputs((current) => ({ ...current, [order.id]: { ...input, reference: event.target.value } }))} className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-white/30" placeholder="Paste the confirmed TRC20 transaction hash" />
+                  </label>
+                  <p className="break-all text-xs text-zinc-500">Receiving address: {order.payment_address}</p>
+                </div>
+              )}
+
               {canComplete && (
                 <div className="grid gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
                   <label className="space-y-1 text-xs text-zinc-400">
@@ -303,6 +338,7 @@ export function PremiumOrdersAdminPage() {
               )}
 
               <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
+                {order.payment_method === "USDT_TRC20" && order.status === "pending" && <button type="button" onClick={() => void confirmUsdtPayment(order)} disabled={Boolean(busyOrder)} className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-300 disabled:opacity-50">{busyOrder === order.id ? t("Saving…", "保存中…") : t("Confirm USDT received", "确认 USDT 已到账")}</button>}
                 {canConfirm && payment && <button type="button" onClick={() => void confirmPayment(order, payment)} disabled={Boolean(busyOrder)} className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-300 disabled:opacity-50">{busyOrder === order.id ? t("Saving…", "保存中…") : t("Confirm payment received", "确认收到款项")}</button>}
                 {canComplete && <button type="button" onClick={() => void completeDelivery(order)} disabled={Boolean(busyOrder)} className="rounded-full bg-sky-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-sky-300 disabled:opacity-50">{busyOrder === order.id ? t("Saving…", "保存中…") : t("Mark Premium activated", "标记 Premium 已开通")}</button>}
                 {order.status === "completed" && <span className="text-sm text-emerald-300">{t("Premium delivery recorded", "已记录 Premium 开通完成")} · {dateLabel(order.completed_at)}</span>}
