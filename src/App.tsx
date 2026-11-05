@@ -34,7 +34,7 @@ export default function App() {
                 primary: "#1a2026",
                 secondary: "#242e38",
                 segment: "#1a2026",
-                tint: "#1a2026",
+                tint: "#242e38",
                 qr: "#ffffff",
               },
             },
