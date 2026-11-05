@@ -153,9 +153,13 @@ export function HomePage() {
 
             if (isPremium) {
               return (
-                <button key={category.type} type="button" onClick={() => navigate("/premium")} className="w-full min-w-0 rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 hover:bg-white/10">
+                <Link
+                  key={category.type}
+                  to="/premium"
+                  className="block w-full min-w-0 rounded-2xl border border-white/20 bg-white/[0.06] p-5 text-left text-white transition hover:border-white/40 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                >
                   <span className="font-medium">{t(category.en, category.zh)}</span>
-                </button>
+                </Link>
               )
             }
 
