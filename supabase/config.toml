@@ -426,3 +426,6 @@ verify_jwt = true
 
 [functions.admin-resolve-nft]
 verify_jwt = true
+
+[functions.create-usdt-premium-order]
+verify_jwt = true
