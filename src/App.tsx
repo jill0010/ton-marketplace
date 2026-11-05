@@ -26,6 +26,19 @@ export default function App() {
       <TonConnectUIProvider
         manifestUrl="https://ton-marketplace-cvj.pages.dev/tonconnect-manifest.json"
         language="en"
+        uiPreferences={{
+          theme: "DARK",
+          colorsSet: {
+            DARK: {
+              background: {
+                primary: "#1b2229",
+                secondary: "#1b2229",
+                segment: "#1b2229",
+                tint: "#1b2229",
+              },
+            },
+          },
+        }}
       >
         <TonConnectLanguageSync />
         <BrowserRouter>
