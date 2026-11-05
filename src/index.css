@@ -51,7 +51,22 @@ body {
   background: #0088d1;
 }
 
-/* Round only the visible TON Connect button corners; leave its logo untouched. */
+/* Change only the visible button label by interface language; preserve the TON logo. */
+.wallet-connect-shape [data-tc-text="true"] {
+  font-size: 0 !important;
+}
+
+.wallet-connect-shape.wallet-connect-label-zh [data-tc-text="true"]::after {
+  content: "连接 TON";
+  font-size: 14px;
+}
+
+.wallet-connect-shape.wallet-connect-label-en [data-tc-text="true"]::after {
+  content: "Connect TON";
+  font-size: 14px;
+}
+
+/* Keep the rounded-square button corners unchanged. */
 .wallet-connect-shape [data-tc-connect-button="true"] {
   border-radius: 10px !important;
 }
