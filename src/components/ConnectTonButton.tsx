@@ -59,7 +59,7 @@ export function ConnectTonButton() {
         aria-label={walletAddress
           ? t("Wallet menu: ", "钱包菜单：") + shortAddress
           : t("Connect TON wallet", "连接 TON 钱包")}
-        className={`inline-flex h-[54px] min-w-[148px] items-center justify-center gap-3 rounded-xl border border-transparent px-4 text-white shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0d12] ${menuOpen ? "bg-[#228bdc]" : "bg-[#2a3342] hover:bg-[#344052]"}`}
+        className={`inline-flex h-10 min-w-[148px] items-center justify-center gap-3 rounded-xl border border-transparent px-4 text-white shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0d12] ${menuOpen ? "bg-[#228bdc]" : "bg-[#2a3342] hover:bg-[#344052]"}`}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 shrink-0 fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3.5 5.2h17L12 20.3 3.5 5.2Z" />
