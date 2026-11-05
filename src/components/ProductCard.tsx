@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "../lib/useLanguage"
+import { formatTelegramNumber } from "../lib/formatTelegramNumber"
 import { GramTokenMark } from "./GramTokenMark"
 import { PRODUCT_TYPE_LABELS, PRODUCT_TYPE_LABELS_ZH, type Product } from "../types/product"
 
@@ -25,7 +26,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
       </div>
       <div className={compact ? "p-3" : "p-4"}>
         {!compact && <p className="text-xs tracking-wider text-zinc-500">{typeLabel}</p>}
-        <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>{product.title}</h2>
+        <h2 className={compact ? "truncate text-base font-semibold text-white" : "mt-1 truncate text-lg font-medium text-white"}>{product.type === "number" ? formatTelegramNumber(product.title) : product.title}</h2>
         {product.type !== "gift" && <p className={compact ? "mt-1 line-clamp-1 text-xs text-zinc-400" : "mt-1 line-clamp-2 text-sm text-zinc-400"}>{product.subtitle || (product.deliveryMode === "manual" ? t("Manual delivery by seller", "管理员人工交付") : "")}</p>}
         <div className="mt-3 flex items-center justify-between gap-2">
           <p className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"} font-semibold text-emerald-300`}><GramTokenMark className="h-5 w-5" /><span>{product.priceTon}</span></p>
