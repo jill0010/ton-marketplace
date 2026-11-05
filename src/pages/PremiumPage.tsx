@@ -80,6 +80,19 @@ export function PremiumPage() {
 
   const [recipient, setRecipient] = useState<"self" | "other">("self")
   const [username, setUsername] = useState("")
+  const [telegramProfile, setTelegramProfile] = useState<{
+    username: string
+    displayName: string
+    bio: string | null
+    extra: string | null
+    avatarUrl: string | null
+    profileUrl: string
+  } | null>(null)
+  const [profileLookupState, setProfileLookupState] = useState<
+    "idle" | "waiting" | "loading" | "success" | "error"
+  >("idle")
+  const [profileLookupMessage, setProfileLookupMessage] = useState("")
+  const profileRequestRef = useRef(0)
   const [selectedPlan, setSelectedPlan] =
     useState<Plan["id"]>("year")
 
@@ -101,6 +114,97 @@ export function PremiumPage() {
   const pendingProofRef = useRef(false)
   const verificationInProgressRef = useRef(false)
   const restoreRequestRef = useRef(0)
+
+  // =====================================================
+  // Telegram username -> public profile lookup
+  // =====================================================
+
+  useEffect(() => {
+    const requestId = ++profileRequestRef.current
+    const normalizedUsername = username.trim().replace(/^@+/, "")
+
+    setTelegramProfile(null)
+    setProfileLookupMessage("")
+
+    if (!normalizedUsername) {
+      setProfileLookupState("idle")
+      return
+    }
+
+    if (
+      normalizedUsername.length < 5 ||
+      normalizedUsername.length > 32 ||
+      !/^[A-Za-z][A-Za-z0-9_]*$/.test(normalizedUsername)
+    ) {
+      setProfileLookupState("error")
+      setProfileLookupMessage(
+        "请输入有效的 Telegram 用户名（5–32 位，字母开头，可包含数字和下划线）。",
+      )
+      return
+    }
+
+    setProfileLookupState("waiting")
+    const timer = window.setTimeout(async () => {
+      if (requestId !== profileRequestRef.current) return
+      setProfileLookupState("loading")
+
+      try {
+        await ensureAnonymousSession()
+        const { data, error } = await anonymousSupabase.functions.invoke(
+          "telegram-user-profile",
+          { body: { username: normalizedUsername } },
+        )
+
+        if (requestId !== profileRequestRef.current) return
+        if (error) {
+          throw new Error(error.message || "Telegram 资料查询请求失败")
+        }
+        if (data?.success !== true || !data.profile) {
+          throw new Error(
+            typeof data?.error === "string"
+              ? data.error
+              : "未能读取该用户的公开资料。",
+          )
+        }
+
+        const profile = data.profile
+        if (
+          typeof profile.username !== "string" ||
+          typeof profile.profileUrl !== "string"
+        ) {
+          throw new Error("Telegram 返回的资料格式无效。")
+        }
+
+        setTelegramProfile({
+          username: profile.username,
+          displayName:
+            typeof profile.displayName === "string"
+              ? profile.displayName
+              : profile.username,
+          bio: typeof profile.bio === "string" ? profile.bio : null,
+          extra: typeof profile.extra === "string" ? profile.extra : null,
+          avatarUrl:
+            typeof profile.avatarUrl === "string"
+              ? profile.avatarUrl
+              : null,
+          profileUrl: profile.profileUrl,
+        })
+        setProfileLookupState("success")
+      } catch (error) {
+        if (requestId !== profileRequestRef.current) return
+        setProfileLookupState("error")
+        setProfileLookupMessage(
+          error instanceof Error
+            ? error.message
+            : "Telegram 资料查询失败，请稍后重试。",
+        )
+      }
+    }, 550)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [username])
 
   // =====================================================
   // 1. 读取会员套餐价格
@@ -831,9 +935,7 @@ export function PremiumPage() {
               id="premium-username"
               value={username}
               onChange={(event) =>
-                setUsername(
-                  event.target.value.replace(/^@/, ""),
-                )
+                setUsername(event.target.value.replace(/^@+/, ""))
               }
               placeholder={t(
                 "Enter Telegram username...",
@@ -844,16 +946,57 @@ export function PremiumPage() {
             />
 
             <p className="text-xs leading-5 text-zinc-500">
-              {username
-                ? t(
-                    `Entered recipient: @${username}. Profile verification is not connected yet.`,
-                    `已输入接收人：@${username}。用户头像和身份验证功能尚未接通。`,
-                  )
-                : t(
-                    "Enter a username without the @ symbol. Profile lookup is not connected yet.",
-                    "请输入用户名，可不带 @ 符号。头像和资料查询功能尚未接通。",
-                  )}
+              {profileLookupState === "waiting" &&
+                t("Looking up profile shortly…", "正在准备查询 Telegram 资料…")}
+              {profileLookupState === "loading" &&
+                t("Looking up Telegram profile…", "正在查询 Telegram 公开资料…")}
+              {profileLookupState === "error" && (
+                <span className="text-amber-300">{profileLookupMessage}</span>
+              )}
+              {profileLookupState === "success" &&
+                t("Public Telegram profile found. This is not identity verification.", "已找到 Telegram 公开资料；这不代表身份验证。")}
+              {profileLookupState === "idle" &&
+                t("Enter a Telegram username with or without @.", "输入 Telegram 用户名，可带或不带 @。")}
             </p>
+
+            {telegramProfile && profileLookupState === "success" && (
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 p-4">
+                {telegramProfile.avatarUrl ? (
+                  <img
+                    src={telegramProfile.avatarUrl}
+                    alt={telegramProfile.displayName}
+                    referrerPolicy="no-referrer"
+                    className="h-16 w-16 shrink-0 rounded-full border border-white/10 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl text-zinc-400">
+                    {telegramProfile.displayName.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="break-words font-semibold text-white">
+                    {telegramProfile.displayName}
+                  </p>
+                  <p className="text-sm text-sky-300">@{telegramProfile.username}</p>
+                  {telegramProfile.bio && (
+                    <p className="whitespace-pre-wrap break-words text-xs leading-5 text-zinc-300">
+                      {telegramProfile.bio}
+                    </p>
+                  )}
+                  {telegramProfile.extra && (
+                    <p className="text-xs text-zinc-400">{telegramProfile.extra}</p>
+                  )}
+                  <a
+                    href={telegramProfile.profileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block pt-1 text-xs text-sky-300 hover:underline"
+                  >
+                    {t("Open Telegram profile", "打开 Telegram 资料")}
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
