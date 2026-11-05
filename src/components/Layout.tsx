@@ -28,12 +28,6 @@ export function Layout() {
               <option value="ar">العربية</option>
             </select>
 
-            <Link
-              to="/premium"
-              className="inline-flex h-10 items-center rounded-[10px] border border-white/15 px-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10"
-            >
-              {t("Telegram Premium", "Telegram 高级版")}
-            </Link>
             <div className="flex items-center">
               <ConnectTonButton />
             </div>
