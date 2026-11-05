@@ -5,7 +5,6 @@ import { Layout } from "./components/Layout"
 import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
 import { LanguageProvider } from "./lib/language"
-import { PremiumPage } from "./pages/PremiumPage"
 
 const FragmentCatalogPage = lazy(() => import("./pages/FragmentCatalogPage").then((module) => ({ default: module.FragmentCatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
@@ -17,6 +16,7 @@ const AdminResetPasswordPage = lazy(() => import("./pages/AdminResetPasswordPage
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
 const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
 const PremiumOrdersAdminPage = lazy(() => import("./pages/PremiumOrdersAdminPage").then((module) => ({ default: module.PremiumOrdersAdminPage })))
+const PremiumPage = lazy(() => import("./pages/PremiumPage").then((module) => ({ default: module.PremiumPage })))
 const AdminWalletSettingsPage = lazy(() => import("./pages/AdminWalletSettingsPage").then((module) => ({ default: module.AdminWalletSettingsPage })))
 
 export default function App() {
