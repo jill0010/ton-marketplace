@@ -1,4 +1,4 @@
-﻿
+
 import { useEffect, useRef, useState } from "react"
 import { beginCell } from "@ton/core"
 import {
@@ -16,7 +16,7 @@ import {
 } from "../lib/supabase"
 
 type Plan = {
-  id: "year" | "half-year" | "quarter"
+  id: "month" | "year" | "half-year" | "quarter"
   period: string
   periodZh: string
   marketUsd: number
@@ -44,25 +44,32 @@ type WalletVerification = {
 
 const INITIAL_PLANS: Plan[] = [
   {
-    id: "year",
-    period: "1 year",
-    periodZh: "1 年",
-    marketUsd: 28.99,
-    gramPrice: 23.67,
-  },
-  {
-    id: "half-year",
-    period: "6 months",
-    periodZh: "6 个月",
-    marketUsd: 15.99,
-    gramPrice: 13.05,
+    id: "month",
+    period: "1 month",
+    periodZh: "1 个月",
+    marketUsd: 4.29,
+    gramPrice: 1,
   },
   {
     id: "quarter",
     period: "3 months",
     periodZh: "3 个月",
-    marketUsd: 11.99,
+    marketUsd: 10.99,
     gramPrice: 9.79,
+  },
+  {
+    id: "half-year",
+    period: "6 months",
+    periodZh: "6 个月",
+    marketUsd: 14.99,
+    gramPrice: 13.05,
+  },
+  {
+    id: "year",
+    period: "12 months",
+    periodZh: "12 个月",
+    marketUsd: 27.99,
+    gramPrice: 23.67,
   },
 ]
 
