@@ -8,7 +8,6 @@ import {
 } from "@tonconnect/ui-react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "../lib/useLanguage"
-import { GramTokenMark } from "../components/GramTokenMark"
 import {
   anonymousSupabase,
   ensureAnonymousSession,
@@ -28,11 +27,6 @@ type PricingRow = {
   period: string
   market_usd: number | string
   gram_price: number | string
-}
-
-type MarketQuote = {
-  priceUsd: number
-  updatedAt: number
 }
 
 type WalletVerification = {
@@ -98,9 +92,6 @@ export function PremiumPage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
-  const [marketQuote, setMarketQuote] =
-    useState<MarketQuote | null>(null)
-
   const [connecting, setConnecting] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [walletVerification, setWalletVerification] =
@@ -272,53 +263,6 @@ export function PremiumPage() {
 
     return () => {
       active = false
-    }
-  }, [])
-
-  // =====================================================
-  // 2. 获取 GRAM 实时行情
-  // =====================================================
-
-  useEffect(() => {
-    let active = true
-
-    async function loadMarketPrice() {
-      const { data, error } = await supabase.functions.invoke(
-        "gram-price",
-        { method: "GET" },
-      )
-
-      if (!active) return
-
-      const priceUsd = Number(data?.priceUsd)
-      const updatedAt = Number(data?.updatedAt)
-      const ageSeconds =
-        Math.floor(Date.now() / 1000) - updatedAt
-
-      if (
-        error ||
-        !Number.isFinite(priceUsd) ||
-        priceUsd <= 0 ||
-        !Number.isFinite(updatedAt) ||
-        ageSeconds < -60 ||
-        ageSeconds > 600
-      ) {
-        setMarketQuote(null)
-        return
-      }
-
-      setMarketQuote({ priceUsd, updatedAt })
-    }
-
-    void loadMarketPrice()
-
-    const timer = window.setInterval(() => {
-      void loadMarketPrice()
-    }, 60000)
-
-    return () => {
-      active = false
-      window.clearInterval(timer)
     }
   }, [])
 
