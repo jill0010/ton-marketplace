@@ -929,7 +929,7 @@ export function PremiumPage() {
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between px-4"><h2 className="text-sm font-semibold">{t("Choose duration", "选择会员时长")}</h2><span className="rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-400">SALE</span></div>
+        <div className="flex items-center justify-between px-4"><h2 className="text-sm font-semibold">{t("Choose duration", "选择会员时长")}</h2><span className="rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-400">{t("UP TO -72%", "最高优惠 -72%")}</span></div>
         {!loading && !loadError && plans.map((plan) => {
           const active = selectedPlan === plan.id
           const discount = ({ month: 18, quarter: 30, "half-year": 57, year: 72 } as Record<string, number>)[plan.id] ?? 0
