@@ -8,6 +8,7 @@ on:
       - architecture/unified-trading-v1
     paths:
       - "contracts/**"
+      - "supabase/functions/publish-nft-product/**"
       - ".github/workflows/contracts.yml"
   pull_request:
     branches:
@@ -15,6 +16,7 @@ on:
       - master
     paths:
       - "contracts/**"
+      - "supabase/functions/publish-nft-product/**"
       - ".github/workflows/contracts.yml"
   workflow_dispatch:
 
@@ -44,6 +46,9 @@ jobs:
 
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
+
+      - name: Check Fragment NFT Item code policy
+        run: node scripts/check-fragment-item-code-policy.mjs
 
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
