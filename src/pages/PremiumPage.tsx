@@ -8,6 +8,7 @@ import {
 } from "@tonconnect/ui-react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "../lib/useLanguage"
+import { GramTokenMark } from "../components/GramTokenMark"
 import {
   anonymousSupabase,
   ensureAnonymousSession,
@@ -886,7 +887,7 @@ export function PremiumPage() {
           return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${active ? "border-sky-400 bg-[#202b36] shadow-[inset_0_0_0_1px_rgba(56,189,248,0.12)]" : "border-sky-500/70 bg-[#131a22] hover:bg-[#1a2530]"}`}>
             <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-sky-400" : "border-slate-400"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />}</span>
             <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">{t(plan.period, plan.periodZh)} <span className="rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white">-{discount}%</span></span>
-            <span className="flex items-center gap-1.5 whitespace-nowrap text-sm font-bold"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 text-sky-400" fill="currentColor"><path d="M12 2 2.8 10.1 12 22l9.2-11.9L12 2Zm0 3.2 5.7 5H6.3L12 5.2Z"/></svg>{plan.gramPrice.toFixed(2)}</span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap text-sm font-bold"><span className="flex h-5 w-5 shrink-0 items-center justify-center"><GramTokenMark className="h-4 w-4" /></span><span>{plan.gramPrice.toFixed(2)}</span></span>
             <span className="whitespace-nowrap text-sm text-slate-400">${plan.marketUsd.toFixed(2)}</span>
           </button>
         })}
@@ -898,11 +899,11 @@ export function PremiumPage() {
         <h2 className="text-sm font-semibold">{t("Payment Method", "付款方式")}</h2>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 text-sky-400" fill="currentColor"><path d="M12 1.5 1.5 12 12 22.5 22.5 12 12 1.5Zm0 4.1 6.4 6.4-6.4 6.4L5.6 12 12 5.6Z"/></svg>
+            <GramTokenMark className="h-5 w-5" />
             <span>GRAM <span className="font-normal text-slate-400">TON</span></span>
           </button>
           <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 text-teal-400" fill="currentColor"><path d="M12 1.5 22.5 7.4v9.2L12 22.5 1.5 16.6V7.4L12 1.5Zm-5.1 6v2.2h3.7v6.8h2.8V9.7h3.7V7.5H6.9Zm.8 3.1c.9 1.5 7.7 1.5 8.6 0-.9-1.5-7.7-1.5-8.6 0Z"/></svg>
+            <svg viewBox="0 0 32 32" aria-hidden="true" className="h-5 w-5 shrink-0"><circle cx="16" cy="16" r="16" fill="#26A17B"/><path fill="#fff" d="M17.8 17.2v-.1c-.1 0-1 .1-2 .1s-1.9-.1-2-.1v.1c-3.9.2-6.8 1-6.8 2 0 1.1 3.8 2 8.8 2s8.8-.9 8.8-2c0-1-2.9-1.8-6.8-2ZM16 20c-4.6 0-8.3-.7-8.3-1.6 0-.7 2.5-1.3 6-1.5v2.4c.7.1 1.5.1 2.3.1s1.6 0 2.3-.1v-2.4c3.5.2 6 .8 6 1.5 0 .9-3.7 1.6-8.3 1.6ZM18.3 15.9v-2.5h5.2v-3H8.5v3h5.2v2.5c-4.1.2-7.2 1-7.2 2.2 0 1.3 4.2 2.3 9.5 2.3s9.5-1 9.5-2.3c0-1.2-3.1-2-7.2-2.2Z"/></svg>
             <span>USDT</span>
           </button>
         </div>
