@@ -952,30 +952,61 @@ fun onBouncedMessage(in: InMessageBounced) {
             val parties = extra.parties.load();
             val asset = extra.asset.load();
             val operations = extra.operations.load();
+            val productResult = storage.products.get(release.productId);
+            if (!productResult.isFound) {
+                return;
+            }
+            var product = MarketplaceV2Product.fromCell(productResult.loadValue());
             if (
                 order.status == 2 && order.deliveryStatus == 1 &&
                 order.productId == release.productId &&
                 asset.escrowId == release.escrowId &&
+                asset.nftItem == product.nftItem &&
                 parties.buyer == release.buyer &&
-                operations.releaseQueryId == release.queryId
+                operations.releaseQueryId == release.queryId &&
+                product.status == 3 &&
+                product.escrowId == release.escrowId
             ) {
-                // Escrow rejected the release request before starting the NFT
-                // transfer. Do not guess whether custody is still intact; freeze
-                // both order and listing for explicit reconciliation.
-                order.status = 7;
-                order.deliveryStatus = 3;
-                orderStorage.orders.set(order.id, order.toCell());
-                purchase.orders = orderStorage.toCell();
-                storage.purchaseStorage = purchase.toCell();
-                val productResult = storage.products.get(order.productId);
-                if (productResult.isFound) {
-                    var product = MarketplaceV2Product.fromCell(productResult.loadValue());
-                    if (product.status == 3) {
-                        product.status = 7;
-                        storage.products.set(product.id, product.toCell());
-                    }
+                // A genuine RichBounce from the configured Escrow means the
+                // ReleaseEscrowV2 receiver transaction did not commit. The
+                // Escrow therefore remains the recorded custodian; request its
+                // normal seller-return path and wait for EscrowRefundedV2
+                // before dispatching the buyer's refund.
+                val returnQueryId = storage.nextQueryId;
+                if (
+                    returnQueryId == 0 ||
+                    orderStorage.paymentQueryToOrder.get(returnQueryId).isFound ||
+                    orderStorage.refundQueryToOrder.get(returnQueryId).isFound
+                ) {
+                    return;
                 }
+                order.status = 6;
+                order.deliveryStatus = 3;
+                order.refundStatus = 1;
+                orderStorage.orders.set(order.id, order.toCell());
+                orderStorage.refundQueryToOrder.set(returnQueryId, order.id);
+                purchase.refundQueryToProduct.set(returnQueryId, order.productId);
+                purchase.orders = orderStorage.toCell();
+
+                product.status = 6;
+                product.refundQueryId = returnQueryId;
+                storage.products.set(product.id, product.toCell());
+                storage.purchaseStorage = purchase.toCell();
+                storage.nextQueryId = returnQueryId + 1;
                 storage.save();
+
+                val returnNft = createMessage({
+                    bounce: BounceMode.RichBounce,
+                    value: grams("0.05"),
+                    dest: storage.escrow,
+                    body: RefundEscrowV2 {
+                        escrowId: release.escrowId,
+                        productId: release.productId,
+                        queryId: returnQueryId,
+                        seller: parties.seller,
+                    },
+                });
+                returnNft.send(SEND_MODE_REGULAR);
             }
             return;
         }
