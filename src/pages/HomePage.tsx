@@ -130,7 +130,7 @@ export function HomePage() {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={t("Enter a username, number, gift or product ID...", "请输入用户名、匿名号码、收藏礼物或商品编号...")}
+            placeholder={t("Enter a username, number or gift...", "请输入用户名、匿名号码、收藏礼物...")}
             className="w-full rounded-full border border-white/15 bg-white/[0.03] py-3 pr-20 pl-5 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/40"
           />
           {searchQuery.length > 0 && (
