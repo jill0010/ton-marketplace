@@ -714,16 +714,6 @@ export function PremiumPage() {
     }
   }
 
-  useEffect(() => {
-    function handleHeaderWalletConnect(event: Event) {
-      event.preventDefault()
-      void connectAndVerifyWallet()
-    }
-
-    window.addEventListener("ton-marketplace:connect-ton", handleHeaderWalletConnect)
-    return () => window.removeEventListener("ton-marketplace:connect-ton", handleHeaderWalletConnect)
-  }, [walletAddress, connecting, verifying])
-
   async function verifyGramOrder(orderId: string) {
     if (!orderId || checkoutBusy) return
     setCheckoutBusy(true)
