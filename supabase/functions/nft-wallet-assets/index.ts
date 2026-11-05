@@ -154,38 +154,56 @@ Deno.serve(async (request: Request) => {
 
     const pageSize = 1000;
     const maxPages = 10;
+    const concurrentPages = 3;
     let truncated = false;
 
-    for (let page = 0; page < maxPages; page++) {
+    const fetchNftPage = async (page: number) => {
       const params = new URLSearchParams({
         owner_address: walletAddress,
         limit: String(pageSize),
         offset: String(page * pageSize),
         include_on_sale: "false",
       });
-
-      const result = await tonCenterGet<TonCenterNftResponse>(
+      return await tonCenterGet<TonCenterNftResponse>(
         `/nft/items?${params.toString()}`,
       );
+    };
 
-      const pageItems = result.nft_items ?? [];
-      collected.push(...pageItems);
+    const mergePage = (result: TonCenterNftResponse) => {
+      collected.push(...(result.nft_items ?? []));
+      if (result.metadata) Object.assign(collectedMetadata, result.metadata);
+      if (result.address_book) Object.assign(collectedAddressBook, result.address_book);
+      return (result.nft_items ?? []).length;
+    };
 
-      if (result.metadata) {
-        Object.assign(collectedMetadata, result.metadata);
+    // Fetch the first page to determine whether more pages exist, then fetch
+    // subsequent pages in small parallel batches to reduce total round trips.
+    let lastPageSize = mergePage(await fetchNftPage(0));
+    let pagesFetched = 1;
+
+    while (lastPageSize === pageSize && pagesFetched < maxPages) {
+      const batchSize = Math.min(concurrentPages, maxPages - pagesFetched);
+      const pageNumbers = Array.from(
+        { length: batchSize },
+        (_, index) => pagesFetched + index,
+      );
+      const results = await Promise.all(pageNumbers.map(fetchNftPage));
+
+      lastPageSize = 0;
+      for (const result of results) {
+        const resultSize = mergePage(result);
+        if (resultSize > lastPageSize) lastPageSize = resultSize;
       }
+      pagesFetched += batchSize;
 
-      if (result.address_book) {
-        Object.assign(collectedAddressBook, result.address_book);
-      }
-
-      if (pageItems.length < pageSize) {
+      // A short page marks the end of the result set. Do not request further offsets.
+      if (results.some((result) => (result.nft_items ?? []).length < pageSize)) {
         break;
       }
+    }
 
-      if (page === maxPages - 1) {
-        truncated = true;
-      }
+    if (pagesFetched === maxPages && lastPageSize === pageSize) {
+      truncated = true;
     }
 
     const items = [];
