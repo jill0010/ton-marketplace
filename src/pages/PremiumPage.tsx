@@ -857,7 +857,12 @@ export function PremiumPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl space-y-6 bg-[#0b0d12] px-4 py-7 text-white sm:px-6">
-      <h1 className="px-1 text-2xl font-bold tracking-tight">{t("Buy Telegram Premium", "购买 Telegram Premium")} <span aria-hidden="true">✦</span></h1>
+      <div className="space-y-2 px-1">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">{t("Buy Telegram Premium", "购买 Telegram Premium")}
+          <svg aria-label="Telegram Premium" role="img" viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-sky-400" fill="currentColor"><path d="M12 0.8l2.45 7.05 7.05 2.45-7.05 2.45L12 19.8l-2.45-7.05L2.5 10.3l7.05-2.45L12 0.8zm7.1 13.2 1.15 3.3 3.3 1.15-3.3 1.15-1.15 3.3-1.15-3.3-3.3-1.15 3.3-1.15 1.15-3.3z"/></svg>
+        </h1>
+        <p className="text-sm leading-relaxed text-slate-300">Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.</p>
+      </div>
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[#13171c] p-5">
         <h2 className="px-4 text-sm font-semibold">{t("Choose recipient", "选择接收人")}</h2>
         <div className="flex items-center gap-3 rounded-xl bg-[#252f39] px-4 py-3">
