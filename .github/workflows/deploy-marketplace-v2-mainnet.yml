@@ -54,8 +54,29 @@ jobs:
           WALLETS
           chmod 600 wallets.toml
 
+      - name: Check opcode registry
+        run: node scripts/check-opcode-registry.mjs
+
+      - name: Check Fragment NFT Item code policy
+        run: node scripts/check-fragment-item-code-policy.mjs
+
       - name: Build production contracts
         run: acton build
+
+      - name: Run complete emulator test suite
+        run: acton test --backtrace full
+
+      - name: Exercise V2 deployment script in emulator
+        run: acton script scripts/deploy-v2.tolk
+
+      - name: Linter
+        run: acton check --output-format github
+
+      - name: Formatter
+        run: acton fmt --check
+
+      - name: Recheck official Fragment NFT libraries on Mainnet (read-only)
+        run: node scripts/check-mainnet-fragment-libraries.mjs
 
       - name: Deploy and verify on TON Mainnet
         shell: bash
