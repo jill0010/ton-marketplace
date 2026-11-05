@@ -8,7 +8,7 @@ export function TonConnectLanguageSync() {
 
   useEffect(() => {
     tonConnectUI.uiOptions = {
-      language: language === "ru" ? "ru" : language === "zh" || language === "zh-TW" ? "zh" : "en",
+      language: language === "ru" ? "ru" : "en",
     }
   }, [language, tonConnectUI])
 
