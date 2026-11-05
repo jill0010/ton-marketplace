@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
+import { useTonAddress } from "@tonconnect/ui-react"
 import { anonymousSupabase, ensureAnonymousSession } from "../lib/supabase"
 import { useLanguage } from "../lib/useLanguage"
 import { GramTokenMark } from "../components/GramTokenMark"
+import { ConnectTonButton } from "../components/ConnectTonButton"
 
 type PremiumOrder = {
   id: string
@@ -54,7 +55,6 @@ function formatDate(value: string | null, language: string) {
 export function PremiumHistoryPage() {
   const { t, language } = useLanguage()
   const walletAddress = useTonAddress()
-  const [tonConnectUI] = useTonConnectUI()
   const [orders, setOrders] = useState<PremiumOrder[]>([])
   const [payments, setPayments] = useState<PremiumPayment[]>([])
   const [loading, setLoading] = useState(true)
@@ -156,7 +156,7 @@ export function PremiumHistoryPage() {
           </div>
           <h2 className="mt-4 text-lg font-semibold text-white">{t("Connect your wallet to view transaction history", "连接钱包后查看交易记录")}</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-400">{t("Connect the TON wallet you use on this marketplace to continue.", "请连接你在本商城使用的 TON 钱包后继续查看。")}</p>
-          <div className="mt-5 flex justify-center"><button type="button" className="wallet-connect-trigger" onClick={() => void tonConnectUI.openModal()}><svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current"><path d="M3.2 5.2h17.6L12 20.1 3.2 5.2Z" /><path d="M12 5.2v11.1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg><span>Connect TON</span></button></div>
+          <div className="mt-5 flex justify-center"><ConnectTonButton /></div>
           <Link to="/premium" className="mt-5 inline-block text-sm text-sky-300 hover:underline">{t("Back to Premium", "返回会员购买")}</Link>
         </div>
       ) : (
