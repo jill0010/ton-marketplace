@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
     const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: order, error: orderError } = await admin.from("manual_product_orders")
-      .select("id, order_no, buyer_user_id, buyer_wallet_raw, amount, currency, status, payment_tx_hash, payment_address, created_at, expires_at")
+      .select("id, order_no, product_id, buyer_user_id, buyer_wallet_raw, amount, currency, status, payment_tx_hash, payment_address, created_at, expires_at")
       .eq("id", orderId)
       .eq("buyer_user_id", wallet.userId)
       .eq("buyer_wallet_raw", wallet.walletAddress)
@@ -208,6 +208,7 @@ Deno.serve(async (req: Request) => {
       if (logError) console.error("Manual product payment audit insert failed", logError.message);
     }
 
+    const { data: productInfo } = await admin.from("products").select("name").eq("id", order.product_id).maybeSingle();
     let telegramNotified = false;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const chatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
@@ -215,7 +216,7 @@ Deno.serve(async (req: Request) => {
       const message = [
         "✅ <b>商品订单链上收款已确认</b>",
         `订单：<code>${html(order.order_no)}</code>`,
-        `商品：<b>${html(String(body?.product_name ?? "商品"))}</b>`,
+        `商品：<b>${html(String(productInfo?.name ?? "商品"))}</b>`,
         `金额：<b>${html(String(order.amount))} ${html(order.currency)}</b>`,
         `付款钱包：<code>${html(senderRaw)}</code>`,
         `交易：<code>${html(match.hash)}</code>`,
