@@ -81,11 +81,11 @@ Deno.serve(async (request: Request) => {
     const rawUsername = typeof body?.username === "string" ? body.username : "";
     const username = rawUsername.trim().replace(/^@+/, "");
 
-    if (username.length < 5 || username.length > 32 || !/^[A-Za-z][A-Za-z0-9_]*$/.test(username)) {
+    if (username.length < 4 || username.length > 32 || !/^[A-Za-z][A-Za-z0-9_]*$/.test(username)) {
       return json({
         success: false,
         code: "INVALID_USERNAME",
-        error: "请输入有效的 Telegram 用户名（5–32 位，字母开头，可包含数字和下划线）。",
+        error: "请输入有效的 Telegram 用户名（4–32 位，字母开头，可包含数字和下划线）。",
       }, 400);
     }
 
