@@ -883,11 +883,11 @@ export function PremiumPage() {
         {!loading && !loadError && plans.map((plan) => {
           const active = selectedPlan === plan.id
           const discount = ({ month: 18, quarter: 30, "half-year": 57, year: 72 } as Record<string, number>)[plan.id] ?? 0
-          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`grid w-full grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border px-4 py-3.5 text-left ${active ? "border-sky-400 bg-[#13171c]" : "border-white/10 bg-[#13171c] hover:border-white/20"}`}>
-            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-sky-400" : "border-slate-500"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />}</span>
-            <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">{t(plan.period, plan.periodZh)} <span className="rounded-full bg-sky-500 px-2 py-1 text-[10px] font-bold text-white">-{discount}%</span></span>
-            <span className="whitespace-nowrap text-xs text-slate-400">Ton价格</span>
-            <span className="whitespace-nowrap text-sm font-bold">${plan.marketUsd.toFixed(2)}</span>
+          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${active ? "border-sky-400 bg-[#202b36] shadow-[inset_0_0_0_1px_rgba(56,189,248,0.12)]" : "border-sky-500/70 bg-[#131a22] hover:bg-[#1a2530]"}`}>
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-sky-400" : "border-slate-400"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />}</span>
+            <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">{t(plan.period, plan.periodZh)} <span className="rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white">-{discount}%</span></span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap text-sm font-bold"><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 text-sky-400" fill="currentColor"><path d="M12 2 2.8 10.1 12 22l9.2-11.9L12 2Zm0 3.2 5.7 5H6.3L12 5.2Z"/></svg>{plan.gramPrice.toFixed(2)}</span>
+            <span className="whitespace-nowrap text-sm text-slate-400">${plan.marketUsd.toFixed(2)}</span>
           </button>
         })}
         {loading && <p className="px-4 text-xs text-slate-400">{t("Loading plans…", "正在加载套餐……")}</p>}
@@ -897,8 +897,14 @@ export function PremiumPage() {
       <section className="space-y-4 rounded-2xl border border-white/10 bg-[#13171c] p-5">
         <h2 className="text-sm font-semibold">{t("Payment Method", "付款方式")}</h2>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-4 text-left text-sm font-semibold ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#0f1216]" : "border-white/10 bg-[#0f1216]"}`}><span className="block">GRAM</span><span className="mt-1 block text-xs font-normal text-slate-400">TON 网络</span></button>
-          <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-4 text-left text-sm font-semibold ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#0f1216]" : "border-white/10 bg-[#0f1216]"}`}><span className="block">USDT</span><span className="mt-1 block text-xs font-normal text-slate-400">TRC20</span></button>
+          <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 text-sky-400" fill="currentColor"><path d="M12 1.5 1.5 12 12 22.5 22.5 12 12 1.5Zm0 4.1 6.4 6.4-6.4 6.4L5.6 12 12 5.6Z"/></svg>
+            <span>GRAM <span className="font-normal text-slate-400">TON</span></span>
+          </button>
+          <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 text-teal-400" fill="currentColor"><path d="M12 1.5 22.5 7.4v9.2L12 22.5 1.5 16.6V7.4L12 1.5Zm-5.1 6v2.2h3.7v6.8h2.8V9.7h3.7V7.5H6.9Zm.8 3.1c.9 1.5 7.7 1.5 8.6 0-.9-1.5-7.7-1.5-8.6 0Z"/></svg>
+            <span>USDT</span>
+          </button>
         </div>
       </section>
 
