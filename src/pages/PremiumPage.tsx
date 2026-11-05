@@ -714,6 +714,9 @@ export function PremiumPage() {
     }
   }
 
+  // Keep the existing proof flow available without changing the current wallet button behavior.
+  void connectAndVerifyWallet
+
   async function verifyGramOrder(orderId: string) {
     if (!orderId || checkoutBusy) return
     setCheckoutBusy(true)
