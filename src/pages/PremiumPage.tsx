@@ -876,7 +876,6 @@ export function PremiumPage() {
           {telegramProfile.avatarUrl ? <img src={telegramProfile.avatarUrl} alt={telegramProfile.displayName} referrerPolicy="no-referrer" className="h-12 w-12 rounded-full object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-600">{telegramProfile.displayName.slice(0,1).toUpperCase()}</div>}
           <div className="min-w-0"><p className="truncate text-sm font-semibold">{telegramProfile.displayName}</p><p className="text-xs text-sky-300">@{telegramProfile.username}</p>{telegramProfile.bio && <p className="line-clamp-2 text-xs text-slate-300">{telegramProfile.bio}</p>}<a href={telegramProfile.profileUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-300">{t("View Telegram profile", "查看 Telegram 资料")}</a></div>
         </div>}
-        <p className="px-4 text-xs text-slate-400">{t("Enter 4–32 characters, with or without @. Public profile lookup is automatic.", "输入 4–32 位用户名，可带或不带 @，系统自动查询公开头像和资料。")}</p>
       </section>
 
       <section className="space-y-3">
@@ -903,7 +902,7 @@ export function PremiumPage() {
             <span>GRAM <span className="font-normal text-slate-400">TON</span></span>
           </button>
           <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
-            <img src="/usdt-logo.png" alt="" aria-hidden="true" className="h-5 w-5 shrink-0 object-contain" />
+            <img src="/usdt-logo.png" alt="" aria-hidden="true" className="h-6 w-6 shrink-0 object-contain" />
             <span>USDT</span>
           </button>
         </div>
