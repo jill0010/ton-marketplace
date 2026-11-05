@@ -40,12 +40,10 @@ assertContainsBoth("V2 Escrow policy", sources.escrowV2, approvedHashes);
 assertContainsBoth("NFT publishing Edge Function policy", sources.edgeFunction, approvedHashes);
 assertContainsBoth("NFT address regression tests", sources.addressTests, approvedHashes);
 
+const compactAddressTests = sources.addressTests.replace(/\\s+/g, "");
 for (const hash of approvedHashes) {
-  const assertion = new RegExp(
-    String.raw`expect\\s*\\(\\s*code\\.hash\\(\\)\\s*\\)\\.toEqual\\(\\s*0x${hash}\\s*\\)`,
-    "i",
-  );
-  if (!assertion.test(sources.addressTests)) {
+  const assertion = `expect(code.hash()).toEqual(0x${hash})`.toLowerCase();
+  if (!compactAddressTests.toLowerCase().includes(assertion)) {
     console.error(`NFT address tests do not assert the calculated code hash ${hash}`);
     process.exitCode = 1;
   }
