@@ -19,7 +19,7 @@ export function ConnectTonButton() {
       type="button"
       onClick={() => {
         if (connected) {
-          void tonConnectUI.openSingleWalletModal()
+          void tonConnectUI.openSingleWalletModal(wallet!.device.appName)
         } else {
           void tonConnectUI.openModal()
         }
