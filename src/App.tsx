@@ -31,11 +31,11 @@ export default function App() {
           colorsSet: {
             [THEME.DARK]: {
               background: {
-                primary: "#1b2229",
-                secondary: "#1b2229",
-                segment: "#1b2229",
-                tint: "#1b2229",
-                qr: "#242e38",
+                primary: "#1a2026",
+                secondary: "#242e38",
+                segment: "#1a2026",
+                tint: "#1a2026",
+                qr: "#ffffff",
               },
             },
           },
