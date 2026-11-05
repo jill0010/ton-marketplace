@@ -50,7 +50,7 @@ jobs:
       - name: Check Fragment NFT Item code policy
         run: node scripts/check-fragment-item-code-policy.mjs
 
-      - name: Check official Fragment NFT libraries on Testnet (read-only)
+      - name: Check official Fragment NFT libraries on Testnet (read-only; warning only)
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
         run: node scripts/check-testnet-fragment-libraries.mjs
@@ -77,3 +77,8 @@ jobs:
 
       - name: Formatter
         run: acton fmt --check
+
+      - name: Check official Fragment NFT libraries on Mainnet (read-only release gate)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_API_KEY }}
+        run: node scripts/check-mainnet-fragment-libraries.mjs
