@@ -28,9 +28,6 @@ export function Layout() {
               <option value="ar">العربية</option>
             </select>
 
-            <Link to="/assets" className="rounded-xl border border-white/15 px-3 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-sky-400/50 hover:bg-white/5 hover:text-white">
-              {t("My Assets", "我的资产")}
-            </Link>
             <div className="flex items-center">
               <ConnectTonButton />
             </div>
