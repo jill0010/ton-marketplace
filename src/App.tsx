@@ -5,6 +5,7 @@ import { Layout } from "./components/Layout"
 import { AdminRoute } from "./components/AdminRoute"
 import { TonConnectLanguageSync } from "./components/TonConnectLanguageSync"
 import { LanguageProvider } from "./lib/language"
+import { PremiumPage } from "./pages/PremiumPage"
 
 const FragmentCatalogPage = lazy(() => import("./pages/FragmentCatalogPage").then((module) => ({ default: module.FragmentCatalogPage })))
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })))
@@ -13,7 +14,6 @@ const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((mod
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
 const AdminResetPasswordPage = lazy(() => import("./pages/AdminResetPasswordPage").then((module) => ({ default: module.AdminResetPasswordPage })))
-const PremiumPage = lazy(() => import("./pages/PremiumPage").then((module) => ({ default: module.PremiumPage })))
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
 const PremiumPricingAdminPage = lazy(() => import("./pages/PremiumPricingAdminPage").then((module) => ({ default: module.PremiumPricingAdminPage})))
 const PremiumOrdersAdminPage = lazy(() => import("./pages/PremiumOrdersAdminPage").then((module) => ({ default: module.PremiumOrdersAdminPage })))
