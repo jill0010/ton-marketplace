@@ -92,24 +92,6 @@ Deno.serve(async (req: Request) => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
 
-    // Release stale unpaid reservations before creating a new one.
-    const { data: expired, error: expireError } = await admin.from("manual_product_orders")
-      .update({ status: "cancelled", updated_at: now.toISOString(), admin_note: "Payment window expired before a new checkout was created." })
-      .eq("product_id", productId)
-      .eq("status", "awaiting_payment")
-      .lt("expires_at", now.toISOString())
-      .select("id, status");
-    if (expireError) throw expireError;
-    if (expired?.length) {
-      await admin.from("manual_product_order_logs").insert(expired.map((row) => ({
-        order_id: row.id,
-        action: "cancelled",
-        old_status: "awaiting_payment",
-        new_status: "cancelled",
-        note: "Payment window expired.",
-      })));
-    }
-
     const orderNo = createOrderNo();
     const { data: order, error: insertError } = await admin.from("manual_product_orders").insert({
       order_no: orderNo,
@@ -123,7 +105,31 @@ Deno.serve(async (req: Request) => {
       expires_at: expiresAt,
     }).select("id, order_no").single();
     if (insertError) {
-      if (insertError.code === "23505") return reply({ success: false, code: "PRODUCT_CHECKOUT_BUSY", error: "This product already has an active order. Please refresh and try again later." }, 409, origin);
+      if (insertError.code === "23505") {
+        const { data: existing } = await admin.from("manual_product_orders")
+          .select("id, order_no, amount, currency, status, payment_address, expires_at")
+          .eq("product_id", product.id)
+          .eq("buyer_user_id", wallet.userId)
+          .in("status", ["awaiting_payment", "payment_confirmed", "delivery_pending"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existing?.status === "awaiting_payment" && existing.payment_address && existing.expires_at) {
+          return reply({
+            success: true,
+            orderId: existing.id,
+            orderNo: existing.order_no,
+            amount: String(existing.amount),
+            amountNano: toNano(existing.amount),
+            currency: existing.currency,
+            paymentAddress: existing.payment_address,
+            expiresAt: existing.expires_at,
+            memo: existing.order_no,
+            resumed: true,
+          }, 200, origin);
+        }
+        return reply({ success: false, code: "PRODUCT_CHECKOUT_BUSY", error: existing ? "This product already has an order in progress." : "This product already has an active order from another buyer." }, 409, origin);
+      }
       throw insertError;
     }
 
