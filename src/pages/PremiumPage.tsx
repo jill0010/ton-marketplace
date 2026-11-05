@@ -133,7 +133,7 @@ export function PremiumPage() {
     }
 
     if (
-      normalizedUsername.length < 5 ||
+      normalizedUsername.length < 4 ||
       normalizedUsername.length > 32 ||
       !/^[A-Za-z][A-Za-z0-9_]*$/.test(normalizedUsername)
     ) {
