@@ -214,7 +214,7 @@ export function ManualProductOrdersAdminPage() {
               </div>
 
               <div className="grid gap-3 border-t border-white/10 pt-3 sm:grid-cols-3">
-                <div><p className="text-xs text-zinc-500">订单金额</p><p className="mt-1 text-sm font-semibold text-white">{Number(order.amount).toFixed(4)} {order.currency}</p></div>
+                <div><p className="text-xs text-zinc-500">订单金额</p><p className="mt-1 text-sm font-semibold text-white">{String(order.amount)} {order.currency}</p></div>
                 <div><p className="text-xs text-zinc-500">买家钱包</p><p className="mt-1 break-all text-xs text-zinc-300" title={order.buyer_wallet_raw}>{shortWallet(order.buyer_wallet_raw)}</p></div>
                 <div><p className="text-xs text-zinc-500">确认付款时间</p><p className="mt-1 text-sm text-zinc-300">{dateLabel(order.paid_at)}</p></div>
               </div>
