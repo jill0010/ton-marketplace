@@ -63,7 +63,7 @@ export function ConnectTonButton() {
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 shrink-0 fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3.5 5.2h17L12 20.3 3.5 5.2Z" />
-          <path d="M3.5 5.2 12 20.3l2.7-15.1" />
+          <path d="M12 5.2v15.1" />
         </svg>
         {walletAddress ? (
           <span className="whitespace-nowrap text-[15px] font-semibold tracking-[-0.02em]">{shortAddress}</span>
