@@ -93,11 +93,7 @@ Deno.serve(async (req: Request) => {
     const createdAt = Date.parse(order.created_at);
     const expiresAt = Date.parse(order.expires_at);
     if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt)) return reply({ success: false, error: "Order payment timestamps are invalid" }, 409, origin);
-    if (Date.now() > expiresAt) {
-      await admin.from("manual_product_orders").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", order.id).eq("status", "awaiting_payment");
-      await admin.from("manual_product_order_logs").insert({ order_id: order.id, action: "cancelled", old_status: "awaiting_payment", new_status: "cancelled", note: "Payment window expired." });
-      return reply({ success: false, code: "ORDER_EXPIRED", error: "This order has expired. Create a new order to continue." }, 410, origin);
-    }
+    const orderExpired = Date.now() > expiresAt;
 
     const receiverRaw = Address.parse(order.payment_address).toRawString();
     const senderRaw = wallet.walletAddress;
@@ -161,7 +157,24 @@ Deno.serve(async (req: Request) => {
       break;
     }
 
-    if (!match) return reply({ success: false, code: "PAYMENT_NOT_FOUND", error: "No confirmed TON Mainnet transfer matching this wallet, exact amount and unique order memo was found yet. Wait for confirmation and retry." }, 409, origin);
+    if (!match) {
+      if (orderExpired) {
+        await admin.from("manual_product_orders")
+          .update({ status: "cancelled", updated_at: new Date().toISOString() })
+          .eq("id", order.id)
+          .eq("status", "awaiting_payment");
+        await admin.from("manual_product_order_logs").insert({
+          order_id: order.id,
+          actor_id: wallet.userId,
+          action: "cancelled",
+          old_status: "awaiting_payment",
+          new_status: "cancelled",
+          note: "Payment window expired without a matching on-chain transfer.",
+        });
+        return reply({ success: false, code: "ORDER_EXPIRED", error: "No matching payment was found before the order expired. Create a new order to continue." }, 410, origin);
+      }
+      return reply({ success: false, code: "PAYMENT_NOT_FOUND", error: "No confirmed TON Mainnet transfer matching this wallet, exact amount and unique order memo was found yet. Wait for confirmation and retry." }, 409, origin);
+    }
 
     const { data: duplicate, error: duplicateError } = await admin.from("manual_product_orders")
       .select("id")
