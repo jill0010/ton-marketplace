@@ -42,6 +42,45 @@ function getTokenInfo(
 ): TokenInfo | undefined {
   return getAddressMetadata(metadata, address)?.token_info?.[0];
 }
+
+function isOfficialFragmentGift(
+  content: Record<string, unknown>,
+  itemInfo: TokenInfo | undefined,
+  itemMetadata: AddressMetadata | undefined,
+  collectionMetadata: AddressMetadata | undefined,
+): boolean {
+  // Telegram collectible gifts exported through Fragment expose a canonical
+  // Fragment gift metadata URI. Require both item and collection to be
+  // independently indexed and marked valid/non-scam by TON Center.
+  if (
+    !isVerifiedMetadata(itemMetadata, "nft_items") ||
+    !isVerifiedMetadata(collectionMetadata, "nft_collections")
+  ) {
+    return false;
+  }
+
+  const metadata = itemInfo as (TokenInfo & {
+    uri?: unknown;
+    external_url?: unknown;
+  }) | undefined;
+  const candidates = [
+    getString(content.uri),
+    getString(content.external_url),
+    getString(metadata?.uri),
+    getString(metadata?.external_url),
+  ].filter((value): value is string => Boolean(value));
+
+  return candidates.some((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" &&
+        url.hostname === "nft.fragment.com" &&
+        /^\\/gift\\/[A-Za-z0-9_-]+\\.json$/.test(url.pathname);
+    } catch {
+      return false;
+    }
+  });
+}
 Deno.serve(async (request: Request) => {
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
@@ -182,9 +221,6 @@ Deno.serve(async (request: Request) => {
         : null;
       if (itemIndex === null) continue;
 
-      const assetType = allowedCollections.get(collectionAddress);
-      if (!assetType) continue;
-
       const itemMetadata = getAddressMetadata(collectedMetadata, itemAddress);
       const collectionMetadata = getAddressMetadata(
         collectedMetadata,
@@ -198,19 +234,24 @@ Deno.serve(async (request: Request) => {
         continue;
       }
 
+      const itemInfo = getTokenInfo(collectedMetadata, itemAddress);
+      const content = nft.content ?? {};
+      // Usernames and +888 numbers use the explicitly verified collection
+      // allowlist. Telegram collectible gifts are issued across gift series,
+      // so identify them by Fragment's canonical /gift/ metadata URI instead
+      // of requiring one hard-coded collection address.
+      const assetType = allowedCollections.get(collectionAddress) ??
+        (isOfficialFragmentGift(content, itemInfo, itemMetadata, collectionMetadata)
+          ? "gift"
+          : undefined);
+      if (!assetType) continue;
+
       if (
         assetType === "phone_number" &&
         !hasTeleitemInterface(collectedAddressBook, itemAddress)
       ) {
         continue;
       }
-
-      const itemInfo = getTokenInfo(
-        collectedMetadata,
-        itemAddress,
-      );
-
-      const content = nft.content ?? {};
 
       const name = itemInfo?.name ||
         getString(content.name) ||
