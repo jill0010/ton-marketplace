@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react"
 import { beginCell } from "@ton/core"
 import {
-  TonConnectButton,
   useTonAddress,
   useTonConnectUI,
 } from "@tonconnect/ui-react"
