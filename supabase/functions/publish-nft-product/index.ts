@@ -244,6 +244,18 @@ Deno.serve(async (req: Request) => {
     const kind = kindMap[assetType];
     if (!kind) return reply({ success: false, error: "Unsupported Telegram NFT type" }, 400, origin);
 
+    // Escrow V2 currently enables only the two audited Fragment Gift Item Code
+    // hashes for kind=3. TeleMint username/phone-number code hashes have not
+    // yet been independently verified, so fail closed before any chain lookup
+    // or database write instead of allowing a misleading partial publish flow.
+    if (kind !== 3) {
+      return reply({
+        success: false,
+        code: "ASSET_KIND_NOT_ENABLED",
+        error: "Telegram usernames and collectible phone numbers are not enabled for escrow yet. Only verified Fragment gifts can be listed.",
+      }, 403, origin);
+    }
+
     const priceRaw = String(body?.price ?? "");
     let priceNano: bigint;
     try {
