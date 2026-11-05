@@ -859,8 +859,8 @@ export function PremiumPage() {
   return (
     <div className="mx-auto min-h-screen max-w-2xl space-y-6 bg-[#0b0d12] px-4 py-7 text-white sm:px-6">
       <div className="space-y-2 px-1">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">{t("Buy Telegram Premium", "购买 Telegram Premium")}
-          <svg aria-label="Telegram Premium" role="img" viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-sky-400" fill="currentColor"><path d="M12 0.8l2.45 7.05 7.05 2.45-7.05 2.45L12 19.8l-2.45-7.05L2.5 10.3l7.05-2.45L12 0.8zm7.1 13.2 1.15 3.3 3.3 1.15-3.3 1.15-1.15 3.3-1.15-3.3-3.3-1.15 3.3-1.15 1.15-3.3z"/></svg>
+        <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight sm:text-4xl">{t("Buy Telegram Premium", "购买 Telegram Premium")}
+          <svg aria-label="Telegram Premium" role="img" viewBox="0 0 100 100" className="h-9 w-9 shrink-0 sm:h-10 sm:w-10" xmlns="http://www.w3.org/2000/svg"><path fill="#45A9E6" d="M44 5 C47 -1 54 -1 57 6 L69 34 L96 35 C104 36 105 45 98 51 L77 67 L85 93 C88 102 80 106 72 100 L51 83 L25 100 C16 105 8 98 12 88 L21 66 L4 53 C-3 47 0 37 10 36 L34 34 Z"/></svg>
         </h1>
         <p className="text-sm leading-relaxed text-slate-300">Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.</p>
       </div>
