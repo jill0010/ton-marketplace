@@ -1,0 +1,73 @@
+name: Deploy Marketplace V2 Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_deployment:
+        description: "I understand this deploys test contracts and spends TON testnet funds."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-v2-testnet-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy fresh Marketplace V2 and NFT Escrow V2 to testnet
+    if: ${{ inputs.confirm_testnet_deployment == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      PLATFORM_TREASURY_ADDRESS: ${{ secrets.PLATFORM_TREASURY_TESTNET_ADDRESS }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+
+      - name: Validate testnet deployment secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${DEPLOYER_MNEMONIC}" || { echo "::error::Missing TESTNET_DEPLOYER_MNEMONIC repository secret"; exit 1; }
+          test -n "${PLATFORM_TREASURY_ADDRESS}" || { echo "::error::Missing PLATFORM_TREASURY_TESTNET_ADDRESS repository secret"; exit 1; }
+          test -n "${TONCENTER_API_KEY}" || { echo "::error::Missing TONCENTER_TESTNET_API_KEY repository secret"; exit 1; }
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+
+      - name: Build production contracts
+        run: acton build
+
+      - name: Deploy and verify on TON Testnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/deploy-v2.tolk --net testnet 2>&1 | tee testnet-deployment.log
+          grep -Fq "Escrow binding and immutable treasury configuration verified" testnet-deployment.log
+          {
+            echo "## TON Testnet deployment"
+            echo
+            grep -E "Marketplace V2 deployed at|NFT Escrow V2 deployed at|Marketplace owner:|Platform treasury:" testnet-deployment.log
+            echo
+            echo "The deployment script verified Marketplace/Escrow binding and immutable treasury configuration."
+            echo "No collection is enabled by this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
