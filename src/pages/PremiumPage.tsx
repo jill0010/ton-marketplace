@@ -877,8 +877,8 @@ export function PremiumPage() {
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[#13171c] p-5">
         <h2 className="px-4 text-sm font-semibold">{t("Choose recipient", "选择接收人")}</h2>
         <div className="flex items-center gap-3 rounded-xl bg-[#252f39] px-4 py-3">
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 shrink-0 self-center text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-          <input id="premium-username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t("Enter Telegram username...", "输入 Telegram 用户名...")} autoComplete="off" maxLength={33} className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 shrink-0 self-center text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m8 16-4 4" /></svg>
+          <input id="premium-username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t("Please enter Telegram username...", "请输入 Telegram 用户名...")} autoComplete="off" maxLength={33} className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
         </div>
         {(profileLookupState === "waiting" || profileLookupState === "loading") && <p className="px-4 text-xs text-sky-300">{profileLookupState === "waiting" ? t("Preparing profile lookup…", "准备查询资料……") : t("Looking up Telegram profile…", "正在查询 Telegram 资料……")}</p>}
         {profileLookupState === "error" && <p className="px-4 text-xs text-amber-300">{profileLookupMessage}</p>}
