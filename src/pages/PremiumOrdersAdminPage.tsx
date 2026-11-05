@@ -101,48 +101,12 @@ export function PremiumOrdersAdminPage() {
     setError("")
     setMessage("")
     try {
-      const now = new Date().toISOString()
-
-      // Make this action safely retryable if either write previously succeeded.
-      if (!payment.admin_confirmed) {
-        const { error: paymentError } = await supabase
-          .from("premium_payments")
-          .update({ admin_confirmed: true, admin_confirmed_at: now })
-          .eq("id", payment.id)
-          .eq("admin_confirmed", false)
-        if (paymentError) throw paymentError
-      }
-
-      const { data: updatedOrder, error: orderError } = await supabase
-        .from("premium_orders")
-        .update({ status: "paid", updated_at: now })
-        .eq("id", order.id)
-        .in("status", ["payment_detected", "paid"])
-        .select("id, status")
-        .maybeSingle()
-      if (orderError) throw orderError
-
-      if (!updatedOrder) {
-        const { data: currentOrder, error: currentOrderError } = await supabase
-          .from("premium_orders")
-          .select("status")
-          .eq("id", order.id)
-          .maybeSingle()
-        if (currentOrderError || currentOrder?.status !== "paid") {
-          throw currentOrderError ?? new Error("The order could not be moved to the paid state. Retry this action.")
-        }
-      }
-
-      if (!payment.admin_confirmed || order.status !== "paid") {
-        const { error: logError } = await supabase.from("premium_order_logs").insert({
-          order_id: order.id,
-          actor_id: ADMIN_UID,
-          action: "admin_confirmed_payment",
-          old_status: order.status,
-          new_status: "paid",
-          note: "Administrator confirmed the on-chain GRAM payment.",
-        })
-        if (logError) console.error("Premium payment audit log failed", logError.message)
+      const { data, error } = await supabase.functions.invoke("admin-premium-order-action", {
+        body: { action: "confirm_gram_payment", order_id: order.id, payment_id: payment.id },
+      })
+      if (error) throw new Error(error.message || "Premium payment confirmation failed")
+      if (data?.success !== true || data?.status !== "paid") {
+        throw new Error(typeof data?.error === "string" ? data.error : "Premium payment confirmation failed")
       }
       setMessage("订单 " + order.order_no + " 已确认收款。请完成 Telegram Premium 人工开通后，再标记为已完成。")
       await loadOrders()
@@ -188,62 +152,18 @@ export function PremiumOrdersAdminPage() {
     setError("")
     setMessage("")
     const input = inputs[order.id] ?? { reference: "", note: "" }
-    const now = new Date().toISOString()
     try {
-      // Write the delivery receipt first. If the order update then fails,
-      // the administrator can retry without creating a duplicate receipt.
-      const { data: existingDelivery, error: existingDeliveryError } = await supabase
-        .from("premium_delivery_logs")
-        .select("id")
-        .eq("order_id", order.id)
-        .maybeSingle()
-      if (existingDeliveryError) throw existingDeliveryError
-
-      if (!existingDelivery) {
-        const { error: deliveryError } = await supabase.from("premium_delivery_logs").insert({
+      const { data, error } = await supabase.functions.invoke("admin-premium-order-action", {
+        body: {
+          action: "complete_delivery",
           order_id: order.id,
-          recipient_username: order.recipient_username,
-          plan_name: order.plan_name,
-          delivery_method: "manual_telegram",
-          delivery_reference: input.reference.trim() || null,
-          operator_id: ADMIN_UID,
-          delivered_at: now,
-          delivery_status: "completed",
-          note: input.note.trim() || "Manually activated by administrator.",
-        })
-        if (deliveryError) throw deliveryError
-      }
-
-      const { data: updatedOrder, error: orderError } = await supabase
-        .from("premium_orders")
-        .update({ status: "completed", completed_at: now, updated_at: now })
-        .eq("id", order.id)
-        .in("status", ["paid", "processing", "completed"])
-        .select("id, status")
-        .maybeSingle()
-      if (orderError) throw orderError
-
-      if (!updatedOrder) {
-        const { data: currentOrder, error: currentOrderError } = await supabase
-          .from("premium_orders")
-          .select("status")
-          .eq("id", order.id)
-          .maybeSingle()
-        if (currentOrderError || currentOrder?.status !== "completed") {
-          throw currentOrderError ?? new Error("The order could not be marked completed. Retry this action.")
-        }
-      }
-
-      if (!existingDelivery) {
-        const { error: logError } = await supabase.from("premium_order_logs").insert({
-          order_id: order.id,
-          actor_id: ADMIN_UID,
-          action: "manual_premium_delivery_completed",
-          old_status: order.status,
-          new_status: "completed",
-          note: input.note.trim() || "Manually activated by administrator.",
-        })
-        if (logError) console.error("Premium delivery audit log failed", logError.message)
+          delivery_reference: input.reference.trim(),
+          note: input.note.trim(),
+        },
+      })
+      if (error) throw new Error(error.message || "Premium delivery request failed")
+      if (data?.success !== true || data?.status !== "completed") {
+        throw new Error(typeof data?.error === "string" ? data.error : "Premium delivery could not be confirmed")
       }
       setMessage("订单 " + order.order_no + " 已记录为人工开通完成。")
       await loadOrders()
