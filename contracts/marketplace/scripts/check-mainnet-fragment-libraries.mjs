@@ -14,6 +14,22 @@ const requiredLibraries = [
   "91d9e2ac169fc785ce00de0a81af27622b9b7d1764415c775e7e50c03ce98aa2",
 ];
 
+function normalizeTonHash(value) {
+  const hash = String(value ?? "").trim().replace(/^0x/i, "");
+  if (/^[0-9a-f]{64}$/i.test(hash)) return hash.toLowerCase();
+
+  // TON API hash fields may be returned as standard or URL-safe Base64.
+  const base64 = hash.replace(/-/g, "+").replace(/_/g, "/");
+  if (!/^[A-Za-z0-9+/]{43}=?$/.test(base64)) return null;
+
+  const bytes = Buffer.from(base64, "base64");
+  if (bytes.length !== 32) return null;
+  if (bytes.toString("base64").replace(/=+$/, "") !== base64.replace(/=+$/, "")) {
+    return null;
+  }
+  return bytes.toString("hex");
+}
+
 const url = new URL("https://toncenter.com/api/v2/getLibraries");
 for (const hash of requiredLibraries) url.searchParams.append("libraries", hash);
 
@@ -34,8 +50,8 @@ if (payload?.ok !== true || !Array.isArray(payload?.result?.result)) {
 
 const found = new Set(
   payload.result.result
-    .map((entry) => String(entry?.hash ?? "").replace(/^0x/i, "").toLowerCase())
-    .filter((hash) => /^[0-9a-f]{64}$/.test(hash)),
+    .map((entry) => normalizeTonHash(entry?.hash))
+    .filter(Boolean),
 );
 
 const missing = requiredLibraries.filter((hash) => !found.has(hash));
