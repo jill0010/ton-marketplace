@@ -78,7 +78,6 @@ export function PremiumPage() {
   const [tonConnectUI] = useTonConnectUI()
   const walletAddress = useTonAddress()
 
-  const [recipient, setRecipient] = useState<"self" | "other">("self")
   const [username, setUsername] = useState("")
   const [telegramProfile, setTelegramProfile] = useState<{
     username: string
@@ -110,6 +109,8 @@ export function PremiumPage() {
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [pendingOrderId, setPendingOrderId] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState<"GRAM" | "USDT_TRC20">("GRAM")
+  const [usdtOrder, setUsdtOrder] = useState<{ orderId: string; orderNo: string; amount: string; paymentAddress: string; expiresAt: string } | null>(null)
 
   const pendingProofRef = useRef(false)
   const verificationInProgressRef = useRef(false)
@@ -138,7 +139,7 @@ export function PremiumPage() {
     ) {
       setProfileLookupState("error")
       setProfileLookupMessage(
-        "请输入有效的 Telegram 用户名（5–32 位，字母开头，可包含数字和下划线）。",
+        "请输入有效的 Telegram 用户名（4–32 位，字母开头，可包含数字和下划线）。",
       )
       return
     }
@@ -803,8 +804,8 @@ export function PremiumPage() {
       return
     }
     const recipientUsername = username.trim().replace(/^@+/, "")
-    if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(recipientUsername)) {
-      setCheckoutMessage(t("Enter a valid Telegram username (5–32 characters).", "请输入有效的 Telegram 用户名（5–32 个字符）。"))
+    if (!/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(recipientUsername)) {
+      setCheckoutMessage(t("Enter a valid Telegram username (4–32 characters).", "请输入有效的 Telegram 用户名（5–32 个字符）。"))
       return
     }
 
@@ -858,6 +859,38 @@ export function PremiumPage() {
     }
   }
 
+
+  async function createUsdtOrder() {
+    if (checkoutBusy || !selected) return
+    const recipientUsername = username.trim().replace(/^@+/, "")
+    if (!/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(recipientUsername)) {
+      setCheckoutMessage(t("Enter a valid Telegram username (4–32 characters).", "请输入有效的 Telegram 用户名（4–32 个字符）。"))
+      return
+    }
+    setCheckoutBusy(true)
+    setCheckoutMessage(t("Creating your USDT order…", "正在创建 USDT 订单……"))
+    setUsdtOrder(null)
+    try {
+      await ensureAnonymousSession()
+      const { data, error } = await anonymousSupabase.functions.invoke("create-usdt-premium-order", {
+        body: { plan_id: selected.id, recipient_username: recipientUsername },
+      })
+      if (error) throw new Error(error.message || "Unable to create USDT order")
+      if (data?.success !== true || typeof data.orderId !== "string" || typeof data.orderNo !== "string" ||
+          typeof data.amount !== "string" || typeof data.paymentAddress !== "string") {
+        throw new Error(typeof data?.error === "string" ? data.error : "Invalid USDT order response")
+      }
+      setUsdtOrder({ orderId: data.orderId, orderNo: data.orderNo, amount: data.amount, paymentAddress: data.paymentAddress, expiresAt: data.expiresAt })
+      setCheckoutMessage(data.telegramNotified
+        ? t("Order created. The administrator has been notified by Telegram.", "订单已创建，管理员已收到 Telegram 机器人通知。")
+        : t("Order created. Telegram notification could not be confirmed.", "订单已创建，但无法确认机器人通知是否送达。"))
+    } catch (error) {
+      setCheckoutMessage(error instanceof Error ? error.message : "Unable to create USDT order.")
+    } finally {
+      setCheckoutBusy(false)
+    }
+  }
+
   // =====================================================
   // 6. 当前套餐与验证状态
   // =====================================================
@@ -877,454 +910,67 @@ export function PremiumPage() {
   // 7. 页面
   // =====================================================
 
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          {t("Buy Telegram Premium", "购买 Telegram Premium")}
-        </h1>
-
-        <p className="text-sm leading-6 text-zinc-400">
-          {t(
-            "Use your crypto wallet to buy a Telegram Premium subscription for yourself or your friends and colleagues.",
-            "使用加密钱包为自己、朋友或同事购买 Telegram Premium 订阅。",
-          )}
-        </p>
-      </header>
-
-      {/* 接收人 */}
-      <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setRecipient("other")}
-            className={`rounded-xl border px-3 py-3 text-sm ${
-              recipient === "other"
-                ? "border-sky-400 bg-sky-400/10 text-white"
-                : "border-white/10 text-zinc-400 hover:bg-white/5"
-            }`}
-          >
-            {t("Choose recipient", "选择接收人")}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setRecipient("self")
-            }}
-            className={`rounded-xl border px-3 py-3 text-sm ${
-              recipient === "self"
-                ? "border-sky-400 bg-sky-400/10 text-white"
-                : "border-white/10 text-zinc-400 hover:bg-white/5"
-            }`}
-          >
-            {t("Buy for myself", "为自己购买")}
-          </button>
-        </div>
-
-        {(
-          <div className="space-y-2">
-            <label
-              htmlFor="premium-username"
-              className="text-sm text-zinc-300"
-            >
-              {t("Telegram username to receive Premium", "接收 Premium 的 Telegram 用户名")}
-            </label>
-
-            <input
-              id="premium-username"
-              value={username}
-              onChange={(event) =>
-                setUsername(event.target.value.replace(/^@+/, ""))
-              }
-              placeholder={t(
-                "Enter Telegram username...",
-                "输入 Telegram 用户名...",
-              )}
-              autoComplete="off"
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-400"
-            />
-
-            <p className="text-xs leading-5 text-zinc-500">
-              {profileLookupState === "waiting" &&
-                t("Looking up profile shortly…", "正在准备查询 Telegram 资料…")}
-              {profileLookupState === "loading" &&
-                t("Looking up Telegram profile…", "正在查询 Telegram 公开资料…")}
-              {profileLookupState === "error" && (
-                <span className="text-amber-300">{profileLookupMessage}</span>
-              )}
-              {profileLookupState === "success" &&
-                t("Public Telegram profile found. This is not identity verification.", "已找到 Telegram 公开资料；这不代表身份验证。")}
-              {profileLookupState === "idle" &&
-                t("Enter a Telegram username with or without @.", "输入 Telegram 用户名，可带或不带 @。")}
-            </p>
-
-            {telegramProfile && profileLookupState === "success" && (
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/25 p-4">
-                {telegramProfile.avatarUrl ? (
-                  <img
-                    src={telegramProfile.avatarUrl}
-                    alt={telegramProfile.displayName}
-                    referrerPolicy="no-referrer"
-                    className="h-16 w-16 shrink-0 rounded-full border border-white/10 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl text-zinc-400">
-                    {telegramProfile.displayName.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="break-words font-semibold text-white">
-                    {telegramProfile.displayName}
-                  </p>
-                  <p className="text-sm text-sky-300">@{telegramProfile.username}</p>
-                  {telegramProfile.bio && (
-                    <p className="whitespace-pre-wrap break-words text-xs leading-5 text-zinc-300">
-                      {telegramProfile.bio}
-                    </p>
-                  )}
-                  {telegramProfile.extra && (
-                    <p className="text-xs text-zinc-400">{telegramProfile.extra}</p>
-                  )}
-                  <a
-                    href={telegramProfile.profileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block pt-1 text-xs text-sky-300 hover:underline"
-                  >
-                    {t("Open Telegram profile", "打开 Telegram 资料")}
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* 套餐 */}
+    <div className="mx-auto min-h-screen max-w-xl space-y-6 bg-[#1b2229] px-3 py-5 text-white sm:px-5">
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-white">
-          {t("Choose a subscription", "选择订阅套餐")}
-        </h2>
-
-        {loading && (
-          <p className="text-sm text-zinc-400">
-            {t("Loading prices...", "正在读取套餐价格……")}
-          </p>
-        )}
-
-        {loadError && (
-          <p
-            role="alert"
-            className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-300"
-          >
-            {t("Unable to load prices: ", "读取价格失败：")}
-            {loadError}
-          </p>
-        )}
-
-        {!loading &&
-          !loadError &&
-          plans.map((plan) => {
-            const active = selectedPlan === plan.id
-
-            const gramUsdValue = marketQuote
-              ? plan.gramPrice * marketQuote.priceUsd
-              : null
-
-            const discountPercent =
-              gramUsdValue !== null
-                ? ((plan.marketUsd - gramUsdValue) /
-                    plan.marketUsd) *
-                  100
-                : null
-
-            return (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSelectedPlan(plan.id)}
-                className={`w-full rounded-2xl border p-4 text-left transition ${
-                  active
-                    ? "border-sky-400 bg-sky-400/[0.08]"
-                    : "border-white/10 bg-white/[0.03] hover:border-white/20"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-white">
-                      {t(plan.period, plan.periodZh)}
-                    </p>
-
-                    <p className="text-xs text-zinc-500">
-                      {t("Original price", "原价格")}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="mb-1 text-xs font-medium text-emerald-300">
-                      {t("Discount price", "优惠价格")}
-                    </p>
-
-                    <p className="inline-flex items-center justify-end gap-1.5 text-lg font-semibold text-emerald-300">
-                      <GramTokenMark className="h-5 w-5" />
-                      {plan.gramPrice.toFixed(2)} GRAM
-                    </p>
-
-                    <p className="text-sm text-zinc-400 line-through">
-                      ${plan.marketUsd.toFixed(2)} USD
-                    </p>
-
-                    <p className="mt-1 text-xs text-zinc-400">
-                      {gramUsdValue !== null
-                        ? `≈ $${gramUsdValue.toFixed(2)} USD`
-                        : t(
-                            "USD estimate unavailable",
-                            "美元估值暂不可用",
-                          )}
-                    </p>
-
-                    {discountPercent !== null && (
-                      <p className="text-xs text-emerald-300">
-                        {discountPercent > 0
-                          ? t(
-                              `Save ${discountPercent.toFixed(1)}%`,
-                              `优惠 ${discountPercent.toFixed(1)}%`,
-                            )
-                          : t("No discount", "暂无折扣")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+        <h2 className="px-4 text-sm font-semibold">{t("Choose recipient", "选择接收人")}</h2>
+        <div className="flex items-center gap-3 rounded-xl bg-[#252f39] px-4 py-3">
+          <span className="text-zinc-400">⌕</span>
+          <input id="premium-username" value={username} onChange={(event) => setUsername(event.target.value.replace(/^@+/, ""))} placeholder={t("Enter Telegram username...", "输入 Telegram 用户名...")} autoComplete="off" maxLength={33} className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
+        </div>
+        {(profileLookupState === "waiting" || profileLookupState === "loading") && <p className="px-4 text-xs text-sky-300">{profileLookupState === "waiting" ? t("Preparing profile lookup…", "准备查询资料……") : t("Looking up Telegram profile…", "正在查询 Telegram 资料……")}</p>}
+        {profileLookupState === "error" && <p className="px-4 text-xs text-amber-300">{profileLookupMessage}</p>}
+        {telegramProfile && profileLookupState === "success" && <div className="mx-1 flex items-center gap-3 rounded-xl border border-white/10 bg-[#252f39] p-3">
+          {telegramProfile.avatarUrl ? <img src={telegramProfile.avatarUrl} alt={telegramProfile.displayName} referrerPolicy="no-referrer" className="h-12 w-12 rounded-full object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-600">{telegramProfile.displayName.slice(0,1).toUpperCase()}</div>}
+          <div className="min-w-0"><p className="truncate text-sm font-semibold">{telegramProfile.displayName}</p><p className="text-xs text-sky-300">@{telegramProfile.username}</p>{telegramProfile.bio && <p className="line-clamp-2 text-xs text-slate-300">{telegramProfile.bio}</p>}<a href={telegramProfile.profileUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-300">{t("View Telegram profile", "查看 Telegram 资料")}</a></div>
+        </div>}
+        <p className="px-4 text-xs text-slate-400">{t("Enter 4–32 characters, with or without @. Public profile lookup is automatic.", "输入 4–32 位用户名，可带或不带 @，系统自动查询公开头像和资料。")}</p>
       </section>
 
-      {/* 钱包身份验证及支付方式 */}
-      <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-white">
-            {t("Payment Method", "支付方式")}
-          </h2>
-
-          <span
-            className={
-              isWalletVerified
-                ? "text-xs text-emerald-300"
-                : walletAddress
-                  ? "text-xs text-amber-300"
-                  : "text-xs text-zinc-400"
-            }
-          >
-            {isWalletVerified
-              ? t("Wallet verified", "钱包身份已验证")
-              : walletAddress
-                ? t("Verification required", "等待身份验证")
-                : t("Not connected", "尚未连接")}
-          </span>
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-white">
-                {t("Connect TON Wallet", "连接 TON 钱包")}
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-400">
-                {t(
-                  "Connect your wallet and verify ownership with TON Proof.",
-                  "连接钱包并通过 TON Proof 验证钱包所有权。",
-                )}
-              </p>
-            </div>
-
-            {!walletAddress ? (
-              <button
-                type="button"
-                onClick={connectAndVerifyWallet}
-                disabled={connecting || verifying}
-                className="shrink-0 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {connecting
-                  ? t("Preparing...", "正在准备……")
-                  : verifying
-                    ? t("Verifying...", "正在验证……")
-                    : t("Connect wallet", "连接钱包")}
-              </button>
-            ) : (
-              <TonConnectButton />
-            )}
-          </div>
-
-          {walletAddress && (
-            <div className="space-y-2">
-              <p className="break-all text-xs text-zinc-300">
-                {walletAddress}
-              </p>
-
-              {isWalletVerified && walletVerification && (
-                <p className="text-xs text-emerald-300">
-                  {t(
-                    "Verified wallet version: ",
-                    "已验证钱包版本：",
-                  )}
-                  {walletVerification.walletVersion}
-                </p>
-              )}
-            </div>
-          )}
-
-          {proofMessage && (
-            <p
-              role="status"
-              className={`break-words text-xs leading-5 ${
-                isWalletVerified
-                  ? "text-emerald-300"
-                  : proofMessage.includes("失败") ||
-                      proofMessage.includes("无法")
-                    ? "text-red-300"
-                    : "text-amber-300"
-              }`}
-            >
-              {proofMessage}
-            </p>
-          )}
-
-          {walletAddress && !isWalletVerified && !verifying && (
-            <p className="text-xs leading-5 text-amber-300">
-              {t(
-                "This wallet connection has not been verified. Disconnect it and reconnect to complete TON Proof verification.",
-                "当前钱包连接尚未通过身份验证。请先断开钱包，再重新连接并完成 TON Proof 验证。",
-              )}
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-sky-400 bg-sky-400/10 px-4 py-3 font-medium text-white">
-          <GramTokenMark className="mr-2 h-6 w-6" />GRAM
-        </div>
-
-        {/* 订单价格预览 */}
-        <div className="space-y-2 rounded-xl bg-black/20 p-4 text-sm">
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Subscription", "订阅套餐")}</span>
-            <span className="text-white">
-              {selected
-                ? t(selected.period, selected.periodZh)
-                : "—"}
-            </span>
-          </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Original price", "原价格")}</span>
-            <span className="text-white line-through">
-              {selected
-                ? `$${selected.marketUsd.toFixed(2)} USD`
-                : "—"}
-            </span>
-          </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Discount price", "优惠价格")}</span>
-            <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-300">
-              {selected ? <><GramTokenMark className="h-4 w-4" />{selected.gramPrice.toFixed(2)} GRAM</> : "—"}
-            </span>
-          </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("USD equivalent", "美元估值")}</span>
-            <span className="text-white">
-              {selected && marketQuote
-                ? `$${(
-                    selected.gramPrice * marketQuote.priceUsd
-                  ).toFixed(2)} USD`
-                : "—"}
-            </span>
-          </div>
-
-          <div className="flex justify-between gap-3 text-zinc-400">
-            <span>{t("Discount", "优惠比例")}</span>
-            <span className="font-semibold text-emerald-300">
-              {selected && marketQuote
-                ? (() => {
-                    const discount =
-                      ((selected.marketUsd -
-                        selected.gramPrice *
-                          marketQuote.priceUsd) /
-                        selected.marketUsd) *
-                      100
-
-                    return discount > 0
-                      ? `${discount.toFixed(1)}%`
-                      : t("No discount", "暂无折扣")
-                  })()
-                : "—"}
-            </span>
-          </div>
-
-          <p className="pt-1 text-xs leading-5 text-zinc-500">
-            {marketQuote
-              ? t(
-                  "GRAM/USD quote from CoinGecko. Automatically refreshed every 60 seconds.",
-                  "GRAM/USD 行情来自 CoinGecko，每 60 秒自动刷新。",
-                )
-              : t(
-                  "Live market quote unavailable. USD equivalent and discount are hidden.",
-                  "实时行情暂不可用，美元估值和折扣暂不显示。",
-                )}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={buyPremiumWithGram}
-          disabled={checkoutBusy || !isWalletVerified || loading || Boolean(loadError) || !selected}
-          className="w-full rounded-full bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-500"
-        >
-          {checkoutBusy ? t("Processing…", "处理中……") : t("Pay with GRAM", "使用 GRAM 付款")}
-        </button>
-
-        {pendingOrderId && (
-          <button
-            type="button"
-            onClick={() => void verifyGramOrder(pendingOrderId)}
-            disabled={checkoutBusy}
-            className="w-full rounded-full border border-white/15 px-4 py-3 text-sm font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
-          >
-            {t("Check payment", "核实付款")}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between px-4"><h2 className="text-sm font-semibold">{t("Choose duration", "选择会员时长")}</h2><span className="rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-400">SALE</span></div>
+        {!loading && !loadError && plans.map((plan) => {
+          const active = selectedPlan === plan.id
+          const discount = ({ month: 18, quarter: 30, "half-year": 57, year: 72 } as Record<string, number>)[plan.id] ?? 0
+          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left ${active ? "border-sky-400 bg-[#25313c]" : "border-transparent bg-[#252f39]"}`}>
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-sky-400" : "border-slate-500"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />}</span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">{t(plan.period, plan.periodZh)}</span>
+            <span className="rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold">-{discount}%</span>
+            <span className="whitespace-nowrap text-sm font-semibold">◆ ${plan.marketUsd.toFixed(2)}</span>
           </button>
-        )}
-
-        {checkoutMessage && (
-          <p role="status" className="break-words rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-zinc-300">
-            {checkoutMessage}
-          </p>
-        )}
-
-        <p className="text-center text-xs text-zinc-500">
-          {t(
-            "Native GRAM on TON Mainnet only. Payment is checked on-chain; Premium activation is handled manually.",
-            "仅支持 TON 主网原生 GRAM。系统会核实链上到账，Premium 由管理员人工开通。",
-          )}
-        </p>
+        })}
+        {loading && <p className="px-4 text-xs text-slate-400">{t("Loading plans…", "正在加载套餐……")}</p>}
+        {loadError && <p className="px-4 text-xs text-red-300">{loadError}</p>}
       </section>
 
-      {/* 交易历史 */}
-      <div className="text-center">
-        <Link
-          to="/premium/history"
-          className="inline-block text-sm text-sky-300 hover:underline"
-        >
-          {t("View Transactions History", "查看交易记录")}
-        </Link>
-        <div className="mt-4">
-          <Link to="/catalog" className="text-sm text-zinc-500 hover:text-zinc-300">
-            {t("Back to marketplace", "返回商城")}
-          </Link>
+      <section className="space-y-3">
+        <h2 className="px-4 text-sm font-semibold">{t("Payment Method", "支付方式")}</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => { setPaymentMethod("GRAM"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-3 text-sm font-semibold ${paymentMethod === "GRAM" ? "border-sky-400 bg-[#25313c] text-sky-300" : "border-transparent bg-[#252f39]"}`}>◆ GRAM</button>
+          <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`rounded-xl border px-3 py-3 text-sm font-semibold ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#25313c] text-emerald-300" : "border-transparent bg-[#252f39]"}`}>₮ USDT · TRC20</button>
         </div>
-      </div>
+      </section>
+
+      {paymentMethod === "GRAM" ? <section className="space-y-3">
+        <div className="flex items-center justify-between rounded-xl bg-[#252f39] p-3"><div className="min-w-0"><p className="text-sm font-semibold">{t("TON wallet", "TON 钱包")}</p><p className="mt-1 truncate text-xs text-slate-400">{walletAddress || t("Connect wallet to pay with GRAM", "连接钱包后使用 GRAM 付款")}</p><p className={`mt-1 text-xs ${isWalletVerified ? "text-emerald-300" : "text-amber-300"}`}>{isWalletVerified ? t("Wallet verified", "钱包已验证") : proofMessage || t("Wallet verification required", "需要验证钱包")}</p></div>
+          {!walletAddress ? <button type="button" onClick={connectAndVerifyWallet} disabled={connecting || verifying} className="shrink-0 rounded-lg bg-sky-500 px-3 py-2 text-xs font-semibold disabled:opacity-50">{connecting || verifying ? t("Connecting…", "连接中……") : t("Connect", "连接钱包")}</button> : <TonConnectButton />}
+        </div>
+        {selected && <p className="text-right text-sm text-slate-300">GRAM: <b className="text-white">{selected.gramPrice.toFixed(2)}</b></p>}
+        <button type="button" onClick={buyPremiumWithGram} disabled={checkoutBusy || !isWalletVerified || loading || Boolean(loadError) || !selected} className="w-full rounded-xl bg-sky-500 px-4 py-3 font-semibold text-white disabled:opacity-40">{checkoutBusy ? t("Processing…", "处理中……") : t("Gift Telegram Premium", "赠送 Telegram Premium")}</button>
+        {pendingOrderId && <button type="button" onClick={() => void verifyGramOrder(pendingOrderId)} disabled={checkoutBusy} className="w-full rounded-xl border border-white/15 px-4 py-2 text-sm">{t("Check payment", "核实付款")}</button>}
+      </section> : <section className="space-y-3">
+        {selected && <p className="text-right text-sm text-slate-300">USDT: <b className="text-white">{selected.marketUsd.toFixed(2)} USDT</b></p>}
+        <button type="button" onClick={createUsdtOrder} disabled={checkoutBusy || loading || Boolean(loadError) || !selected} className="w-full rounded-xl bg-sky-500 px-4 py-3 font-semibold text-white disabled:opacity-40">{checkoutBusy ? t("Processing…", "处理中……") : t("Create USDT payment order", "创建 USDT 付款订单")}</button>
+        {usdtOrder && <div className="space-y-3 rounded-xl border border-emerald-400/30 bg-[#202d34] p-4">
+          <p className="text-sm font-semibold text-emerald-300">{t("USDT-TRC20 payment details", "USDT-TRC20 收款信息")}</p><p className="text-xs text-slate-300">{t("Order", "订单号")}: {usdtOrder.orderNo}</p><p className="text-lg font-bold">{usdtOrder.amount} USDT</p><p className="break-all rounded-lg bg-black/20 p-3 text-xs">{usdtOrder.paymentAddress}</p>
+          <button type="button" onClick={() => void navigator.clipboard.writeText(usdtOrder.paymentAddress)} className="w-full rounded-lg border border-white/15 px-3 py-2 text-sm">{t("Copy receiving address", "复制收款地址")}</button>
+          <p className="text-xs leading-5 text-amber-300">{t("Send USDT on TRON (TRC20) network only. The administrator will verify receipt and manually activate Premium. Do not send on another network.", "请仅通过波场 TRON（TRC20）网络转账。转账后由管理员核实到账并人工开通会员，切勿使用其他网络。")}</p>
+        </div>}
+      </section>}
+      {checkoutMessage && <p role="status" className="rounded-xl bg-[#252f39] p-3 text-xs leading-5 text-slate-300">{checkoutMessage}</p>}
+      <div className="pt-1 text-center"><Link to="/premium/history" className="text-sm text-sky-300 hover:underline">{t("View Transactions History", "查看交易记录")}</Link></div>
     </div>
   )
+
 }
