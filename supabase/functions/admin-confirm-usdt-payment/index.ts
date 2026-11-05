@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply({ success: false, error: "Method not allowed" }, 405, origin);
 
   try {
-    const token = (req.headers.get("authorization") ?? "").match(/^Bearer\\s+(.+)$/i)?.[1];
+    const token = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return reply({ success: false, error: "Authentication required" }, 401, origin);
     const url = Deno.env.get("SUPABASE_URL");
     const publishable = Deno.env.get("SUPABASE_ANON_KEY") ?? JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}").default;
