@@ -844,6 +844,14 @@ export function PremiumPage() {
     (plan) => plan.id === selectedPlan,
   )
 
+  const normalizedRecipient = username.trim().replace(/^@+/, "")
+  const recipientValid =
+    normalizedRecipient.length >= 4 &&
+    normalizedRecipient.length <= 32 &&
+    /^[A-Za-z][A-Za-z0-9_]*$/.test(normalizedRecipient) &&
+    profileLookupState === "success" &&
+    telegramProfile?.username.toLowerCase() === normalizedRecipient.toLowerCase()
+
   const isWalletVerified =
     walletVerification?.verified === true &&
     walletVerification.network === "-239" &&
@@ -883,7 +891,7 @@ export function PremiumPage() {
         {!loading && !loadError && plans.map((plan) => {
           const active = selectedPlan === plan.id
           const discount = ({ month: 18, quarter: 30, "half-year": 57, year: 72 } as Record<string, number>)[plan.id] ?? 0
-          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_5.5rem_4rem] items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${active ? "border-sky-400 bg-[#202b36] shadow-[inset_0_0_0_1px_rgba(56,189,248,0.12)]" : "border-sky-500/70 bg-[#131a22] hover:bg-[#1a2530]"}`}>
+          return <button key={plan.id} type="button" onClick={() => { setSelectedPlan(plan.id); setUsdtOrder(null) }} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_5.5rem_4rem] items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${active ? "border-sky-400 bg-[#202b36] shadow-[inset_0_0_0_1px_rgba(56,189,248,0.12)]" : "border-white/10 bg-[#131a22] hover:border-white/20 hover:bg-[#1a2530]"}`}>
             <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-sky-400" : "border-slate-400"}`}>{active && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />}</span>
             <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">{t(plan.period, plan.periodZh)} <span className="rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white">-{discount}%</span></span>
             <span className="flex w-[5.5rem] items-center justify-start gap-1.5 whitespace-nowrap text-sm font-bold"><span className="flex h-5 w-5 shrink-0 items-center justify-center"><GramTokenMark className="h-4 w-4" /></span><span>{plan.gramPrice.toFixed(2)}</span></span>
@@ -911,11 +919,11 @@ export function PremiumPage() {
       {paymentMethod === "GRAM" ? <section className="space-y-3">
         <div className="flex items-center justify-between gap-3"><span className="text-xs text-slate-400">{proofMessage || (isWalletVerified ? t("TON wallet connected and verified", "TON 钱包已连接并验证") : t("Connect a TON wallet to pay with GRAM", "使用 GRAM 付款需要连接 TON 钱包"))}</span>{!walletAddress ? <button type="button" onClick={connectAndVerifyWallet} disabled={connecting || verifying} className="shrink-0 rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold disabled:opacity-50">{connecting || verifying ? t("Connecting…", "连接中……") : t("Connect wallet", "连接钱包")}</button> : <TonConnectButton />}</div>
         {selected && <p className="text-right text-sm text-slate-300">GRAM: <b className="text-white">{selected.gramPrice.toFixed(2)}</b></p>}
-        <button type="button" onClick={buyPremiumWithGram} disabled={checkoutBusy || !isWalletVerified || loading || Boolean(loadError) || !selected} className="w-full rounded-xl bg-sky-500 px-4 py-3 font-semibold text-white disabled:opacity-40">{checkoutBusy ? t("Processing…", "处理中……") : t("Gift Telegram Premium", "赠送 Telegram Premium")}</button>
+        <button type="button" onClick={buyPremiumWithGram} disabled={checkoutBusy || !recipientValid || !isWalletVerified || loading || Boolean(loadError) || !selected} className={`w-full rounded-xl px-4 py-3 font-semibold text-white transition-colors ${checkoutBusy || !recipientValid || !isWalletVerified || loading || Boolean(loadError) || !selected ? "bg-slate-400 text-slate-700 cursor-not-allowed" : "bg-[#202b36] hover:bg-[#293846]"}`}>{checkoutBusy ? t("Processing…", "处理中……") : t("Gift Telegram Premium", "赠送 Telegram Premium")}</button>
         {pendingOrderId && <button type="button" onClick={() => void verifyGramOrder(pendingOrderId)} disabled={checkoutBusy} className="w-full rounded-xl border border-white/15 px-4 py-2 text-sm">{t("Check payment", "核实付款")}</button>}
       </section> : <section className="space-y-3">
         {selected && <p className="text-right text-sm text-slate-300">USDT: <b className="text-white">{selected.marketUsd.toFixed(2)} USDT</b></p>}
-        <button type="button" onClick={createUsdtOrder} disabled={checkoutBusy || loading || Boolean(loadError) || !selected} className="w-full rounded-xl bg-sky-500 px-4 py-3 font-semibold text-white disabled:opacity-40">{checkoutBusy ? t("Processing…", "处理中……") : t("Create USDT payment order", "创建 USDT 付款订单")}</button>
+        <button type="button" onClick={createUsdtOrder} disabled={checkoutBusy || !recipientValid || loading || Boolean(loadError) || !selected} className={`w-full rounded-xl px-4 py-3 font-semibold text-white transition-colors ${checkoutBusy || !recipientValid || loading || Boolean(loadError) || !selected ? "bg-slate-400 text-slate-700 cursor-not-allowed" : "bg-[#202b36] hover:bg-[#293846]"}`}>{checkoutBusy ? t("Processing…", "处理中……") : t("Gift Telegram Premium", "赠送 Telegram Premium")}</button>
         {usdtOrder && <div className="space-y-3 rounded-xl border border-emerald-400/30 bg-[#202d34] p-4">
           <p className="text-sm font-semibold text-emerald-300">{t("USDT-TRC20 payment details", "USDT-TRC20 收款信息")}</p><p className="text-xs text-slate-300">{t("Order", "订单号")}: {usdtOrder.orderNo}</p><p className="text-lg font-bold">{usdtOrder.amount} USDT</p><p className="break-all rounded-lg bg-black/20 p-3 text-xs">{usdtOrder.paymentAddress}</p>
           <button type="button" onClick={() => void navigator.clipboard.writeText(usdtOrder.paymentAddress)} className="w-full rounded-lg border border-white/15 px-3 py-2 text-sm">{t("Copy receiving address", "复制收款地址")}</button>
