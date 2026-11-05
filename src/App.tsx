@@ -16,6 +16,7 @@ const ActiveSessionsPage = lazy(() => import("./pages/ActiveSessionsPage").then(
 const ProductPage = lazy(() => import("./pages/ProductPage").then((module) => ({ default: module.ProductPage })))
 const ProductAdminPage = lazy(() => import("./pages/ProductAdminPage").then((module) => ({ default: module.ProductAdminPage })))
 const ProductManagePage = lazy(() => import("./pages/ProductManagePage").then((module) => ({ default: module.ProductManagePage })))
+const ManualProductOrdersAdminPage = lazy(() => import("./pages/ManualProductOrdersAdminPage").then((module) => ({ default: module.ManualProductOrdersAdminPage })))
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })))
 const AdminResetPasswordPage = lazy(() => import("./pages/AdminResetPasswordPage").then((module) => ({ default: module.AdminResetPasswordPage })))
 const PremiumHistoryPage = lazy(() => import("./pages/PremiumHistoryPage").then((module) => ({ default: module.PremiumHistoryPage })))
@@ -75,6 +76,7 @@ export default function App() {
                 <Route element={<AdminRoute />}>
                   <Route path="/admin/products" element={<ProductAdminPage />} />
                   <Route path="/admin/manage-products" element={<ProductManagePage />} />
+                  <Route path="/admin/product-orders" element={<ManualProductOrdersAdminPage />} />
                   <Route path="/admin/premium-pricing" element={<PremiumPricingAdminPage />} />
                   <Route path="/admin/premium-orders" element={<PremiumOrdersAdminPage />} />
                   <Route path="/admin/wallet-settings" element={<AdminWalletSettingsPage />} />
