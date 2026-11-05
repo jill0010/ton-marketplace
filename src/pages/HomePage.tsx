@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { useTonAddress } from "@tonconnect/ui-react"
 import { ProductCard } from "../components/ProductCard"
 import { GramTokenMark } from "../components/GramTokenMark"
 import { getListedProducts } from "../services/products"
@@ -28,7 +27,6 @@ function getGiftSeries(title: string): string {
 export function HomePage() {
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const walletAddress = useTonAddress()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -118,13 +116,6 @@ export function HomePage() {
             "浏览数据库中的在售商品。钱包支付将在后续阶段接入。"
           )}
         </p>
-        {walletAddress && (
-          <div className="mt-8">
-            <Link to="/publish" className="inline-flex rounded-full border border-white/20 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10">
-              {t("Publish Product", "发布商品")}
-            </Link>
-          </div>
-        )}
       </section>
 
       <section className="space-y-4">
