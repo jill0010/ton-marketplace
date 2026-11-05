@@ -128,6 +128,22 @@ Deno.serve(async (req: Request) => {
             resumed: true,
           }, 200, origin);
         }
+        if (existing && ["payment_confirmed", "delivery_pending", "delivered"].includes(existing.status)) {
+          return reply({
+            success: true,
+            paymentVerified: true,
+            status: existing.status,
+            orderId: existing.id,
+            orderNo: existing.order_no,
+            amount: String(existing.amount),
+            amountNano: toNano(existing.amount),
+            currency: existing.currency,
+            paymentAddress: existing.payment_address,
+            expiresAt: existing.expires_at,
+            memo: existing.order_no,
+            resumed: true,
+          }, 200, origin);
+        }
         return reply({ success: false, code: "PRODUCT_CHECKOUT_BUSY", error: existing ? "This product already has an order in progress." : "This product already has an active order from another buyer." }, 409, origin);
       }
       throw insertError;
