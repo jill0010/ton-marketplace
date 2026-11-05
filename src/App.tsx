@@ -35,6 +35,7 @@ export default function App() {
                 secondary: "#1b2229",
                 segment: "#1b2229",
                 tint: "#1b2229",
+                qr: "#242e38",
               },
             },
           },
