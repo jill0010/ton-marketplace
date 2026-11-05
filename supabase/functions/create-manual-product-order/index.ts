@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { Address } from "npm:@ton/core";
-import { authenticateVerifiedWallet } from "../_shared/auth.ts";
+import { authenticateVerifiedWallet } from "./shared/auth.ts";
 
 const ALLOWED_ORIGINS = new Set([
   "https://ton-marketplace-cvj.pages.dev",
