@@ -714,6 +714,16 @@ export function PremiumPage() {
     }
   }
 
+  useEffect(() => {
+    function handleHeaderWalletConnect(event: Event) {
+      event.preventDefault()
+      void connectAndVerifyWallet()
+    }
+
+    window.addEventListener("ton-marketplace:connect-ton", handleHeaderWalletConnect)
+    return () => window.removeEventListener("ton-marketplace:connect-ton", handleHeaderWalletConnect)
+  }, [walletAddress, connecting, verifying])
+
   async function verifyGramOrder(orderId: string) {
     if (!orderId || checkoutBusy) return
     setCheckoutBusy(true)
@@ -916,7 +926,6 @@ export function PremiumPage() {
       </section>
 
       {paymentMethod === "GRAM" ? <section className="space-y-3">
-        {!walletAddress && <div className="flex justify-end"><button type="button" onClick={connectAndVerifyWallet} disabled={connecting || verifying} className="shrink-0 rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold disabled:opacity-50">{connecting || verifying ? t("Connecting…", "连接中……") : t("Connect wallet", "连接钱包")}</button></div>}
         {proofMessage && !proofMessage.startsWith("钱包身份验证已恢复") && <p className="text-xs text-slate-400">{proofMessage}</p>}
         <button type="button" onClick={buyPremiumWithGram} disabled={checkoutBusy || !recipientValid || !isWalletVerified || loading || Boolean(loadError) || !selected} className={`w-full rounded-xl px-4 py-3 font-semibold text-white transition-colors ${checkoutBusy || !recipientValid || !isWalletVerified || loading || Boolean(loadError) || !selected ? "bg-[#248BDA] text-white cursor-not-allowed" : "bg-sky-700 hover:bg-sky-600"}`}>{checkoutBusy ? t("Processing…", "处理中……") : t("Gift Telegram Premium", "赠送 Telegram Premium")}</button>
         {pendingOrderId && <button type="button" onClick={() => void verifyGramOrder(pendingOrderId)} disabled={checkoutBusy} className="w-full rounded-xl border border-white/15 px-4 py-2 text-sm">{t("Check payment", "核实付款")}</button>}
