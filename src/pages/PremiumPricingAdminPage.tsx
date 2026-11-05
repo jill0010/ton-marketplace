@@ -42,7 +42,7 @@ export function PremiumPricingAdminPage() {
         const next: PriceMap = { ...prices }
         for (const row of data ?? []) {
           const id = row.id as PlanId
-          if (id === "year" || id === "half-year" || id === "quarter") {
+          if (PLAN_FIELDS.some((plan) => plan.id === id)) {
             next[id] = String(row.market_usd)
           }
         }
@@ -99,7 +99,7 @@ export function PremiumPricingAdminPage() {
         "half-year": Number(current["half-year"]).toFixed(2),
         year: Number(current.year).toFixed(2),
       }))
-      setMessage("三个 Premium 套餐的美元价格已保存。")
+      setMessage("四个 Premium 套餐的美元价格已保存。")
     } catch {
       setSaveError("保存时发生意外错误，请检查网络后重试。")
     } finally {
