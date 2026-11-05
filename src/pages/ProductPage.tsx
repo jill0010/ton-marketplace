@@ -170,6 +170,7 @@ export function ProductPage() {
       })
       setCheckoutMessage("钱包已提交付款，正在等待链上确认……")
       await new Promise((resolve) => window.setTimeout(resolve, 2500))
+      setCheckoutBusy(false)
       await verifyManualPayment(checkout.orderId)
     } catch (cause) {
       setCheckoutMessage(cause instanceof Error ? cause.message : "无法提交付款。")
