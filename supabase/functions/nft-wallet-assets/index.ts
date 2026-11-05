@@ -75,7 +75,7 @@ function isOfficialFragmentGift(
       const url = new URL(value);
       return url.protocol === "https:" &&
         url.hostname === "nft.fragment.com" &&
-        /^\\/gift\\/[A-Za-z0-9_-]+\\.json$/.test(url.pathname);
+        /^\/gift\/[A-Za-z0-9_-]+\.json$/.test(url.pathname);
     } catch {
       return false;
     }
