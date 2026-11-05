@@ -913,7 +913,7 @@ export function PremiumPage() {
           </button>
           <button type="button" onClick={() => { setPaymentMethod("USDT_TRC20"); setUsdtOrder(null) }} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${paymentMethod === "USDT_TRC20" ? "border-sky-400 bg-[#202b36]" : "border-white/10 bg-[#0f1216] hover:border-white/20"}`}>
             <img src="/usdt-logo.png" alt="" aria-hidden="true" className="h-6 w-6 shrink-0 object-contain" />
-            <span>USDT</span>
+            <span>USDT <span className="text-xs font-normal">TRC-20</span></span>
           </button>
         </div>
       </section>
