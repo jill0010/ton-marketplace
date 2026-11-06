@@ -4,7 +4,7 @@ import { createLiability, approveReconciliation, beginDispatch, observeResult } 
 const H = "a".repeat(64), E = "b".repeat(64), M = "c".repeat(64), N = "d".repeat(64);
 const identity = { network: "-3", orderId: "1", buyer: "buyer", marketplace: "market", paymentHash: H };
 const reconciliation = { ...identity, terminalState: "delivered", fundingModel: "isolated-order-ledger-v3",
-  evidenceKind: "reviewed-isolated-ledger", externalCompensationVerified: false, fundedNano: 200000000n, attributedFeesNano: 6000000n,
+  evidenceKind: "reviewed-isolated-ledger", externalCompensationVerified: false, externalCompensationEvidenceHash: H, fundedNano: 200000000n, attributedFeesNano: 6000000n,
   residualNano: 194000000n, openLiabilitiesNano: 0n, escrowExcessPending: false, evidenceHash: E };
 const approve = (overrides = {}) => approveReconciliation(createLiability(identity), { ...reconciliation, ...overrides });
 const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
@@ -14,7 +14,7 @@ const receipt = (overrides = {}) => ({ orderId: "1", buyer: "buyer", amountNano:
   messageHash: M, attempt: 1, kind: "credited", receiverSuccess: true, creditNano: 194000000n, ...overrides });
 test("prototype rejects Mainnet", () => assert.throws(() => createLiability({ ...identity, network: "-239" })));
 test("conserves isolated reserve and binds reviewed evidence", () => {
-  const state = approve(); assert.equal(state.refundNano, 194000000n); assert.equal(state.evidenceHash, E);
+  const state = approve(); assert.equal(state.refundNano, 194000000n); assert.equal(state.evidenceHash, E); assert.equal(state.compensationReviewHash, H);
   assert.equal(createLiability(identity).phase, "unreconciled");
 });
 test("externally compensated order cannot trigger a second reserve refund", () => {
@@ -24,6 +24,8 @@ test("delivered order with external compensation or unknown compensation state i
   assert.throws(() => approve({ externalCompensationVerified: true }));
   assert.throws(() => approve({ externalCompensationVerified: undefined }));
   assert.throws(() => approve({ externalCompensationVerified: null }));
+  assert.throws(() => approve({ externalCompensationEvidenceHash: undefined }));
+  assert.throws(() => approve({ externalCompensationEvidenceHash: "not-a-hash" }));
 });
 test("rejects pooled trace fees and unfinished excesses", () => {
   for (const change of [{ fundingModel: "pooled-v2" }, { evidenceKind: "trace-total-fees" },
