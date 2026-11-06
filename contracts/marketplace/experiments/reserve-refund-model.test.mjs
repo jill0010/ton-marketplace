@@ -4,7 +4,7 @@ import { createLiability, approveReconciliation, beginDispatch, observeResult } 
 const H = "a".repeat(64), E = "b".repeat(64), M = "c".repeat(64), N = "d".repeat(64);
 const identity = { network: "-3", orderId: "1", buyer: "buyer", marketplace: "market", paymentHash: H };
 const reconciliation = { ...identity, terminalState: "delivered", fundingModel: "isolated-order-ledger-v3",
-  evidenceKind: "reviewed-isolated-ledger", fundedNano: 200000000n, attributedFeesNano: 6000000n,
+  evidenceKind: "reviewed-isolated-ledger", externalCompensationVerified: false, fundedNano: 200000000n, attributedFeesNano: 6000000n,
   residualNano: 194000000n, openLiabilitiesNano: 0n, escrowExcessPending: false, evidenceHash: E };
 const approve = (overrides = {}) => approveReconciliation(createLiability(identity), { ...reconciliation, ...overrides });
 const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
@@ -19,6 +19,11 @@ test("conserves isolated reserve and binds reviewed evidence", () => {
 });
 test("externally compensated order cannot trigger a second reserve refund", () => {
   assert.throws(() => approve({ terminalState: "compensated" }));
+});
+test("delivered order with external compensation or unknown compensation state is blocked", () => {
+  assert.throws(() => approve({ externalCompensationVerified: true }));
+  assert.throws(() => approve({ externalCompensationVerified: undefined }));
+  assert.throws(() => approve({ externalCompensationVerified: null }));
 });
 test("rejects pooled trace fees and unfinished excesses", () => {
   for (const change of [{ fundingModel: "pooled-v2" }, { evidenceKind: "trace-total-fees" },
