@@ -62,7 +62,7 @@ Deno.test("rejects incomplete traces, missing root linkage, and duplicate Market
   const duplicateRoot = trace();
   (duplicateRoot.transactions as Record<string, unknown>)["e".repeat(64)] = {
     ...(duplicateRoot.transactions as Record<string, Record<string, unknown>>)[rootHash],
-    hash: "e".repeat(64),
+    hash: rootHash,
   };
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(duplicateRoot, input));
 
