@@ -16,6 +16,8 @@ test("V3 live testnet refund remains blocked without independent proof", () => {
   assert.equal(result.hasPurchaseHandler, true);
   assert.equal(result.hasNftReleaseHandler, true);
   assert.equal(result.hasSettlementHandler, true);
+  assert.equal(result.unsafeBuyerRefundRetry, true);
+  assert.ok(result.reasons.includes("V2_BUYER_REFUND_RETRY_LACKS_INDEPENDENT_RETURN_PROOF"));
   assert.ok(result.reasons.includes("V3_VAULT_NOT_INTEGRATED_WITH_V2_PURCHASE_SETTLEMENT"));
   assert.ok(!result.reasons.includes("OWNER_ATTESTED_RETURN_CAN_TRIGGER_RETRY"));
 });
