@@ -107,3 +107,39 @@ test("provider-reported execution success is not finalized payment proof", () =>
   assert.equal(result.recipientCandidates[0].verified, false);
   assert.equal(result.recipientCandidates[0].finalized, false);
 });
+
+test("fails closed on duplicated outbound transaction identity", () => {
+  const duplicated = response(vault, [
+    vaultResponse.transactions[0], vaultResponse.transactions[0],
+  ]);
+  const result = correlateV3RefundRecipient({
+    ...options, vaultResponse: duplicated, buyerResponse: buyerResponse(message()),
+  });
+  assert.equal(result.recipientCandidates.length, 0);
+  assert.equal(result.mayRetry, false);
+});
+test("fails closed on duplicated or missing recipient transaction identity", () => {
+  const one = buyerResponse(message()).transactions[0];
+  for (const transactions of [
+    [one, one],
+    [{ ...one, transaction_id: { hash: "" } }],
+    [{ ...one, transaction_id: null }],
+  ]) {
+    const result = correlateV3RefundRecipient({
+      ...options, vaultResponse, buyerResponse: response(buyer, transactions),
+    });
+    assert.equal(result.recipientCandidates.length, 0);
+  }
+});
+test("fails closed on multiple distinct buyer receipts for one outbound refund", () => {
+  const one = buyerResponse(message()).transactions[0];
+  const result = correlateV3RefundRecipient({
+    ...options, vaultResponse,
+    buyerResponse: response(buyer, [
+      one, { ...one, transaction_id: { hash: "other-buyer-tx", lt: "3" } },
+    ]),
+  });
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.recipientCandidates.length, 0);
+  assert.equal(result.mayRetry, false);
+});
