@@ -602,9 +602,10 @@ fun onInternalMessage(in: InMessage) {
             assert (orderResult.isFound) throw ErrorsV2.InvalidPayout;
             var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
             if (payout.kind == 3) {
-                assert (
-                    order.deliveryStatus == 3 && order.refundStatus == 3
-                ) throw ErrorsV2.InvalidPayout;
+                // A bounced refund is not independent proof that its principal
+                // returned. Never dispatch a second buyer refund from this
+                // permissionless retry path.
+                throw ErrorsV2.InvalidPayout;
             } else {
                 assert (order.deliveryStatus == 2) throw ErrorsV2.InvalidPayout;
                 assert (payout.kind == 1 || payout.kind == 2) throw ErrorsV2.InvalidPayout;
