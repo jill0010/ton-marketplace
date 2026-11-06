@@ -12,6 +12,7 @@ on:
       - "supabase/functions/marketplace-order-history/**"
       - "supabase/functions/_shared/marketplace-processing-reserve.*"
       - "supabase/functions/_shared/marketplace-v2-buy-message.*"
+      - "supabase/functions/_shared/marketplace-v2-chain-observation.*"
       - "supabase/functions/admin-preview-marketplace-processing-reserve/**"
       - "supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql"
       - "supabase/migrations/20261106024422_lock_marketplace_processing_reserve_privileges.sql"
@@ -103,6 +104,12 @@ jobs:
 
       - name: Type-check Marketplace V2 purchase message validator
         run: deno check --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-buy-message.ts
+
+      - name: Test finalized Marketplace V2 chain observations
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-chain-observation.test.ts
+
+      - name: Type-check Marketplace V2 chain observation parser
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-chain-observation.ts
 
       - name: Build production frontend
         run: npm run build
