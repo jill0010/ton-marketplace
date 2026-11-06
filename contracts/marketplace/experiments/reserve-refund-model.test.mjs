@@ -11,7 +11,7 @@ const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
   orderId: "1", buyer: "buyer", evidenceHash: E, compensationReviewHash: H, amountNano: 194000000n,
   attempt: state.attempt + 1, messageHash: state.attempt === 0 ? M : N, ...overrides });
 const receipt = (overrides = {}) => ({ orderId: "1", buyer: "buyer", amountNano: 194000000n,
-  messageHash: M, attempt: 1, kind: "credited", receiverSuccess: true, creditNano: 194000000n, ...overrides });
+  messageHash: M, attempt: 1, kind: "credited", receiptEvidenceHash: H, receiverSuccess: true, creditNano: 194000000n, ...overrides });
 test("prototype rejects Mainnet", () => assert.throws(() => createLiability({ ...identity, network: "-239" })));
 test("conserves isolated reserve and binds reviewed evidence", () => {
   const state = approve(); assert.equal(state.refundNano, 194000000n); assert.equal(state.evidenceHash, E); assert.equal(state.compensationReviewHash, H);
@@ -57,6 +57,13 @@ test("in-flight and paid refunds cannot be dispatched twice", () => {
   const flying = dispatch(); assert.throws(() => dispatch(flying));
   const paid = observeResult(flying, receipt()); assert.equal(paid.phase, "paid");
   assert.throws(() => dispatch(paid)); assert.throws(() => observeResult(paid, receipt()));
+});
+test("receipt evidence is mandatory for success and bounce", () => {
+  assert.throws(() => observeResult(dispatch(), receipt({ receiptEvidenceHash: undefined })));
+  assert.throws(() => observeResult(dispatch(), receipt({ receiptEvidenceHash: "invalid" })));
+  assert.throws(() => observeResult(dispatch(), receipt({ kind: "bounced", receiptEvidenceHash: undefined,
+    returnVerified: true, returnedPrincipalNano: 194000000n })));
+  assert.equal(observeResult(dispatch(), receipt()).receiptEvidenceHash, H);
 });
 test("rejects unrelated or unsuccessful receipts", () => {
   for (const change of [{ messageHash: N }, { attempt: 2 }, { creditNano: 1n }, { receiverSuccess: false },
