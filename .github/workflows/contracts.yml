@@ -65,7 +65,7 @@ jobs:
           echo "V3 production deployment remains blocked; this CI run is not a release approval."
 
       - name: Test V3 read-only on-chain postflight verifier (mock RPC)
-        run: node --test scripts/verify-v3-testnet.test.mjs
+        run: node --test scripts/verify-v3-testnet.test.mjs scripts/collect-v3-testnet-evidence.test.mjs
 
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
