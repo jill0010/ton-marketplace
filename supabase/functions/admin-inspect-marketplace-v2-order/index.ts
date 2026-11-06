@@ -4,6 +4,7 @@ import { decodeMarketplaceV2OrderCell } from "../_shared/marketplace-v2-order-ce
 import {
   buildOrderCellRunGetMethodRequest,
   extractOrderCellBoc,
+  extractSingleUint64StackValue,
   parseMarketplaceV2OrderId,
 } from "../_shared/marketplace-v2-order-get-method.ts";
 
@@ -60,15 +61,35 @@ Deno.serve(async (req: Request) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return reply({ success: false, error: "A JSON object with order_id is required" }, 400, origin);
     }
-    const orderId = parseMarketplaceV2OrderId((body as Record<string, unknown>).order_id);
+    const input = body as Record<string, unknown>;
+    const hasOrderId = Object.hasOwn(input, "order_id");
+    const hasProductId = Object.hasOwn(input, "product_id");
+    if (hasOrderId === hasProductId) {
+      return reply({ success: false, error: "Provide exactly one of order_id or product_id" }, 400, origin);
+    }
+    const requestedId = parseMarketplaceV2OrderId(hasOrderId ? input.order_id : input.product_id);
     const configured = Deno.env.get("MARKETPLACE_V2_ADDRESS");
     if (!configured) return reply({ success: false, error: "Marketplace V2 address is not configured" }, 503, origin);
     const address = Address.parse(configured).toRawString().toLowerCase();
-    const requestBody = buildOrderCellRunGetMethodRequest(address, orderId);
+
+    let orderId = requestedId;
+    if (hasProductId) {
+      const lookup = await fetch("https://toncenter.com/api/v3/runGetMethod", {
+        method: "POST",
+        headers: { "Accept": "application/json", "Content-Type": "application/json", "X-API-Key": apiKey },
+        body: JSON.stringify(buildOrderCellRunGetMethodRequest(address, "orderIdForProductV2", requestedId)),
+      });
+      if (!lookup.ok) {
+        return reply({ success: false, error: `TON Center product-order lookup failed (${lookup.status})` }, 502, origin);
+      }
+      orderId = extractSingleUint64StackValue(await lookup.json());
+      if (orderId === "0") return reply({ success: false, error: "No Marketplace V2 order exists for this product" }, 404, origin);
+    }
+
     const response = await fetch("https://toncenter.com/api/v3/runGetMethod", {
       method: "POST",
       headers: { "Accept": "application/json", "Content-Type": "application/json", "X-API-Key": apiKey },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(buildOrderCellRunGetMethodRequest(address, "orderCellV2", orderId)),
     });
     if (!response.ok) {
       return reply({ success: false, error: `TON Center get-method failed (${response.status})` }, 502, origin);
@@ -76,8 +97,8 @@ Deno.serve(async (req: Request) => {
     const payload = await response.json();
     const boc = extractOrderCellBoc(payload);
     const order = decodeMarketplaceV2OrderCell(boc);
-    if (order.id !== orderId) {
-      return reply({ success: false, error: "Decoded order id does not match the requested order id" }, 502, origin);
+    if (order.id !== orderId || (hasProductId && order.productId !== requestedId)) {
+      return reply({ success: false, error: "Decoded order identity does not match the requested product/order" }, 502, origin);
     }
 
     return reply({
@@ -86,7 +107,8 @@ Deno.serve(async (req: Request) => {
       contract_address: address,
       order,
       persisted: false,
-      notice: "Read-only live get-method inspection. No database writes, signing, or transactions are performed. This endpoint requires the current Marketplace V2 contract with the orderCellV2 getter deployed.",
+      lookup: hasProductId ? "orderIdForProductV2 -> orderCellV2" : "orderCellV2",
+      notice: "Read-only live get-method inspection. No database writes, signing, or transactions are performed. This endpoint requires the current Marketplace V2 contract with both order getters deployed.",
     }, 200, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to inspect Marketplace V2 order";
