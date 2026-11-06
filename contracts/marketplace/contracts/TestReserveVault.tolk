@@ -210,6 +210,11 @@ fun onBouncedMessage(in: InMessageBounced) {
         ) {
             return;
         }
+        // A bounced message must carry back the principal (minus bounded
+        // network fees). A tiny fabricated bounce is not proof of return.
+        if (in.valueCoins < storage.refundAmount - grams("0.01")) {
+            return;
+        }
         storage.status = 4;
         storage.save();
     } catch {}
