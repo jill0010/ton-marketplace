@@ -26,6 +26,7 @@ test("matches only exact V3 refund order and query while withholding proof", () 
     msg(1, 2), msg(1, 3), msg(2, 2),
     msg(1, 2, { destination: other }),
     msg(1, 2, { value: "0" }),
+    msg(1, 2, { value: "193000000" }),
     msg(1, 2, { msg_data: { "@type": "msg.dataRaw", body: body(0x72730104, 1, 2) } }),
     msg(1, 2, { msg_data: { "@type": "msg.dataText", text: "hello" } }),
   ]), options);
