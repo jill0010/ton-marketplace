@@ -274,7 +274,6 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     expect(marketplace.productV2(3)!!.extra.load().kind).toEqual(2);
 }
 
-
 get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEscrowV2 request`() {
     val owner = testing.treasury("v2RequestBounceOwner");
     val seller = testing.treasury("v2RequestBounceSeller");
