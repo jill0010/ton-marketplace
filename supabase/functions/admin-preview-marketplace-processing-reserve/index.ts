@@ -8,7 +8,6 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
 ]);
 const TONCENTER_TRACES_URL = "https://toncenter.com/api/v3/traces";
-const FIXED_RESERVE_NANO = "200000000";
 
 function cors(origin: string) {
   return {
@@ -97,10 +96,31 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (orderError) throw orderError;
     if (!order) return reply({ success: false, error: "Order not found" }, 404, origin);
-    if (String(order.processing_reserve_nano) !== FIXED_RESERVE_NANO) {
-      return reply({ success: false, error: "Order reserve does not match the V2 fixed reserve; manual review required" }, 409, origin);
+
+    const { data: reserve, error: reserveError } = await admin
+      .from("marketplace_processing_reserves")
+      .select("order_id, chain_order_id, buyer_wallet_raw, reserve_nano, payment_tx_hash, status, trace_id")
+      .eq("order_id", order.id)
+      .maybeSingle();
+    if (reserveError) throw reserveError;
+    if (!reserve) {
+      return reply({ success: false, error: "Per-order reserve liability has not been indexed; manual review required" }, 409, origin);
     }
-    if (typeof order.payment_tx_hash !== "string" || !/^[0-9a-f]{64}$/i.test(order.payment_tx_hash)) {
+    if (
+      String(order.chain_order_id) !== String(reserve.chain_order_id) ||
+      rawAddress(order.buyer_wallet_raw, "order buyer") !== rawAddress(reserve.buyer_wallet_raw, "reserve buyer") ||
+      String(order.processing_reserve_nano) !== String(reserve.reserve_nano) ||
+      order.payment_tx_hash?.toLowerCase() !== reserve.payment_tx_hash?.toLowerCase()
+    ) {
+      return reply({ success: false, error: "Order and reserve ledger snapshots do not match; manual review required" }, 409, origin);
+    }
+    if (String(reserve.reserve_nano) !== "200000000") {
+      return reply({ success: false, error: "Reserve amount is not the approved 0.2 TON; manual review required" }, 409, origin);
+    }
+    if (reserve.status !== "awaiting_trace" && reserve.status !== "preview_ready") {
+      return reply({ success: false, error: "Reserve is not eligible for a read-only reconciliation preview" }, 409, origin);
+    }
+    if (typeof reserve.payment_tx_hash !== "string" || !/^[0-9a-f]{64}$/i.test(reserve.payment_tx_hash)) {
       return reply({ success: false, error: "Payment transaction hash is not available; reconciliation cannot proceed" }, 409, origin);
     }
 
@@ -110,7 +130,7 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, error: "Marketplace V2 addresses are not configured" }, 503, origin);
     }
 
-    const trace = await fetchTrace(order.payment_tx_hash);
+    const trace = await fetchTrace(reserve.payment_tx_hash);
     const transactionMap = trace.transactions as Record<string, Record<string, unknown>> | undefined;
     const transactions = transactionMap && typeof transactionMap === "object"
       ? Object.fromEntries(Object.entries(transactionMap).map(([hash, tx]) => {
@@ -127,8 +147,8 @@ Deno.serve(async (req: Request) => {
     const normalizedTrace = { ...trace, transactions };
 
     const reconciliation = calculateMarketplaceProcessingReserve(normalizedTrace, {
-      rootTransactionHash: order.payment_tx_hash,
-      reserveNano: FIXED_RESERVE_NANO,
+      rootTransactionHash: reserve.payment_tx_hash,
+      reserveNano: String(reserve.reserve_nano),
       marketplaceAddress: rawAddress(marketplaceAddress, "Marketplace V2"),
       escrowAddress: rawAddress(escrowAddress, "NFT Escrow V2"),
       nftItemAddress: rawAddress(order.nft_item_raw, "NFT Item"),
@@ -141,6 +161,7 @@ Deno.serve(async (req: Request) => {
       success: true,
       order_id: order.id,
       chain_order_id: String(order.chain_order_id),
+      reserve_ledger_status: reserve.status,
       reconciliation,
       notice: "Read-only preview only. No refund is authorized, signed, or broadcast. Verify the final on-chain order state before any refund.",
     }, 200, origin);
