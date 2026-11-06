@@ -15,13 +15,6 @@ struct (0x7f000005) SetTestEscrowAddressV2 {
     escrow: address
 }
 
-struct (0x7f000006) StartTestDepositV2 {
-    escrowId: uint64
-    productId: uint64
-    nftItem: address
-    seller: address
-    queryId: uint64
-}
 
 struct (0x7f000004) StartTestReleaseV2 {
     orderId: uint64
@@ -52,7 +45,6 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | StartTestEscrowV2
     | StartTestReleaseV2
     | SetTestEscrowAddressV2
-    | StartTestDepositV2
     | ReleaseEscrowV2
     | RefundEscrowV2
     | EscrowRefundAckV2
@@ -109,7 +101,7 @@ fun onInternalMessage(in: InMessage) {
             }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
 
-        StartTestDepositV2 => {
+        StartTestEscrowV2 => {
             var storage = lazy RejectingMarketplaceCallbackStorage.load();
             assert (in.senderAddress == storage.controller) throw ErrorsV2.NotOwner;
             storage.testNftItem = msg.nftItem;
@@ -119,7 +111,7 @@ fun onInternalMessage(in: InMessage) {
                 value: grams("0.03"),
                 dest: storage.marketplace,
                 body: EscrowDepositedV2 {
-                    escrowId: msg.escrowId,
+                    escrowId: 1,
                     productId: msg.productId,
                     nftItem: msg.nftItem,
                     seller: msg.seller,
@@ -127,7 +119,6 @@ fun onInternalMessage(in: InMessage) {
                 },
             }).send(SEND_MODE_REGULAR);
         }
-
         ReleaseEscrowV2 => {
             // Intentionally fail compute so TON emits a real RichBounce.
             throw ErrorsV2.InvalidRelease;
