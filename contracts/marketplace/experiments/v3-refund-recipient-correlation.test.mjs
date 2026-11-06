@@ -174,3 +174,18 @@ test("bounced incoming buyer message cannot be counted as credited refund", () =
   assert.equal(result.proofStatus, "UNVERIFIED");
   assert.equal(result.mayRetry, false);
 });
+
+test("rejects buyer transactions with a reported bounce phase", () => {
+  for (const type of ["ok", "no-funds"]) {
+    const result = correlateV3RefundRecipient({
+      ...options, vaultResponse,
+      buyerResponse: response(buyer, [{
+        transaction_id: { lt: "2", hash: "in-tx" },
+        in_msg: message(),
+        description: { aborted: false, compute_ph: { success: true }, bounce: { type } },
+      }]),
+    });
+    assert.equal(result.recipientCandidates.length, 0);
+    assert.equal(result.mayRetry, false);
+  }
+});
