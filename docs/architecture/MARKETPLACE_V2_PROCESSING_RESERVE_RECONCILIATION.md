@@ -28,7 +28,7 @@ The trace must have a completed masterchain sequence and zero pending messages. 
 
 ## Implemented components
 
-- `supabase/migrations/20261106030000_add_marketplace_processing_reserve_ledger.sql`: additive per-order reserve ledger schema; legacy rows remain NULL/unclassified rather than being assumed to contain a 0.2 TON reserve.
+- `supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql`: additive per-order reserve ledger schema; legacy rows remain NULL/unclassified rather than being assumed to contain a 0.2 TON reserve.
 - `supabase/functions/_shared/marketplace-processing-reserve.js`: pure fee attribution and reserve arithmetic.
 - `supabase/functions/_shared/marketplace-processing-reserve.test.mjs`: tests for normal fee aggregation, exclusion of buyer/seller/treasury wallet fees, incomplete traces, pending messages, wrong root transaction, unknown accounts, duplicate transactions and reserve shortfall.
 - `supabase/functions/admin-preview-marketplace-processing-reserve/index.ts`: administrator-only, read-only preview using TON Center API v3. It requires an indexed reserve-ledger row and cross-checks the order ID, chain order ID, buyer wallet, reserve amount and payment transaction hash. It does not update the database, sign a wallet message, call a send endpoint, or broadcast a transaction.
