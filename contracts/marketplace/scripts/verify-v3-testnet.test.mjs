@@ -20,11 +20,12 @@ test("read-only verifier reports active state without approving release", async 
     urls.push(url);
     assert.equal(options.method, "GET");
     assert.ok(url.startsWith("https://testnet.toncenter.com/"));
-    return { ok: true, json: async () => ({ ok: true, result: { state: "active" } }) };
+    return { ok: true, json: async () => ({ ok: true, result: { state: "active", code: "te6ccgEBAgEAAwABAgE=" } }) };
   };
   const report = await verifyV3Testnet(addresses, fetcher);
   assert.equal(urls.length, 3);
   assert.equal(report.allActive, true);
+  assert.equal(report.allCodePresent, true);
   assert.equal(report.mainnetReleaseApproved, false);
   assert.equal(report.fundedTransactionVerified, false);
   assert.equal(report.noTransactionSent, true);
@@ -50,4 +51,12 @@ test("testnet friendly address CRC is verified and aliases cannot duplicate cont
   assert.throws(() => normalizeV3TestnetAddress("U" + friendly.slice(1)), /checksum|testnet-only/);
   assert.throws(() => normalizeV3TestnetAddress(friendly.slice(0, 10) + (friendly[10] === "A" ? "B" : "A") + friendly.slice(11)), /checksum/);
   assert.throws(() => validateV3Addresses({ marketplace: friendly, escrow: canonical, coordinator: addresses.coordinator }), /distinct/);
+});
+
+test("active account without contract code is not a valid deployment", async () => {
+  const report = await verifyV3Testnet(addresses, async () => ({
+    ok: true, json: async () => ({ ok: true, result: { state: "active", code: "" } }),
+  }));
+  assert.equal(report.allActive, true);
+  assert.equal(report.allCodePresent, false);
 });
