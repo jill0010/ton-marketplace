@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - "src/**"
-      - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"
-      - "supabase/functions/marketplace-v2-state/**"
+      - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"\n      - "scripts/check-marketplace-v2-order-mirror-truthfulness.mjs"
+      - "supabase/functions/marketplace-v2-state/**"\n      - "supabase/functions/admin-marketplace-orders/**"\n      - "supabase/functions/marketplace-order-history/**"
       - "public/**"
       - "package.json"
       - "package-lock.json"
@@ -64,5 +64,5 @@ jobs:
       - name: Verify Marketplace V2 customer purchase remains gated
         run: node scripts/check-marketplace-v2-customer-purchase-policy.mjs
 
-      - name: Build production frontend
+      - name: Verify Marketplace V2 order mirror truthfulness\n        run: node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs\n\n      - name: Build production frontend
         run: npm run build
