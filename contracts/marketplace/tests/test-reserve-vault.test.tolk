@@ -482,7 +482,7 @@ get fun `test two per-order vault liabilities remain isolated`() {
     expect(net.runGetMethod<uint64>(second, "testReserveQuery")).toEqual(0);
 }
 
-get fun `test buyer-controlled bounce candidate cannot force retry or block reviewed credit`() {
+get fun `test buyer-controlled bounce candidate quarantines receipt pending reconciliation`() {
     val (vault, owner, _, buyer) = reserveInFlight();
     // Fault injection: an exact-looking bounce is not evidence funds returned.
     testing.processSingleTraceStep(
@@ -507,7 +507,8 @@ get fun `test buyer-controlled bounce candidate cannot force retry or block revi
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 701 });
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
-    // Owner can record independently verified credit even after a false candidate.
+    // Fail closed: a bounce candidate must not be reclassified as paid merely
+    // by an owner assertion. The operator must reconcile chain evidence first.
     expect(
         reserveSend(
             owner,
@@ -519,8 +520,8 @@ get fun `test buyer-controlled bounce candidate cannot force retry or block revi
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveSuccessfulTx({ to: vault });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
+    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     expect(
         reserveSend(
             owner,
