@@ -173,23 +173,23 @@ fun main() {
     };
     val coordinator = coordinatorDestination.calculateAddress();
     val coordinatorDeploy = net.send(
-            deployer.address,
-            createMessage({
-                bounce: false,
-                value: grams("0.1"),
-                dest: coordinatorDestination,
-            }),
-        );
+        deployer.address,
+        createMessage({
+            bounce: false,
+            value: grams("0.1"),
+            dest: coordinatorDestination,
+        }),
+    );
     assert (coordinatorDeploy.waitForFirstTransaction() != null) throw 802;
     val coordinatorConfigure = net.send(
-            deployer.address,
-            createMessage({
-                bounce: false,
-                value: grams("0.05"),
-                dest: marketplace.address,
-                body: SetTestReserveCoordinator { coordinator },
-            }),
-        );
+        deployer.address,
+        createMessage({
+            bounce: false,
+            value: grams("0.05"),
+            dest: marketplace.address,
+            body: SetTestReserveCoordinator { coordinator },
+        }),
+    );
     assert (coordinatorConfigure.waitForFirstTransaction() != null) throw 803;
     println("V3 testnet candidate marketplace: {}", marketplace.address);
     println("V3 testnet candidate escrow: {}", escrow.address);
