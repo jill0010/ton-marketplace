@@ -1,6 +1,7 @@
 // Read-only V3 testnet postflight. Requires explicit deployed addresses.
 // Never reads a mnemonic, sends transactions, or approves mainnet release.
 import { pathToFileURL } from "node:url";
+import { Cell } from "@ton/core";
 
 const RAW = /^(-?1|0):[0-9a-fA-F]{64}$/;
 const FRIENDLY = /^[A-Za-z0-9_-]{48}$/;
@@ -51,24 +52,22 @@ export function validateV3Addresses(addresses) {
 
 // TON Center returns serialized contract code as a base64 BOC.
 // Reject missing, malformed and empty-cell payloads instead of accepting arbitrary text.
-export function hasPlausibleContractCode(code) {
+export function parseV3ContractCode(code) {
   if (typeof code !== "string" || code.length < 12 || code.length % 4 !== 0 ||
-      !/^[A-Za-z0-9+/]+={0,2}$/.test(code)) return false;
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(code)) return null;
   const bytes = Buffer.from(code, "base64");
-  if (bytes.length < 20 || bytes.toString("base64") !== code) return false;
-  // Standard TON Bag-of-Cells magic, followed by BOC metadata.
-  if (bytes.subarray(0, 4).toString("hex") !== "b5ee9c72") return false;
-  // Header contains at least one root and one cell; exact cell validation and
-  // expected code hash verification remain separate release requirements.
-  const sizeBytes = bytes[4] & 7;
-  if (sizeBytes < 1 || sizeBytes > 4) return false;
-  const offsetBytes = bytes[5];
-  if (offsetBytes < 1 || offsetBytes > 8) return false;
-  const rootCountOffset = 6 + sizeBytes;
-  if (bytes.length < rootCountOffset + 2 * sizeBytes + offsetBytes) return false;
-  const cells = bytes.readUIntBE(6, sizeBytes);
-  const roots = bytes.readUIntBE(rootCountOffset, sizeBytes);
-  return cells > 0 && roots > 0;
+  if (bytes.toString("base64") !== code) return null;
+  try {
+    const roots = Cell.fromBoc(bytes);
+    if (roots.length !== 1 || (roots[0].bits.length === 0 && roots[0].refs.length === 0)) return null;
+    return { codeHash: roots[0].hash().toString("hex") };
+  } catch {
+    return null;
+  }
+}
+
+export function hasPlausibleContractCode(code) {
+  return parseV3ContractCode(code) !== null;
 }
 
 export async function verifyV3Testnet(addresses, fetcher = fetch) {
@@ -87,8 +86,9 @@ export async function verifyV3Testnet(addresses, fetcher = fetch) {
     const state = data.result.state;
     // Active account alone is insufficient: require a nonempty on-chain code BOC.
     const code = data.result.code;
-    const codePresent = hasPlausibleContractCode(code);
-    results[name] = { address, state, active: state === "active", codePresent };
+    const parsedCode = parseV3ContractCode(code);
+    const codePresent = parsedCode !== null;
+    results[name] = { address, state, active: state === "active", codePresent, codeHash: parsedCode?.codeHash ?? null };
   }
   return {
     network: "testnet",
