@@ -1,10 +1,10 @@
-name: Deploy Marketplace V2 Mainnet
+name: Marketplace V2 Mainnet Preflight (No Transactions)
 
 on:
   workflow_dispatch:
     inputs:
-      confirm_mainnet_deployment:
-        description: "I understand this broadcasts irreversible TON mainnet transactions and spends mainnet TON for deployment fees."
+      confirm_mainnet_preflight:
+        description: "Run the read-only Mainnet release checks. This workflow does not deploy contracts or broadcast transactions."
         required: true
         type: boolean
         default: false
@@ -19,14 +19,13 @@ concurrency:
 jobs:
   deploy:
     name: Deploy fresh Marketplace V2 and NFT Escrow V2
-    if: ${{ inputs.confirm_mainnet_deployment == true }}
+    if: ${{ inputs.confirm_mainnet_preflight == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
         working-directory: contracts/marketplace
     env:
-      DEPLOYER_MNEMONIC: ${{ secrets.DEPLOYER_MNEMONIC }}
       PLATFORM_TREASURY_ADDRESS: ${{ secrets.PLATFORM_TREASURY_ADDRESS }}
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_MAINNET_API_KEY }}
 
@@ -39,20 +38,12 @@ jobs:
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
-      - name: Validate deployment secrets
+      - name: Validate public release configuration
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${DEPLOYER_MNEMONIC}" || { echo "::error::Missing DEPLOYER_MNEMONIC repository secret"; exit 1; }
           test -n "${PLATFORM_TREASURY_ADDRESS}" || { echo "::error::Missing PLATFORM_TREASURY_ADDRESS repository secret"; exit 1; }
           test -n "${TONCENTER_API_KEY}" || { echo "::error::Missing TONCENTER_MAINNET_API_KEY repository secret"; exit 1; }
-          cat > wallets.toml <<'WALLETS'
-          [wallets.deployer]
-          kind = "v5r1"
-          workchain = 0
-          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
-          WALLETS
-          chmod 600 wallets.toml
 
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
@@ -78,16 +69,19 @@ jobs:
       - name: Recheck official Fragment NFT libraries on Mainnet (read-only)
         run: node scripts/check-mainnet-fragment-libraries.mjs
 
-      - name: Deploy and verify on TON Mainnet
+      - name: Publish preflight summary
         shell: bash
         run: |
-          set -euo pipefail
-          acton script scripts/deploy-v2.tolk --net mainnet 2>&1 | tee mainnet-deployment.log
-          grep -Fq "Escrow binding and immutable treasury configuration verified" mainnet-deployment.log
           {
-            echo "## TON Mainnet deployment"
+            echo "## Marketplace V2 Mainnet preflight"
             echo
-            grep -E "Marketplace V2 deployed at|NFT Escrow V2 deployed at|Marketplace owner:|Platform treasury:" mainnet-deployment.log
+            echo "- Contract build, emulator tests, lint and format checks passed."
+            echo "- Official Fragment Mainnet library availability was checked read-only."
+            echo "- No wallet seed phrase was loaded by this workflow."
+            echo "- No mainnet transaction was signed or broadcast."
             echo
-            echo "The deployment script verified Marketplace/Escrow binding and the immutable treasury getter."
+            echo "Actual deployment must be initiated separately with the interactive TON Connect signer:"
+            echo '  acton script scripts/deploy-v2.tolk --net mainnet --tonconnect'
+            echo
+            echo "Public customer purchases must remain disabled until the frontend flow, collection allowlist, and reserve policy are approved."
           } >> "$GITHUB_STEP_SUMMARY"
