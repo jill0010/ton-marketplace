@@ -56,6 +56,7 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | ReleaseEscrowV2
     | RefundEscrowV2
     | EscrowRefundAckV2
+    | EscrowDepositAckV2
     | EscrowDepositedV2
     | EscrowReleasedV2
     | EscrowReleaseFailedV2
@@ -149,6 +150,8 @@ fun onInternalMessage(in: InMessage) {
         }
 
         EscrowRefundAckV2 => {}
+
+        EscrowDepositAckV2 => {}
 
         StartTestReleaseV2 => {
             val storage = lazy RejectingMarketplaceCallbackStorage.load();
