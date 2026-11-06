@@ -53,5 +53,7 @@ test("refund retry guard must not be bypassed by adding an earlier unsafe branch
   );
   assert.notEqual(unsafeMarketplace, marketplace);
   const result = inspectV3TestnetReadiness(source, unsafeMarketplace, escrow);
+  assert.equal(result.unsafeBuyerRefundRetry, true);
+  assert.ok(result.reasons.includes("V2_BUYER_REFUND_RETRY_LACKS_INDEPENDENT_RETURN_PROOF"));
   assert.equal(result.mainnetApproved, false);
 });
