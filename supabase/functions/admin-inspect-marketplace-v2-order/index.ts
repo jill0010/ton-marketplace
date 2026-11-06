@@ -82,8 +82,11 @@ Deno.serve(async (req: Request) => {
       if (!lookup.ok) {
         return reply({ success: false, error: `TON Center product-order lookup failed (${lookup.status})` }, 502, origin);
       }
-      orderId = extractSingleUint64StackValue(await lookup.json());
-      if (orderId === "0") return reply({ success: false, error: "No Marketplace V2 order exists for this product" }, 404, origin);
+      const resolvedOrderId = extractSingleUint64StackValue(await lookup.json());
+      if (resolvedOrderId === null || resolvedOrderId === "0") {
+        return reply({ success: false, error: "No Marketplace V2 order exists for this product" }, 404, origin);
+      }
+      orderId = resolvedOrderId;
     }
 
     const response = await fetch("https://toncenter.com/api/v3/runGetMethod", {
