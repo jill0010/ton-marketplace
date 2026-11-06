@@ -65,6 +65,7 @@ jobs:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
           TESTNET_FIXTURE_ENABLED: "true"
           FIXTURE_EMULATION: "false"
+          FIXTURE_SELLER_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
           TESTNET_FIXTURE_OWNER: "kQDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPeEr"
         shell: bash
         run: |
@@ -84,8 +85,8 @@ jobs:
           {
             echo "## TON Testnet synthetic NFT fixture"
             echo "Commit: $GITHUB_SHA"
-            grep -E "Fixture collection:|Fixture seller:|Test fixture deployed and ownership verified:" testnet-fixture.log
+            grep -E "Fixture collection:|Fixture seller:|Fixture Item index:|Test fixture deployed and ownership verified:" testnet-fixture.log
             echo "Deployment attached 1.5 test TON, plus wallet network fees."
-            echo "Synthetic test asset using approved Item code; not an official Telegram gift."
+            echo "Replacement fixture at index 1. Collection is deployer; seller is the separate existing Testnet treasury wallet. Not an official Telegram gift."
             echo "No Marketplace/Escrow deployment, collection enablement, purchase or refund was performed."
           } >> "$GITHUB_STEP_SUMMARY"
