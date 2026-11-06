@@ -25,6 +25,7 @@ export type MarketplaceTraceTransaction = {
   account?: unknown;
   hash?: unknown;
   emulated?: unknown;
+  mc_block_seqno?: unknown;
   description?: {
     aborted?: unknown;
     compute_ph?: { success?: unknown };
@@ -47,7 +48,7 @@ export function findFinalizedMarketplaceBuyInTrace(
     buyerAddress: string;
     marketplaceAddress: string;
   },
-): { traceId: string; marketplaceTransaction: MarketplaceTraceTransaction; marketplaceTransactionHash: string } {
+): { traceId: string; marketplaceTransaction: MarketplaceTraceTransaction; marketplaceTransactionHash: string; inboundMessageHash: string } {
   if (!trace || typeof trace !== "object" || Array.isArray(trace)) throw new Error("Invalid TON trace");
   const value = trace as Record<string, unknown>;
   if (value.is_incomplete !== false) throw new Error("TON payment trace is incomplete");
@@ -96,6 +97,7 @@ export function findFinalizedMarketplaceBuyInTrace(
     traceId: value.trace_id,
     marketplaceTransaction: matches[0].tx,
     marketplaceTransactionHash: matches[0].hash,
+    inboundMessageHash: messageHash,
   };
 }
 
