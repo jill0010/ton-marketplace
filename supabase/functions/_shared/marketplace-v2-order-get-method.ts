@@ -21,7 +21,7 @@ export function buildOrderCellRunGetMethodRequest(
   return {
     address,
     method: "orderCellV2",
-    stack: [{ type: "num", value: `0x${BigInt(id).toString(16)}` }],
+    stack: [{ type: "num", value: BigInt(id).toString(10) }],
   };
 }
 
