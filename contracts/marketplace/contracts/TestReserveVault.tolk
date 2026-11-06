@@ -57,11 +57,21 @@ struct (0x72730105) TestReserveBuyerPayment {
     amount: coins
 }
 
+struct (0x72730106) TestReserveFunded {
+    orderId: uint64
+    paymentHash: uint256
+}
+
+struct (0x72730107) RetryTestReserveFundingAck {
+    orderId: uint64
+}
+
 type TestReserveVaultMessage =
     | FundTestReserve
     | ReviewTestReserve
     | RetryTestReserve
     | ConfirmTestReserveReceipt
+    | RetryTestReserveFundingAck
 
 fun TestReserveVaultStorage.load(): TestReserveVaultStorage {
     return TestReserveVaultStorage.fromCell(contract.getData());
@@ -69,6 +79,21 @@ fun TestReserveVaultStorage.load(): TestReserveVaultStorage {
 
 fun TestReserveVaultStorage.save(self) {
     contract.setData(self.toCell());
+}
+
+fun sendTestReserveFundingAck(storage: TestReserveVaultStorage) {
+    val identity = storage.identity.load();
+    assert (storage.funded && storage.status == 1) throw 703;
+    assert (contract.getOriginalBalance() >= grams("0.21")) throw 705;
+    createMessage({
+        bounce: BounceMode.NoBounce,
+        value: grams("0.005"),
+        dest: identity.fundingSource,
+        body: TestReserveFunded {
+            orderId: identity.orderId,
+            paymentHash: identity.paymentHash,
+        },
+    }).send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
 fun dispatchTestReserve(mutate storage: TestReserveVaultStorage) {
@@ -111,6 +136,12 @@ fun onInternalMessage(in: InMessage) {
             storage.funded = true;
             storage.status = 1;
             storage.save();
+            sendTestReserveFundingAck(storage);
+        }
+        RetryTestReserveFundingAck => {
+            assert (in.senderAddress == storage.owner) throw 701;
+            assert (msg.orderId == identity.orderId) throw 702;
+            sendTestReserveFundingAck(storage);
         }
         ReviewTestReserve => {
             assert (in.senderAddress == storage.owner) throw 701;
