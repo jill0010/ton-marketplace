@@ -716,3 +716,48 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 703 });
 }
+
+get fun `test vault rejects underfunded matching bounce and preserves in-flight liability`() {
+    val (vault, _, _, buyer) = reserveInFlight();
+    // All identities and original payment fields match, but the value is too
+    // small to substantiate return of the principal.
+    testing.processSingleTraceStep(
+        buyer,
+        createMessage({
+            bounce: false,
+            value: grams("0.18"),
+            dest: vault,
+            body: reserveRichBounce(1, 1, grams("0.194")),
+        }).bounced(),
+    );
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
+}
+
+get fun `test vault rejects duplicate replay after accepting bounce candidate`() {
+    val (vault, owner, _, buyer) = reserveInFlight();
+    val bounced = createMessage({
+        bounce: false,
+        value: grams("0.19"),
+        dest: vault,
+        body: reserveRichBounce(1, 1, grams("0.194")),
+    }).bounced();
+    testing.processSingleTraceStep(buyer, bounced);
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    testing.processSingleTraceStep(buyer, bounced);
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            ConfirmTestReserveReceipt {
+                orderId: 1,
+                queryId: 1,
+                receiptHash: 987,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+}
