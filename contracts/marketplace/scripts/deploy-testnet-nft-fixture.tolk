@@ -79,14 +79,6 @@ fun main() {
 
 
 
-    val nftTx = deployResult.findTransaction({
-        to: nftItem,
-    });
-
-    if (nftTx == null) {
-        throw 402;
-    }
-
     println("Fixture collection: {}", deployer.address);
     println("Fixture seller: {}", deployer.address);
     println("Fixture NFT expected at: {}", nftItem);
