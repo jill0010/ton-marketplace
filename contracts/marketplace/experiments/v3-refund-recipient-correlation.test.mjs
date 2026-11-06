@@ -9,7 +9,7 @@ const other = "0:" + "c".repeat(64);
 const body = (order, query) => beginCell().storeUint(0x72730105, 32)
   .storeUint(order, 64).storeUint(query, 64).endCell().toBoc().toString("base64");
 const message = (order = 1, query = 2, overrides = {}) => ({
-  source: vault, destination: buyer, value: "194000000",
+  source: vault, destination: buyer, value: "194000000", hash: "same-message-hash",
   msg_data: { "@type": "msg.dataRaw", body: body(order, query) }, ...overrides,
 });
 const response = (address, transactions) => ({
@@ -29,6 +29,7 @@ test("finds matching outbound/inbound candidate but never confirms payment", () 
   });
   assert.equal(result.recipientCandidates.length, 1);
   assert.equal(result.recipientCandidates[0].inboundTransactionHash, "in-tx");
+  assert.equal(result.recipientCandidates[0].messageHash, "same-message-hash");
   assert.equal(result.recipientCandidates[0].verified, false);
   assert.equal(result.proofStatus, "UNVERIFIED");
   assert.equal(result.mayRetry, false);
@@ -54,4 +55,24 @@ test("rejects mismatched buyer account and untrusted transport claims", () => {
   assert.throws(() => correlateV3RefundRecipient({
     ...options, vaultResponse, buyerResponse: { ...response(buyer, []), trusted: true },
   }), TypeError);
+});
+
+test("rejects missing or mismatched message hashes and ambiguous outbound duplicates", () => {
+  for (const inbound of [
+    message(1, 2, { hash: "different" }),
+    message(1, 2, { hash: undefined }),
+    message(1, 2, { hash: "" }),
+  ]) {
+    const result = correlateV3RefundRecipient({
+      ...options, vaultResponse, buyerResponse: buyerResponse(inbound),
+    });
+    assert.equal(result.recipientCandidates.length, 0);
+  }
+  const duplicated = response(vault, [{
+    transaction_id: { lt: "1", hash: "out-tx" },
+    out_msgs: [message(), message()],
+  }]);
+  assert.equal(correlateV3RefundRecipient({
+    ...options, vaultResponse: duplicated, buyerResponse: buyerResponse(message()),
+  }).recipientCandidates.length, 0);
 });
