@@ -10,6 +10,7 @@ on:
       - 'contracts/marketplace/experiments/v3-toncenter-candidates*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-inspector*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-body-decoder*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-message-matcher*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
   push:
@@ -21,6 +22,7 @@ on:
       - 'contracts/marketplace/experiments/v3-toncenter-candidates*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-inspector*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-body-decoder*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-message-matcher*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
 
@@ -44,4 +46,4 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
       - name: Run reserve-refund regression tests
-        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs contracts/marketplace/experiments/v3-refund-reconciliation.test.mjs contracts/marketplace/experiments/v3-toncenter-readonly.test.mjs contracts/marketplace/experiments/v3-toncenter-candidates.test.mjs contracts/marketplace/experiments/v3-refund-inspector.test.mjs contracts/marketplace/experiments/v3-refund-body-decoder.test.mjs
+        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs contracts/marketplace/experiments/v3-refund-reconciliation.test.mjs contracts/marketplace/experiments/v3-toncenter-readonly.test.mjs contracts/marketplace/experiments/v3-toncenter-candidates.test.mjs contracts/marketplace/experiments/v3-refund-inspector.test.mjs contracts/marketplace/experiments/v3-refund-body-decoder.test.mjs contracts/marketplace/experiments/v3-refund-message-matcher.test.mjs
