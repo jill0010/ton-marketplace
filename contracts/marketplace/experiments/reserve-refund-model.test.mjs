@@ -60,3 +60,39 @@ test("bounce requires exact principal return and retry preserves amount", () => 
   assert.throws(() => observeResult(retry, receipt()));
   assert.equal(observeResult(retry, receipt({ messageHash: N, attempt: 2 })).phase, "paid");
 });
+
+test("rejects malformed liability identities and payment evidence", () => {
+  for (const change of [
+    { orderId: "" }, { buyer: "" }, { marketplace: "" },
+    { paymentHash: "not-a-hash" }, { paymentHash: "A".repeat(64) },
+  ]) assert.throws(() => createLiability({ ...identity, ...change }));
+});
+test("review cannot be repeated or replaced after approval", () => {
+  const approved = approve();
+  assert.throws(() => approveReconciliation(approved, reconciliation));
+  assert.throws(() => approveReconciliation(approved, { ...reconciliation, evidenceHash: H }));
+});
+test("dispatch rejects malformed and previously used message hashes", () => {
+  assert.throws(() => dispatch(approve(), { messageHash: "invalid" }));
+  const bounced = observeResult(dispatch(), receipt({
+    kind: "bounced", returnVerified: true, returnedPrincipalNano: 194000000n,
+  }));
+  assert.throws(() => dispatch(bounced, { messageHash: M }));
+});
+test("bounce without exact returned principal blocks retry", () => {
+  for (const change of [
+    { returnedPrincipalNano: 193999999n },
+    { returnedPrincipalNano: 194000001n },
+    { returnVerified: false },
+  ]) {
+    assert.throws(() => observeResult(dispatch(), receipt({
+      kind: "bounced", returnVerified: true, returnedPrincipalNano: 194000000n, ...change,
+    })));
+  }
+});
+test("nonterminal or unsupported receipts never finalize liability", () => {
+  for (const change of [
+    { kind: "pending" }, { kind: "failed" },
+    { kind: "credited", creditNano: 0n },
+  ]) assert.throws(() => observeResult(dispatch(), receipt(change)));
+});
