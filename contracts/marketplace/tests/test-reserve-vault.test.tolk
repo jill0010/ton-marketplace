@@ -592,3 +592,44 @@ get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithme
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 703 });
 }
+
+get fun `test adequately funded fabricated bounce remains unverified and never auto retries`() {
+    val (vault, owner, _, buyer) = reserveInFlight();
+    // Adversarial fault injection: buyer can fund a matching synthetic bounce.
+    // Status 4 is a quarantine candidate, NOT verified returned principal.
+    testing.processSingleTraceStep(
+        buyer,
+        createMessage({
+            bounce: false,
+            value: grams("0.194"),
+            dest: vault,
+            body: reserveRichBounce(1, 1, grams("0.194")),
+        }).bounced(),
+    );
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(
+        reserveSend(
+            buyer,
+            vault,
+            RetryTestReserve {
+                orderId: 1,
+                returnEvidenceHash: 1234,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 701 });
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            ConfirmTestReserveReceipt {
+                orderId: 1,
+                queryId: 1,
+                receiptHash: 789,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+}
