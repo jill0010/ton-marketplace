@@ -24,4 +24,12 @@ test("V3 live testnet refund remains blocked without independent proof", () => {
 test("malformed or missing contract fails closed", () => {
   assert.throws(() => inspectV3TestnetReadiness(""), TypeError);
 });
-\ntest("partial handler stubs cannot open production release gate", () => {\n  const stubMarketplace = marketplace + "\\n| BuyProduct\\nBuyProduct => {}\\n| SettlePurchase\\nSettlePurchase => {}";\n  const stubEscrow = escrow + "\\n| ReleaseNft\\nReleaseNft => {}";\n  const result = inspectV3TestnetReadiness(source, stubMarketplace, stubEscrow);\n  assert.equal(result.testnetDeploymentApproved, false);\n  assert.equal(result.mainnetApproved, false);\n  assert.ok(result.reasons.includes("NO_INDEPENDENT_ONCHAIN_SETTLEMENT_PROOF"));\n});\n
+
+test("partial handler stubs cannot open production release gate", () => {
+  const stubMarketplace = marketplace + "\n| BuyProduct\nBuyProduct => {}\n| SettlePurchase\nSettlePurchase => {}";
+  const stubEscrow = escrow + "\n| ReleaseNft\nReleaseNft => {}";
+  const result = inspectV3TestnetReadiness(source, stubMarketplace, stubEscrow);
+  assert.equal(result.testnetDeploymentApproved, false);
+  assert.equal(result.mainnetApproved, false);
+  assert.ok(result.reasons.includes("NO_INDEPENDENT_ONCHAIN_SETTLEMENT_PROOF"));
+});
