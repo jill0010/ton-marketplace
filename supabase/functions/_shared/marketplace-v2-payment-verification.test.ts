@@ -76,3 +76,51 @@ Deno.test("cross-checks immutable order identity and the 0.2 TON reserve", () =>
   assertThrows(() => verifyMarketplaceV2OrderPaymentIdentity({ ...order, buyer: marketplace }, payment));
   assertThrows(() => verifyMarketplaceV2OrderPaymentIdentity({ ...order, processingReserveNano: "1" }, payment));
 });
+
+Deno.test("normalizes base64 message and root hashes before exact trace matching", () => {
+  const rootBytes = new Uint8Array(32).fill(0xaa);
+  const messageBytes = new Uint8Array(32).fill(0xcc);
+  const rootBase64 = btoa(String.fromCharCode(...rootBytes));
+  const messageBase64 = btoa(String.fromCharCode(...messageBytes));
+  const rootHex = "aa".repeat(32);
+  const messageHex = "cc".repeat(32);
+  const txs = trace({
+    transactions: {
+      [rootHex]: {
+        hash: rootHex, account: buyer, emulated: false,
+        description: { aborted: false, compute_ph: { success: true }, action: { success: true } },
+      },
+      [marketTxHash]: {
+        hash: marketTxHash, account: marketplace, emulated: false,
+        description: { aborted: false, compute_ph: { success: true }, action: { success: true } },
+        in_msg: {
+          hash: messageHex, source: buyer, destination: marketplace, value: "1200000000",
+          message_content: { body: "body-boc" },
+        },
+      },
+    },
+  });
+  const result = findFinalizedMarketplaceBuyInTrace(txs, {
+    buyerRootTransactionHash: rootBase64,
+    inboundMessageHash: messageBase64,
+    buyerAddress: buyer,
+    marketplaceAddress: marketplace,
+  });
+  assertEquals(result.marketplaceTransactionHash, marketTxHash);
+  assertEquals(result.inboundMessageHash, messageHex);
+});
+
+Deno.test("rejects a failed Marketplace transaction even when the wallet root is valid", () => {
+  const failed = trace();
+  (failed.transactions as Record<string, Record<string, unknown>>)[marketTxHash].description = {
+    aborted: true,
+    compute_ph: { success: false },
+    action: { success: false },
+  };
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(failed, {
+    buyerRootTransactionHash: rootHash,
+    inboundMessageHash: msgHash,
+    buyerAddress: buyer,
+    marketplaceAddress: marketplace,
+  }));
+});
