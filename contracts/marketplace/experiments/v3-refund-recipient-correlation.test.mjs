@@ -76,3 +76,34 @@ test("rejects missing or mismatched message hashes and ambiguous outbound duplic
     ...options, vaultResponse: duplicated, buyerResponse: buyerResponse(message()),
   }).recipientCandidates.length, 0);
 });
+
+test("aborted or explicitly failed buyer transactions are not receipt candidates", () => {
+  for (const description of [
+    { aborted: true },
+    { aborted: false, compute_ph: { success: false } },
+    { aborted: false, action: { success: false } },
+  ]) {
+    const buyerTx = response(buyer, [{
+      transaction_id: { lt: "2", hash: "in-tx" },
+      in_msg: message(),
+      description,
+    }]);
+    const result = correlateV3RefundRecipient({
+      ...options, vaultResponse, buyerResponse: buyerTx,
+    });
+    assert.equal(result.recipientCandidates.length, 0);
+  }
+});
+test("provider-reported execution success is not finalized payment proof", () => {
+  const buyerTx = response(buyer, [{
+    transaction_id: { lt: "2", hash: "in-tx" },
+    in_msg: message(),
+    description: { aborted: false, compute_ph: { success: true } },
+  }]);
+  const result = correlateV3RefundRecipient({
+    ...options, vaultResponse, buyerResponse: buyerTx,
+  });
+  assert.equal(result.recipientCandidates[0].executionStatus, "REPORTED_SUCCESS");
+  assert.equal(result.recipientCandidates[0].verified, false);
+  assert.equal(result.recipientCandidates[0].finalized, false);
+});
