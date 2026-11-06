@@ -38,6 +38,12 @@ struct (0x72730202) TestReserveAllocationConfirmed {
     vault: address
 }
 
+struct (0x72730203) TestReserveAllocationFailed {
+    orderId: uint64
+    paymentHash: uint256
+    vault: address
+}
+
 type TestReserveCoordinatorMessage = AllocateTestReserve | TestReserveFunded
 
 fun TestReserveCoordinatorStorage.load(): TestReserveCoordinatorStorage {
@@ -151,12 +157,27 @@ fun onBouncedMessage(in: InMessageBounced) {
         if (in.senderAddress != binding.vault || binding.status != 1) {
             return;
         }
-        // A bounce is recorded, never treated as successful funding or an
-        // automatic authorization to transfer/refund returned funds.
+        // Only a failed, still-pending allocation may return the buyer reserve.
+        // Costs are subsidized by operator funds in this experimental path.
         binding.status = 3;
         binding.returnedNano = in.valueCoins as uint64;
         storage.bindings.set(funded.orderId, binding.toCell());
         storage.save();
+        if (in.valueCoins >= grams("0.21")) {
+            binding.status = 4; // Reserve return dispatched once; not a receipt claim.
+            storage.bindings.set(funded.orderId, binding.toCell());
+            storage.save();
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.2"),
+                dest: storage.marketplace,
+                body: TestReserveAllocationFailed {
+                    orderId: funded.orderId,
+                    paymentHash: binding.paymentHash,
+                    vault: binding.vault,
+                },
+            }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+        }
     } catch {}
 }
 
