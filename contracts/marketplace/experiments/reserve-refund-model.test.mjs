@@ -9,7 +9,7 @@ const reconciliation = { ...identity, terminalState: "delivered", fundingModel: 
 const approve = (overrides = {}) => approveReconciliation(createLiability(identity), { ...reconciliation, ...overrides });
 const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
   orderId: "1", buyer: "buyer", evidenceHash: E, compensationReviewHash: H, amountNano: 194000000n,
-  attempt: state.attempt + 1, messageHash: state.attempt === 0 ? M : N, ...overrides });
+  attempt: state.attempt + 1, principalReturnEvidenceHash: state.receiptEvidenceHash, messageHash: state.attempt === 0 ? M : N, ...overrides });
 const receipt = (overrides = {}) => ({ orderId: "1", buyer: "buyer", amountNano: 194000000n,
   messageHash: M, attempt: 1, kind: "credited", receiptEvidenceHash: H, receiverSuccess: true, creditNano: 194000000n, ...overrides });
 test("prototype rejects Mainnet", () => assert.throws(() => createLiability({ ...identity, network: "-239" })));
@@ -73,6 +73,8 @@ test("bounce requires exact principal return and retry preserves amount", () => 
   const bad = receipt({ kind: "bounced", returnVerified: false, returnedPrincipalNano: 194000000n });
   assert.throws(() => observeResult(dispatch(), bad));
   const bounced = observeResult(dispatch(), { ...bad, returnVerified: true });
+  assert.throws(() => dispatch(bounced, { principalReturnEvidenceHash: undefined }));
+  assert.throws(() => dispatch(bounced, { principalReturnEvidenceHash: E }));
   const retry = dispatch(bounced); assert.equal(retry.attempt, 2); assert.equal(retry.refundNano, bounced.refundNano);
   assert.throws(() => observeResult(retry, receipt()));
   assert.equal(observeResult(retry, receipt({ messageHash: N, attempt: 2 })).phase, "paid");
