@@ -47,3 +47,12 @@ test("unfinalized outbound transaction cannot authorize a receipt or return", ()
   assert.equal(check({ operation: { ...op, messageHash: "" }, recipient }), "UNKNOWN");
   assert.equal(mayAutoRetryReserveRefund(), false);
 });
+
+test("competing credit and return records freeze reconciliation even when one is malformed", () => {
+  assert.equal(check({ recipient, returned: { ...returned, principalVerified: false } }), "UNKNOWN");
+  assert.equal(check({ recipient, returned: { ...returned, originalMessageHash: "wrong" } }), "UNKNOWN");
+  assert.equal(check({ recipient: { ...recipient, finalized: false }, returned }), "UNKNOWN");
+  assert.equal(check({ recipient: { ...recipient, amount: 1n }, returned }), "UNKNOWN");
+  assert.equal(check({ recipient, returned: {} }), "UNKNOWN");
+  assert.equal(check({ recipient: {}, returned }), "UNKNOWN");
+});
