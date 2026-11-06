@@ -91,3 +91,18 @@ The admin order inspection endpoint also accepts a `product_id`. In that mode it
 A complete TON trace and its per-account `total_fees` are useful diagnostics, but they do not prove that a fee was paid from one order's 0.2 TON reserve. Marketplace and Escrow balances can be pooled, and the current contract sends fixed-value internal messages (including 0.05 TON release and 0.03 TON acknowledgement messages). Those message values are transfers, not proof of fees consumed or of the remaining value available for refund.
 
 Accordingly, `calculateMarketplaceProcessingReserve` now reports only `observedContractFeesNano` and `feesByAccount`. It always returns `refundableNano: null`, `shortfallNano: null`, `status: manual_review_attribution_unproven`, and `attributionVerified: false`. It does not convert observed fees into a refund estimate. Scheme C remains the intended business rule, but the amount must stay unresolved until a per-order value-flow ledger and terminal balance reconciliation prove reserve-funded costs and unused funds. No automatic refund path is enabled.
+
+
+## End-to-end read-only payment verification
+
+The `admin-verify-marketplace-v2-payment` endpoint joins the previously separate read-only checks into one administrator operation. Given the observed inbound message hash and buyer address, it:
+
+1. Resolves exactly one finalized buyer wallet root transaction through `transactionsByMessage`.
+2. Fetches exactly one trace for that root and requires a complete trace with no pending messages.
+3. Confirms the exact inbound message appears once in a successful, non-emulated Marketplace V2 transaction and decodes its `BuyProductV2` ABI.
+4. Calls `orderIdForProductV2(productId)`, then `orderCellV2(orderId)`.
+5. Cross-checks the immutable order's buyer wallet, product ID, gross price, 0.2 TON reserve and payment query ID against the actual inbound message.
+
+This endpoint does not write to the database, sign, broadcast, or authorize a refund. It depends on the current Marketplace V2 getters being deployed at the configured contract address. Its tests cover unique root linkage, complete trace gates, exact message/transaction matching, and immutable order identity.
+
+The reserve trace helper remains diagnostic-only. Even after payment and order identity are verified, the current pooled contract balances do not prove which fees consumed this order's reserve; no refund amount is calculated until per-order reserve value flow is provable.
