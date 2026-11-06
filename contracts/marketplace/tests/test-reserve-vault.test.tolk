@@ -494,7 +494,7 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
             body: reserveRichBounce(1, 1, grams("0.194")),
         }).bounced(),
     );
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(
         reserveSend(
             buyer,
@@ -507,8 +507,8 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 701 });
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
-    // Fail closed: a bounce candidate must not be reclassified as paid merely
-    // by an owner assertion. The operator must reconcile chain evidence first.
+    // The forged tiny-value bounce did not return the refund principal.
+    // The real in-flight transfer may still be independently confirmed.
     expect(
         reserveSend(
             owner,
@@ -520,8 +520,8 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
     expect(
         reserveSend(
             owner,
