@@ -13,6 +13,7 @@ const msgHash = "c".repeat(64);
 function trace(overrides: Record<string, unknown> = {}) {
   return {
     trace_id: "trace-1",
+    mc_seqno_end: "12345",
     is_incomplete: false,
     trace_info: { pending_messages: 0 },
     transactions: {
@@ -53,6 +54,7 @@ Deno.test("rejects incomplete traces, missing root linkage, and duplicate Market
     marketplaceAddress: marketplace,
   };
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ is_incomplete: true }), input));
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ mc_seqno_end: "0" }), input));
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ transactions: {} }), input));
   const duplicate = trace();
   (duplicate.transactions as Record<string, unknown>)["d".repeat(64)] = {
