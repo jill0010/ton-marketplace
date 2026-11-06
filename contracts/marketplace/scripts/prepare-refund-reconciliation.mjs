@@ -10,7 +10,14 @@ export function prepareRefundReconciliation({ orderId, records }) {
   const seen = new Set();
   const diagnostics = [];
   for (const record of records) {
-    const check = validateRefundChainRecord(record);
+    let check;
+    try {
+      check = validateRefundChainRecord(record);
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      diagnostics.push("MALFORMED_CHAIN_RECORD");
+      continue;
+    }
     if (!check.valid) {
       diagnostics.push(check.reason);
       continue;
@@ -19,7 +26,7 @@ export function prepareRefundReconciliation({ orderId, records }) {
       diagnostics.push("ORDER_MISMATCH");
       continue;
     }
-    const key = record.transactionId + ":" + record.logicalTime;
+    const key = record.transactionId.toLowerCase();
     if (seen.has(key)) diagnostics.push("DUPLICATE_TRANSACTION");
     seen.add(key);
     // Deliberately ignore record.verified, record.evidence, and any
@@ -31,7 +38,7 @@ export function prepareRefundReconciliation({ orderId, records }) {
   // A separate audited verifier must bind order, operation, amount,
   // sender, recipient, message, and transaction finality.
   return {
-    state: diagnostics.includes("DUPLICATE_TRANSACTION") || diagnostics.includes("ORDER_MISMATCH")
+    state: diagnostics.some(reason => reason !== "UNVERIFIED_CHAIN_RECORD")
       ? "CONFLICT" : "UNKNOWN",
     retryAuthorized: false,
     requiresManualReview: true,
