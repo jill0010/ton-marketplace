@@ -643,7 +643,7 @@ get fun `test adequately funded fabricated bounce remains unverified and never a
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
 }
 
@@ -714,7 +714,7 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test vault rejects underfunded matching bounce and preserves in-flight liability`() {
@@ -759,7 +759,7 @@ get fun `test vault rejects duplicate replay after accepting bounce candidate`()
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test vault rejects rich bounce with falsified original transfer value`() {
