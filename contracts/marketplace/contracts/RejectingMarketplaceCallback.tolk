@@ -114,7 +114,7 @@ fun onInternalMessage(in: InMessage) {
             createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
                 value: grams("0.03"),
-                dest: storage.marketplace,
+                dest: storage.extra.load().marketplace,
                 body: EscrowRefundedV2 {
                     escrowId: msg.escrowId,
                     productId: msg.productId,
