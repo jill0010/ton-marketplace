@@ -132,6 +132,12 @@ jobs:
           FIXTURE_EMULATION: "true"
         run: acton script scripts/deploy-testnet-nft-fixture.tolk
 
+      - name: Exercise V3 testnet deployment candidate in emulator (no transactions broadcast)
+        env:
+          V3_TESTNET_DEPLOY_APPROVED: "true"
+          V3_TESTNET_DEPLOYER_ADDRESS: "kQBvDB_H7FFBs0nF4ap_DBdcOrwY_rMIpNVVOR6SWYFHB5iD"
+        run: acton script scripts/deploy-v3-testnet.tolk
+
       - name: Linter
         run: acton check --output-format github
 
