@@ -344,19 +344,21 @@ get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEsc
     expect(purchase).toHaveSuccessfulTx();
     expect(purchase).toHaveBouncedTx({ from: rejector.address, to: marketplace.address });
 
-    // The exact request Bounce moves the order into RefundPending and asks the
-    // same Escrow to return the NFT. It must not refund the buyer yet.
-    val pending = marketplace.orderV2(1);
-    assert (pending != null) throw ErrorsV2.InvalidRefund;
-    expect(pending!!.status).toEqual(6);
-    expect(pending.deliveryStatus).toEqual(3);
-    expect(pending.refundStatus).toEqual(1);
-    expect(marketplace.productV2(1)!!.status).toEqual(6);
-
-    // Only the fixture's exact seller-return confirmation can release the buyer refund.
+    // The fixture accepts only the correlated RefundEscrowV2 request and then
+    // returns the exact EscrowRefundedV2 callback. Final settlement therefore
+    // proves that the request Bounce entered compensation and completed the
+    // seller-return-before-buyer-refund sequence.
     val completed = marketplace.orderV2(1);
     assert (completed != null) throw ErrorsV2.InvalidRefund;
     expect(completed!!.status).toEqual(8);
+    expect(completed.deliveryStatus).toEqual(3);
     expect(completed.refundStatus).toEqual(2);
+    expect(marketplace.productV2(1)!!.status).toEqual(5);
+    val operations = completed.extra.load().operations.load();
+    val refund = marketplace.payoutV2(operations.buyerRefundOperationId);
+    assert (refund != null) throw ErrorsV2.InvalidPayout;
+    expect(refund!!.status).toEqual(2);
+    expect(refund.amount).toEqual(grams("4"));
+    expect(refund.beneficiary).toEqual(buyer.address);
     expect(marketplace.nextQueryIdV2()).toEqual(4);
 }
