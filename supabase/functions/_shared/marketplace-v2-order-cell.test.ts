@@ -1,5 +1,4 @@
 import { Address, beginCell } from "npm:@ton/core@0.63.1";
-import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { decodeMarketplaceV2OrderCell } from "./marketplace-v2-order-cell.ts";
 
 const buyer = Address.parse("0:".concat("11".repeat(32)));
@@ -31,22 +30,22 @@ function fixture(): string {
 
 Deno.test("decodes exact MarketplaceV2Order root and nested immutable snapshots", () => {
   const order = decodeMarketplaceV2OrderCell(fixture());
-  assertEquals(order.id, "9");
-  assertEquals(order.productId, "77");
-  assertEquals(order.status, 6);
-  assertEquals(order.deliveryStatus, 3);
-  assertEquals(order.buyer, buyer.toRawString().toLowerCase());
-  assertEquals(order.seller, seller.toRawString().toLowerCase());
-  assertEquals(order.treasury, treasury.toRawString().toLowerCase());
-  assertEquals(order.nftItem, item.toRawString().toLowerCase());
-  assertEquals(order.collection, collection.toRawString().toLowerCase());
-  assertEquals(order.itemIndex, "123456");
-  assertEquals(order.escrowId, "77");
-  assertEquals(order.grossNano, "1000000000");
-  assertEquals(order.platformFeeNano, "100000000");
-  assertEquals(order.sellerProceedsNano, "900000000");
-  assertEquals(order.processingReserveNano, "200000000");
-  assertEquals(order.buyerRefundQueryId, "17");
+  if (order.id !== "9") throw new Error("Wrong order ID");
+  if (order.productId !== "77") throw new Error("Wrong product ID");
+  if (order.status !== 6) throw new Error("Wrong order status");
+  if (order.deliveryStatus !== 3) throw new Error("Wrong delivery status");
+  if (order.buyer !== buyer.toRawString().toLowerCase()) throw new Error("Wrong buyer");
+  if (order.seller !== seller.toRawString().toLowerCase()) throw new Error("Wrong seller");
+  if (order.treasury !== treasury.toRawString().toLowerCase()) throw new Error("Wrong treasury");
+  if (order.nftItem !== item.toRawString().toLowerCase()) throw new Error("Wrong NFT item");
+  if (order.collection !== collection.toRawString().toLowerCase()) throw new Error("Wrong collection");
+  if (order.itemIndex !== "123456") throw new Error("Wrong item index");
+  if (order.escrowId !== "77") throw new Error("Wrong escrow ID");
+  if (order.grossNano !== "1000000000") throw new Error("Wrong gross");
+  if (order.platformFeeNano !== "100000000") throw new Error("Wrong platform fee");
+  if (order.sellerProceedsNano !== "900000000") throw new Error("Wrong seller proceeds");
+  if (order.processingReserveNano !== "200000000") throw new Error("Wrong processing reserve");
+  if (order.buyerRefundQueryId !== "17") throw new Error("Wrong refund query ID");
 });
 
 Deno.test("rejects an order cell with a non-reconciling settlement snapshot", () => {
@@ -63,5 +62,7 @@ Deno.test("rejects an order cell with a non-reconciling settlement snapshot", ()
   const root = beginCell().storeUint(1, 64).storeUint(1, 64)
     .storeUint(1, 8).storeUint(0, 8).storeUint(0, 8).storeUint(0, 8).storeUint(0, 8)
     .storeUint(1, 32).storeRef(extra).endCell();
-  assertThrows(() => decodeMarketplaceV2OrderCell(root.toBoc().toString("base64")));
+  let rejected = false;
+  try { decodeMarketplaceV2OrderCell(root.toBoc().toString("base64")); } catch { rejected = true; }
+  if (!rejected) throw new Error("Non-reconciling settlement must be rejected");
 });
