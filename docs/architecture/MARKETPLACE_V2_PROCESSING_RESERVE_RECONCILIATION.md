@@ -24,6 +24,8 @@ Buyer, seller and platform treasury wallet transaction fees are excluded because
 
 The trace must have a completed masterchain sequence and zero pending messages. This is a read-only accounting preview. It is not sufficient by itself to prove the order's final business state or authorize a refund.
 
+**Important attribution limit:** a TON trace proves the fees charged to the listed contract accounts during those transactions; it does not, by itself, prove which fungible nanotons funded those fees. Marketplace and Escrow balances may contain pre-existing operational funds, and storage fees may have accrued before the order. Before the preview can drive an on-chain refund, the protocol must isolate or formally allocate reserve liabilities, account for all Escrow excesses returned to Marketplace, and reconcile the exact end-of-trace reserve balance. The preview amount is therefore provisional until those controls exist.
+
 ## Implemented components
 
 - `supabase/functions/_shared/marketplace-processing-reserve.js`: pure fee attribution and reserve arithmetic.
