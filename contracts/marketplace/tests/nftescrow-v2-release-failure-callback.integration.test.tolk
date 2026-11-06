@@ -28,6 +28,10 @@ get fun `test V2 release failure callback action-phase failure really bounces an
     val marketplace = RejectingMarketplaceCallback.fromStorage({
         controller: controller.address,
         escrow: controller.address,
+        extra: RejectingMarketplaceCallbackExtra {
+            marketplace: controller.address,
+            testNftItem: nftItem.address,
+        }.toCell(),
         rejectAction: true,
     });
     var seededRecords: map<uint64, Cell<NFTEscrowV2Record>> = [];
