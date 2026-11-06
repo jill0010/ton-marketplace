@@ -535,7 +535,6 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
     ).toHaveFailedTx({ to: vault, exitCode: 703 });
 }
 
-
 get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithmetic underflow`() {
     val (vault, owner, funder, buyer) = reserveSetup();
     expect(
