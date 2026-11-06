@@ -47,6 +47,8 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
         controller: owner.address,
         escrow: fakeEscrow.address,
+        marketplace: marketplace.address,
+        testNftItem: nftItem,
         rejectAction: true,
     });
     val buyer = rejector.address;
@@ -268,4 +270,89 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     expect(net.send(fakeEscrow.address, numberDeposit)).toHaveSuccessfulTx();
     expect(marketplace.productV2(3)!!.status).toEqual(2);
     expect(marketplace.productV2(3)!!.extra.load().kind).toEqual(2);
+}
+
+
+get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEscrowV2 request`() {
+    val owner = testing.treasury("v2RequestBounceOwner");
+    val seller = testing.treasury("v2RequestBounceSeller");
+    val treasury = testing.treasury("v2RequestBounceTreasury");
+    val buyer = testing.treasury("v2RequestBounceBuyer");
+    val nftItem = testing.treasury("v2RequestBounceNft").address;
+    val collection = testing.treasury("v2RequestBounceCollection").address;
+
+    val marketplace = MarketplaceV2.fromStorage(MarketplaceV2Storage {
+        owner: owner.address,
+        escrow: owner.address,
+        escrowConfigured: false,
+        nextProductId: 1,
+        nextQueryId: 1,
+        products: [],
+        assetListings: [],
+        queryToProduct: [],
+        purchaseStorage: MarketplaceV2PurchaseStorage {
+            schemaVersion: 2,
+            treasury: owner.address,
+            treasuryConfigured: false,
+            nextOrderId: 1,
+            nextOperationId: 1,
+            refundQueryToProduct: [],
+            orders: MarketplaceV2OrderStorage {
+                orders: [],
+                productToOrder: [],
+                paymentQueryToOrder: [],
+                refundQueryToOrder: [],
+            }.toCell(),
+            payoutStorage: MarketplaceV2PayoutStorage {
+                payouts: [],
+                payoutQueryToOperation: [],
+            }.toCell(),
+        }.toCell(),
+    });
+    val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
+        controller: owner.address,
+        escrow: owner.address,
+        marketplace: marketplace.address,
+        testNftItem: nftItem,
+        rejectAction: false,
+    });
+
+    expect(marketplace.deploy(owner.address, { value: grams("0.3") })).toHaveSuccessfulDeploy({ to: marketplace.address });
+    expect(rejector.deploy(owner.address, { value: grams("0.3") })).toHaveSuccessfulDeploy({ to: rejector.address });
+    expect(marketplace.sendSetMarketplaceV2Escrow(owner.address, rejector.address, { value: grams("0.03") })).toHaveSuccessfulTx();
+    expect(marketplace.sendSetMarketplaceV2Treasury(owner.address, treasury.address, { value: grams("0.03") })).toHaveSuccessfulTx();
+
+    expect(marketplace.sendPublishProductV2(
+        seller.address, 1, 1, nftItem, collection, 77, 3, grams("4"),
+        { value: grams("0.2") },
+    )).toHaveSuccessfulTx();
+    expect(rejector.sendStartTestDepositV2(
+        owner.address, 1, 1, nftItem, seller.address, 1,
+        { value: grams("0.03") },
+    )).toHaveSuccessfulTx();
+    expect(marketplace.productV2(1)!!.status).toEqual(2);
+
+    val now = testing.getNow();
+    val purchase = marketplace.sendBuyProductV2(
+        buyer.address, 1, grams("4"), 9001, now + 600,
+        { value: grams("4.2") },
+    );
+    expect(purchase).toHaveSuccessfulTx();
+    expect(purchase).toHaveBouncedTx({ from: rejector.address, to: marketplace.address });
+
+    // The exact request Bounce moves the order into RefundPending and asks the
+    // same Escrow to return the NFT. It must not refund the buyer yet.
+    val pending = marketplace.orderV2(1);
+    assert (pending != null) throw ErrorsV2.InvalidRefund;
+    expect(pending!!.status).toEqual(6);
+    expect(pending.deliveryStatus).toEqual(3);
+    expect(pending.refundStatus).toEqual(1);
+    expect(marketplace.productV2(1)!!.status).toEqual(6);
+
+    // Only the fixture's exact seller-return confirmation can release the buyer refund.
+    val completed = marketplace.orderV2(1);
+    assert (completed != null) throw ErrorsV2.InvalidRefund;
+    expect(completed!!.status).toEqual(8);
+    expect(completed.refundStatus).toEqual(2);
+    expect(marketplace.nextQueryIdV2()).toEqual(4);
 }
