@@ -15,6 +15,7 @@ type EscrowOrder = {
   platform_fee_nano: string | number;
   seller_proceeds_nano: string | number;
   processing_reserve_nano: string | number;
+  fee_bps: string | number;
   status: string;
   delivery_status: string;
   seller_payout_status: string;
