@@ -49,6 +49,7 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | StartTestEscrowV2
     | StartTestReleaseV2
     | SetTestEscrowAddressV2
+    | CreateEscrowV2
     | ReleaseEscrowV2
     | RefundEscrowV2
     | EscrowRefundAckV2
@@ -104,6 +105,11 @@ fun onInternalMessage(in: InMessage) {
                 },
             }).send(SEND_MODE_REGULAR);
         }
+        CreateEscrowV2 => {
+            // Accept the listing registration request; the controller triggers
+            // the authenticated deposit callback with StartTestEscrowV2.
+        }
+
         ReleaseEscrowV2 => {
             // Intentionally fail compute so TON emits a real RichBounce.
             throw ErrorsV2.InvalidRelease;
