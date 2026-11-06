@@ -243,3 +243,11 @@ get fun testReserveBinding(orderId: uint64): TestReserveBinding? {
     }
     return TestReserveBinding.fromCell(result.loadValue());
 }
+
+get fun testReserveMarketplace(): address {
+    return TestReserveCoordinatorStorage.load().marketplace;
+}
+
+get fun testReserveOwner(): address {
+    return TestReserveCoordinatorStorage.load().owner;
+}
