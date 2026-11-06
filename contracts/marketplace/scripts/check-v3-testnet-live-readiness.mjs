@@ -10,7 +10,7 @@ export function inspectV3TestnetReadiness(source) {
   }
   const retry = source.match(/RetryTestReserve\s*=>\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
   const ownerAttestationOnly = retry.includes("returnEvidenceHash") &&
-    !retry.includes("independentVerifiedReturn");
+    !retry.includes("throw 706;") && !retry.includes("independentVerifiedReturn");
   const receipt = source.match(/ConfirmTestReserveReceipt\s*=>\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
   const ownerAttestedReceipt = receipt.includes("receiptHash") &&
     !receipt.includes("independentVerifiedReceipt");
