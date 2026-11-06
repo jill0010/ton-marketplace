@@ -94,7 +94,8 @@ Deno.serve(async (req: Request) => {
       payouts: payoutResult.data ?? [],
       events: eventResult.data ?? [],
       observations: observationResult.data ?? [],
-      chainIsAuthoritative: true,
+      dataSource: "database_mirror",
+      chainIsAuthoritative: false,
     }, 200, origin);
   } catch (error) {
     console.error("admin-marketplace-orders failed", error);
