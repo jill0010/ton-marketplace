@@ -25,11 +25,12 @@ export function findV3RefundMessageCandidates(response, { vault, buyer, orderId,
       const body = msg?.msg_data?.["@type"] === "msg.dataRaw" ? msg.msg_data.body : null;
       const decoded = decodeTestReserveBuyerPaymentBody(body);
       if (!decoded || decoded.orderId !== BigInt(orderId).toString() ||
-          decoded.queryId !== BigInt(queryId).toString()) continue;
+          decoded.queryId !== BigInt(queryId).toString() ||
+          decoded.amountNano !== BigInt(msg.value).toString()) continue;
       matches.push({
         transactionLt: decimal(tx?.transaction_id?.lt) ? tx.transaction_id.lt : null,
         transactionHash: typeof tx?.transaction_id?.hash === "string" ? tx.transaction_id.hash : null,
-        amountNano: msg.value,
+        amountNano: decoded.amountNano,
         orderId: decoded.orderId,
         queryId: decoded.queryId,
         verified: false,
