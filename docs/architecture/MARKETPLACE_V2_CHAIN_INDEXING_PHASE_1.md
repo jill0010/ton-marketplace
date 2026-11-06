@@ -84,3 +84,10 @@ This endpoint is read-only: it performs no database writes, signing, or transact
 
 
 The admin order inspection endpoint also accepts a `product_id`. In that mode it first calls `orderIdForProductV2(productId)`, then calls `orderCellV2(orderId)`, and verifies that the decoded immutable order still contains the requested product ID. TON Center V3 number stack arguments and results are encoded as decimal strings; the implementation and tests follow that documented format. A null product-to-order result is reported as not found, not guessed from transaction ordering.
+
+
+## Processing reserve attribution safety gate
+
+A complete TON trace and its per-account `total_fees` are useful diagnostics, but they do not prove that a fee was paid from one order's 0.2 TON reserve. Marketplace and Escrow balances can be pooled, and the current contract sends fixed-value internal messages (including 0.05 TON release and 0.03 TON acknowledgement messages). Those message values are transfers, not proof of fees consumed or of the remaining value available for refund.
+
+Accordingly, `calculateMarketplaceProcessingReserve` now reports only `observedContractFeesNano` and `feesByAccount`. It always returns `refundableNano: null`, `shortfallNano: null`, `status: manual_review_attribution_unproven`, and `attributionVerified: false`. It does not convert observed fees into a refund estimate. Scheme C remains the intended business rule, but the amount must stay unresolved until a per-order value-flow ledger and terminal balance reconciliation prove reserve-funded costs and unused funds. No automatic refund path is enabled.
