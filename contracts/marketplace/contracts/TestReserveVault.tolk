@@ -20,7 +20,7 @@ struct TestReserveVaultStorage {
     identity: Cell<TestReserveIdentity>
     funded: bool
     // 0 unfunded; 1 funded; 2 dispatched; 3 owner-confirmed credited;
-    // 4 bounced; 5 reviewed zero refund. Costs remain locked in this prototype.
+    // 4 unverified bounce candidate; 5 reviewed zero refund. Costs remain locked.
     status: uint8
     refundAmount: uint32
     reviewedCosts: uint32
@@ -139,7 +139,7 @@ fun onInternalMessage(in: InMessage) {
         }
         ConfirmTestReserveReceipt => {
             assert (in.senderAddress == storage.owner) throw 701;
-            assert (storage.status == 2) throw 703;
+            assert (storage.status == 2 || storage.status == 4) throw 703;
             assert (msg.orderId == identity.orderId && msg.queryId == storage.queryId) throw 702;
             assert (msg.receiptHash != 0) throw 702;
             storage.status = 3;
