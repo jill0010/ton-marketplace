@@ -1,0 +1,33 @@
+name: Reserve Refund Prototype Tests (No Transactions)
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
+      - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
+      - '.github/workflows/reserve-refund-prototype-tests.yml'
+  push:
+    paths:
+      - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
+      - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
+      - '.github/workflows/reserve-refund-prototype-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test isolated reserve refund prototype
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Run reserve-refund regression tests
+        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs
