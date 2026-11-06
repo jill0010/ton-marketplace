@@ -64,6 +64,10 @@ export function beginDispatch(state, identity) {
     "Changed or missing compensation review evidence");
   check(identity.amountNano === state.refundNano, "Changed refund amount");
   check(identity.attempt === state.attempt + 1, "Stale dispatch attempt");
+  if (state.phase === "bounced") {
+    check(identity.principalReturnEvidenceHash === state.receiptEvidenceHash,
+      "Retry must bind the verified return receipt");
+  }
   const messageHash = hash(identity.messageHash);
   check(!state.messageHashes.includes(messageHash), "Reused message hash");
   return Object.freeze({ ...state, phase: "in-flight", attempt: identity.attempt, messageHash,
