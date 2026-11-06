@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createLiability, approveReconciliation, beginDispatch, observeResult } from "./reserve-refund-model.mjs";
-const H = "a".repeat(64), E = "b".repeat(64), M = "c".repeat(64), N = "d".repeat(64);
+const H = "a".repeat(64), E = "b".repeat(64), M = "c".repeat(64), N = "d".repeat(64), R = "e".repeat(64), S = "f".repeat(64);
 const identity = { network: "-3", orderId: "1", buyer: "buyer", marketplace: "market", paymentHash: H };
 const reconciliation = { ...identity, terminalState: "delivered", fundingModel: "isolated-order-ledger-v3",
   evidenceKind: "reviewed-isolated-ledger", externalCompensationVerified: false, externalCompensationEvidenceHash: H, fundedNano: 200000000n, attributedFeesNano: 6000000n,
@@ -11,7 +11,7 @@ const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
   orderId: "1", buyer: "buyer", evidenceHash: E, compensationReviewHash: H, amountNano: 194000000n,
   attempt: state.attempt + 1, principalReturnEvidenceHash: state.receiptEvidenceHash, messageHash: state.attempt === 0 ? M : N, ...overrides });
 const receipt = (overrides = {}) => ({ network: "-3", marketplace: "market", paymentHash: H, orderId: "1", buyer: "buyer", amountNano: 194000000n,
-  messageHash: M, attempt: 1, kind: "credited", receiptEvidenceHash: H, receiverSuccess: true, creditNano: 194000000n, ...overrides });
+  messageHash: M, attempt: 1, kind: "credited", receiptEvidenceHash: R, receiverSuccess: true, creditNano: 194000000n, ...overrides });
 test("prototype rejects Mainnet", () => assert.throws(() => createLiability({ ...identity, network: "-239" })));
 test("conserves isolated reserve and binds reviewed evidence", () => {
   const state = approve(); assert.equal(state.refundNano, 194000000n); assert.equal(state.evidenceHash, E); assert.equal(state.compensationReviewHash, H);
@@ -58,12 +58,17 @@ test("in-flight and paid refunds cannot be dispatched twice", () => {
   const paid = observeResult(flying, receipt()); assert.equal(paid.phase, "paid");
   assert.throws(() => dispatch(paid)); assert.throws(() => observeResult(paid, receipt()));
 });
+test("receipt cannot reuse original payment or review evidence", () => {
+  for (const receiptEvidenceHash of [H, E]) {
+    assert.throws(() => observeResult(dispatch(), receipt({ receiptEvidenceHash })));
+  }
+});
 test("receipt evidence is mandatory for success and bounce", () => {
   assert.throws(() => observeResult(dispatch(), receipt({ receiptEvidenceHash: undefined })));
   assert.throws(() => observeResult(dispatch(), receipt({ receiptEvidenceHash: "invalid" })));
   assert.throws(() => observeResult(dispatch(), receipt({ kind: "bounced", receiptEvidenceHash: undefined,
     returnVerified: true, returnedPrincipalNano: 194000000n })));
-  assert.equal(observeResult(dispatch(), receipt()).receiptEvidenceHash, H);
+  assert.equal(observeResult(dispatch(), receipt()).receiptEvidenceHash, R);
 });
 test("rejects unrelated or unsuccessful receipts", () => {
   for (const change of [{ messageHash: N }, { attempt: 2 }, { creditNano: 1n }, { receiverSuccess: false },
@@ -78,10 +83,10 @@ test("bounce requires exact principal return and retry preserves amount", () => 
   assert.throws(() => dispatch(bounced, { principalReturnEvidenceHash: E }));
   const retry = dispatch(bounced); assert.equal(retry.attempt, 2); assert.equal(retry.refundNano, bounced.refundNano);
   assert.throws(() => observeResult(retry, receipt()));
-  assert.throws(() => observeResult(retry, receipt({ messageHash: N, attempt: 2, receiptEvidenceHash: H })));
-  const paid = observeResult(retry, receipt({ messageHash: N, attempt: 2, receiptEvidenceHash: E }));
+  assert.throws(() => observeResult(retry, receipt({ messageHash: N, attempt: 2, receiptEvidenceHash: R })));
+  const paid = observeResult(retry, receipt({ messageHash: N, attempt: 2, receiptEvidenceHash: S }));
   assert.equal(paid.phase, "paid");
-  assert.deepEqual(paid.receiptEvidenceHashes, [H, E]);
+  assert.deepEqual(paid.receiptEvidenceHashes, [R, S]);
 });
 
 test("rejects malformed liability identities and payment evidence", () => {
