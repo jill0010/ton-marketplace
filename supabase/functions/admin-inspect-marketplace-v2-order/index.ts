@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return reply({ success: false, error: "A JSON object with order_id is required" }, 400, origin);
+      return reply({ success: false, error: "A JSON object with exactly one of order_id or product_id is required" }, 400, origin);
     }
     const input = body as Record<string, unknown>;
     const hasOrderId = Object.hasOwn(input, "order_id");
