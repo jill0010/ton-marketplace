@@ -50,3 +50,28 @@ test("duplicate hash is detected even when logical time differs", () => {
   assert.equal(result.state, "CONFLICT");
   assert.ok(result.diagnostics.includes("DUPLICATE_TRANSACTION"));
 });
+
+test("expected transfer must match exact wallets and amount", () => {
+  const expected = {
+    accountAddress: record.accountAddress,
+    counterpartyAddress: record.counterpartyAddress,
+    amountNano: record.amountNano,
+  };
+  assert.equal(prepare({ orderId: "order-2", records: [record], expected }).state, "UNKNOWN");
+  for (const fields of [
+    { accountAddress: "0:" + "d".repeat(64) },
+    { counterpartyAddress: "0:" + "d".repeat(64) },
+    { amountNano: "200000001" },
+  ]) {
+    const result = prepare({ orderId: "order-2", records: [record], expected: { ...expected, ...fields } });
+    assert.equal(result.state, "CONFLICT");
+    assert.equal(result.retryAuthorized, false);
+    assert.ok(result.diagnostics.includes("EXPECTED_TRANSFER_MISMATCH"));
+  }
+});
+test("invalid expected transfer parameters cannot be accepted", () => {
+  assert.throws(() => prepare({
+    orderId: "order-2", records: [record],
+    expected: { accountAddress: "invalid", counterpartyAddress: record.counterpartyAddress, amountNano: "200000000" },
+  }), TypeError);
+});
