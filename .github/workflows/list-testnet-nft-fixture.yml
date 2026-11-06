@@ -64,6 +64,7 @@ jobs:
           SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
           DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          EXPECTED_SELLER_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
           TESTNET_LISTING_ENABLED: "true"
           FIXTURE_EMULATION: "false"
           TESTNET_FIXTURE_OWNER: "kQDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPeEr"
@@ -82,9 +83,11 @@ jobs:
           keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
           [wallets.seller]
           kind = "v5r1"
+          mnemonic-scheme = "bip39"
           workchain = 0
           keys = { mnemonic-env = "SELLER_MNEMONIC" }
           WALLETS
+          acton script scripts/check-testnet-wallet-profile.tolk --net testnet
           acton script scripts/run-testnet-fixture-listing.tolk --net testnet 2>&1 | tee testnet-fixture.log
           grep -Fq "Test listing active; product ID:" testnet-fixture.log
           {
