@@ -27,8 +27,8 @@ function getTransactions(trace) {
   if (trace.transactions && typeof trace.transactions === "object" &&
     !Array.isArray(trace.transactions)) {
     return Object.entries(trace.transactions).map(([hash, tx]) => ({
-      hash: typeof tx?.hash === "string" ? tx.hash : hash,
       ...tx,
+      hash: typeof tx?.hash === "string" ? tx.hash : hash,
     }));
   }
   if (Array.isArray(trace.transactions_full)) return trace.transactions_full;
