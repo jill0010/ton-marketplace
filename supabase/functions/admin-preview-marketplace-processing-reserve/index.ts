@@ -111,11 +111,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const trace = await fetchTrace(order.payment_tx_hash);
-    const transactions = trace.transactions && typeof trace.transactions === "object"
-      ? Object.fromEntries(Object.entries(trace.transactions).map(([hash, tx]) => [
-        hash,
-        { ...tx, account: typeof tx?.account === "string" ? rawAddress(tx.account, "transaction") : tx?.account },
-      ]))
+    const transactionMap = trace.transactions as Record<string, Record<string, unknown>> | undefined;
+    const transactions = transactionMap && typeof transactionMap === "object"
+      ? Object.fromEntries(Object.entries(transactionMap).map(([hash, tx]) => {
+        const account = tx.account;
+        return [
+          hash,
+          {
+            ...tx,
+            account: typeof account === "string" ? rawAddress(account, "transaction") : account,
+          },
+        ];
+      }))
       : trace.transactions;
     const normalizedTrace = { ...trace, transactions };
 
