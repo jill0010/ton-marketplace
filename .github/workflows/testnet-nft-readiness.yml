@@ -1,0 +1,57 @@
+name: Testnet NFT Readiness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testnet-nft-readiness
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: Testnet library gate and NFT emulator rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      - name: Require official Item libraries on Testnet (read-only)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          REQUIRE_TESTNET_LIBRARIES: "true"
+        run: node scripts/check-testnet-fragment-libraries.mjs
+
+      - name: Setup Acton
+        if: ${{ !cancelled() }}
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+
+      - name: Build and rehearse NFT protocol in emulator
+        if: ${{ !cancelled() }}
+        run: |
+          acton build
+          acton test --backtrace full
+
+      - name: Record scope and result
+        if: always()
+        env:
+          READINESS_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "## Testnet NFT readiness"
+            echo "Commit: $GITHUB_SHA"
+            echo "Result: $READINESS_STATUS"
+            echo "Library gate queries TON Testnet only. Contract tests run in the local emulator."
+            echo "No signer, wallet mnemonic, NFT deployment, transfer, collection approval or purchase is used."
+            echo "A successful run is a prerequisite, not proof of a live Testnet NFT deployment."
+            echo "Missing libraries block fixtures using the currently approved Item code."
+            echo "Processing-reserve refunds remain a separate unfinished implementation gate."
+          } >> "$GITHUB_STEP_SUMMARY"
