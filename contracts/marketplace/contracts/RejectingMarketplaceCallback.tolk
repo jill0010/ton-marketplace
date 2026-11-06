@@ -15,6 +15,14 @@ struct (0x7f000005) SetTestEscrowAddressV2 {
     escrow: address
 }
 
+struct (0x7f000006) StartTestDepositV2 {
+    escrowId: uint64
+    productId: uint64
+    nftItem: address
+    seller: address
+    queryId: uint64
+}
+
 struct (0x7f000004) StartTestReleaseV2 {
     orderId: uint64
     productId: uint64
@@ -26,6 +34,8 @@ struct (0x7f000004) StartTestReleaseV2 {
 struct RejectingMarketplaceCallbackStorage {
     controller: address
     escrow: address
+    marketplace: address
+    testNftItem: address
     rejectAction: bool
 }
 
@@ -42,6 +52,10 @@ type RejectingMarketplaceCallbackAllowedMessage =
     | StartTestEscrowV2
     | StartTestReleaseV2
     | SetTestEscrowAddressV2
+    | StartTestDepositV2
+    | ReleaseEscrowV2
+    | RefundEscrowV2
+    | EscrowRefundAckV2
     | EscrowDepositedV2
     | EscrowReleasedV2
     | EscrowReleaseFailedV2
@@ -93,6 +107,48 @@ fun onInternalMessage(in: InMessage) {
                 },
             }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
+
+        StartTestDepositV2 => {
+            var storage = lazy RejectingMarketplaceCallbackStorage.load();
+            assert (in.senderAddress == storage.controller) throw ErrorsV2.NotOwner;
+            storage.testNftItem = msg.nftItem;
+            storage.save();
+            createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.marketplace,
+                body: EscrowDepositedV2 {
+                    escrowId: msg.escrowId,
+                    productId: msg.productId,
+                    nftItem: msg.nftItem,
+                    seller: msg.seller,
+                    queryId: msg.queryId,
+                },
+            }).send(SEND_MODE_REGULAR);
+        }
+
+        ReleaseEscrowV2 => {
+            // Intentionally fail compute so TON emits a real RichBounce.
+            throw ErrorsV2.InvalidRelease;
+        }
+
+        RefundEscrowV2 => {
+            val storage = lazy RejectingMarketplaceCallbackStorage.load();
+            createMessage({
+                bounce: BounceMode.Only256BitsOfBody,
+                value: grams("0.03"),
+                dest: storage.marketplace,
+                body: EscrowRefundedV2 {
+                    escrowId: msg.escrowId,
+                    productId: msg.productId,
+                    queryId: msg.queryId,
+                    nftItem: storage.testNftItem,
+                    seller: msg.seller,
+                },
+            }).send(SEND_MODE_REGULAR);
+        }
+
+        EscrowRefundAckV2 => {}
 
         StartTestReleaseV2 => {
             val storage = lazy RejectingMarketplaceCallbackStorage.load();
