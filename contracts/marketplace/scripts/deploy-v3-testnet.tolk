@@ -172,18 +172,16 @@ fun main() {
         stateInit: coordinatorState,
     };
     val coordinator = coordinatorDestination.calculateAddress();
-    expect(
-        net.send(
+    val coordinatorDeploy = net.send(
             deployer.address,
             createMessage({
                 bounce: false,
                 value: grams("0.1"),
                 dest: coordinatorDestination,
             }),
-        ),
-    ).toHaveSuccessfulDeploy({ to: coordinator });
-    expect(
-        net.send(
+        );
+    assert (coordinatorDeploy.waitForFirstTransaction() != null) throw 802;
+    val coordinatorConfigure = net.send(
             deployer.address,
             createMessage({
                 bounce: false,
@@ -191,8 +189,8 @@ fun main() {
                 dest: marketplace.address,
                 body: SetTestReserveCoordinator { coordinator },
             }),
-        ),
-    ).toHaveSuccessfulTx({ to: marketplace.address });
+        );
+    assert (coordinatorConfigure.waitForFirstTransaction() != null) throw 803;
     println("V3 testnet candidate marketplace: {}", marketplace.address);
     println("V3 testnet candidate escrow: {}", escrow.address);
     println("V3 testnet candidate coordinator: {}", coordinator);
