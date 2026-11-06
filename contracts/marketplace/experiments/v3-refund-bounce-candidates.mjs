@@ -2,7 +2,7 @@
 // TON Center API data cannot independently prove principal returned to vault.
 // Never authorize a retry from a bounce candidate.
 import { inspectV3RichBounceBody } from "./v3-refund-rich-bounce-body.mjs";
-const raw = (x) => typeof x === "string" && /^(?:-?1|0):[0-9a-fA-F]{64}$/.test(x);
+const raw = (x) => typeof x === "string" && /^(?:-1|0):[0-9a-fA-F]{64}$/.test(x);
 const normalize = (x) => typeof x === "string" ? x.toLowerCase() : "";
 const decimal = (x) => typeof x === "string" && /^[0-9]+$/.test(x);
 
@@ -12,6 +12,10 @@ export function findV3RefundBounceCandidates({ vaultResponse, vault, buyer }) {
       normalize(vaultResponse.address) !== normalize(vault) ||
       !raw(vault) || !raw(buyer) || !Array.isArray(vaultResponse.transactions)) {
     throw new TypeError("Invalid vault bounce investigation response");
+  }
+  if (vaultResponse.transactions.length > 200) {
+    return { candidates: [], ambiguous: true, reason: "TOO_MANY_UNVERIFIED_TRANSACTIONS",
+      proofStatus: "UNVERIFIED", mayRetry: false };
   }
   const candidates = [];
   for (const tx of vaultResponse.transactions) {
