@@ -11,6 +11,7 @@ on:
       - "supabase/functions/admin-marketplace-orders/**"
       - "supabase/functions/marketplace-order-history/**"
       - "supabase/functions/_shared/marketplace-processing-reserve.*"
+      - "supabase/functions/_shared/marketplace-v2-buy-message.*"
       - "supabase/functions/admin-preview-marketplace-processing-reserve/**"
       - "supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql"
       - "supabase/migrations/20261106024422_lock_marketplace_processing_reserve_privileges.sql"
@@ -96,6 +97,12 @@ jobs:
 
       - name: Type-check processing reserve preview Edge Function
         run: deno check --config supabase/functions/deno.json supabase/functions/admin-preview-marketplace-processing-reserve/index.ts
+
+      - name: Test strict Marketplace V2 purchase message validation
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-buy-message.test.ts
+
+      - name: Type-check Marketplace V2 purchase message validator
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-buy-message.ts
 
       - name: Build production frontend
         run: npm run build
