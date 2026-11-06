@@ -172,6 +172,26 @@ fun onBouncedMessage(in: InMessageBounced) {
     }
     try {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
+        // A failed marketplace notification can return the entire 0.2 TON
+        // principal. Quarantine it; never mark the buyer refunded or resend
+        // automatically without reconciling the returned value.
+        try {
+            val failure = TestReserveAllocationFailed.fromCell(rich.originalBody);
+            var failedStorage = TestReserveCoordinatorStorage.load();
+            val failedFound = failedStorage.bindings.get(failure.orderId);
+            if (failedFound.isFound) {
+                var failedBinding = TestReserveBinding.fromCell(failedFound.loadValue());
+                if (failedBinding.status == 4 && in.senderAddress == failedStorage.marketplace &&
+                    failedBinding.paymentHash == failure.paymentHash &&
+                    failedBinding.vault == failure.vault) {
+                    failedBinding.status = 3;
+                    failedBinding.returnedNano = in.valueCoins as uint64;
+                    failedStorage.bindings.set(failure.orderId, failedBinding.toCell());
+                    failedStorage.save();
+                }
+            }
+            return;
+        } catch {}
         val funded = FundTestReserve.fromCell(rich.originalBody);
         var storage = TestReserveCoordinatorStorage.load();
         val found = storage.bindings.get(funded.orderId);
