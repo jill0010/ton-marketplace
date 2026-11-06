@@ -42,6 +42,9 @@ export function classifyReserveRefund({ operation, outgoing, recipient, returned
     returned.amount <= operation.amount &&
     returned.principalVerified === true;
 
+  // A supplied but unverified counter-claim is a conflict, not proof of absence.
+  // Do not mark credited/returned while the competing record remains unresolved.
+  if (recipient != null && returned != null) return "UNKNOWN";
   // Contradictory evidence is not resolved by guessing.
   if (credited && bounced) return "UNKNOWN";
   if (credited) return "CREDITED";
