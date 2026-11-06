@@ -43,7 +43,8 @@ export function correlateV3RefundBounce({
   }
   // Candidate values must never be summed as verified recovered principal.
   const ambiguous = candidates.length > 1 ||
-    new Set(candidates.map((c) => c.bounceTransactionHash)).size !== candidates.length;
+    new Set(candidates.map((c) => c.bounceTransactionHash)).size !== candidates.length ||
+    new Set(candidates.map((c) => c.outgoingTransactionHash)).size !== candidates.length;
   return {
     candidates: candidates.map((candidate) => ({
       ...candidate,
@@ -51,6 +52,9 @@ export function correlateV3RefundBounce({
     })),
     ambiguous,
     verifiedReturnedNano: "0",
+    accountingStatus: "NO_VERIFIED_PRINCIPAL",
+    // Do not use any of these candidates to mutate vault state or release funds.
+    mayConfirmBounce: false,
     proofStatus: "UNVERIFIED",
     mayRetry: false,
   };
