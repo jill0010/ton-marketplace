@@ -45,6 +45,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check Mainnet workflow safety
+        run: node scripts/check-mainnet-workflow-safety.mjs
+
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
 
