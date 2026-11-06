@@ -75,6 +75,7 @@ export function observeResult(state, observation) {
   check(observation.orderId === state.orderId && observation.buyer === state.buyer, "Wrong receipt identity");
   check(observation.amountNano === state.refundNano, "Wrong receipt amount");
   check(["credited", "bounced"].includes(observation.kind), "Receipt is not terminal");
+  const receiptEvidenceHash = hash(observation.receiptEvidenceHash);
   if (observation.kind === "credited") {
     check(observation.receiverSuccess === true, "Receiver did not complete");
     check(observation.creditNano === state.refundNano, "Receiver credit mismatch");
@@ -83,5 +84,6 @@ export function observeResult(state, observation) {
     check(observation.returnVerified === true && observation.returnedPrincipalNano === state.refundNano,
       "Returned principal not proven; retry blocked");
   }
-  return Object.freeze({ ...state, phase: observation.kind === "credited" ? "paid" : "bounced" });
+  return Object.freeze({ ...state, receiptEvidenceHash,
+    phase: observation.kind === "credited" ? "paid" : "bounced" });
 }
