@@ -1,0 +1,28 @@
+{
+  "network": "testnet",
+  "order_id": 1,
+  "trace_id": "WMlWb6hWYlAY9IffC5PmF4Q/eCH8J8+lxsmku12dzaw=",
+  "marketplace_buy_hash": "TNcBSRs5vivBstJFXfSj4I/BCrScoKLIK5cQf1/MJew=",
+  "mc_seqno_end": "96120279",
+  "transaction_count": 10,
+  "receipts": [
+    {
+      "kind": "seller",
+      "credited_nano": 9700000,
+      "message_hash": "Ab/loRDAe1D0mtncAdj6eTvJJ6CSMF2Mr9NLmz/itdo=",
+      "receipt_hash": "dNSFRbnuWjbLPLSGzUFK/txrMCMoaze3oF3hoevcrSY="
+    },
+    {
+      "kind": "platform",
+      "credited_nano": 300000,
+      "message_hash": "xhhVFHm3h1JytgM4M6BDXay+HeKq5BzS/MF4Nrndx/4=",
+      "receipt_hash": "uv1Te9smcv8BUKMcHprYTLx65cztBqKT+01GfhrMKZ4="
+    }
+  ],
+  "seller_and_treasury_same_account": true,
+  "observed_processor_fees_nano": 6615339,
+  "reserve_nano": 200000000,
+  "refundable_nano": null,
+  "reserve_status": "manual_review_attribution_unproven",
+  "limitation": "Observed account fees do not prove per-order reserve consumption; no refund authorized."
+}
