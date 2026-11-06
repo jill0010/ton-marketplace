@@ -15,7 +15,6 @@ struct (0x7f000005) SetTestEscrowAddressV2 {
     escrow: address
 }
 
-
 struct (0x7f000004) StartTestReleaseV2 {
     orderId: uint64
     productId: uint64
