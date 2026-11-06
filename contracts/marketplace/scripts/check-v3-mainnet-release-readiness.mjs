@@ -17,8 +17,14 @@ for (const [label, relative] of checks) {
   let source;
   try { source = await readFile(path.join(root, relative), "utf8"); }
   catch { console.error("BLOCKED: missing " + label + " (" + relative + ")"); failures++; continue; }
-  if (/simulation.only|not deployable|test.only|experimental/i.test(source.slice(0, 2000))) {
+  if (!source.trim() || /simulation.only|not deployable|test.only|experimental/i.test(source.slice(0, 2000))) {
     console.error("BLOCKED: nonproduction " + label + " (" + relative + ")"); failures++;
+  } else if (relative.endsWith(".tolk") &&
+    !/\bcontract\s+[A-Za-z][A-Za-z0-9_]*/.test(source)) {
+    console.error("BLOCKED: missing contract declaration in " + relative); failures++;
+  } else if (relative.endsWith(".mjs") &&
+    !/\b(import|export|const|let|function|await)\b/.test(source)) {
+    console.error("BLOCKED: verification script has no executable JS in " + relative); failures++;
   } else {
     console.log("PRESENT (not independently audited): " + label);
   }
