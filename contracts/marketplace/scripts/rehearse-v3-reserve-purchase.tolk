@@ -440,8 +440,8 @@ fun main() {
                 },
             }),
         ),
-    ).toHaveSuccessfulTx({ to: allocation.vault });
-    expect(net.runGetMethod<uint8>(allocation.vault, "testReserveStatus")).toEqual(3);
-    println("Experimental purchase -> funded vault ACK -> NFT release -> payout -> reviewed refund verified.");
-    println("Synthetic example costs 0.006 TON, refund 0.194 TON; NOT a fee quote for deployed order 1.");
+    ).toHaveFailedTx({ to: allocation.vault, exitCode: 706 });
+    expect(net.runGetMethod<uint8>(allocation.vault, "testReserveStatus")).toEqual(2);
+    println("Experimental purchase -> funded vault ACK -> NFT release -> payout -> refund dispatched; unverified owner receipt rejected.");
+    println("Synthetic example costs 0.006 TON, refund 0.194 TON dispatched but NOT independently confirmed; NOT a fee quote for deployed order 1.");
 }

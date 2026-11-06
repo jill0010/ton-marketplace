@@ -21,9 +21,12 @@ on:
       - ".github/workflows/contracts.yml"
   workflow_dispatch:
 
+# Keep a running contract verification alive when additional commits arrive.
+# Each commit must retain its own CI result; newer PR pushes must not cancel
+# an already-running safety check partway through its tests.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
 
 permissions: {}
 
@@ -50,6 +53,23 @@ jobs:
 
       - name: Test reserve refund design model (no signer or network)
         run: node --test experiments/reserve-refund-model.test.mjs
+
+      - name: Verify V3 production release gate remains closed until production contracts exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/check-v3-mainnet-release-readiness.mjs; then
+            echo "::error::V3 gate unexpectedly passed; manual production security review required."
+            exit 1
+          fi
+          echo "V3 production deployment remains blocked; this CI run is not a release approval."
+
+      - name: Install locked Node dependencies for TON BOC verification
+        working-directory: .
+        run: npm ci --ignore-scripts
+
+      - name: Test V3 read-only on-chain postflight verifier (mock RPC)
+        run: node --test scripts/verify-v3-testnet.test.mjs scripts/collect-v3-testnet-evidence.test.mjs scripts/check-v3-deployment-invariants.test.mjs scripts/preflight-v3-testnet-wallets.test.mjs scripts/postflight-v3-candidate.test.mjs
 
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
@@ -118,6 +138,12 @@ jobs:
           TESTNET_FIXTURE_ENABLED: "true"
           FIXTURE_EMULATION: "true"
         run: acton script scripts/deploy-testnet-nft-fixture.tolk
+
+      - name: Exercise V3 testnet deployment candidate in emulator (no transactions broadcast)
+        env:
+          V3_TESTNET_DEPLOY_APPROVED: "true"
+          V3_TESTNET_DEPLOYER_ADDRESS: "kQBvDB_H7FFBs0nF4ap_DBdcOrwY_rMIpNVVOR6SWYFHB5iD"
+        run: acton script scripts/deploy-v3-testnet.tolk
 
       - name: Linter
         run: acton check --output-format github

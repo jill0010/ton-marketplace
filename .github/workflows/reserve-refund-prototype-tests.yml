@@ -1,0 +1,71 @@
+name: Reserve Refund Prototype Tests (No Transactions)
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
+      - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-reconciliation*.mjs'
+      - 'contracts/marketplace/experiments/v3-toncenter-readonly*.mjs'
+      - 'contracts/marketplace/experiments/v3-toncenter-candidates*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-inspector*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-body-decoder*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-message-matcher*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-recipient-correlation*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-bounce-candidates*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-bounce-correlation*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-settlement-audit*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-rich-bounce-body*.mjs'
+      - 'contracts/marketplace/experiments/v3-reserve-conservation*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-release-gate*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-invariants.test.mjs contracts/marketplace/experiments/v3-testnet-evidence-bundle.test.mjs'
+      - 'contracts/marketplace/experiments/v3-testnet-evidence-bundle*.mjs'
+      - '.github/workflows/reserve-refund-prototype-tests.yml'
+      - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
+      - 'contracts/marketplace/scripts/check-v3-testnet-live-readiness*.mjs'
+      - 'contracts/marketplace/scripts/v3-security-release-evidence*.mjs'
+  push:
+    paths:
+      - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
+      - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-reconciliation*.mjs'
+      - 'contracts/marketplace/experiments/v3-toncenter-readonly*.mjs'
+      - 'contracts/marketplace/experiments/v3-toncenter-candidates*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-inspector*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-body-decoder*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-message-matcher*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-recipient-correlation*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-bounce-candidates*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-bounce-correlation*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-settlement-audit*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-rich-bounce-body*.mjs'
+      - 'contracts/marketplace/experiments/v3-reserve-conservation*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-release-gate*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-invariants.test.mjs'
+      - 'contracts/marketplace/experiments/v3-testnet-evidence-bundle*.mjs'
+      - '.github/workflows/reserve-refund-prototype-tests.yml'
+      - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
+      - 'contracts/marketplace/scripts/check-v3-testnet-live-readiness*.mjs'
+      - 'contracts/marketplace/scripts/v3-security-release-evidence*.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test isolated reserve refund prototype
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Run reserve-refund regression tests
+        run: node --test contracts/marketplace/scripts/v3-security-release-evidence.test.mjs contracts/marketplace/scripts/check-v3-testnet-live-readiness.test.mjs contracts/marketplace/experiments/v3-liability-idempotency.test.mjs contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs contracts/marketplace/experiments/v3-refund-reconciliation.test.mjs contracts/marketplace/experiments/v3-toncenter-readonly.test.mjs contracts/marketplace/experiments/v3-toncenter-candidates.test.mjs contracts/marketplace/experiments/v3-refund-inspector.test.mjs contracts/marketplace/experiments/v3-refund-body-decoder.test.mjs contracts/marketplace/experiments/v3-refund-message-matcher.test.mjs contracts/marketplace/experiments/v3-refund-recipient-correlation.test.mjs contracts/marketplace/experiments/v3-refund-bounce-candidates.test.mjs contracts/marketplace/experiments/v3-refund-bounce-correlation.test.mjs contracts/marketplace/experiments/v3-refund-settlement-audit.test.mjs contracts/marketplace/experiments/v3-refund-rich-bounce-body.test.mjs contracts/marketplace/experiments/v3-reserve-conservation.test.mjs contracts/marketplace/experiments/v3-refund-release-gate.test.mjs contracts/marketplace/experiments/v3-refund-invariants.test.mjs

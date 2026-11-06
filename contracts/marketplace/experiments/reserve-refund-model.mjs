@@ -21,7 +21,8 @@ export function createLiability(identity) {
   hash(identity.paymentHash);
   return Object.freeze({
     ...identity, reserveNano: 200000000n, phase: "unreconciled",
-    refundNano: null, evidenceHash: null, attempt: 0, messageHash: null, messageHashes: Object.freeze([]),
+    refundNano: null, evidenceHash: null, attempt: 0, messageHash: null, messageHashes: Object.freeze([]), receiptEvidenceHash: null,
+    receiptEvidenceHashes: Object.freeze([]),
   });
 }
 export function approveReconciliation(state, reconciliation) {
@@ -29,7 +30,17 @@ export function approveReconciliation(state, reconciliation) {
   for (const key of ["network", "orderId", "buyer", "marketplace", "paymentHash"]) {
     check(reconciliation[key] === state[key], "Reconciliation identity mismatch");
   }
-  check(["delivered", "compensated"].includes(reconciliation.terminalState), "Order not terminal");
+  // External compensation is already a buyer payment. Never authorize a second
+  // reserve return based solely on a compensated terminal state.
+  check(reconciliation.terminalState === "delivered", "Order not eligible for reserve refund");
+  // A delivered order may also have been compensated externally. The terminal
+  // status alone cannot establish that the reserve is still owed to the buyer.
+  check(reconciliation.externalCompensationVerified === false,
+    "External compensation status must be explicitly verified as absent");
+  check(reconciliation.externalCompensationEvidenceHash !== undefined &&
+    reconciliation.externalCompensationEvidenceHash !== null,
+    "External compensation review evidence is required");
+  const compensationReviewHash = hash(reconciliation.externalCompensationEvidenceHash);
   // A required input, NOT evidence this model can independently establish.
   check(reconciliation.fundingModel === "isolated-order-ledger-v3", "Pooled funding cannot authorize a refund");
   check(reconciliation.evidenceKind === "reviewed-isolated-ledger", "Trace fees alone are insufficient");
@@ -43,15 +54,21 @@ export function approveReconciliation(state, reconciliation) {
   const evidenceHash = hash(reconciliation.evidenceHash);
   return Object.freeze({
     ...state, phase: residual === 0n ? "closed-zero" : "approved",
-    refundNano: residual, evidenceHash,
+    refundNano: residual, evidenceHash, compensationReviewHash,
   });
 }
 export function beginDispatch(state, identity) {
   check(["approved", "bounced"].includes(state.phase), "Refund cannot be dispatched");
   check(identity.buyer === state.buyer && identity.orderId === state.orderId, "Wrong beneficiary or order");
   check(identity.evidenceHash === state.evidenceHash, "Changed evidence");
+  check(identity.compensationReviewHash === state.compensationReviewHash,
+    "Changed or missing compensation review evidence");
   check(identity.amountNano === state.refundNano, "Changed refund amount");
   check(identity.attempt === state.attempt + 1, "Stale dispatch attempt");
+  if (state.phase === "bounced") {
+    check(identity.principalReturnEvidenceHash === state.receiptEvidenceHash,
+      "Retry must bind the verified return receipt");
+  }
   const messageHash = hash(identity.messageHash);
   check(!state.messageHashes.includes(messageHash), "Reused message hash");
   return Object.freeze({ ...state, phase: "in-flight", attempt: identity.attempt, messageHash,
@@ -62,7 +79,16 @@ export function observeResult(state, observation) {
   check(observation.messageHash === state.messageHash && observation.attempt === state.attempt, "Stale or unrelated receipt");
   check(observation.orderId === state.orderId && observation.buyer === state.buyer, "Wrong receipt identity");
   check(observation.amountNano === state.refundNano, "Wrong receipt amount");
+  check(observation.network === state.network && observation.marketplace === state.marketplace,
+    "Receipt chain or marketplace mismatch");
+  check(observation.paymentHash === state.paymentHash, "Receipt payment identity mismatch");
   check(["credited", "bounced"].includes(observation.kind), "Receipt is not terminal");
+  const receiptEvidenceHash = hash(observation.receiptEvidenceHash);
+  check(receiptEvidenceHash !== state.paymentHash && receiptEvidenceHash !== state.evidenceHash &&
+    receiptEvidenceHash !== state.compensationReviewHash,
+    "Receipt must be distinct from payment and review evidence");
+  check(!state.receiptEvidenceHashes.includes(receiptEvidenceHash),
+    "Reused refund receipt evidence");
   if (observation.kind === "credited") {
     check(observation.receiverSuccess === true, "Receiver did not complete");
     check(observation.creditNano === state.refundNano, "Receiver credit mismatch");
@@ -71,5 +97,7 @@ export function observeResult(state, observation) {
     check(observation.returnVerified === true && observation.returnedPrincipalNano === state.refundNano,
       "Returned principal not proven; retry blocked");
   }
-  return Object.freeze({ ...state, phase: observation.kind === "credited" ? "paid" : "bounced" });
+  return Object.freeze({ ...state, receiptEvidenceHash,
+    receiptEvidenceHashes: Object.freeze([...state.receiptEvidenceHashes, receiptEvidenceHash]),
+    phase: observation.kind === "credited" ? "paid" : "bounced" });
 }

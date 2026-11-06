@@ -210,18 +210,39 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         operations.buyerRefundOperationId,
         { value: grams("0.05") },
     );
-    expect(retryBuyerRefund).toHaveSuccessfulTx();
+    expect(retryBuyerRefund).toHaveFailedTx({
+        from: owner.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPayout,
+    });
 
     val refundedOrder = marketplace.orderV2(1);
     assert (refundedOrder != null) throw ErrorsV2.InvalidPayout;
-    expect(refundedOrder!!.status).toEqual(8);
-    expect(refundedOrder.refundStatus).toEqual(2);
+    expect(refundedOrder!!.status).toEqual(6);
+    expect(refundedOrder.refundStatus).toEqual(3);
     val retriedRefund = marketplace.payoutV2(operations.buyerRefundOperationId);
     assert (retriedRefund != null) throw ErrorsV2.InvalidPayout;
-    expect(retriedRefund!!.status).toEqual(2);
+    expect(retriedRefund!!.status).toEqual(3);
+
+    // Repeating the same refund retry must not create a second payment,
+    // advance query IDs, or mutate the unresolved buyer liability.
+    val secondRetryBuyerRefund = marketplace.sendRetryPayoutV2(
+        owner.address,
+        operations.buyerRefundOperationId,
+        { value: grams("0.05") },
+    );
+    expect(secondRetryBuyerRefund).toHaveFailedTx({
+        from: owner.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPayout,
+    });
+    expect(marketplace.orderV2(1)!!.status).toEqual(6);
+    expect(marketplace.orderV2(1)!!.refundStatus).toEqual(3);
+    expect(marketplace.payoutV2(operations.buyerRefundOperationId)!!.status).toEqual(3);
+    expect(marketplace.nextQueryIdV2()).toEqual(7);
 
     expect(marketplace.nextProductIdV2()).toEqual(2);
-    expect(marketplace.nextQueryIdV2()).toEqual(8);
+    expect(marketplace.nextQueryIdV2()).toEqual(7);
 
     // The Marketplace supports all three Fragment asset kinds. Real collection
     // code hashes are still configured/verified separately by the Escrow owner.
@@ -231,7 +252,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         marketplace.sendPublishProductV2(
             seller.address,
             2,
-            8,
+            7,
             usernameItem,
             usernameCollection,
             4243,
@@ -249,7 +270,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
             productId: 2,
             nftItem: usernameItem,
             seller: seller.address,
-            queryId: 8,
+            queryId: 7,
         },
     });
     expect(net.send(fakeEscrow.address, usernameDeposit)).toHaveSuccessfulTx();
@@ -262,7 +283,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
         marketplace.sendPublishProductV2(
             seller.address,
             3,
-            9,
+            8,
             numberItem,
             numberCollection,
             4244,
@@ -280,7 +301,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
             productId: 3,
             nftItem: numberItem,
             seller: seller.address,
-            queryId: 9,
+            queryId: 8,
         },
     });
     expect(net.send(fakeEscrow.address, numberDeposit)).toHaveSuccessfulTx();

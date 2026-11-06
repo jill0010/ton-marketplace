@@ -161,21 +161,20 @@ fun onInternalMessage(in: InMessage) {
             }
         }
         RetryTestReserve => {
+            // Fail closed: an owner-supplied hash is not evidence that the
+            // original refund has returned. Never send a second payment
+            // from this experimental vault. Recovery needs a separately
+            // audited, independently verified settlement mechanism.
             assert (in.senderAddress == storage.owner) throw 701;
             assert (msg.orderId == identity.orderId) throw 702;
-            assert (storage.status == 4) throw 703;
-            assert (msg.returnEvidenceHash != 0) throw 702;
-            storage.receiptHash = msg.returnEvidenceHash;
-            dispatchTestReserve(mutate storage);
+            throw 706;
         }
         ConfirmTestReserveReceipt => {
+            // V3 release blocker: owner attestations are not on-chain receipt
+            // proofs. A supplied hash must never finalize buyer credit.
             assert (in.senderAddress == storage.owner) throw 701;
-            assert (storage.status == 2 || storage.status == 4) throw 703;
-            assert (msg.orderId == identity.orderId && msg.queryId == storage.queryId) throw 702;
-            assert (msg.receiptHash != 0) throw 702;
-            storage.status = 3;
-            storage.receiptHash = msg.receiptHash;
-            storage.save();
+            assert (msg.orderId == identity.orderId) throw 702;
+            throw 706;
         }
     }
 }
@@ -196,15 +195,40 @@ fun onBouncedMessage(in: InMessageBounced) {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
         val original = rich.originalBody;
         val payment = TestReserveBuyerPayment.fromCell(original);
+        val originalInfo = RichBounceOriginalMsgInfo.fromCell(rich.originalInfo);
         if (
-            payment.orderId != identity.orderId || payment.queryId != storage.queryId ||
+            originalInfo.valueCoins != storage.refundAmount ||
+            payment.orderId != identity.orderId ||
+            payment.queryId != storage.queryId ||
             payment.amount != storage.refundAmount
         ) {
+            return;
+        }
+        // A bounced message must carry back the principal (minus bounded
+        // network fees). A tiny fabricated bounce is not proof of return.
+        val bounceFeeAllowance = grams("0.01");
+        var minimumReturned = storage.refundAmount;
+        if (storage.refundAmount > bounceFeeAllowance) {
+            minimumReturned = storage.refundAmount - bounceFeeAllowance;
+        }
+        if (in.valueCoins < minimumReturned) {
             return;
         }
         storage.status = 4;
         storage.save();
     } catch {}
+}
+
+get fun testReserveIdentity(): TestReserveIdentity {
+    return TestReserveVaultStorage.load().identity.load();
+}
+
+get fun testReserveOwner(): address {
+    return TestReserveVaultStorage.load().owner;
+}
+
+get fun testReserveReviewedCosts(): coins {
+    return TestReserveVaultStorage.load().reviewedCosts as coins;
 }
 
 get fun testReserveStatus(): uint8 {

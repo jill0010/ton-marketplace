@@ -420,6 +420,12 @@ fun onInternalMessage(in: InMessage) {
         EscrowReleaseFailedV2 => {
             var storage = lazy TestMarketplaceStorageV3.load();
             var purchase = storage.purchaseStorage.load();
+            // Only an order whose reserve funding was acknowledged can
+            // have a legitimate NFT release failure to compensate.
+            val reserveResult = purchase.reserves.get(msg.orderId);
+            assert (reserveResult.isFound) throw 743;
+            val reserve = TestPurchaseReserveBinding.fromCell(reserveResult.loadValue());
+            assert (reserve.status == 2 && reserve.vault != null) throw 743;
             var orderStorage = purchase.orders.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidDelivery;
             assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidDelivery;
@@ -499,6 +505,12 @@ fun onInternalMessage(in: InMessage) {
         EscrowReleasedV2 => {
             var storage = lazy TestMarketplaceStorageV3.load();
             var purchase = storage.purchaseStorage.load();
+            // A delivery callback must never settle an order whose reserve
+            // allocation has not been acknowledged by the coordinator.
+            val reserveResult = purchase.reserves.get(msg.orderId);
+            assert (reserveResult.isFound) throw 743;
+            val reserve = TestPurchaseReserveBinding.fromCell(reserveResult.loadValue());
+            assert (reserve.status == 2 && reserve.vault != null) throw 743;
             var orderStorage = purchase.orders.load();
             var payoutStorage = purchase.payoutStorage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidDelivery;
@@ -602,9 +614,10 @@ fun onInternalMessage(in: InMessage) {
             assert (orderResult.isFound) throw ErrorsV2.InvalidPayout;
             var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
             if (payout.kind == 3) {
-                assert (
-                    order.deliveryStatus == 3 && order.refundStatus == 3
-                ) throw ErrorsV2.InvalidPayout;
+                // A bounced refund is not independent proof that its principal
+                // returned. Never dispatch a second buyer refund from this
+                // permissionless retry path.
+                throw ErrorsV2.InvalidPayout;
             } else {
                 assert (order.deliveryStatus == 2) throw ErrorsV2.InvalidPayout;
                 assert (payout.kind == 1 || payout.kind == 2) throw ErrorsV2.InvalidPayout;
@@ -1126,6 +1139,16 @@ fun onBouncedMessage(in: InMessageBounced) {
         if (opcode == 0x71b00002) {
             val release = lazy ReleaseEscrowV2.fromCell(originalBody);
             var purchase = storage.purchaseStorage.load();
+            // A release can only have been legitimately sent after the
+            // coordinator confirmed this order's funded reserve vault.
+            val reserveResult = purchase.reserves.get(release.orderId);
+            if (!reserveResult.isFound) {
+                return;
+            }
+            val reserve = TestPurchaseReserveBinding.fromCell(reserveResult.loadValue());
+            if (reserve.status != 2 || reserve.vault == null) {
+                return;
+            }
             var orderStorage = purchase.orders.load();
             val orderResult = orderStorage.orders.get(release.orderId);
             if (!orderResult.isFound) {
@@ -1346,6 +1369,14 @@ get fun assetProductIdV2(nftItem: address): uint64? {
         return null;
     }
     return result.loadValue();
+}
+
+get fun testReserveCoordinator(): address? {
+    val purchase = TestMarketplaceStorageV3.load().purchaseStorage.load();
+    if (!purchase.coordinatorConfigured) {
+        return null;
+    }
+    return purchase.coordinator;
 }
 
 get fun testPurchaseReserve(orderId: uint64): TestPurchaseReserveBinding? {

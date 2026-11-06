@@ -418,9 +418,11 @@ fun onInternalMessage(in: InMessage) {
             assert (orderResult.isFound) throw ErrorsV2.InvalidPayout;
             var order = MarketplaceV2Order.fromCell(orderResult.loadValue());
             if (payout.kind == 3) {
-                assert (
-                    order.deliveryStatus == 3 && order.refundStatus == 3
-                ) throw ErrorsV2.InvalidPayout;
+                // Fail closed: a rich bounce is not independent proof that the
+                // previous buyer refund principal has returned to this contract.
+                // Preserve the bounced liability for off-chain reconciliation;
+                // never issue another refund from this permissionless entrypoint.
+                throw ErrorsV2.InvalidPayout;
             } else {
                 assert (order.deliveryStatus == 2) throw ErrorsV2.InvalidPayout;
                 assert (payout.kind == 1 || payout.kind == 2) throw ErrorsV2.InvalidPayout;

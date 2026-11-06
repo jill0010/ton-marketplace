@@ -1,0 +1,71 @@
+name: V3 Testnet Preflight (No Transactions)
+
+on:
+  workflow_dispatch:
+    inputs:
+      acknowledge_no_deployment:
+        description: "Read-only V3 testnet preflight; no deployment or wallet signing"
+        required: true
+        type: boolean
+        default: true
+  push:
+    branches:
+      - feature/reserve-refund-v3-audit
+    paths:
+      - '.github/workflows/v3-testnet-preflight.yml'
+      - 'contracts/marketplace/contracts/TestReserve*.tolk'
+      - 'contracts/marketplace/contracts/TestMarketplaceReserveV3.tolk'
+      - 'contracts/marketplace/experiments/v3-*.mjs'
+      - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness.mjs'
+      - 'contracts/marketplace/scripts/check-v3-testnet-funded-readiness.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.acknowledge_no_deployment == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout V3 feature branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Run all V3 offline adversarial checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test contracts/marketplace/experiments/v3-*.test.mjs
+      - name: Confirm production V3 release gate remains closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node contracts/marketplace/scripts/check-v3-mainnet-release-readiness.mjs > /tmp/v3-release-gate.log 2>&1; then
+            cat /tmp/v3-release-gate.log
+            echo "::error::Unexpectedly open V3 mainnet release gate"
+            exit 1
+          fi
+          grep -Fq "MAINNET RELEASE BLOCKED" /tmp/v3-release-gate.log
+          echo "V3 mainnet release gate confirmed CLOSED"
+      - name: Report funded V3 testnet trial blockers (read only)
+        run: node contracts/marketplace/scripts/check-v3-testnet-funded-readiness.mjs
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "## V3 Testnet preflight — READ ONLY"
+            echo
+            echo "- Offline reserve and evidence tests executed."
+            echo "- Production V3 release gate remains closed."
+            echo "- Funded testnet trial readiness reported separately; no signer used."
+            echo "- No wallet secrets read, no deployment, no transaction signed or broadcast."
+            echo "- Real funded testnet end-to-end deployment remains BLOCKED pending deployable audited V3 contracts and a reviewed transaction workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
