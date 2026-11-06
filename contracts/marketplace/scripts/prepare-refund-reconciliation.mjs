@@ -7,6 +7,12 @@ export function prepareRefundReconciliation({ orderId, records }) {
   if (typeof orderId !== "string" || !orderId || !Array.isArray(records) || !records.length) {
     throw new TypeError("Order ID and records are required");
   }
+  if (expected !== null && (!expected || typeof expected !== "object" ||
+      !/^-?\\d+:[0-9a-f]{64}$/i.test(expected.accountAddress ?? "") ||
+      !/^-?\\d+:[0-9a-f]{64}$/i.test(expected.counterpartyAddress ?? "") ||
+      !/^[1-9]\\d*$/.test(expected.amountNano ?? ""))) {
+    throw new TypeError("Expected account, counterparty and positive amount are required");
+  }
   const seen = new Set();
   const diagnostics = [];
   for (const record of records) {
@@ -24,6 +30,12 @@ export function prepareRefundReconciliation({ orderId, records }) {
     }
     if (record.orderId !== orderId) {
       diagnostics.push("ORDER_MISMATCH");
+      continue;
+    }
+    if (expected && (record.accountAddress.toLowerCase() !== expected.accountAddress.toLowerCase() ||
+        record.counterpartyAddress.toLowerCase() !== expected.counterpartyAddress.toLowerCase() ||
+        record.amountNano !== expected.amountNano)) {
+      diagnostics.push("EXPECTED_TRANSFER_MISMATCH");
       continue;
     }
     const key = record.transactionId.toLowerCase();
