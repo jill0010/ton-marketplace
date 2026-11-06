@@ -17,6 +17,7 @@ on:
       - "supabase/functions/admin-observe-marketplace-v2/**"
       - "supabase/functions/admin-resolve-marketplace-v2-payment-root/**"
       - "supabase/functions/_shared/marketplace-v2-parent-transaction.*"
+      - "supabase/functions/_shared/marketplace-v2-order-cell.*"
       - "supabase/functions/_shared/marketplace-v2-indexer-request.*"
       - "supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql"
       - "supabase/migrations/20261106024422_lock_marketplace_processing_reserve_privileges.sql"
@@ -128,6 +129,10 @@ jobs:
       - name: Test buyer wallet root transaction linkage
         run: deno test --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-parent-transaction.test.ts
 
+      - name: Test Marketplace V2 order cell decoding
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-order-cell.test.ts
+      - name: Type-check Marketplace V2 order cell decoder
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-order-cell.ts
       - name: Type-check admin payment root resolver
         run: deno check --config supabase/functions/deno.json supabase/functions/admin-resolve-marketplace-v2-payment-root/index.ts
 
