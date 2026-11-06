@@ -49,6 +49,28 @@ export function validateV3Addresses(addresses) {
   return entries;
 }
 
+// TON Center returns serialized contract code as a base64 BOC.
+// Reject missing, malformed and empty-cell payloads instead of accepting arbitrary text.
+export function hasPlausibleContractCode(code) {
+  if (typeof code !== "string" || code.length < 12 || code.length % 4 !== 0 ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(code)) return false;
+  const bytes = Buffer.from(code, "base64");
+  if (bytes.length < 12 || bytes.toString("base64") !== code) return false;
+  // Standard TON Bag-of-Cells magic, followed by BOC metadata.
+  if (bytes.subarray(0, 4).toString("hex") !== "b5ee9c72") return false;
+  // Header contains at least one root and one cell; exact cell validation and
+  // expected code hash verification remain separate release requirements.
+  const sizeBytes = bytes[4] & 7;
+  if (sizeBytes < 1 || sizeBytes > 4) return false;
+  const offsetBytes = bytes[5];
+  if (offsetBytes < 1 || offsetBytes > 8) return false;
+  const rootCountOffset = 6 + sizeBytes;
+  if (bytes.length < rootCountOffset + 2 * sizeBytes + offsetBytes) return false;
+  const cells = bytes.readUIntBE(6, sizeBytes);
+  const roots = bytes.readUIntBE(rootCountOffset, sizeBytes);
+  return cells > 0 && roots > 0;
+}
+
 export async function verifyV3Testnet(addresses, fetcher = fetch) {
   const entries = validateV3Addresses(addresses);
   const endpoint = "https://testnet.toncenter.com/api/v2/getAddressInformation";
@@ -65,8 +87,7 @@ export async function verifyV3Testnet(addresses, fetcher = fetch) {
     const state = data.result.state;
     // Active account alone is insufficient: require a nonempty on-chain code BOC.
     const code = data.result.code;
-    const codePresent = typeof code === "string" && code.length > 0 &&
-      code !== "te6ccgEBAQEAAgAAAA==";
+    const codePresent = hasPlausibleContractCode(code);
     results[name] = { address, state, active: state === "active", codePresent };
   }
   return {
