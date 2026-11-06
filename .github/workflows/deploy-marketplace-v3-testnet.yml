@@ -104,7 +104,7 @@ jobs:
               lines.push("- " + name + ": " + contract.address + " (active=" + contract.active + ", observed code hash=" + contract.codeHash + ")");
             }
             lines.push("", "Observed hashes are not trusted build hashes. Bindings, settlement, and mainnet approval remain unverified.");
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\\n") + "\\n");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           '
 
       - name: Upload candidate deployment evidence
