@@ -28,21 +28,24 @@ The trace must have a completed masterchain sequence and zero pending messages. 
 
 ## Implemented components
 
+- `supabase/migrations/20261106030000_add_marketplace_processing_reserve_ledger.sql`: additive per-order reserve ledger schema; legacy rows remain NULL/unclassified rather than being assumed to contain a 0.2 TON reserve.
 - `supabase/functions/_shared/marketplace-processing-reserve.js`: pure fee attribution and reserve arithmetic.
 - `supabase/functions/_shared/marketplace-processing-reserve.test.mjs`: tests for normal fee aggregation, exclusion of buyer/seller/treasury wallet fees, incomplete traces, pending messages, wrong root transaction, unknown accounts, duplicate transactions and reserve shortfall.
-- `supabase/functions/admin-preview-marketplace-processing-reserve/index.ts`: administrator-only, read-only preview using TON Center API v3. It does not update the database, sign a wallet message, call a send endpoint, or broadcast a transaction.
+- `supabase/functions/admin-preview-marketplace-processing-reserve/index.ts`: administrator-only, read-only preview using TON Center API v3. It requires an indexed reserve-ledger row and cross-checks the order ID, chain order ID, buyer wallet, reserve amount and payment transaction hash. It does not update the database, sign a wallet message, call a send endpoint, or broadcast a transaction.
+- `scripts/check-marketplace-v2-processing-reserve-ledger.mjs`: CI guard for the additive schema, per-order identity binding and service-role-only access.
 - Frontend Build CI runs the fee reconciliation unit tests.
 
 ## Remaining implementation gates
 
-1. Add a versioned on-chain reserve-refund liability to Marketplace V2, including buyer beneficiary, exact order ID, one-time refund status, and a replay-protected operation/query ID.
-2. Add a contract entrypoint that can dispatch only the exact reconciled refund amount to the buyer, only after the order's delivery or compensation state is terminal. It must not accept an arbitrary amount from a public caller.
-3. Decide and implement the authorization/proof model for the measured trace fee. TON contracts cannot independently query an external indexer's trace database. The current preview is produced by TON Center API v3; it is not a cryptographic on-chain proof. The eventual refund dispatcher must therefore either:
+1. Build and deploy a read-only chain indexer that verifies Marketplace V2 order snapshots and payment transaction hashes, then populates `marketplace_orders` and `marketplace_processing_reserves`. The current reserve preview deliberately returns a conflict until this verified per-order row exists.
+2. Add a versioned on-chain reserve-refund liability to Marketplace V2, including buyer beneficiary, exact order ID, one-time refund status, and a replay-protected operation/query ID.
+3. Add a contract entrypoint that can dispatch only the exact reconciled refund amount to the buyer, only after the order's delivery or compensation state is terminal. It must not accept an arbitrary amount from a public caller.
+4. Decide and implement the authorization/proof model for the measured trace fee. TON contracts cannot independently query an external indexer's trace database. The current preview is produced by TON Center API v3; it is not a cryptographic on-chain proof. The eventual refund dispatcher must therefore either:
    - require the Marketplace owner to review and sign the fee preview through the authorized wallet, with the signed amount and trace identity persisted on-chain; or
    - use a separately reviewed trust-minimized proof/oracle design.
-4. Ensure unused reserve funds that remain at Escrow after NFT transfer/excess handling are returned or explicitly accounted for before calculating the buyer's final refund. Marketplace-only balance is not proof that all reserve funds have returned from Escrow.
-5. Add emulator tests for exact one-time refund, duplicate/replay, wrong beneficiary, incomplete order, trace mismatch, fee above reserve, and refund dispatch bounce/retry.
-6. Re-deploy the exact reviewed V2 source to Testnet and rehearse with the available test NFT fixtures. This is separate from Mainnet and must not be represented as real Fragment NFT Testnet coverage.
+5. Ensure unused reserve funds that remain at Escrow after NFT transfer/excess handling are returned or explicitly accounted for before calculating the buyer's final refund. Marketplace-only balance is not proof that all reserve funds have returned from Escrow.
+6. Add emulator tests for exact one-time refund, duplicate/replay, wrong beneficiary, incomplete order, trace mismatch, fee above reserve, and refund dispatch bounce/retry.
+7. Re-deploy the exact reviewed V2 source to Testnet and rehearse with the available test NFT fixtures. This is separate from Mainnet and must not be represented as real Fragment NFT Testnet coverage.
 
 ## Safety boundary
 
