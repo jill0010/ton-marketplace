@@ -59,3 +59,27 @@ an unconditional no-repayment barrier. Pending transfers and any inconsistent
 amounts are quarantined. This model does not fetch chain state, authenticate
 ledger inputs, or authorize payouts. Even a caller claiming
 `evidenceVerified: true` cannot turn arithmetic into proof.
+
+## Automated adversarial regression coverage
+
+`v3-refund-invariants.test.mjs` enumerates 1,024 deterministic, balanced
+principal partitions and 1,024 one-nano accounting mismatches, in addition
+to compensation/pending-outbound combinations. The tests assert that
+balanced arithmetic never grants payment or deployment permission, and
+a one-nano mismatch is quarantined. These are offline property-style
+checks, not a replacement for contract-level adversarial tests or
+independent mainnet security review.
+
+## Explicit remaining blockers
+
+- Reconcile transaction inclusion, execution, and buyer/vault balance deltas
+  against independent, trustworthy TON chain evidence.
+- Run funded testnet end-to-end dispatch, bounce, retry, and compensation
+  scenarios with auditable transaction hashes and costs.
+- Complete contract-level value conservation and concurrency/failure tests,
+  plus an independent security review.
+- Produce reviewed production contracts and verified mainnet deployment
+  procedures. Keep the fail-closed mainnet readiness gate active until then.
+
+V2 order 1's 0.2 TON external compensation is already completed. It is not
+a V3 test liability and must not be transferred or repaid again.
