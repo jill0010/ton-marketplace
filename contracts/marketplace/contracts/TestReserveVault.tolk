@@ -212,7 +212,13 @@ fun onBouncedMessage(in: InMessageBounced) {
         }
         // A bounced message must carry back the principal (minus bounded
         // network fees). A tiny fabricated bounce is not proof of return.
-        if (in.valueCoins < storage.refundAmount - grams("0.01")) {
+        val bounceFeeAllowance = grams("0.01");
+        val minimumReturned = if (storage.refundAmount > bounceFeeAllowance) {
+            storage.refundAmount - bounceFeeAllowance
+        } else {
+            storage.refundAmount
+        };
+        if (in.valueCoins < minimumReturned) {
             return;
         }
         storage.status = 4;
