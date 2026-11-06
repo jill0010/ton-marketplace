@@ -160,6 +160,15 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     expect(resolvedOrderId!!).toEqual(1);
     expect(marketplace.orderIdForProductV2(999) == null).toEqual(true);
 
+    val orderCell = marketplace.orderCellV2(1);
+    assert (orderCell != null) throw ErrorsV2.InvalidRefund;
+    val orderFromCell = MarketplaceV2Order.fromCell(orderCell!!);
+    expect(orderFromCell.id).toEqual(1);
+    expect(orderFromCell.productId).toEqual(1);
+    expect(orderFromCell.status).toEqual(6);
+    expect(orderFromCell.deliveryStatus).toEqual(3);
+    expect(marketplace.orderCellV2(999) == null).toEqual(true);
+
     val order = marketplace.orderV2(1);
     assert (order != null) throw ErrorsV2.InvalidRefund;
     expect(order!!.status).toEqual(6);
