@@ -42,7 +42,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const logPath = process.argv[2];
     const outputPath = process.argv[3];
     if (!logPath || !outputPath) throw new Error("Usage: postflight-v3-candidate.mjs LOG OUTPUT");
-    const result = await postflightV3Candidate(await readFile(logPath, "utf8"));
+    const log = await readFile(logPath, "utf8");
+    let result;
+    try {
+      result = await postflightV3Candidate(log);
+    } catch (error) {
+      // Preserve known candidate addresses even if RPC times out or rate-limits.
+      // An incomplete record is explicitly NOT evidence of deployment success.
+      await writeFile(outputPath, JSON.stringify({
+        schemaVersion: 1, addresses: extractV3CandidateAddresses(log),
+        candidateAccountsActive: false, codeHashesVerified: false,
+        bindingsVerified: false, fundedSettlementVerified: false,
+        mainnetApproved: false, noTransactionSentByVerifier: true,
+        rpcError: error.message
+      }, null, 2) + "\n", { flag: "wx", mode: 0o600 });
+      throw error;
+    }
     await writeFile(outputPath, JSON.stringify(result, null, 2) + "\n", { flag: "wx", mode: 0o600 });
     console.log(JSON.stringify({ addresses: result.addresses, candidateAccountsActive: result.candidateAccountsActive, mainnetApproved: false }));
     if (!result.candidateAccountsActive) process.exitCode = 1;
