@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"
+      - "supabase/functions/marketplace-v2-state/**"
       - "public/**"
       - "package.json"
       - "package-lock.json"
@@ -56,6 +58,9 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=moderate
+
+      - name: Verify Marketplace V2 customer purchase remains gated
+        run: node scripts/check-marketplace-v2-customer-purchase-policy.mjs
 
       - name: Build production frontend
         run: npm run build
