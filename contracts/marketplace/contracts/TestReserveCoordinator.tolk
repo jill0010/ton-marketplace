@@ -172,6 +172,7 @@ fun onBouncedMessage(in: InMessageBounced) {
     }
     try {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
+        val originalInfo = RichBounceOriginalMsgInfo.fromCell(rich.originalInfo);
         // A failed marketplace notification can return the entire 0.2 TON
         // principal. Quarantine it; never mark the buyer refunded or resend
         // automatically without reconciling the returned value.
@@ -184,7 +185,8 @@ fun onBouncedMessage(in: InMessageBounced) {
                 if (
                     failedBinding.status == 4 && in.senderAddress == failedStorage.marketplace &&
                     failedBinding.paymentHash == failure.paymentHash &&
-                    failedBinding.vault == failure.vault
+                    failedBinding.vault == failure.vault &&
+                    originalInfo.valueCoins == grams("0.2")
                 ) {
                     failedBinding.status = 3;
                     failedBinding.returnedNano = in.valueCoins as uint64;
@@ -201,7 +203,10 @@ fun onBouncedMessage(in: InMessageBounced) {
             return;
         }
         var binding = TestReserveBinding.fromCell(found.loadValue());
-        if (in.senderAddress != binding.vault || binding.status != 1) {
+        if (
+            in.senderAddress != binding.vault || binding.status != 1 ||
+            originalInfo.valueCoins != grams("0.25")
+        ) {
             return;
         }
         // Only a failed, still-pending allocation may return the buyer reserve.
