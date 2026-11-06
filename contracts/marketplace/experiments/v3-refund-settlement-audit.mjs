@@ -17,6 +17,7 @@ export function auditV3RefundSettlement({
   const reasons = [];
   if (externallyCompensated) reasons.push("EXTERNALLY_COMPENSATED_NO_REPAYMENT");
   if (bounce.ambiguous) reasons.push("AMBIGUOUS_BOUNCE");
+  if (recipient.ambiguous) reasons.push("AMBIGUOUS_BUYER_RECEIPT");
   if (conflicts) reasons.push("BOUNCE_AND_RECEIPT_CONFLICT");
   if (!bounce.candidates.length && !recipient.recipientCandidates.length) {
     reasons.push("NO_CORRELATED_CANDIDATES");
@@ -27,6 +28,7 @@ export function auditV3RefundSettlement({
     outboundToBuyerCandidateCount: recipient.recipientCandidates.length,
     returnedToVaultCandidateCount: bounce.candidates.length,
     conflictingEvidence: conflicts,
+    ambiguousEvidence: Boolean(bounce.ambiguous || recipient.ambiguous),
     reasons,
     accountingStatus: "NO_VERIFIED_SETTLEMENT",
     verifiedBuyerCreditNano: "0",
