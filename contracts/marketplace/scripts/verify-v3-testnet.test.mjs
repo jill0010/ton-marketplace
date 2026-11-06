@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasPlausibleContractCode, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
+import { hasPlausibleContractCode, parseV3ContractCode, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
 
 const addresses = {
   marketplace: "0:" + "1".repeat(64),
@@ -26,6 +26,7 @@ test("read-only verifier reports active state without approving release", async 
   assert.equal(urls.length, 3);
   assert.equal(report.allActive, true);
   assert.equal(report.allCodePresent, true);
+  assert.match(report.contracts.marketplace.codeHash, /^[0-9a-f]{64}$/);
   assert.equal(report.mainnetReleaseApproved, false);
   assert.equal(report.fundedTransactionVerified, false);
   assert.equal(report.noTransactionSent, true);
@@ -66,4 +67,12 @@ test("contract code validation rejects arbitrary text, empty and malformed BOCs"
   for (const code of ["", "hello world", "dGVzdA==", "te6ccgEBAQEAAgAAAA==", "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog="]) {
     assert.equal(hasPlausibleContractCode(code), false, code);
   }
+});
+
+test("contract BOC decoder exposes a reproducible 256-bit code hash", () => {
+  const valid = "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog==";
+  assert.match(parseV3ContractCode(valid).codeHash, /^[0-9a-f]{64}$/);
+  const corrupted = Buffer.from(valid, "base64");
+  corrupted[corrupted.length - 1] ^= 0xff;
+  assert.equal(parseV3ContractCode(corrupted.toString("base64")), null);
 });
