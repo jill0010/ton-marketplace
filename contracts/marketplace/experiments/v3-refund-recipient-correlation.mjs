@@ -40,8 +40,12 @@ export function correlateV3RefundRecipient({
       // TON Center v2 may expose a message hash on both sides. Require an
       // exact nonempty match when present, but never infer it from body bytes.
       // The outbound message must be recovered from the same vault transaction.
-      const vaultTx = vaultResponse.transactions.find((row) =>
+      if (typeof match.transactionHash !== "string" || !match.transactionHash) continue;
+      const matchingVaultTransactions = vaultResponse.transactions.filter((row) =>
         row?.transaction_id?.hash === match.transactionHash);
+      // Repeated or missing transaction identities cannot prove a unique path.
+      if (matchingVaultTransactions.length !== 1) continue;
+      const vaultTx = matchingVaultTransactions[0];
       const matchingOut = vaultTx?.out_msgs?.filter((msg) =>
         normalize(msg?.source) === normalize(vault) &&
         normalize(msg?.destination) === normalize(buyer) &&
@@ -53,14 +57,18 @@ export function correlateV3RefundRecipient({
       const inboundHash = inbound?.hash;
       if (typeof outboundHash !== "string" || !outboundHash ||
           typeof inboundHash !== "string" || outboundHash !== inboundHash) continue;
+      // The receiving transaction must have one unique, nonempty identity.
+      const recipientTxHash = tx?.transaction_id?.hash;
+      if (typeof recipientTxHash !== "string" || !recipientTxHash ||
+          buyerResponse.transactions.filter((row) =>
+            row?.transaction_id?.hash === recipientTxHash).length !== 1) continue;
       // A transaction reported as aborted or unsuccessful is not a receipt.
       // Absence of these fields remains unverified, never a success claim.
       if (tx?.description?.aborted === true || tx?.description?.compute_ph?.success === false ||
           tx?.description?.action?.success === false) continue;
       recipientCandidates.push({
         outboundTransactionHash: match.transactionHash,
-        inboundTransactionHash: typeof tx?.transaction_id?.hash === "string"
-          ? tx.transaction_id.hash : null,
+        inboundTransactionHash: recipientTxHash,
         orderId: match.orderId,
         queryId: match.queryId,
         amountNano: match.amountNano,
@@ -72,8 +80,10 @@ export function correlateV3RefundRecipient({
       });
     }
   }
+  const ambiguous = recipientCandidates.length > 1;
   return {
-    recipientCandidates,
+    recipientCandidates: ambiguous ? [] : recipientCandidates,
+    ambiguous,
     proofStatus: "UNVERIFIED",
     mayRetry: false,
   };
