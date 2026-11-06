@@ -219,6 +219,18 @@ fun onBouncedMessage(in: InMessageBounced) {
     } catch {}
 }
 
+get fun testReserveIdentity(): TestReserveIdentity {
+    return TestReserveVaultStorage.load().identity.load();
+}
+
+get fun testReserveOwner(): address {
+    return TestReserveVaultStorage.load().owner;
+}
+
+get fun testReserveReviewedCosts(): coins {
+    return TestReserveVaultStorage.load().reviewedCosts as coins;
+}
+
 get fun testReserveStatus(): uint8 {
     return TestReserveVaultStorage.load().status;
 }
