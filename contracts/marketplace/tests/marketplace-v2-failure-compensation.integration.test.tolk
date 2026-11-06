@@ -326,8 +326,8 @@ get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEsc
         seller.address, 1, 1, nftItem, collection, 77, 3, grams("4"),
         { value: grams("0.2") },
     )).toHaveSuccessfulTx();
-    expect(rejector.sendStartTestDepositV2(
-        owner.address, 1, 1, nftItem, seller.address, 1,
+    expect(rejector.sendStartTestEscrowV2(
+        owner.address, 1, nftItem, seller.address, 1,
         { value: grams("0.03") },
     )).toHaveSuccessfulTx();
     expect(marketplace.productV2(1)!!.status).toEqual(2);
