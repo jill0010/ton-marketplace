@@ -15,7 +15,7 @@ export function extractV3CandidateAddresses(log) {
     const matches = log.split(/\r?\n/).filter((line) => line.includes(label));
     if (matches.length !== 1) throw new Error(`Expected exactly one ${key} deployment address`);
     const value = matches[0].slice(matches[0].indexOf(label) + label.length).trim();
-    if (!value) throw new Error(`Missing ${key} address`);
+    if (!value || /\s/.test(value)) throw new Error(`Invalid ${key} address token`);
     addresses[key] = value;
   }
   return addresses;
