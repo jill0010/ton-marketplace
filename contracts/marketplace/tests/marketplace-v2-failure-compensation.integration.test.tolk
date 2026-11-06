@@ -155,6 +155,11 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     expect(net.send(fakeEscrow.address, sellerReturn)).toHaveSuccessfulTx();
 
     // The rejecting buyer contract deliberately bounces the refund transfer.
+    val resolvedOrderId = marketplace.orderIdForProductV2(1);
+    assert (resolvedOrderId != null) throw ErrorsV2.InvalidRefund;
+    expect(resolvedOrderId!!).toEqual(1);
+    expect(marketplace.orderIdForProductV2(999) == null).toEqual(true);
+
     val order = marketplace.orderV2(1);
     assert (order != null) throw ErrorsV2.InvalidRefund;
     expect(order!!.status).toEqual(6);
