@@ -14,8 +14,13 @@ const outgoing = {
   source: vault, destination: buyer, value: "194000000",
   msg_data: { "@type": "msg.dataRaw", body },
 };
+const richBounceBody = (order = 1, query = 2, amount = 194000000n) =>
+  beginCell().storeUint(0xfffffffe, 32).storeUint(0x72730105, 32)
+    .storeUint(order, 64).storeUint(query, 64).storeCoins(amount)
+    .endCell().toBoc().toString("base64");
 const bounced = (value) => ({
   source: buyer, destination: vault, value, bounced: true, hash: "bounce-msg",
+  msg_data: { "@type": "msg.dataRaw", body: richBounceBody() },
 });
 const response = (transactions) => ({
   source: "toncenter-v2-unverified", trusted: false, address: vault, transactions,
@@ -149,4 +154,18 @@ test("quarantines duplicated bounce message hashes even with distinct transactio
   assert.equal(result.ambiguous, true);
   assert.equal(result.candidates.length, 0);
   assert.equal(result.mayConfirmBounce, false);
+});
+
+test("rejects bounce envelopes from another order or refund query", () => {
+  for (const body of [richBounceBody(3, 2), richBounceBody(1, 4), richBounceBody(1, 2, 195000000n)]) {
+    const result = correlateV3RefundBounce({
+      ...options, vaultResponse: response([
+        tx("out-tx", null, [outgoing]),
+        tx("bounce-tx", { ...bounced("193000000"), msg_data: { "@type": "msg.dataRaw", body } }),
+      ]),
+    });
+    assert.equal(result.candidates.length, 0);
+    assert.equal(result.verifiedReturnedNano, "0");
+    assert.equal(result.mayRetry, false);
+  }
 });
