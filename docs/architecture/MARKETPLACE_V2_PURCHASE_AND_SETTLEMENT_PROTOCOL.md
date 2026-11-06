@@ -6,6 +6,8 @@ The V2 Marketplace and V2 NFT Escrow must be deployed as a fresh, paired deploym
 
 ## Trust and custody model
 
+**V2 custody clarification:** buyer purchase principal is sent to the Marketplace V2 contract and held there under the order/liability state machine. The separately designated external marketplace custody wallet is not used as the buyer-payment recipient in this contract flow. The deployer wallet is the contract owner; the immutable platform treasury wallet receives the 3% platform fee. Confirm these roles before mainnet deployment.
+
 - Asset kind is explicit and versioned: `1` = collectible username, `2` = collectible +888 phone number, `3` = collectible gift. The Marketplace and Escrow accept only these three kinds, and the Escrow requires the configured collection Item Code kind to match the listing.
 - Collection Item Code is still restricted to the two code hashes hardcoded in `NFTEscrowV2`; each official collection's actual on-chain code hash must be independently checked before the owner configures it. No collection is approved by the V2 deploy script.
 
