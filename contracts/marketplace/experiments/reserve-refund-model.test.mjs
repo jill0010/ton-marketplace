@@ -17,6 +17,9 @@ test("conserves isolated reserve and binds reviewed evidence", () => {
   const state = approve(); assert.equal(state.refundNano, 194000000n); assert.equal(state.evidenceHash, E);
   assert.equal(createLiability(identity).phase, "unreconciled");
 });
+test("externally compensated order cannot trigger a second reserve refund", () => {
+  assert.throws(() => approve({ terminalState: "compensated" }));
+});
 test("rejects pooled trace fees and unfinished excesses", () => {
   for (const change of [{ fundingModel: "pooled-v2" }, { evidenceKind: "trace-total-fees" },
     { escrowExcessPending: true }, { openLiabilitiesNano: 1n }, { terminalState: "pending" }]) {
