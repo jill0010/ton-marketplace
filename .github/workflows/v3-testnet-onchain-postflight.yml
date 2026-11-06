@@ -60,7 +60,7 @@ jobs:
           V3_EVIDENCE_OUTPUT: v3-testnet-evidence.json
         run: node contracts/marketplace/scripts/collect-v3-testnet-evidence.mjs
       - name: Confirm observed testnet contracts are active and carry code
-        if: always()
+        if: ${{ always() && hashFiles('v3-testnet-evidence.json') != '' }}
         env:
           V3_EVIDENCE_FILE: v3-testnet-evidence.json
         run: |
