@@ -68,3 +68,8 @@ display-name = "Marketplace V2 (isolated listing integration)"
 src = "contracts/MarketplaceV2.tolk"
 depends = []
 
+
+[contracts.TestReserveVault]
+display-name = "Experimental test reserve vault"
+src = "contracts/TestReserveVault.tolk"
+depends = []
