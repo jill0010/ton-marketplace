@@ -50,6 +50,8 @@ on:
       - "supabase/functions/_shared/marketplace-v2-chain-observation.*"
       - "supabase/functions/_shared/marketplace-v2-parent-transaction.*"
       - "supabase/functions/_shared/marketplace-v2-order-cell.*"
+      - "supabase/functions/_shared/marketplace-v2-order-get-method.*"
+      - "supabase/functions/admin-inspect-marketplace-v2-order/**"
       - "supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql"
       - "supabase/migrations/20261106024422_lock_marketplace_processing_reserve_privileges.sql"
       - "public/**"
