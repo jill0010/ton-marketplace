@@ -93,8 +93,18 @@ export async function verifyV3Testnet(addresses, fetcher = fetch, expectedHashes
   for (const [name, address] of entries) {
     const url = new URL(endpoint);
     url.searchParams.set("address", address);
-    const response = await fetcher(url.toString(), { method: "GET", redirect: "error" });
-    if (!response.ok) throw new Error(`RPC HTTP error for ${name}: ${response.status}`);
+    // Retry only rate limits and transient server failures; never sign or send transactions.
+    const apiKey = process.env.TONCENTER_API_KEY;
+    const headers = apiKey ? { "X-API-Key": apiKey } : undefined;
+    let response;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      response = await fetcher(url.toString(), { method: "GET", redirect: "error", ...(headers ? { headers } : {}) });
+      if (response.ok) break;
+      if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 4) {
+        throw new Error(`RPC HTTP error for ${name}: ${response.status}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** attempt, 8000)));
+    }
     const data = await response.json();
     if (data.ok !== true || !data.result || typeof data.result !== "object") {
       throw new Error(`Invalid TON Center response for ${name}`);
