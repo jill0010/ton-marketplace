@@ -8,7 +8,7 @@ const reconciliation = { ...identity, terminalState: "delivered", fundingModel: 
   residualNano: 194000000n, openLiabilitiesNano: 0n, escrowExcessPending: false, evidenceHash: E };
 const approve = (overrides = {}) => approveReconciliation(createLiability(identity), { ...reconciliation, ...overrides });
 const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
-  orderId: "1", buyer: "buyer", evidenceHash: E, amountNano: 194000000n,
+  orderId: "1", buyer: "buyer", evidenceHash: E, compensationReviewHash: H, amountNano: 194000000n,
   attempt: state.attempt + 1, messageHash: state.attempt === 0 ? M : N, ...overrides });
 const receipt = (overrides = {}) => ({ orderId: "1", buyer: "buyer", amountNano: 194000000n,
   messageHash: M, attempt: 1, kind: "credited", receiverSuccess: true, creditNano: 194000000n, ...overrides });
@@ -49,7 +49,7 @@ test("zero balance closes without a transfer", () => {
   assert.equal(zero.phase, "closed-zero"); assert.throws(() => dispatch(zero));
 });
 test("dispatch cannot alter buyer, amount, evidence or attempt", () => {
-  for (const change of [{ buyer: "attacker" }, { amountNano: 1n }, { evidenceHash: H }, { attempt: 0 }]) {
+  for (const change of [{ buyer: "attacker" }, { amountNano: 1n }, { evidenceHash: H }, { compensationReviewHash: E }, { compensationReviewHash: undefined }, { attempt: 0 }]) {
     assert.throws(() => dispatch(approve(), change));
   }
 });
