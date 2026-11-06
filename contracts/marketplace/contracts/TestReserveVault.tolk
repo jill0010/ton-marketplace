@@ -204,7 +204,9 @@ fun onBouncedMessage(in: InMessageBounced) {
         val rich = lazy RichBounceBody.fromSlice(in.bouncedBody);
         val original = rich.originalBody;
         val payment = TestReserveBuyerPayment.fromCell(original);
+        val originalInfo = RichBounceOriginalMsgInfo.fromCell(rich.originalInfo);
         if (
+            originalInfo.valueCoins != storage.refundAmount ||
             payment.orderId != identity.orderId || payment.queryId != storage.queryId ||
             payment.amount != storage.refundAmount
         ) {
