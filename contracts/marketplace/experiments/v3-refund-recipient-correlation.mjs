@@ -53,6 +53,10 @@ export function correlateV3RefundRecipient({
       const inboundHash = inbound?.hash;
       if (typeof outboundHash !== "string" || !outboundHash ||
           typeof inboundHash !== "string" || outboundHash !== inboundHash) continue;
+      // A transaction reported as aborted or unsuccessful is not a receipt.
+      // Absence of these fields remains unverified, never a success claim.
+      if (tx?.description?.aborted === true || tx?.description?.compute_ph?.success === false ||
+          tx?.description?.action?.success === false) continue;
       recipientCandidates.push({
         outboundTransactionHash: match.transactionHash,
         inboundTransactionHash: typeof tx?.transaction_id?.hash === "string"
@@ -61,6 +65,8 @@ export function correlateV3RefundRecipient({
         queryId: match.queryId,
         amountNano: match.amountNano,
         messageHash: outboundHash,
+        executionStatus: tx?.description?.aborted === false &&
+          tx?.description?.compute_ph?.success === true ? "REPORTED_SUCCESS" : "UNKNOWN",
         verified: false,
         finalized: false,
       });
