@@ -761,3 +761,37 @@ get fun `test vault rejects duplicate replay after accepting bounce candidate`()
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 703 });
 }
+
+get fun `test vault rejects rich bounce with falsified original transfer value`() {
+    val (vault, _, _, buyer) = reserveInFlight();
+    val invalid = RichBounceBody {
+        originalBody: TestReserveBuyerPayment {
+            orderId: 1,
+            queryId: 1,
+            amount: grams("0.194"),
+        }.toCell(),
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.193"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: 42,
+        computePhase: RichBounceComputePhaseInfo {
+            gasUsed: 100,
+            vmSteps: 10,
+        },
+    }.toCell();
+    testing.processSingleTraceStep(
+        buyer,
+        createMessage({
+            bounce: false,
+            value: grams("0.19"),
+            dest: vault,
+            body: invalid,
+        }).bounced(),
+    );
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+}
