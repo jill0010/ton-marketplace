@@ -1371,6 +1371,14 @@ get fun assetProductIdV2(nftItem: address): uint64? {
     return result.loadValue();
 }
 
+get fun testReserveCoordinator(): address? {
+    val purchase = TestPurchaseStorageV3.fromCell(TestMarketplaceStorageV3.load().purchaseStorage);
+    if (!purchase.coordinatorConfigured) {
+        return null;
+    }
+    return purchase.coordinator;
+}
+
 get fun testPurchaseReserve(orderId: uint64): TestPurchaseReserveBinding? {
     val found = TestMarketplaceStorageV3.load().purchaseStorage.load().reserves.get(orderId);
     if (!found.isFound) {
