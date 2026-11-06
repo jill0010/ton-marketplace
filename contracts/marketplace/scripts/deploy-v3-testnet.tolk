@@ -14,10 +14,13 @@ import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/NFTEscrowV2.gen"
 
 fun main() {
-    assert (env<bool>("V3_TESTNET_DEPLOY_APPROVED") ?? false) throw 801;
+    val emulation = env<bool>("V3_TESTNET_EMULATION") ?? false;
+    assert (emulation || (env<bool>("V3_TESTNET_DEPLOY_APPROVED") ?? false)) throw 801;
     val expectedDeployer = env<address>("V3_TESTNET_DEPLOYER_ADDRESS");
-    assert (expectedDeployer != null) throw 801;
-    assert (scripts.wallet("deployer").address == expectedDeployer) throw 801;
+    assert (emulation || expectedDeployer != null) throw 801;
+    if (!emulation) {
+        assert (scripts.wallet("deployer").address == expectedDeployer) throw 801;
+    }
     val deployer = scripts.wallet("deployer");
     // Mainnet can use one interactive TON Connect signer plus a public treasury
     // address. Emulation/testnet can keep using a separately configured wallet.
