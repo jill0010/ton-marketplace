@@ -34,6 +34,7 @@ The trace must have a completed masterchain sequence and zero pending messages. 
 - `supabase/functions/_shared/marketplace-processing-reserve.test.mjs`: tests for normal fee aggregation, exclusion of buyer/seller/treasury wallet fees, incomplete traces, pending messages, wrong root transaction, unknown accounts, duplicate transactions and reserve shortfall.
 - `supabase/functions/admin-preview-marketplace-processing-reserve/index.ts`: administrator-only, read-only preview using TON Center API v3. It requires an indexed reserve-ledger row and cross-checks the order ID, chain order ID, buyer wallet, reserve amount and payment transaction hash. It does not update the database, sign a wallet message, call a send endpoint, or broadcast a transaction.
 - `scripts/check-marketplace-v2-processing-reserve-ledger.mjs`: CI guard for the additive schema, per-order identity binding and service-role-only access.
+- `MarketplaceV2.orderIdForProductV2(productId)`: new read-only getter and wrapper to resolve the immutable order ID from the product reservation; the indexer no longer needs to infer order IDs from transaction order.
 - Frontend Build CI runs the fee reconciliation unit tests.
 
 ## Remaining implementation gates
