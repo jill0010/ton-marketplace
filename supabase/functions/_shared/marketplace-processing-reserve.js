@@ -36,13 +36,14 @@ function getTransactions(trace) {
 }
 
 /**
- * Calculates fees attributable to the Marketplace, Escrow and NFT Item
- * accounts in one complete TON trace. Buyer/seller/treasury wallet fees are
- * deliberately excluded because they are not paid from the Marketplace's
- * processing reserve.
+ * Reports observed fees paid by Marketplace, Escrow and NFT Item accounts in
+ * one complete TON trace. This is diagnostic only: account total_fees do not
+ * prove that those fees consumed this order's reserve, because contract
+ * balances and internal message values may be pooled across orders.
  *
- * This is a read-only reconciliation result. It does not authorize or send
- * a refund. The caller must separately validate the order's final chain state.
+ * Consequently this function never calculates a customer refund amount and
+ * never marks reserve attribution as verified. It is read-only and cannot
+ * authorize or send a refund.
  */
 export function calculateMarketplaceProcessingReserve(trace, input) {
   if (!trace || typeof trace !== "object" || Array.isArray(trace)) {
