@@ -5,12 +5,14 @@ on:
     paths:
       - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
       - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-reconciliation*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
   push:
     paths:
       - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
       - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-reconciliation*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
 
@@ -32,4 +34,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run reserve-refund regression tests
-        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs
+        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs contracts/marketplace/experiments/v3-refund-reconciliation.test.mjs
