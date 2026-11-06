@@ -143,3 +143,24 @@ test("fails closed on multiple distinct buyer receipts for one outbound refund",
   assert.equal(result.recipientCandidates.length, 0);
   assert.equal(result.mayRetry, false);
 });
+
+test("fails closed on excessive untrusted recipient transaction history", () => {
+  const tx = buyerResponse(message()).transactions[0];
+  const oversized = response(buyer, Array.from({ length: 201 }, (_, i) => ({
+    ...tx, transaction_id: { lt: String(i + 1), hash: "buyer-" + i },
+  })));
+  const result = correlateV3RefundRecipient({
+    ...options, vaultResponse, buyerResponse: oversized,
+  });
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.recipientCandidates.length, 0);
+  assert.equal(result.reason, "TOO_MANY_UNVERIFIED_CANDIDATES");
+  assert.equal(result.mayRetry, false);
+});
+
+test("rejects positive workchain 1 as a vault or buyer address", () => {
+  assert.throws(() => correlateV3RefundRecipient({
+    ...options, buyer: "1:" + "b".repeat(64),
+    vaultResponse, buyerResponse: buyerResponse(message()),
+  }), TypeError);
+});
