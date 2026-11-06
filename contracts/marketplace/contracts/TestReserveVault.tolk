@@ -170,18 +170,11 @@ fun onInternalMessage(in: InMessage) {
             throw 706;
         }
         ConfirmTestReserveReceipt => {
+            // V3 release blocker: owner attestations are not on-chain receipt
+            // proofs. A supplied hash must never finalize buyer credit.
             assert (in.senderAddress == storage.owner) throw 701;
-            // A bounced transfer cannot be attested as credited; require
-            // a new dispatch and independently verified receiver receipt.
-            assert (storage.status == 2) throw 703;
-            assert (msg.orderId == identity.orderId && msg.queryId == storage.queryId) throw 702;
-            assert (msg.receiptHash != 0) throw 702;
-            assert (msg.receiptHash != storage.evidenceHash) throw 702;
-            assert (msg.receiptHash != storage.receiptHash) throw 702;
-            assert (msg.receiptHash != identity.paymentHash) throw 702;
-            storage.status = 3;
-            storage.receiptHash = msg.receiptHash;
-            storage.save();
+            assert (msg.orderId == identity.orderId) throw 702;
+            throw 706;
         }
     }
 }
