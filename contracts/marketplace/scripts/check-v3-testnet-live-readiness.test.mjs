@@ -45,3 +45,13 @@ test("reopening bounce-only buyer refund retry blocks release readiness", () => 
   assert.ok(result.reasons.includes("V2_BUYER_REFUND_RETRY_LACKS_INDEPENDENT_RETURN_PROOF"));
   assert.equal(result.mainnetApproved, false);
 });
+
+test("refund retry guard must not be bypassed by adding an earlier unsafe branch", () => {
+  const unsafeMarketplace = marketplace.replace(
+    "RetryPayoutV2 => {",
+    "RetryPayoutV2 => {\n            // A new refund path ahead of the existing fail-closed guard.\n            if (false) {\n                val bypass = BuyerRefundV2 { orderId: 1, operationId: 1, queryId: 1 };\n            }",
+  );
+  assert.notEqual(unsafeMarketplace, marketplace);
+  const result = inspectV3TestnetReadiness(source, unsafeMarketplace, escrow);
+  assert.equal(result.mainnetApproved, false);
+});
