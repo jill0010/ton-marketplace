@@ -229,7 +229,10 @@ fun main() {
     println("No collections are approved; listings remain unavailable until official collection policy is configured");
     val nftItem = deployRehearsalFixture();
     listTestFixture(
-        marketplace, escrow, scripts.wallet("deployer").address, nftItem,
+        marketplace,
+        escrow,
+        scripts.wallet("deployer").address,
+        nftItem,
         testing.treasury("fixtureSeparateCollection").address,
     );
 }
