@@ -63,6 +63,11 @@ jobs:
           node-version: 22.23.4
           cache: npm
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.6.4
+
       - name: Install locked dependencies
         run: npm ci
 
@@ -77,6 +82,9 @@ jobs:
 
       - name: Test Marketplace V2 processing reserve fee reconciliation
         run: node --test supabase/functions/_shared/marketplace-processing-reserve.test.mjs
+
+      - name: Type-check processing reserve preview Edge Function
+        run: deno check --config supabase/functions/deno.json supabase/functions/admin-preview-marketplace-processing-reserve/index.ts
 
       - name: Build production frontend
         run: npm run build
