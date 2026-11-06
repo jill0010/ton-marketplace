@@ -3,15 +3,45 @@
 import { pathToFileURL } from "node:url";
 
 const RAW = /^(-?1|0):[0-9a-fA-F]{64}$/;
-const FRIENDLY = /^[EUko]Q[A-Za-z0-9_-]{46}$/;
+const FRIENDLY = /^[A-Za-z0-9_-]{48}$/;
+
+// TON friendly addresses carry a CRC16-XMODEM checksum and network flag.
+// Normalize to raw workchain:hash to detect aliases and reject mainnet-only inputs.
+export function normalizeV3TestnetAddress(address) {
+  if (typeof address !== "string") throw new Error("Invalid TON address");
+  if (RAW.test(address)) {
+    const [workchain, hash] = address.split(":");
+    return `${Number(workchain)}:${hash.toLowerCase()}`;
+  }
+  if (!FRIENDLY.test(address)) throw new Error("Invalid TON address");
+  const bytes = Buffer.from(address, "base64url");
+  if (bytes.length !== 36) throw new Error("Invalid TON friendly address length");
+  let crc = 0;
+  for (const byte of bytes.subarray(0, 34)) {
+    crc ^= byte << 8;
+    for (let i = 0; i < 8; i++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+  }
+  if (bytes[34] !== (crc >> 8) || bytes[35] !== (crc & 255)) {
+    throw new Error("Invalid TON address checksum");
+  }
+  if ((bytes[0] & 0x80) === 0) throw new Error("Expected testnet-only TON address");
+  if ((bytes[0] & 0x7f) !== 0x11 && (bytes[0] & 0x7f) !== 0x51) {
+    throw new Error("Invalid TON address tag");
+  }
+  const wc = bytes[1] === 255 ? -1 : bytes[1];
+  if (wc !== 0 && wc !== -1) throw new Error("Unsupported TON workchain");
+  return `${wc}:${bytes.subarray(2, 34).toString("hex")}`;
+}
 
 export function validateV3Addresses(addresses) {
   const entries = ["marketplace", "escrow", "coordinator"].map((key) => {
     const value = addresses[key];
-    if (typeof value !== "string" || !(RAW.test(value) || FRIENDLY.test(value))) {
+    if (typeof value !== "string") {
       throw new Error(`Invalid or missing ${key} address`);
     }
-    return [key, value];
+    return [key, normalizeV3TestnetAddress(value)];
   });
   if (new Set(entries.map(([, value]) => value)).size !== 3) {
     throw new Error("V3 contract addresses must be distinct");
