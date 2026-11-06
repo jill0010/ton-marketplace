@@ -245,6 +245,19 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
+    // The prior return evidence cannot authorize a third payout.
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            RetryTestReserve {
+                orderId: 1,
+                returnEvidenceHash: 1234,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 702 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
 }
 
 fun reserveRichBounce(orderId: uint64, queryId: uint64, amount: coins): cell {
