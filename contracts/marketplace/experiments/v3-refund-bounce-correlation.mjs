@@ -49,6 +49,9 @@ export function correlateV3RefundBounce({
         continue;
       }
       if (!decimal(bounce.amountNano) ||
+          bounce.orderId !== sent.orderId ||
+          bounce.queryId !== sent.queryId ||
+          bounce.originalAmountNano !== sent.amountNano ||
           BigInt(bounce.amountNano) > BigInt(sent.amountNano)) continue;
       // Match the experimental contract's maximum 0.01 TON bounce fee loss.
       const allowance = 10000000n;
