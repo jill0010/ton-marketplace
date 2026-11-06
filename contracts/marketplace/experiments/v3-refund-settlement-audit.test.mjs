@@ -58,3 +58,13 @@ test("empty investigation fails closed", () => {
   assert.equal(result.accountingStatus, "NO_VERIFIED_SETTLEMENT");
   assert.equal(result.proofStatus, "UNVERIFIED");
 });
+
+test("ambiguous buyer receipts are surfaced but cannot settle", () => {
+  const duplicate = { ...receipt, transaction_id: { lt: "4", hash: "other-buyer-tx" } };
+  const result = audit([outgoing], [receipt, duplicate]);
+  assert.equal(result.ambiguousEvidence, true);
+  assert.ok(result.reasons.includes("AMBIGUOUS_BUYER_RECEIPT"));
+  assert.equal(result.outboundToBuyerCandidateCount, 0);
+  assert.equal(result.verifiedBuyerCreditNano, "0");
+  assert.equal(result.mayConfirmReceipt, false);
+});
