@@ -13,12 +13,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: marketplace-v2-mainnet-deployment
+  group: marketplace-v2-mainnet-preflight
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy fresh Marketplace V2 and NFT Escrow V2
+  preflight:
+    name: Read-only Marketplace V2 Mainnet release checks
     if: ${{ inputs.confirm_mainnet_preflight == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
