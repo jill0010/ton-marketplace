@@ -33,3 +33,15 @@ test("partial handler stubs cannot open production release gate", () => {
   assert.equal(result.mainnetApproved, false);
   assert.ok(result.reasons.includes("NO_INDEPENDENT_ONCHAIN_SETTLEMENT_PROOF"));
 });
+
+test("reopening bounce-only buyer refund retry blocks release readiness", () => {
+  const unsafeMarketplace = marketplace.replace(
+    /if \(payout\.kind == 3\) \{(?:\s|\/\/[^\n]*\n)*throw ErrorsV2\.InvalidPayout;/,
+    "if (payout.kind == 3) {\n                assert (order.refundStatus == 3) throw ErrorsV2.InvalidPayout;",
+  );
+  assert.notEqual(unsafeMarketplace, marketplace, "fixture must remove the refund guard");
+  const result = inspectV3TestnetReadiness(source, unsafeMarketplace, escrow);
+  assert.equal(result.unsafeBuyerRefundRetry, true);
+  assert.ok(result.reasons.includes("V2_BUYER_REFUND_RETRY_LACKS_INDEPENDENT_RETURN_PROOF"));
+  assert.equal(result.mainnetApproved, false);
+});
