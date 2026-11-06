@@ -33,7 +33,12 @@ fun listTestFixture(
     assert (
         code.hash() == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
     ) throw 402;
-    val paused = escrow.sendSetCollectionStatusV2(administrator, collection, 2, { value: grams("0.05") });
+    val paused = escrow.sendSetCollectionStatusV2(
+        administrator,
+        collection,
+        2,
+        { value: grams("0.05") },
+    );
     assert (paused.waitForFirstTransaction() != null) throw 404;
     val configured = escrow.sendSetCollectionItemCodeV2(
         administrator,
@@ -43,7 +48,12 @@ fun listTestFixture(
         { value: grams("0.05") },
     );
     assert (configured.waitForFirstTransaction() != null) throw 404;
-    val enabled = escrow.sendSetCollectionStatusV2(administrator, collection, 1, { value: grams("0.05") });
+    val enabled = escrow.sendSetCollectionStatusV2(
+        administrator,
+        collection,
+        1,
+        { value: grams("0.05") },
+    );
     assert (enabled.waitForFirstTransaction() != null) throw 404;
 
     val productId = marketplace.nextProductIdV2();
