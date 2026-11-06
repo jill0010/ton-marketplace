@@ -78,3 +78,8 @@ depends = []
 display-name = "Experimental reserve funding coordinator"
 src = "contracts/TestReserveCoordinator.tolk"
 depends = ["TestReserveVault"]
+
+[contracts.TestMarketplaceReserveV3]
+display-name = "Experimental V3 reserve-gated marketplace"
+src = "contracts/TestMarketplaceReserveV3.tolk"
+depends = ["TestReserveCoordinator"]
