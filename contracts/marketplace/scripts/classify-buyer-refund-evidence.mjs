@@ -24,3 +24,43 @@ export function classifyBuyerRefundEvidence(input) {
   }
   return { state: "UNKNOWN", retryAuthorized: false, requiresManualReview: true };
 }
+
+/**
+ * Read-only, conservative order-level reconciliation.
+ * The caller must supply independently verified operation and transaction IDs.
+ * No state transition here authorizes an on-chain transfer.
+ */
+export function reconcileBuyerRefundOperations({ orderId, operations }) {
+  if (typeof orderId !== "string" || !orderId || !Array.isArray(operations) || operations.length === 0) {
+    throw new TypeError("Order ID and nonempty operations are required");
+  }
+  const operationIds = new Set();
+  const transactionIds = new Set();
+  let hasReceived = false;
+  let hasReturned = false;
+  let hasUnknown = false;
+  let hasConflict = false;
+  for (const entry of operations) {
+    if (!entry || entry.orderId !== orderId ||
+        typeof entry.operationId !== "string" || !entry.operationId ||
+        typeof entry.transactionId !== "string" || !entry.transactionId) {
+      return { state: "CONFLICT", retryAuthorized: false, requiresManualReview: true };
+    }
+    if (operationIds.has(entry.operationId) || transactionIds.has(entry.transactionId)) {
+      return { state: "CONFLICT", retryAuthorized: false, requiresManualReview: true };
+    }
+    operationIds.add(entry.operationId);
+    transactionIds.add(entry.transactionId);
+    const result = classifyBuyerRefundEvidence(entry.evidence);
+    if (result.state === "RECEIVED") hasReceived = true;
+    else if (result.state === "RETURNED") hasReturned = true;
+    else if (result.state === "CONFLICT") hasConflict = true;
+    else hasUnknown = true;
+  }
+  if (hasConflict || (hasReceived && hasReturned) || (hasReceived && hasUnknown)) {
+    return { state: "CONFLICT", retryAuthorized: false, requiresManualReview: true };
+  }
+  if (hasReceived) return { state: "RECEIVED", retryAuthorized: false, requiresManualReview: false };
+  if (hasReturned && !hasUnknown) return { state: "RETURNED", retryAuthorized: false, requiresManualReview: true };
+  return { state: "UNKNOWN", retryAuthorized: false, requiresManualReview: true };
+}
