@@ -420,6 +420,12 @@ fun onInternalMessage(in: InMessage) {
         EscrowReleaseFailedV2 => {
             var storage = lazy TestMarketplaceStorageV3.load();
             var purchase = storage.purchaseStorage.load();
+            // Only an order whose reserve funding was acknowledged can
+            // have a legitimate NFT release failure to compensate.
+            val reserveResult = purchase.reserves.get(msg.orderId);
+            assert (reserveResult.isFound) throw 743;
+            val reserve = TestPurchaseReserveBinding.fromCell(reserveResult.loadValue());
+            assert (reserve.status == 2 && reserve.vault != null) throw 743;
             var orderStorage = purchase.orders.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidDelivery;
             assert (in.senderAddress == storage.escrow) throw ErrorsV2.InvalidDelivery;
