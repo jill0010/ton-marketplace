@@ -66,3 +66,30 @@ test("combined evidence requires matching order and wallet identities", () => {
   assert.equal(report.releaseStatus, "BLOCKED_UNVERIFIED");
   assert.equal(report.mayRetry, false);
 });
+
+test("same transaction hash under different account and LT is quarantined", () => {
+  const report = auditV3TestnetEvidenceBundle(bundle({
+    transactions: [
+      { account: vault, lt: "100", hash, role: "dispatch" },
+      { account: buyer, lt: "101", hash, role: "buyer_receipt" },
+    ],
+  }));
+  assert.ok(report.reasons.includes("DUPLICATE_TRANSACTION_HASH"));
+  assert.equal(report.mayConfirmReceipt, false);
+});
+test("funding and dispatch must be attributed to vault", () => {
+  const report = auditV3TestnetEvidenceBundle(bundle({
+    transactions: [
+      { account: buyer, lt: "1", hash, role: "funding" },
+      { account: buyer, lt: "2", hash: "d".repeat(64), role: "dispatch" },
+    ],
+  }));
+  assert.ok(report.reasons.includes("FUNDING_ACCOUNT_MISMATCH"));
+  assert.ok(report.reasons.includes("DISPATCH_ACCOUNT_MISMATCH"));
+  assert.equal(report.mayReleaseFunds, false);
+});
+test("reject invalid raw wallet workchains", () => {
+  assert.throws(() => auditV3TestnetEvidenceBundle(bundle({
+    vault: "1:" + "a".repeat(64),
+  })), TypeError);
+});
