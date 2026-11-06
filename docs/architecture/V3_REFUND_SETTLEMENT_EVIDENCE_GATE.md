@@ -83,3 +83,22 @@ independent mainnet security review.
 
 V2 order 1's 0.2 TON external compensation is already completed. It is not
 a V3 test liability and must not be transferred or repaid again.
+
+## Testnet evidence bundle quarantine
+
+The offline `v3-testnet-evidence-bundle.mjs` module validates the expected
+testnet network, wallet and order/query identities, transaction account/LT
+uniqueness, and receipt/bounce account attribution. It rejects malformed
+identities and quarantines duplicates. The combined gate additionally checks
+that the evidence bundle matches the settlement investigation and reserve
+accounting inputs.
+
+This bundle is **not a verifier of TON block inclusion, cryptographic
+finality, or actual account balance changes**. A supplied transaction hash
+or a claimed `independentChainProof` does not grant any authorization.
+The mainnet gate remains closed.
+
+To advance beyond offline evidence, collect independently verified testnet
+transaction inclusion, successful receiver execution, precise balance
+deltas and gas costs for each distinct order. Never reuse V2 order 1 as
+an unpaid refund liability.
