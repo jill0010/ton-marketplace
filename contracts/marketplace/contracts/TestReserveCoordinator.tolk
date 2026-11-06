@@ -186,7 +186,10 @@ fun onBouncedMessage(in: InMessageBounced) {
                     failedBinding.status == 4 && in.senderAddress == failedStorage.marketplace &&
                     failedBinding.paymentHash == failure.paymentHash &&
                     failedBinding.vault == failure.vault &&
-                    originalInfo.valueCoins == grams("0.2")
+                    originalInfo.valueCoins == grams("0.2") &&
+                    // Do not overwrite the quarantined return record with
+                    // a dust-value, forged-looking bounced notification.
+                    in.valueCoins >= grams("0.19")
                 ) {
                     failedBinding.status = 3;
                     failedBinding.returnedNano = in.valueCoins as uint64;
