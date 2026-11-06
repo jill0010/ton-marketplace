@@ -22,7 +22,7 @@ The validator additionally requires:
 
 - destination equals the configured Marketplace V2 address after raw-address normalization;
 - source address is present and parseable;
-- transaction and inbound-message hashes are 256-bit hexadecimal hashes;
+- transaction, inbound-message and parent hashes decode to exactly 32 bytes (TON Center V3 base64/base64url or hexadecimal forms are normalized to canonical hex);
 - a positive masterchain block sequence number;
 - transaction is not emulated or aborted;
 - compute and action phases both report success;
@@ -51,3 +51,12 @@ Before any write path is enabled, the indexer must:
 7. Keep all refunds disabled until a separate on-chain refund liability/dispatch design is audited and tested.
 
 No transaction sending, signing, testnet deployment, mainnet deployment or database write is part of phase 1.
+
+
+## Admin read-only transaction page
+
+The `admin-observe-marketplace-v2` Edge Function is an administrator-only, read-only endpoint. It queries the fixed TON Center mainnet V3 `/transactions` endpoint for the configured Marketplace V2 account and returns candidate observations only. It does not create or update database rows.
+
+Pagination is bounded: `limit` defaults to 100 and must be 1–1000; `offset` defaults to 0 and is capped at 100,000; optional `start_lt` must be a decimal uint64 string. Requests are sorted ascending by logical time. The caller may not query an arbitrary account: the supplied account must normalize to the configured Marketplace V2 address. TON Center's documented offset pagination is used; the response returns the next offset and last logical time so an operator can continue a bounded scan.
+
+The endpoint requires the configured TON Center API key and an authenticated, non-anonymous administrator session. No API key is exposed to the browser. Automated tests cover request bounds, defaults, cursor validation and URL construction. The function remains un-deployed until its configuration and deployment are separately reviewed.
