@@ -76,6 +76,12 @@ jobs:
           PLATFORM_TREASURY_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000001"
         run: acton script scripts/deploy-v2.tolk
 
+      - name: Rehearse Testnet NFT fixture deployment in emulator
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/deploy-testnet-nft-fixture.tolk
+
       - name: Linter
         run: acton check --output-format github
 
