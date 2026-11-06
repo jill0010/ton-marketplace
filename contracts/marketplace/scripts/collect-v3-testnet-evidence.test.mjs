@@ -28,3 +28,18 @@ test("evidence collector fails closed when RPC fails", async () => {
     ok: false, status: 429,
   })), /RPC HTTP error/);
 });
+
+test("matched expected code hashes clear only the code hash evidence blocker", async () => {
+  const code = "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog==";
+  const { parseV3ContractCode } = await import("./verify-v3-testnet.mjs");
+  const hash = parseV3ContractCode(code).codeHash;
+  const expected = { marketplace: hash, escrow: hash, coordinator: hash };
+  const evidence = await collectV3TestnetEvidence(addresses, async () => ({
+    ok: true, json: async () => ({ ok: true, result: { state: "active", code } }),
+  }), expected);
+  assert.equal(evidence.postflight.codeHashesVerified, true);
+  assert.equal(evidence.missingProof.includes("ONCHAIN_CODE_HASH_MATCH"), false);
+  assert.equal(evidence.deploymentVerified, false);
+  assert.equal(evidence.realFundsApproved, false);
+  assert.equal(evidence.mainnetApproved, false);
+});
