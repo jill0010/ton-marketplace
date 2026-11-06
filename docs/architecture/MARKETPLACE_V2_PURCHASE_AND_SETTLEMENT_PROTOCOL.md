@@ -72,9 +72,9 @@ For gross price G in nanotons:
 - Retry is permitted only from the exact Bounced state and uses the same liability/operation identity with a fresh transport query ID.
 - Do not mark an order fully settled merely because outgoing messages were enqueued. Expose dispatched versus bounced/reconciled states distinctly.
 
-## Required storage versioning
+## V2 storage versioning (implemented)
 
-Before implementation, add an explicit V2 storage schema version and durable maps/counters for:
+V2 uses an explicit schema version and durable maps/counters for:
 - next order ID and consumed payment query IDs;
 - orders by order ID and product-to-order reservation;
 - payout liabilities by payout operation ID;
@@ -105,12 +105,16 @@ All cells/maps must be tested for round-trip serialization and 1023-bit cell lim
 No mainnet deployment is permitted until the complete purchase/delivery/refund/settlement path passes emulator tests, both contracts are built from the exact reviewed sources, testnet rehearsal succeeds with real official NFT collection items, contract addresses and code hashes are independently verified, and deployment keys are available through a secure signer. Never put seed phrases or private keys in GitHub, Supabase, chat, or CI secrets.
 
 
-## Current implementation checkpoint (2026-11-04)
+## Current implementation checkpoint (2026-11-06)
 
 - `BuyProductV2` validates the internal sender, active escrowed listing, exact expected price, deadline, replay indexes and exact `gross + 0.2 TON` attached value.
 - Marketplace persists an immutable order snapshot, seller/platform payout liabilities, and a dormant buyer-refund liability before sending `ReleaseEscrowV2`.
 - `EscrowReleasedV2` is correlated against the complete order asset/buyer tuple, acknowledged, and dispatches seller 97% and treasury 3% as independent bounceable transfers.
 - Seller/platform payout bounces update only the matching liability. `RetryPayoutV2` dispatches only a bounced liability with a fresh query ID.
-- `EscrowReleaseFailedV2` requests NFT return to the seller. Buyer refund is dispatched only after the exact `EscrowRefundedV2` callback confirms the NFT return. A bounced buyer refund uses the same retry-safe payout path.
-- The official NFT Item integration test exercises a real deployed allowlisted Item, buyer payment, NFT transfer to the buyer, and dual payout dispatch; it also forces a real platform-payout bounce and verifies that only the platform liability is retried. A separate Marketplace compensation test injects authenticated Escrow release-failure and seller-return callbacks, forces the buyer refund to bounce, and verifies the exact buyer-refund liability retry. The latter tests the Marketplace state machine with a test wallet as the Escrow callback source; a full testnet rehearsal must still exercise the real NFT Escrow returning a real NFT to its seller.
-- The fixed 0.2 TON execution reserve is a current implementation parameter, not a finalized economic policy. The unused portion is not yet returned to the buyer. Mainnet activation remains blocked until the reserve economics and complete failure-path tests are reviewed.
+- `EscrowReleaseFailedV2` and an exact request-level `ReleaseEscrowV2` RichBounce both enter the seller-return path. Buyer refund is dispatched only after the exact `EscrowRefundedV2` callback confirms the NFT return. A bounced buyer refund uses the same retry-safe payout path.
+- The official NFT Item integration test exercises a real deployed allowlisted Item in the emulator, buyer payment, NFT transfer to the buyer, and dual payout dispatch; it also forces a real platform-payout bounce and verifies that only the platform liability is retried.
+- The Marketplace compensation suite now includes a test-only rejecting Escrow that accepts listing registration, rejects the actual outbound `ReleaseEscrowV2` in compute phase, produces a real emulator RichBounce, receives the Marketplace `RefundEscrowV2` request, and returns the exact `EscrowRefundedV2` callback. The test verifies the resulting buyer refund liability and order state. This proves the Marketplace request-bounce branch, but the fixture is not the production NFT Escrow and does not prove a real NFT moved back to its seller.
+- CI confirms the official Fragment public libraries are available on Mainnet, but they are absent on Testnet. The official NFT Item code is registered directly in the local emulator for the provenance/transfer tests. Therefore a real official Fragment NFT Item cannot currently be rehearsed on Testnet with those libraries; do not describe emulator coverage as a real Testnet NFT rehearsal.
+- The fixed 0.2 TON execution reserve is a current implementation parameter, not a finalized economic policy. The unused portion is not returned to the buyer. Mainnet activation remains blocked until this economic treatment is explicitly approved and documented.
+- The public listing verifier currently enables only verified Fragment Gift Item code hashes (`kind=3`). Collectible usernames and +888 numbers remain fail-closed until their TeleMint Item code hashes are independently verified and added to the contract and publisher allowlists. The deployment script intentionally approves no collections.
+- The storefront's escrow checkout remains disabled (`Coming Soon`); the V2 purchase ABI is implemented and emulator-tested, but a production TonConnect purchase/confirmation flow and chain-authoritative order indexing still need completion before customer sales.
