@@ -6,7 +6,7 @@ import { correlateV3RefundBounce } from "./v3-refund-bounce-correlation.mjs";
 const vault = "0:" + "a".repeat(64);
 const buyer = "0:" + "b".repeat(64);
 const body = beginCell().storeUint(0x72730105, 32)
-  .storeUint(1, 64).storeUint(2, 64).endCell().toBoc().toString("base64");
+  .storeUint(1, 64).storeUint(2, 64).storeCoins(194000000n).endCell().toBoc().toString("base64");
 const tx = (hash, in_msg, out_msgs = []) => ({
   transaction_id: { hash, lt: "1" }, in_msg, out_msgs,
 });
