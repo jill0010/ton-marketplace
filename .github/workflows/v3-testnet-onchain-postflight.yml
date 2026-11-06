@@ -50,6 +50,7 @@ jobs:
         run: node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs
       - name: Collect read-only testnet evidence
         env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
           V3_TESTNET_MARKETPLACE_ADDRESS: ${{ inputs.marketplace_address }}
           V3_TESTNET_ESCROW_ADDRESS: ${{ inputs.escrow_address }}
           V3_TESTNET_COORDINATOR_ADDRESS: ${{ inputs.coordinator_address }}
