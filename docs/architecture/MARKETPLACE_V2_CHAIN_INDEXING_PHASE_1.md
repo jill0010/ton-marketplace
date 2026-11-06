@@ -30,6 +30,14 @@ The validator additionally requires:
 
 The returned `marketplaceTransactionHash` is the Marketplace contract transaction hash. It is intentionally not labelled as the buyer wallet's root payment transaction hash: TON Center message/transaction linkage must be followed and independently verified before populating `marketplace_orders.payment_tx_hash` or the reserve ledger.
 
+## TON Center V3 observation parser
+
+The shared read-only parser now scans a V3 transaction page and extracts only candidate inbound `BuyProductV2` messages that pass the decoder and transaction-success gates. It requires a parent transaction hash and returns it as `parentTransactionHash` only. This is a linkage hint, not proof that the parent is the buyer wallet's root transaction.
+
+TON amounts are accepted only as decimal strings. Numeric JSON values are rejected to avoid JavaScript precision loss for nanoTON values.
+
+Automated Deno tests cover a valid V3 fixture, unrelated rows, failed and unfinalized transactions, missing parent linkage, incorrect reserve payment, and imprecise numeric amounts. The tests and type checks are included in the frontend workflow.
+
 ## Next indexer gates — not implemented here
 
 Before any write path is enabled, the indexer must:
