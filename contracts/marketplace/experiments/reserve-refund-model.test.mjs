@@ -78,7 +78,10 @@ test("bounce requires exact principal return and retry preserves amount", () => 
   assert.throws(() => dispatch(bounced, { principalReturnEvidenceHash: E }));
   const retry = dispatch(bounced); assert.equal(retry.attempt, 2); assert.equal(retry.refundNano, bounced.refundNano);
   assert.throws(() => observeResult(retry, receipt()));
-  assert.equal(observeResult(retry, receipt({ messageHash: N, attempt: 2 })).phase, "paid");
+  assert.throws(() => observeResult(retry, receipt({ messageHash: N, attempt: 2, receiptEvidenceHash: H })));
+  const paid = observeResult(retry, receipt({ messageHash: N, attempt: 2, receiptEvidenceHash: E }));
+  assert.equal(paid.phase, "paid");
+  assert.deepEqual(paid.receiptEvidenceHashes, [H, E]);
 });
 
 test("rejects malformed liability identities and payment evidence", () => {
