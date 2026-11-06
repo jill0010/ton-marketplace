@@ -12,6 +12,10 @@ const original = readFileSync(
   "supabase/migrations/20261103154323_add_ton_marketplace_purchase_settlement_ledger.sql",
   "utf8",
 );
+const privilegeMigration = readFileSync(
+  "supabase/migrations/20261106024422_lock_marketplace_processing_reserve_privileges.sql",
+  "utf8",
+);
 
 function requireMatch(source, pattern, message) {
   if (!pattern.test(source)) throw new Error(message);
