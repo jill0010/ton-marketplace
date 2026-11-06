@@ -39,11 +39,13 @@ const input = {
   treasuryAddress: treasury,
 };
 
-test("sums actual fees only for Marketplace, Escrow and NFT Item", () => {
+test("reports observed contract fees without claiming reserve attribution or a refund", () => {
   const result = calculateMarketplaceProcessingReserve(fixture(), input);
-  assert.equal(result.actualProcessingCostNano, "2500000");
-  assert.equal(result.refundableNano, "197500000");
-  assert.equal(result.status, "preview_ready");
+  assert.equal(result.observedContractFeesNano, "2500000");
+  assert.equal(result.refundableNano, null);
+  assert.equal(result.shortfallNano, null);
+  assert.equal(result.status, "manual_review_attribution_unproven");
+  assert.equal(result.attributionVerified, false);
   assert.equal(result.previewOnly, true);
   assert.equal(result.refundAuthorized, false);
   assert.equal(result.feesByAccount[marketplace], "1100000");
@@ -91,13 +93,14 @@ test("fails closed when an unexpected account appears", () => {
   );
 });
 
-test("reports a shortfall and never creates a negative refund", () => {
+test("never infers a reserve shortfall from pooled contract fees", () => {
   const trace = fixture();
   trace.transactions["b".repeat(64)].total_fees = "200000001";
   const result = calculateMarketplaceProcessingReserve(trace, input);
-  assert.equal(result.status, "manual_review_shortfall");
-  assert.equal(result.refundableNano, "0");
-  assert.equal(result.shortfallNano, "1400001");
+  assert.equal(result.status, "manual_review_attribution_unproven");
+  assert.equal(result.refundableNano, null);
+  assert.equal(result.shortfallNano, null);
+  assert.equal(result.observedContractFeesNano, "201400001");
 });
 
 test("rejects duplicate transaction records", () => {
