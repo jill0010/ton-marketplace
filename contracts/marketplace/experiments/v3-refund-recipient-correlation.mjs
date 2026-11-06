@@ -37,6 +37,22 @@ export function correlateV3RefundRecipient({
         vault, buyer, orderId, queryId,
       });
       if (!body || correlated.matches.length !== 1) continue;
+      // TON Center v2 may expose a message hash on both sides. Require an
+      // exact nonempty match when present, but never infer it from body bytes.
+      // The outbound message must be recovered from the same vault transaction.
+      const vaultTx = vaultResponse.transactions.find((row) =>
+        row?.transaction_id?.hash === match.transactionHash);
+      const matchingOut = vaultTx?.out_msgs?.filter((msg) =>
+        normalize(msg?.source) === normalize(vault) &&
+        normalize(msg?.destination) === normalize(buyer) &&
+        msg?.value === match.amountNano &&
+        msg?.msg_data?.["@type"] === "msg.dataRaw" &&
+        msg?.msg_data?.body === body) ?? [];
+      if (matchingOut.length !== 1) continue;
+      const outboundHash = matchingOut[0]?.hash;
+      const inboundHash = inbound?.hash;
+      if (typeof outboundHash !== "string" || !outboundHash ||
+          typeof inboundHash !== "string" || outboundHash !== inboundHash) continue;
       recipientCandidates.push({
         outboundTransactionHash: match.transactionHash,
         inboundTransactionHash: typeof tx?.transaction_id?.hash === "string"
@@ -44,6 +60,7 @@ export function correlateV3RefundRecipient({
         orderId: match.orderId,
         queryId: match.queryId,
         amountNano: match.amountNano,
+        messageHash: outboundHash,
         verified: false,
         finalized: false,
       });
