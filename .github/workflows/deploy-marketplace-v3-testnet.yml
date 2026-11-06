@@ -91,7 +91,21 @@ jobs:
 
       - name: Read-only postflight of deployed candidate accounts
         working-directory: .
-        run: node contracts/marketplace/scripts/postflight-v3-candidate.mjs contracts/marketplace/v3-testnet-deployment.log v3-testnet-candidate-postflight.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/postflight-v3-candidate.mjs contracts/marketplace/v3-testnet-deployment.log v3-testnet-candidate-postflight.json
+          node -e '
+            const fs = require("node:fs");
+            const report = JSON.parse(fs.readFileSync("v3-testnet-candidate-postflight.json", "utf8"));
+            const lines = ["", "## Read-only V3 on-chain postflight", ""];
+            for (const name of ["marketplace", "escrow", "coordinator"]) {
+              const contract = report.report.contracts[name];
+              lines.push("- " + name + ": " + contract.address + " (active=" + contract.active + ", observed code hash=" + contract.codeHash + ")");
+            }
+            lines.push("", "Observed hashes are not trusted build hashes. Bindings, settlement, and mainnet approval remain unverified.");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\\n") + "\\n");
+          '
 
       - name: Upload candidate deployment evidence
         if: always()
