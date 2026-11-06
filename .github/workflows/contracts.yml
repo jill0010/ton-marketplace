@@ -89,6 +89,19 @@ jobs:
           FIXTURE_EMULATION: "true"
         run: acton script scripts/rehearse-testnet-fixture-listing.tolk
 
+      - name: Rehearse experimental V3 reserve-gated purchase and reviewed refund
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/rehearse-v3-reserve-purchase.tolk
+
+      - name: Rehearse experimental V3 funding-failure custody gate
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+          TEST_BAD_VAULT: "true"
+        run: acton script scripts/rehearse-v3-reserve-purchase.tolk
+
       - name: Test
         run: acton test --backtrace full
 
