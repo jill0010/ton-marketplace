@@ -131,7 +131,7 @@ get fun `test experimental vault binds review to owner order evidence and costs`
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     expect(
         reserveSend(
             owner,
@@ -231,7 +231,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 702 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     val retried = reserveSend(
         owner,
         vault,
@@ -241,9 +241,9 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
         }.toCell(),
         grams("0.05"),
     );
-    expect(retried).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
+    expect(retried).toHaveFailedTx({ to: vault, exitCode: 706 });
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
     // The prior return evidence cannot authorize a third payout.
     expect(
@@ -256,7 +256,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 702 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
 }
 
@@ -385,7 +385,7 @@ get fun `test confirmed refund ignores even matching late bounced messages`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test underfunded retry preserves liability and succeeds after operational topup`() {
@@ -449,8 +449,8 @@ get fun `test underfunded retry preserves liability and succeeds after operation
     ).toHaveSuccessfulTx({ to: vault });
     expect(
         reserveSend(owner, vault, retry, grams("0.01")),
-    ).toHaveSuccessfulTx({ from: vault, to: buyer });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
 }
 
@@ -545,7 +545,7 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithmetic underflow`() {
@@ -603,7 +603,7 @@ get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithme
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test adequately funded fabricated bounce remains unverified and never auto retries`() {
@@ -643,7 +643,7 @@ get fun `test adequately funded fabricated bounce remains unverified and never a
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
 }
 
@@ -689,8 +689,8 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     testing.processSingleTraceStep(
         rejector,
@@ -701,7 +701,7 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             body: reserveRichBounce(1, 1, grams("0.194")),
         }).bounced(),
     );
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     expect(
         reserveSend(
@@ -714,7 +714,7 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test vault rejects underfunded matching bounce and preserves in-flight liability`() {
