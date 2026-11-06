@@ -8,6 +8,7 @@ type MessageRow = {
 type WalletTransaction = {
   account?: unknown;
   hash?: unknown;
+  lt?: unknown;
   mc_block_seqno?: unknown;
   emulated?: unknown;
   description?: {
