@@ -29,11 +29,26 @@ export function correlateV3RefundBounce({
     };
   }
   const candidates = [];
+  const transactionHashes = vaultResponse.transactions.map((tx) => tx?.transaction_id?.hash);
+  const uniqueTransactionHash = (hash) => typeof hash === "string" && hash.length > 0 &&
+    transactionHashes.filter((candidate) => candidate === hash).length === 1;
+  const bounceMessageHashes = incoming.candidates.map((candidate) => candidate.messageHash);
+  const uniqueBounceMessageHash = (hash) => typeof hash === "string" && hash.length > 0 &&
+    bounceMessageHashes.filter((candidate) => candidate === hash).length === 1;
+  let identityConflict = false;
   for (const sent of outgoing.matches) {
-    if (!sent.transactionHash || !decimal(sent.amountNano)) continue;
+    if (!uniqueTransactionHash(sent.transactionHash)) {
+      identityConflict = true;
+      continue;
+    }
+    if (!decimal(sent.amountNano)) continue;
     for (const bounce of incoming.candidates) {
-      if (!bounce.transactionHash || !bounce.messageHash ||
-          !decimal(bounce.amountNano) ||
+      if (!uniqueTransactionHash(bounce.transactionHash) ||
+          !uniqueBounceMessageHash(bounce.messageHash)) {
+        identityConflict = true;
+        continue;
+      }
+      if (!decimal(bounce.amountNano) ||
           BigInt(bounce.amountNano) > BigInt(sent.amountNano)) continue;
       // Match the experimental contract's maximum 0.01 TON bounce fee loss.
       const allowance = 10000000n;
@@ -56,7 +71,7 @@ export function correlateV3RefundBounce({
     }
   }
   // Candidate values must never be summed as verified recovered principal.
-  const ambiguous = candidates.length > 1 ||
+  const ambiguous = identityConflict || candidates.length > 1 ||
     new Set(candidates.map((c) => c.bounceTransactionHash)).size !== candidates.length ||
     new Set(candidates.map((c) => c.outgoingTransactionHash)).size !== candidates.length;
   return {
@@ -65,6 +80,7 @@ export function correlateV3RefundBounce({
       linkageStatus: ambiguous ? "AMBIGUOUS_UNPROVEN" : "UNPROVEN",
     })),
     ambiguous,
+    identityConflict,
     verifiedReturnedNano: "0",
     accountingStatus: "NO_VERIFIED_PRINCIPAL",
     // Do not use any of these candidates to mutate vault state or release funds.
