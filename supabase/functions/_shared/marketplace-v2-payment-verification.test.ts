@@ -55,7 +55,17 @@ Deno.test("rejects incomplete traces, missing root linkage, and duplicate Market
   };
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ is_incomplete: true }), input));
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ mc_seqno_end: "0" }), input));
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ trace_info: { pending_messages: 1 } }), input));
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ trace_info: {} }), input));
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(trace({ transactions: {} }), input));
+
+  const duplicateRoot = trace();
+  (duplicateRoot.transactions as Record<string, unknown>)["e".repeat(64)] = {
+    ...(duplicateRoot.transactions as Record<string, Record<string, unknown>>)[rootHash],
+    hash: "e".repeat(64),
+  };
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(duplicateRoot, input));
+
   const duplicate = trace();
   (duplicate.transactions as Record<string, unknown>)["d".repeat(64)] = {
     ...(duplicate.transactions as Record<string, Record<string, unknown>>)[marketTxHash],
