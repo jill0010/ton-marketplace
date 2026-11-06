@@ -14,14 +14,16 @@ fun listTestFixture(
     seller: address,
     nftItem: address,
     collection: address,
+    administrator: address,
+    itemIndex: uint256,
 ) {
     assert (collection != seller) throw 409;
-    assert (marketplace.ownerV2() == seller && escrow.owner() == seller) throw 401;
+    assert (marketplace.ownerV2() == administrator && escrow.owner() == administrator) throw 401;
     assert (marketplace.escrowV2() == escrow.address) throw 401;
     assert (escrow.marketplace() == marketplace.address) throw 401;
     val before = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert ((before.get(0) as int) == -1) throw 402;
-    assert ((before.get(1) as int) == 0) throw 402;
+    assert ((before.get(1) as int) == itemIndex) throw 402;
     assert ((before.get(2) as address) == collection) throw 402;
     assert ((before.get(3) as address) == seller) throw 402;
     // Single-use guard: stop before spending if this asset has a reservation.
@@ -31,17 +33,17 @@ fun listTestFixture(
     assert (
         code.hash() == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
     ) throw 402;
-    val paused = escrow.sendSetCollectionStatusV2(seller, collection, 2, { value: grams("0.05") });
+    val paused = escrow.sendSetCollectionStatusV2(administrator, collection, 2, { value: grams("0.05") });
     assert (paused.waitForFirstTransaction() != null) throw 404;
     val configured = escrow.sendSetCollectionItemCodeV2(
-        seller,
+        administrator,
         collection,
         3,
         code,
         { value: grams("0.05") },
     );
     assert (configured.waitForFirstTransaction() != null) throw 404;
-    val enabled = escrow.sendSetCollectionStatusV2(seller, collection, 1, { value: grams("0.05") });
+    val enabled = escrow.sendSetCollectionStatusV2(administrator, collection, 1, { value: grams("0.05") });
     assert (enabled.waitForFirstTransaction() != null) throw 404;
 
     val productId = marketplace.nextProductIdV2();
@@ -52,7 +54,7 @@ fun listTestFixture(
         queryId,
         nftItem,
         collection,
-        0,
+        itemIndex,
         3,
         grams("0.01"),
         { value: grams("0.2") },
@@ -99,9 +101,13 @@ fun listTestFixture(
 
 fun runTestnetFixtureListing() {
     assert (env<bool>("TESTNET_LISTING_ENABLED") ?? false) throw 401;
-    val seller = scripts.wallet("deployer");
+    val seller = scripts.wallet("seller");
+    val administrator = scripts.wallet("deployer");
     assert (
-        seller.address == parseAddress("kQDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPeEr")
+        seller.address == parseAddress("kQASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bAtx")
+    ) throw 401;
+    assert (
+        administrator.address == parseAddress("kQDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPeEr")
     ) throw 401;
     val marketplace = MarketplaceV2 {
         address: parseAddress("kQCvvuBddeebgdI08jUkTGzfulLRg2B8hqXWZrlHigKUsdNZ"),
@@ -113,7 +119,9 @@ fun runTestnetFixtureListing() {
         marketplace,
         escrow,
         seller.address,
-        parseAddress("kQBOI9-mfGHvWhW9qMRT4PGXpMBybDDIRqvp3towexy72p90"),
-        seller.address,
+        parseAddress("kQCq13VYJqQ0Oov-a2-MKE57MWIuEtiQaoF_lYNCAEnAofhm"),
+        administrator.address,
+        administrator.address,
+        1,
     );
 }
