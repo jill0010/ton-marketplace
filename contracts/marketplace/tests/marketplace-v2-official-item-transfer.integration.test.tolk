@@ -23,6 +23,8 @@ get fun `test Marketplace V2 accepts a real deployed allowlisted NFT Item TEP-62
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
         controller: owner.address,
         escrow: owner.address,
+        marketplace: owner.address,
+        testNftItem: owner.address,
         rejectAction: true,
     });
 
