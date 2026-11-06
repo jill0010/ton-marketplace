@@ -21,7 +21,8 @@ export function createLiability(identity) {
   hash(identity.paymentHash);
   return Object.freeze({
     ...identity, reserveNano: 200000000n, phase: "unreconciled",
-    refundNano: null, evidenceHash: null, attempt: 0, messageHash: null, messageHashes: Object.freeze([]),
+    refundNano: null, evidenceHash: null, attempt: 0, messageHash: null, messageHashes: Object.freeze([]), receiptEvidenceHash: null,
+    receiptEvidenceHashes: Object.freeze([]),
   });
 }
 export function approveReconciliation(state, reconciliation) {
@@ -83,6 +84,8 @@ export function observeResult(state, observation) {
   check(observation.paymentHash === state.paymentHash, "Receipt payment identity mismatch");
   check(["credited", "bounced"].includes(observation.kind), "Receipt is not terminal");
   const receiptEvidenceHash = hash(observation.receiptEvidenceHash);
+  check(!state.receiptEvidenceHashes.includes(receiptEvidenceHash),
+    "Reused refund receipt evidence");
   if (observation.kind === "credited") {
     check(observation.receiverSuccess === true, "Receiver did not complete");
     check(observation.creditNano === state.refundNano, "Receiver credit mismatch");
@@ -92,5 +95,6 @@ export function observeResult(state, observation) {
       "Returned principal not proven; retry blocked");
   }
   return Object.freeze({ ...state, receiptEvidenceHash,
+    receiptEvidenceHashes: Object.freeze([...state.receiptEvidenceHashes, receiptEvidenceHash]),
     phase: observation.kind === "credited" ? "paid" : "bounced" });
 }
