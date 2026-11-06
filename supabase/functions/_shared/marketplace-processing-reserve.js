@@ -1,0 +1,124 @@
+const DECIMAL_NANO = /^(0|[1-9][0-9]*)$/;
+const RAW_ADDRESS = /^-?[0-9]+:[0-9a-f]{64}$/i;
+const HASH = /^[0-9a-f]{64}$/i;
+
+function parseNano(value, label) {
+  if (typeof value !== "string" || !DECIMAL_NANO.test(value)) {
+    throw new Error(`Invalid ${label}`);
+  }
+  return BigInt(value);
+}
+
+function normalizeHash(value) {
+  if (typeof value !== "string" || !HASH.test(value)) {
+    throw new Error("Invalid root transaction hash");
+  }
+  return value.toLowerCase();
+}
+
+function normalizeRawAddress(value, label) {
+  if (typeof value !== "string" || !RAW_ADDRESS.test(value)) {
+    throw new Error(`Invalid ${label} account address`);
+  }
+  return value.toLowerCase();
+}
+
+function getTransactions(trace) {
+  if (trace.transactions && typeof trace.transactions === "object" &&
+    !Array.isArray(trace.transactions)) {
+    return Object.entries(trace.transactions).map(([hash, tx]) => ({
+      hash: typeof tx?.hash === "string" ? tx.hash : hash,
+      ...tx,
+    }));
+  }
+  if (Array.isArray(trace.transactions_full)) return trace.transactions_full;
+  throw new Error("Trace is missing its full transaction set");
+}
+
+/**
+ * Calculates fees attributable to the Marketplace, Escrow and NFT Item
+ * accounts in one complete TON trace. Buyer/seller/treasury wallet fees are
+ * deliberately excluded because they are not paid from the Marketplace's
+ * processing reserve.
+ *
+ * This is a read-only reconciliation result. It does not authorize or send
+ * a refund. The caller must separately validate the order's final chain state.
+ */
+export function calculateMarketplaceProcessingReserve(trace, input) {
+  if (!trace || typeof trace !== "object" || Array.isArray(trace)) {
+    throw new Error("Invalid TON trace");
+  }
+  if (trace.is_incomplete !== false) {
+    throw new Error("TON trace is incomplete");
+  }
+  if (!trace.trace_info || trace.trace_info.pending_messages !== 0) {
+    throw new Error("TON trace still has pending messages");
+  }
+  if (typeof trace.trace_id !== "string" || trace.trace_id.length === 0) {
+    throw new Error("TON trace has no trace ID");
+  }
+  const mcSeqnoEnd = parseNano(String(trace.mc_seqno_end ?? ""), "trace final masterchain sequence");
+  if (mcSeqnoEnd <= 0n) throw new Error("TON trace is not finalized");
+
+  const rootHash = normalizeHash(input.rootTransactionHash);
+  const reserve = parseNano(input.reserveNano, "processing reserve");
+  const marketplace = normalizeRawAddress(input.marketplaceAddress, "Marketplace");
+  const escrow = normalizeRawAddress(input.escrowAddress, "Escrow");
+  const nftItem = normalizeRawAddress(input.nftItemAddress, "NFT Item");
+  const buyer = normalizeRawAddress(input.buyerAddress, "buyer");
+  const seller = normalizeRawAddress(input.sellerAddress, "seller");
+  const treasury = normalizeRawAddress(input.treasuryAddress, "treasury");
+
+  const feeAccounts = new Set([marketplace, escrow, nftItem]);
+  const allowedAccounts = new Set([marketplace, escrow, nftItem, buyer, seller, treasury]);
+  const transactions = getTransactions(trace);
+  if (transactions.length === 0) throw new Error("TON trace contains no transactions");
+
+  let rootFound = false;
+  let processingCost = 0n;
+  const feesByAccount = new Map();
+  const seenTransactions = new Set();
+
+  for (const tx of transactions) {
+    if (!tx || typeof tx !== "object") throw new Error("TON trace contains an invalid transaction");
+    const txHash = normalizeHash(tx.hash);
+    if (seenTransactions.has(txHash)) throw new Error("TON trace contains a duplicate transaction");
+    seenTransactions.add(txHash);
+    if (txHash === rootHash) rootFound = true;
+
+    const account = normalizeRawAddress(tx.account, "transaction");
+    if (!allowedAccounts.has(account)) {
+      throw new Error("TON trace contains an unexpected account; manual review required");
+    }
+    const fee = parseNano(tx.total_fees, "transaction total fee");
+    if (feeAccounts.has(account)) {
+      processingCost += fee;
+      feesByAccount.set(account, (feesByAccount.get(account) ?? 0n) + fee);
+    }
+  }
+
+  if (!rootFound) throw new Error("Payment transaction is not part of the returned trace");
+  if (!transactions.some((tx) => tx.account?.toLowerCase?.() === marketplace)) {
+    throw new Error("TON trace does not include a Marketplace transaction");
+  }
+  if (!transactions.some((tx) => tx.account?.toLowerCase?.() === escrow)) {
+    throw new Error("TON trace does not include an Escrow transaction");
+  }
+
+  const shortfall = processingCost > reserve;
+  const refundable = shortfall ? 0n : reserve - processingCost;
+  return {
+    traceId: trace.trace_id,
+    transactionCount: transactions.length,
+    reserveNano: reserve.toString(),
+    actualProcessingCostNano: processingCost.toString(),
+    refundableNano: refundable.toString(),
+    shortfallNano: shortfall ? (processingCost - reserve).toString() : "0",
+    status: shortfall ? "manual_review_shortfall" : "preview_ready",
+    feesByAccount: Object.fromEntries(
+      [...feesByAccount.entries()].map(([account, fee]) => [account, fee.toString()]),
+    ),
+    previewOnly: true,
+    refundAuthorized: false,
+  };
+}
