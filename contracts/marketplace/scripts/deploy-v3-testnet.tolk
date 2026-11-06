@@ -26,7 +26,7 @@ fun main() {
 
     if (deployer.address == treasuryAddress) {
         println("Deployment aborted: owner and platform treasury must be different wallets");
-        return;
+        throw 804;
     }
 
     val initial = TestMarketplaceStorageV3 {
@@ -105,8 +105,8 @@ fun main() {
         { value: grams("0.5") },
     );
     if (marketplaceRes.waitForFirstTransaction() == null) {
-        println("Marketplace V2 deployment failed");
-        return;
+        println("Marketplace V3 deployment failed");
+        throw 805;
     }
 
     println("Deploying NFT Escrow V2 to {}", escrow.address);
@@ -116,7 +116,7 @@ fun main() {
     );
     if (escrowRes.waitForFirstTransaction() == null) {
         println("NFT Escrow V2 deployment failed");
-        return;
+        throw 806;
     }
 
     val configureEscrow = marketplace.sendSetMarketplaceV2Escrow(
@@ -125,8 +125,8 @@ fun main() {
         { value: grams("0.05") },
     );
     if (configureEscrow.waitForFirstTransaction() == null) {
-        println("Marketplace V2 Escrow configuration failed");
-        return;
+        println("Marketplace V3 Escrow configuration failed");
+        throw 807;
     }
 
     val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
@@ -135,21 +135,21 @@ fun main() {
         { value: grams("0.05") },
     );
     if (configureTreasury.waitForFirstTransaction() == null) {
-        println("Marketplace V2 Treasury configuration failed");
-        return;
+        println("Marketplace V3 Treasury configuration failed");
+        throw 808;
     }
 
     if (!marketplace.escrowConfiguredV2() || marketplace.escrowV2() != escrow.address) {
-        println("Marketplace V2 Escrow verification failed");
-        return;
+        println("Marketplace V3 Escrow verification failed");
+        throw 809;
     }
     if (!marketplace.treasuryConfiguredV2() || marketplace.treasuryV2() != treasuryAddress) {
-        println("Marketplace V2 Treasury verification failed");
-        return;
+        println("Marketplace V3 Treasury verification failed");
+        throw 810;
     }
     if (escrow.marketplace() != marketplace.address || escrow.owner() != deployer.address) {
         println("NFT Escrow V2 configuration verification failed");
-        return;
+        throw 811;
     }
 
     println("Marketplace V3 testnet candidate deployed at {}", marketplace.address);
