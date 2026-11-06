@@ -57,6 +57,9 @@ export function findFinalizedMarketplaceBuyInTrace(
     throw new Error("TON payment trace still has pending messages");
   }
   if (typeof value.trace_id !== "string" || value.trace_id.length === 0) throw new Error("TON trace has no trace ID");
+  if (typeof value.mc_seqno_end !== "string" || !/^[1-9][0-9]*$/.test(value.mc_seqno_end)) {
+    throw new Error("TON payment trace has no finalized masterchain sequence");
+  }
   if (!value.transactions || typeof value.transactions !== "object" || Array.isArray(value.transactions)) {
     throw new Error("TON trace is missing its transaction map");
   }
