@@ -44,7 +44,14 @@ struct (0x72730203) TestReserveAllocationFailed {
     vault: address
 }
 
-type TestReserveCoordinatorMessage = AllocateTestReserve | TestReserveFunded
+struct (0x72730204) RetryTestReserveAllocationAck {
+    orderId: uint64
+}
+
+type TestReserveCoordinatorMessage =
+    | AllocateTestReserve
+    | TestReserveFunded
+    | RetryTestReserveAllocationAck
 
 fun TestReserveCoordinatorStorage.load(): TestReserveCoordinatorStorage {
     return TestReserveCoordinatorStorage.fromCell(contract.getData());
@@ -110,6 +117,24 @@ fun onInternalMessage(in: InMessage) {
                 value: grams("0.25"),
                 dest: destination,
                 body: FundTestReserve { orderId: msg.orderId },
+            }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+        }
+        RetryTestReserveAllocationAck => {
+            assert (in.senderAddress == storage.owner) throw 721;
+            val found = storage.bindings.get(msg.orderId);
+            assert (found.isFound) throw 722;
+            val binding = TestReserveBinding.fromCell(found.loadValue());
+            assert (binding.status == 2) throw 723;
+            assert (in.valueCoins >= grams("0.01")) throw 724;
+            createMessage({
+                bounce: BounceMode.NoBounce,
+                value: grams("0.005"),
+                dest: storage.marketplace,
+                body: TestReserveAllocationConfirmed {
+                    orderId: msg.orderId,
+                    paymentHash: binding.paymentHash,
+                    vault: binding.vault,
+                },
             }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
         TestReserveFunded => {
