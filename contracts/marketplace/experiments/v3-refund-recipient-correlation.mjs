@@ -74,7 +74,9 @@ export function correlateV3RefundRecipient({
       // A transaction reported as aborted or unsuccessful is not a receipt.
       // Absence of these fields remains unverified, never a success claim.
       if (tx?.description?.aborted === true || tx?.description?.compute_ph?.success === false ||
-          tx?.description?.action?.success === false) continue;
+          tx?.description?.action?.success === false ||
+          tx?.description?.bounce?.type === "ok" ||
+          tx?.description?.bounce?.type === "no-funds") continue;
       recipientCandidates.push({
         outboundTransactionHash: match.transactionHash,
         inboundTransactionHash: recipientTxHash,
