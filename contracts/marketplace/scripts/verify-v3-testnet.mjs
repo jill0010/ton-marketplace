@@ -63,12 +63,17 @@ export async function verifyV3Testnet(addresses, fetcher = fetch) {
       throw new Error(`Invalid TON Center response for ${name}`);
     }
     const state = data.result.state;
-    results[name] = { address, state, active: state === "active" };
+    // Active account alone is insufficient: require a nonempty on-chain code BOC.
+    const code = data.result.code;
+    const codePresent = typeof code === "string" && code.length > 0 &&
+      code !== "te6ccgEBAQEAAgAAAA==";
+    results[name] = { address, state, active: state === "active", codePresent };
   }
   return {
     network: "testnet",
     contracts: results,
     allActive: Object.values(results).every((item) => item.active),
+    allCodePresent: Object.values(results).every((item) => item.codePresent),
     // Active code is not proof of correct code hash, bindings, funding, or security.
     codeHashesVerified: false,
     bindingsVerified: false,
@@ -86,7 +91,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       coordinator: process.env.V3_TESTNET_COORDINATOR_ADDRESS,
     });
     console.log(JSON.stringify(report, null, 2));
-    if (!report.allActive) process.exitCode = 1;
+    if (!report.allActive || !report.allCodePresent) process.exitCode = 1;
   } catch (error) {
     console.error(`V3 testnet postflight blocked: ${error.message}`);
     process.exitCode = 1;
