@@ -17,6 +17,7 @@ on:
       - 'contracts/marketplace/contracts/TestMarketplaceReserveV3.tolk'
       - 'contracts/marketplace/experiments/v3-*.mjs'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness.mjs'
+      - 'contracts/marketplace/scripts/check-v3-testnet-funded-readiness.mjs'
 
 permissions:
   contents: read
@@ -54,6 +55,8 @@ jobs:
           fi
           grep -Fq "MAINNET RELEASE BLOCKED" /tmp/v3-release-gate.log
           echo "V3 mainnet release gate confirmed CLOSED"
+      - name: Report funded V3 testnet trial blockers (read only)
+        run: node contracts/marketplace/scripts/check-v3-testnet-funded-readiness.mjs
       - name: Summary
         shell: bash
         run: |
@@ -62,6 +65,7 @@ jobs:
             echo
             echo "- Offline reserve and evidence tests executed."
             echo "- Production V3 release gate remains closed."
+            echo "- Funded testnet trial readiness reported separately; no signer used."
             echo "- No wallet secrets read, no deployment, no transaction signed or broadcast."
             echo "- Real funded testnet end-to-end deployment remains BLOCKED pending deployable audited V3 contracts and a reviewed transaction workflow."
           } >> "$GITHUB_STEP_SUMMARY"
