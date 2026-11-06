@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasPlausibleContractCode, parseV3ContractCode, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
+import { hasPlausibleContractCode, parseV3ContractCode, compareV3CodeHashes, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
 
 const addresses = {
   marketplace: "0:" + "1".repeat(64),
@@ -77,4 +77,15 @@ test("contract BOC decoder exposes a reproducible 256-bit code hash", () => {
   // which may still decode as a different valid cell.
   corrupted[0] ^= 0xff;
   assert.equal(parseV3ContractCode(corrupted.toString("base64")), null);
+});
+
+test("code hash comparison fails closed without explicit expected hashes", () => {
+  const hash = "a".repeat(64);
+  const contracts = Object.fromEntries(["marketplace", "escrow", "coordinator"].map(name => [name, { codeHash: hash }]));
+  assert.equal(compareV3CodeHashes(contracts, null).verified, false);
+  assert.equal(compareV3CodeHashes(contracts, { marketplace: hash }).verified, false);
+  assert.equal(compareV3CodeHashes(contracts, { marketplace: hash, escrow: hash, coordinator: "bad" }).verified, false);
+  const expected = { marketplace: hash, escrow: hash, coordinator: hash };
+  assert.equal(compareV3CodeHashes(contracts, expected).verified, true);
+  assert.equal(compareV3CodeHashes(contracts, { ...expected, escrow: "b".repeat(64) }).verified, false);
 });
