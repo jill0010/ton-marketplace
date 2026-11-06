@@ -152,12 +152,6 @@ fun main() {
         throw 811;
     }
 
-    println("Marketplace V3 testnet candidate deployed at {}", marketplace.address);
-    println("NFT Escrow V2 deployed at {}", escrow.address);
-    println("Marketplace owner: {}", deployer.address);
-    println("Platform treasury: {}", treasuryAddress);
-    println("Escrow binding and immutable treasury configuration verified");
-    println("No collections are approved; listings remain unavailable until official collection policy is configured");
     val coordinatorState: ContractState = {
         code: build("TestReserveCoordinator"),
         data: TestReserveCoordinatorStorage {
@@ -180,7 +174,10 @@ fun main() {
             dest: coordinatorDestination,
         }),
     );
-    assert (coordinatorDeploy.waitForFirstTransaction() != null) throw 802;
+    if (coordinatorDeploy.waitForFirstTransaction() == null) {
+        println("Reserve Coordinator deployment transaction missing");
+        throw 802;
+    }
     val coordinatorConfigure = net.send(
         deployer.address,
         createMessage({
@@ -190,7 +187,11 @@ fun main() {
             body: SetTestReserveCoordinator { coordinator },
         }),
     );
-    assert (coordinatorConfigure.waitForFirstTransaction() != null) throw 803;
+    if (coordinatorConfigure.waitForFirstTransaction() == null) {
+        println("Marketplace V3 Coordinator configuration transaction missing");
+        throw 803;
+    }
+    println("Deployment transactions observed; independently verify coordinator code, binding and transaction success on-chain before funded tests.");
     println("V3 testnet candidate marketplace: {}", marketplace.address);
     println("V3 testnet candidate escrow: {}", escrow.address);
     println("V3 testnet candidate coordinator: {}", coordinator);
