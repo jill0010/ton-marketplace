@@ -149,3 +149,12 @@ Owner attestations are trusted review, not independently verified on-chain proof
 | `0x72730201` | `AllocateTestReserve` | Configured emulated marketplace requests one immutable per-order vault |
 
 These are prototype messages and do not add an entrypoint to deployed Marketplace V2.
+
+## Experimental V3 purchase funding gate (not deployed)
+
+| Opcode | Message | Purpose |
+|---|---|---|
+| `0x72730202` | `TestReserveAllocationConfirmed` | Coordinator forwards verified funding acknowledgement to experimental marketplace |
+| `0x72730301` | `SetTestReserveCoordinator` | One-time owner binding of experimental purchase coordinator |
+
+V3 uses a fresh storage schema and shares existing purchase/delivery wire messages for its emulator fixtures. This is not an upgrade to V2.
