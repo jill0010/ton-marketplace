@@ -91,6 +91,8 @@ jobs:
 
       - name: Read-only postflight of deployed candidate accounts
         working-directory: .
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
