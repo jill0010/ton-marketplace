@@ -143,17 +143,17 @@ get fun `test experimental vault binds review to owner order evidence and costs`
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 702 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     val confirm = ConfirmTestReserveReceipt {
         orderId: 1,
         queryId: 1,
         receiptHash: 789,
     }.toCell();
-    expect(reserveSend(owner, vault, confirm, grams("0.05"))).toHaveSuccessfulTx({ to: vault });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
+    expect(reserveSend(owner, vault, confirm, grams("0.05"))).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(
         reserveSend(owner, vault, confirm, grams("0.05")),
-    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
 }
 
 get fun `test experimental vault records zero residual without refund transfer`() {
@@ -351,7 +351,7 @@ get fun `test vault ignores forged stale malformed and wrong-amount bounced mess
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
 }
 
-get fun `test confirmed refund ignores even matching late bounced messages`() {
+get fun `test unverified owner receipt cannot finalize refund`() {
     val (vault, owner, _, buyer) = reserveInFlight();
     expect(
         reserveSend(
@@ -364,7 +364,7 @@ get fun `test confirmed refund ignores even matching late bounced messages`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveSuccessfulTx({ to: vault });
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     testing.processSingleTraceStep(
         buyer,
         createMessage({
@@ -374,7 +374,7 @@ get fun `test confirmed refund ignores even matching late bounced messages`() {
             body: reserveRichBounce(1, 1, grams("0.194")),
         }).bounced(),
     );
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(
         reserveSend(
             owner,
@@ -533,8 +533,8 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveSuccessfulTx({ to: vault });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(
         reserveSend(
             owner,
@@ -591,8 +591,8 @@ get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithme
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveSuccessfulTx({ to: vault });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(
         reserveSend(
             owner,
