@@ -26,16 +26,6 @@ function reply(data: Record<string, unknown>, status: number, origin: string) {
   return Response.json(data, { status, headers: cors(origin) });
 }
 
-function serviceKey(): string | undefined {
-  const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (legacy) return legacy;
-  try {
-    const keys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
-    return typeof keys.default === "string" ? keys.default : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin") ?? "";
@@ -47,11 +37,15 @@ Deno.serve(async (req: Request) => {
     const token = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return reply({ success: false, error: "Authentication required" }, 401, origin);
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const publishable = Deno.env.get("SUPABASE_ANON_KEY") ??
-      JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}").default;
-    const secret = serviceKey();
+    let publishable = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!publishable) {
+      try {
+        const keys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
+        publishable = typeof keys.default === "string" ? keys.default : undefined;
+      } catch { publishable = undefined; }
+    }
     const apiKey = Deno.env.get("TONCENTER_API_KEY");
-    if (!supabaseUrl || !publishable || !secret || !apiKey) {
+    if (!supabaseUrl || !publishable || !apiKey) {
       return reply({ success: false, error: "Server configuration unavailable" }, 503, origin);
     }
 
