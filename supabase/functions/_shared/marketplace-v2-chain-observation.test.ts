@@ -60,6 +60,7 @@ Deno.test("ignores unrelated, failed, unfinalized and unlinked transaction rows"
     tx({ mc_block_seqno: 0 }),
     tx({ description: { aborted: true, compute_ph: { success: false }, action: { success: false } } }),
     tx({ in_msg: { ...tx().in_msg, value: (price + 199_000_000n).toString() } }),
+    tx({ in_msg: { ...tx().in_msg, value: Number(price + 200_000_000n) } }),
   ];
   const observations = observeMarketplaceV2Buys(rows, marketplace.toString());
   if (observations.length !== 0) throw new Error("An invalid transaction was observed as a purchase");
