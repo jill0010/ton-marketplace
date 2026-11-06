@@ -161,15 +161,13 @@ fun onInternalMessage(in: InMessage) {
             }
         }
         RetryTestReserve => {
+            // Fail closed: an owner-supplied hash is not evidence that the
+            // original refund has returned. Never send a second payment
+            // from this experimental vault. Recovery needs a separately
+            // audited, independently verified settlement mechanism.
             assert (in.senderAddress == storage.owner) throw 701;
             assert (msg.orderId == identity.orderId) throw 702;
-            assert (storage.status == 4) throw 703;
-            assert (msg.returnEvidenceHash != 0) throw 702;
-            assert (msg.returnEvidenceHash != storage.evidenceHash) throw 702;
-            assert (msg.returnEvidenceHash != storage.receiptHash) throw 702;
-            assert (msg.returnEvidenceHash != identity.paymentHash) throw 702;
-            storage.receiptHash = msg.returnEvidenceHash;
-            dispatchTestReserve(mutate storage);
+            throw 706;
         }
         ConfirmTestReserveReceipt => {
             assert (in.senderAddress == storage.owner) throw 701;
