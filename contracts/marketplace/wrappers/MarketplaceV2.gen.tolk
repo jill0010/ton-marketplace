@@ -201,6 +201,10 @@ fun MarketplaceV2.orderV2(self, orderId: uint64): MarketplaceV2Order? {
     return net.runGetMethod(self.address, "orderV2", [orderId]);
 }
 
+fun MarketplaceV2.orderCellV2(self, orderId: uint64): cell? {
+    return net.runGetMethod(self.address, "orderCellV2", [orderId]);
+}
+
 fun MarketplaceV2.orderIdForProductV2(self, productId: uint64): uint64? {
     return net.runGetMethod(self.address, "orderIdForProductV2", [productId]);
 }
