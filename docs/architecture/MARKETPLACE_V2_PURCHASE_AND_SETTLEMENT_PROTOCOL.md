@@ -102,7 +102,7 @@ All cells/maps must be tested for round-trip serialization and 1023-bit cell lim
 
 ## Deployment gate
 
-No mainnet deployment is permitted until the complete purchase/delivery/refund/settlement path passes emulator tests, both contracts are built from the exact reviewed sources, testnet rehearsal succeeds with real official NFT collection items, contract addresses and code hashes are independently verified, and deployment keys are available through a secure signer. Never put seed phrases or private keys in GitHub, Supabase, chat, or CI secrets.
+No mainnet deployment is permitted until the complete purchase/delivery/refund/settlement path passes emulator tests, both contracts are built from the exact reviewed sources, testnet rehearsal succeeds with real official NFT collection items, contract addresses and code hashes are independently verified, and deployment uses a secure interactive signer. Never put production/mainnet seed phrases or private keys in GitHub, Supabase, chat, or CI secrets. Testnet keys, if used in automation, must belong to disposable low-value wallets only.
 
 
 ## Current implementation checkpoint (2026-11-06)
@@ -118,3 +118,10 @@ No mainnet deployment is permitted until the complete purchase/delivery/refund/s
 - The fixed 0.2 TON execution reserve is a current implementation parameter, not a finalized economic policy. The unused portion is not returned to the buyer. Mainnet activation remains blocked until this economic treatment is explicitly approved and documented.
 - The public listing verifier currently enables only verified Fragment Gift Item code hashes (`kind=3`). Collectible usernames and +888 numbers remain fail-closed until their TeleMint Item code hashes are independently verified and added to the contract and publisher allowlists. The deployment script intentionally approves no collections.
 - The storefront's escrow checkout remains disabled (`Coming Soon`); the V2 purchase ABI is implemented and emulator-tested, but a production TonConnect purchase/confirmation flow and chain-authoritative order indexing still need completion before customer sales.
+
+
+## Mainnet signer and preflight boundary (2026-11-06)
+
+- `.github/workflows/deploy-marketplace-v2-mainnet.yml` is a read-only preflight workflow. It no longer loads `DEPLOYER_MNEMONIC` and does not broadcast mainnet transactions.
+- The actual deployment command is `acton script scripts/deploy-v2.tolk --net mainnet --tonconnect`, which must be run separately with the authorized deployer wallet connected interactively. Do not replace this with a mainnet mnemonic stored in GitHub Actions, Supabase, or repository files.
+- A successful preflight is not authorization to deploy and is not proof that the public storefront is ready to accept customers.
