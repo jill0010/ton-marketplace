@@ -59,13 +59,13 @@ for (const hash of requiredLibraries) {
 if (missing.length) {
   const strict = process.env.REQUIRE_TESTNET_LIBRARIES === "true";
   console.warn(
-    "WARNING: Fragment Item libraries are not published on Testnet. " +
-    "Testnet cannot execute these official Fragment NFT Item contracts; " +
+    `WARNING: ${missing.length} required Fragment Item library/libraries are missing on Testnet. ` +
+    "Only Item variants that depend on a missing library are blocked; " +
     "local emulator tests register the verified library code directly. " +
     "This does not authorize or enable a Mainnet deployment.",
   );
   if (strict) {
-    console.error("Testnet fixture deployment blocked: required shared libraries are missing.");
+    console.error("Current fixture readiness blocked: it requires both libraries. An available variant needs its own deployment/transfer rehearsal before use.");
     process.exit(1);
   }
 } else {
