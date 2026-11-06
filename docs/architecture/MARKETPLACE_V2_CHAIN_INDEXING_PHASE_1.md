@@ -74,3 +74,10 @@ TON Center V3 exposes `GET /transactionsByMessage`, which accepts a message hash
 Zero matches remain unmatched; multiple exact matches are ambiguous and rejected. The resolved value is explicitly named `buyerWalletRootTransactionHash`. This is a read-only verification endpoint and does not persist anything. The upstream `in_msg_tx_hash` field is retained as a hint only; it is not trusted as the root hash.
 
 Tests cover the exact URL, unique valid match, wrong wallet, wrong message, failed transaction, no match and ambiguous matches.
+
+
+## Admin read-only order Cell inspection
+
+The `admin-inspect-marketplace-v2-order` Edge Function accepts one positive decimal uint64 `order_id`, authenticates the configured administrator, and calls TON Center V3 `POST /api/v3/runGetMethod` for the fixed configured Marketplace V2 address and the `orderCellV2` getter. The request encodes the ID as a hexadecimal TVM number stack entry. The response decoder accepts only a single documented cell stack entry (legacy V3 `type: cell, value: <base64 BOC>` or the typed TVM cell `tvm.stackEntryCell` form), then decodes the BOC against the exact MarketplaceV2Order layout and checks that the returned order ID equals the requested ID.
+
+This endpoint is read-only: it performs no database writes, signing, or transactions. It is not expected to work against the earlier Testnet deployment because that deployment predates the `orderCellV2` getter. It is not deployed yet. The function must be deployed only after confirming the current contract address and getter version; no deployment or chain action is part of this change.
