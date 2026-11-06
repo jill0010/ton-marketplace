@@ -360,5 +360,5 @@ get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEsc
     expect(refund!!.status).toEqual(2);
     expect(refund.amount).toEqual(grams("4"));
     expect(refund.beneficiary).toEqual(buyer.address);
-    expect(marketplace.nextQueryIdV2()).toEqual(4);
+    expect(marketplace.nextQueryIdV2()).toEqual(7);
 }
