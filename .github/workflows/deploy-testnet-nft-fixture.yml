@@ -1,0 +1,91 @@
+name: Deploy Testnet NFT Fixture
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_fixture:
+        description: "Deploy a synthetic NFT on TON Testnet with 1.5 test TON attached, plus wallet fees."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testnet-nft-fixture
+  cancel-in-progress: false
+
+jobs:
+  rehearsal:
+    if: ${{ inputs.confirm_testnet_fixture == true && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build and run contract tests
+        run: |
+          acton build
+          acton test --backtrace full
+      - name: Rehearse exact deployment script without a signer
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/deploy-testnet-nft-fixture.tolk
+
+  deploy:
+    needs: rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Check selected library on Testnet before loading signer
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          TESTNET_ITEM_VARIANT: peppermint
+          REQUIRE_TESTNET_LIBRARIES: "true"
+        run: node scripts/check-testnet-fragment-libraries.mjs
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build
+        run: acton build
+      - name: Deploy fixture on TON Testnet and verify owner
+        env:
+          DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "false"
+          TESTNET_FIXTURE_OWNER: "kQDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPeEr"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          trap 'rm -f wallets.toml' EXIT
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+          acton script scripts/deploy-testnet-nft-fixture.tolk --net testnet 2>&1 | tee testnet-fixture.log
+          grep -Fq "Test fixture deployed and ownership verified:" testnet-fixture.log
+          {
+            echo "## TON Testnet synthetic NFT fixture"
+            echo "Commit: $GITHUB_SHA"
+            grep -E "Fixture collection:|Fixture seller:|Test fixture deployed and ownership verified:" testnet-fixture.log
+            echo "Deployment attached 1.5 test TON, plus wallet network fees."
+            echo "Synthetic test asset using approved Item code; not an official Telegram gift."
+            echo "No Marketplace/Escrow deployment, collection enablement, purchase or refund was performed."
+          } >> "$GITHUB_STEP_SUMMARY"
