@@ -68,7 +68,7 @@ fun listTestFixture(marketplace: MarketplaceV2, escrow: NFTEscrowV2, seller: add
     println("Test price: 0.01 TON. No purchase or reserve refund performed.");
 }
 
-fun main() {
+fun runTestnetFixtureListing() {
     assert (env<bool>("TESTNET_LISTING_ENABLED") ?? false) throw 401;
     val seller = scripts.wallet("deployer");
     assert (seller.address == parseAddress("kQDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPeEr")) throw 401;
