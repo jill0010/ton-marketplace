@@ -75,7 +75,7 @@ export function calculateMarketplaceProcessingReserve(trace, input) {
   if (transactions.length === 0) throw new Error("TON trace contains no transactions");
 
   let rootFound = false;
-  let processingCost = 0n;
+  let observedFees = 0n;
   const feesByAccount = new Map();
   const seenTransactions = new Set();
 
@@ -92,7 +92,7 @@ export function calculateMarketplaceProcessingReserve(trace, input) {
     }
     const fee = parseNano(tx.total_fees, "transaction total fee");
     if (feeAccounts.has(account)) {
-      processingCost += fee;
+      observedFees += fee;
       feesByAccount.set(account, (feesByAccount.get(account) ?? 0n) + fee);
     }
   }
@@ -105,16 +105,20 @@ export function calculateMarketplaceProcessingReserve(trace, input) {
     throw new Error("TON trace does not include an Escrow transaction");
   }
 
-  const shortfall = processingCost > reserve;
-  const refundable = shortfall ? 0n : reserve - processingCost;
+  // Transaction total_fees show what each account paid, but they do not prove
+  // which nanotons came from this order's 0.2 TON reserve. The reserve is mixed
+  // with contract balances and fixed-value internal messages (e.g. 0.05/0.03 TON).
+  // Until a per-order value-flow ledger and terminal balance reconciliation exist,
+  // never turn observed fees into a customer refund amount.
   return {
     traceId: trace.trace_id,
     transactionCount: transactions.length,
     reserveNano: reserve.toString(),
-    actualProcessingCostNano: processingCost.toString(),
-    refundableNano: refundable.toString(),
-    shortfallNano: shortfall ? (processingCost - reserve).toString() : "0",
-    status: shortfall ? "manual_review_shortfall" : "preview_ready",
+    observedContractFeesNano: observedFees.toString(),
+    refundableNano: null,
+    shortfallNano: null,
+    status: "manual_review_attribution_unproven",
+    attributionVerified: false,
     feesByAccount: Object.fromEntries(
       [...feesByAccount.entries()].map(([account, fee]) => [account, fee.toString()]),
     ),
