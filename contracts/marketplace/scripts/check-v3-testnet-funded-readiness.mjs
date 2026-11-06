@@ -11,7 +11,10 @@ const required = [
   ["testnet transaction evidence collector", "scripts/collect-v3-testnet-evidence.mjs"],
   ["V3 contract audit signoff", "audits/v3-testnet-deployment-review.md"],
 ];
-const blockers = [];
+const blockers = [
+  { label: "receipt verification", path: "docs/architecture/V3_VAULT_RECEIPT_RETRY_TRUST_BOUNDARY.md", reason: "OWNER_ATTESTATION_NOT_INDEPENDENT_PROOF" },
+  { label: "refund retry verification", path: "docs/architecture/V3_VAULT_RECEIPT_RETRY_TRUST_BOUNDARY.md", reason: "RETRY_REQUIRES_VERIFIED_NON_DELIVERY" },
+];
 for (const [label, relative] of required) {
   const full = path.join(root, relative);
   try {
