@@ -26,6 +26,7 @@ on:
       - "supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql"
       - "supabase/migrations/20261106024422_lock_marketplace_processing_reserve_privileges.sql"
       - "scripts/check-marketplace-v2-processing-reserve-ledger.mjs"
+      - "scripts/check-marketplace-v2-payment-verifier-readonly.mjs"
       - "public/**"
       - "package.json"
       - "package-lock.json"
@@ -111,6 +112,9 @@ jobs:
 
       - name: Verify Marketplace V2 processing reserve ledger schema
         run: node scripts/check-marketplace-v2-processing-reserve-ledger.mjs
+
+      - name: Verify Marketplace V2 payment verifier remains read-only
+        run: node scripts/check-marketplace-v2-payment-verifier-readonly.mjs
 
       - name: Test Marketplace V2 processing reserve fee reconciliation
         run: node --test supabase/functions/_shared/marketplace-processing-reserve.test.mjs
