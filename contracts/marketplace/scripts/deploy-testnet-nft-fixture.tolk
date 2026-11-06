@@ -1,3 +1,4 @@
+import "@acton/fmt"
 import "@acton/env"
 import "@acton/io"
 import "@acton/emulation/network"
@@ -45,7 +46,7 @@ fun main() {
     val nftContent = beginCell().storeUint(1, 8).storeUint(120, 8).endCell();
 
     val auctionConfig = beginCell()
-        .storeAddress(collection.address)
+        .storeAddress(deployer.address)
         .storeCoins(grams("1"))
         .storeCoins(grams("1"))
         .storeUint(1, 8)
@@ -56,7 +57,7 @@ fun main() {
     val royaltyParams = beginCell()
         .storeUint(0, 16)
         .storeUint(100, 16)
-        .storeAddress(collection.address)
+        .storeAddress(deployer.address)
         .endCell();
 
     val deployBody = beginCell()
