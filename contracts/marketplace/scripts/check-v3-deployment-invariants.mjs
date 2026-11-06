@@ -25,12 +25,34 @@ export function inspectV3DeploymentScript(source) {
     /emulation\s*\|\|/.test(source);
   // A deployment error must not be reported as a successful script exit.
   const silentFailure = /(?:failed|aborted|verification failed)"\);\s*return;/i.test(source);
+  // Deployment must not report success before all transaction checks.
+  const orderedStages = [
+    "marketplaceRes.waitForFirstTransaction()",
+    "escrowRes.waitForFirstTransaction()",
+    "configureEscrow.waitForFirstTransaction()",
+    "configureTreasury.waitForFirstTransaction()",
+    "coordinatorDeploy.waitForFirstTransaction()",
+    "coordinatorConfigure.waitForFirstTransaction()",
+    'println("V3 testnet candidate marketplace:',
+  ];
+  const stagePositions = orderedStages.map((stage) => source.indexOf(stage));
+  const ordered = stagePositions.every((position, i) =>
+    position >= 0 && (i === 0 || position > stagePositions[i - 1]));
+  const guardedTransactions = [
+    "marketplaceRes", "escrowRes", "configureEscrow", "configureTreasury",
+    "coordinatorDeploy", "coordinatorConfigure",
+  ].every((name) => {
+    const match = source.match(new RegExp(`(?:if\\s*\\(\\s*${name}\\.waitForFirstTransaction\\(\\)\\s*==\\s*null\\s*\\)|assert\\s*\\(\\s*${name}\\.waitForFirstTransaction\\(\\)\\s*!=\\s*null\\s*\\))`));
+    return Boolean(match);
+  });
   return {
+    ordered,
+    guardedTransactions,
     requiredGuardsPresent: missing.length === 0,
     missing,
     unauthorizedBypass,
     silentFailure,
-    safeToAttemptTestnet: missing.length === 0 && !unauthorizedBypass && !silentFailure,
+    safeToAttemptTestnet: missing.length === 0 && !unauthorizedBypass && !silentFailure && ordered && guardedTransactions,
     mainnetApproved: false,
   };
 }
