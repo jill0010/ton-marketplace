@@ -232,7 +232,7 @@ fun main() {
     listTestFixture(
         marketplace,
         escrow,
-        seller.address,
+        scripts.wallet("seller").address,
         nftItem,
         testing.treasury("fixtureSeparateCollection").address,
         deployer.address,
