@@ -32,6 +32,12 @@ struct (0x72730201) AllocateTestReserve {
     paymentHash: uint256
 }
 
+struct (0x72730202) TestReserveAllocationConfirmed {
+    orderId: uint64
+    paymentHash: uint256
+    vault: address
+}
+
 type TestReserveCoordinatorMessage = AllocateTestReserve | TestReserveFunded
 
 fun TestReserveCoordinatorStorage.load(): TestReserveCoordinatorStorage {
@@ -112,6 +118,16 @@ fun onInternalMessage(in: InMessage) {
                 storage.bindings.set(msg.orderId, binding.toCell());
                 storage.save();
             }
+            createMessage({
+                bounce: BounceMode.NoBounce,
+                value: grams("0.005"),
+                dest: storage.marketplace,
+                body: TestReserveAllocationConfirmed {
+                    orderId: msg.orderId,
+                    paymentHash: binding.paymentHash,
+                    vault: binding.vault,
+                },
+            }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
     }
 }
