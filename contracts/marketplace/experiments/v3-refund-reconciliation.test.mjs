@@ -25,3 +25,25 @@ test("missing, stale, unfinalized or contradictory evidence freezes", () => {
   assert.equal(check({ outgoing: { ...outgoing, txHash: "wrong" }, recipient }), "UNKNOWN");
   assert.equal(check({ outgoing: { ...outgoing, amount: 1n }, recipient }), "UNKNOWN");
 });
+
+test("reconciliation rejects swapped addresses, replayed messages and inconsistent amounts", () => {
+  assert.equal(check({ outgoing: { ...outgoing, source: "other-vault" }, recipient }), "UNKNOWN");
+  assert.equal(check({ outgoing: { ...outgoing, destination: "attacker" }, recipient }), "UNKNOWN");
+  assert.equal(check({ outgoing: { ...outgoing, queryId: 2 }, recipient }), "UNKNOWN");
+  assert.equal(check({ recipient: { ...recipient, address: "attacker" } }), "UNKNOWN");
+  assert.equal(check({ recipient: { ...recipient, amount: 193000000n } }), "UNKNOWN");
+  assert.equal(check({ returned: { ...returned, outgoingTxHash: "other-tx" } }), "UNKNOWN");
+  assert.equal(check({ returned: { ...returned, originalMessageHash: "other-msg" } }), "UNKNOWN");
+  assert.equal(check({ returned: { ...returned, destination: "other-vault" } }), "UNKNOWN");
+  assert.equal(check({ returned: { ...returned, source: "other-buyer" } }), "UNKNOWN");
+  assert.equal(check({ returned: { ...returned, amount: 0n } }), "UNKNOWN");
+  assert.equal(check({ returned: { ...returned, amount: 195000000n } }), "UNKNOWN");
+});
+test("unfinalized outbound transaction cannot authorize a receipt or return", () => {
+  assert.equal(check({ outgoing: { ...outgoing, finalized: false }, recipient }), "UNKNOWN");
+  assert.equal(check({ outgoing: { ...outgoing, success: false }, returned }), "UNKNOWN");
+  assert.equal(check({ operation: { ...op, queryId: 0 }, recipient }), "UNKNOWN");
+  assert.equal(check({ operation: { ...op, amount: 0n }, recipient }), "UNKNOWN");
+  assert.equal(check({ operation: { ...op, messageHash: "" }, recipient }), "UNKNOWN");
+  assert.equal(mayAutoRetryReserveRefund(), false);
+});
