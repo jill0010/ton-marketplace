@@ -207,7 +207,8 @@ fun onBouncedMessage(in: InMessageBounced) {
         val originalInfo = RichBounceOriginalMsgInfo.fromCell(rich.originalInfo);
         if (
             originalInfo.valueCoins != storage.refundAmount ||
-            payment.orderId != identity.orderId || payment.queryId != storage.queryId ||
+            payment.orderId != identity.orderId ||
+            payment.queryId != storage.queryId ||
             payment.amount != storage.refundAmount
         ) {
             return;
