@@ -43,7 +43,7 @@ Automated Deno tests cover a valid V3 fixture, unrelated rows, failed and unfina
 Before any write path is enabled, the indexer must:
 
 1. Resolve the unique order ID through `orderIdForProductV2(productId)`; never infer it from transaction ordering.
-2. Read and decode `orderV2(orderId)`, including nested party, asset, settlement and operations cells.
+2. Read `orderCellV2(orderId)` to obtain the exact persisted order Cell rather than assuming a flattened TVM stack layout; decode the root and its nested party, asset, settlement and operations references against the declared `MarketplaceV2Order` structs. The existing typed `orderV2(orderId)` getter remains available for contract-side callers and tests.
 3. Verify buyer, seller, treasury, NFT Item, collection, escrow ID, gross amount, processing reserve, payment query ID and all payout/release query IDs against the immutable on-chain order.
 4. Follow the inbound message's transaction linkage to the buyer wallet root transaction and then request exactly one complete, finalized trace for that root.
 5. Verify the Marketplace, Escrow and NFT Item fee attribution and reconcile actual reserve cost without including unrelated wallet fees.
