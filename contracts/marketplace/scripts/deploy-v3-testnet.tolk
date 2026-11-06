@@ -19,7 +19,7 @@ fun main() {
     val expectedDeployer = env<address>("V3_TESTNET_DEPLOYER_ADDRESS");
     assert (emulation || expectedDeployer != null) throw 801;
     if (!emulation) {
-        assert (scripts.wallet("deployer").address == expectedDeployer) throw 801;
+        assert (scripts.wallet("deployer").address == expectedDeployer!) throw 801;
     }
     val deployer = scripts.wallet("deployer");
     // Mainnet can use one interactive TON Connect signer plus a public treasury
