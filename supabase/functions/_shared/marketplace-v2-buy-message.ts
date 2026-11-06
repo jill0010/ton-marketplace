@@ -1,4 +1,5 @@
 import { Address, Cell } from "npm:@ton/core@0.63.1";
+import { Buffer } from "node:buffer";
 
 export const MARKETPLACE_V2_BUY_OPCODE = 0x71b00100;
 export const MARKETPLACE_V2_PROCESSING_RESERVE_NANO = 200_000_000n;
@@ -12,7 +13,7 @@ export type DecodedBuyProductV2 = {
   totalPaymentNano: bigint;
 };
 
-function decodeBase64(value: string): Uint8Array {
+function decodeBase64(value: string): Buffer {
   if (!value || value.length > 100_000 || !/^[A-Za-z0-9_+/=-]+$/.test(value)) {
     throw new Error("Invalid TON message body encoding");
   }
@@ -20,7 +21,7 @@ function decodeBase64(value: string): Uint8Array {
   const binary = atob(normalized);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
+  return Buffer.from(bytes);
 }
 
 /**
