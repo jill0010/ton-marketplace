@@ -39,8 +39,13 @@ export function assessV3IndependentSettlement({
   // Equal candidate counts are not agreement on transaction identity.
   // Compare exact candidate identities from both providers as well.
   const identities = observations.map((o) => {
-    const outgoing = o.vaultResponse.transactions.flatMap((tx) =>
-      (tx?.out_msgs ?? []).map((msg) => [tx?.transaction_id?.hash, msg?.hash]));
+    const outgoing = o.vaultResponse.transactions.flatMap((tx) => {
+      const messages = (tx?.out_msgs ?? []).map((msg) =>
+        [tx?.transaction_id?.hash, msg?.hash]);
+      // Include the parent transaction even when it emitted no messages:
+      // otherwise two conflicting dispatch transaction hashes both yield [].
+      return messages.length ? messages : [[tx?.transaction_id?.hash, null]];
+    });
     const incoming = o.buyerResponse.transactions.map((tx) =>
       [tx?.transaction_id?.hash, tx?.in_msg?.hash]);
     return JSON.stringify({ outgoing: outgoing.sort(), incoming: incoming.sort() });
