@@ -181,9 +181,11 @@ fun onBouncedMessage(in: InMessageBounced) {
             val failedFound = failedStorage.bindings.get(failure.orderId);
             if (failedFound.isFound) {
                 var failedBinding = TestReserveBinding.fromCell(failedFound.loadValue());
-                if (failedBinding.status == 4 && in.senderAddress == failedStorage.marketplace &&
+                if (
+                    failedBinding.status == 4 && in.senderAddress == failedStorage.marketplace &&
                     failedBinding.paymentHash == failure.paymentHash &&
-                    failedBinding.vault == failure.vault) {
+                    failedBinding.vault == failure.vault
+                ) {
                     failedBinding.status = 3;
                     failedBinding.returnedNano = in.valueCoins as uint64;
                     failedStorage.bindings.set(failure.orderId, failedBinding.toCell());
