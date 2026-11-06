@@ -70,7 +70,24 @@ export function findFinalizedMarketplaceBuyInTrace(
   const marketplace = rawAddress(input.marketplaceAddress);
   if (!rootHash || !messageHash || !buyer || !marketplace) throw new Error("Payment trace identity inputs are invalid");
 
-  const txs = Object.values(value.transactions as Record<string, unknown>);
+  const txEntries = Object.entries(value.transactions as Record<string, unknown>);
+  const seenHashes = new Set<string>();
+  for (const [key, raw] of txEntries) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error("TON trace contains an invalid transaction");
+    }
+    const tx = raw as MarketplaceTraceTransaction;
+    const keyHash = hash256(key);
+    const txHash = hash256(tx.hash);
+    if (!keyHash || !txHash || keyHash !== txHash) {
+      throw new Error("TON trace transaction map key and hash do not match");
+    }
+    if (seenHashes.has(txHash)) {
+      throw new Error("TON trace contains a duplicate transaction hash");
+    }
+    seenHashes.add(txHash);
+  }
+  const txs = txEntries.map(([, tx]) => tx);
   const rootMatches = txs.filter((raw) => {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
     const tx = raw as MarketplaceTraceTransaction;
