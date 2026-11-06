@@ -21,6 +21,11 @@ export function correlateV3RefundBounce({
       if (!bounce.transactionHash || !bounce.messageHash ||
           !decimal(bounce.amountNano) ||
           BigInt(bounce.amountNano) > BigInt(sent.amountNano)) continue;
+      // Match the experimental contract's maximum 0.01 TON bounce fee loss.
+      const allowance = 10000000n;
+      const amount = BigInt(sent.amountNano);
+      const minimum = amount > allowance ? amount - allowance : amount;
+      if (BigInt(bounce.amountNano) < minimum) continue;
       // The provider's bounce message hash is not the original outbound
       // message hash. No unique linkage is inferred from address/amount.
       candidates.push({
@@ -36,8 +41,16 @@ export function correlateV3RefundBounce({
       });
     }
   }
+  // Candidate values must never be summed as verified recovered principal.
+  const ambiguous = candidates.length > 1 ||
+    new Set(candidates.map((c) => c.bounceTransactionHash)).size !== candidates.length;
   return {
-    candidates,
+    candidates: candidates.map((candidate) => ({
+      ...candidate,
+      linkageStatus: ambiguous ? "AMBIGUOUS_UNPROVEN" : "UNPROVEN",
+    })),
+    ambiguous,
+    verifiedReturnedNano: "0",
     proofStatus: "UNVERIFIED",
     mayRetry: false,
   };
