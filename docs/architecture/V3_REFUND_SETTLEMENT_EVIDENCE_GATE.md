@@ -102,3 +102,18 @@ To advance beyond offline evidence, collect independently verified testnet
 transaction inclusion, successful receiver execution, precise balance
 deltas and gas costs for each distinct order. Never reuse V2 order 1 as
 an unpaid refund liability.
+
+## Funded testnet deployment readiness (separate from offline preflight)
+
+`node contracts/marketplace/scripts/check-v3-testnet-funded-readiness.mjs`
+prints machine-readable blockers and deliberately reports
+`executionAllowed: false` and `fundedTrialReady: false`.
+The corresponding test asserts that these fail-closed fields cannot
+silently become true merely because GitHub Actions is green.
+
+The experimental V3 contract descriptions explicitly say
+simulation-only. There is no approved V3 testnet deployment script,
+independent post-deployment verification, chain evidence collector, or
+recorded contract audit signoff. Until these are reviewed and completed,
+**do not invoke the existing V2 deployment workflow for V3 testing**.
+The user's testnet-only authorization does not override this release gate.
