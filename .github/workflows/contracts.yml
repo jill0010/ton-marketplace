@@ -21,9 +21,12 @@ on:
       - ".github/workflows/contracts.yml"
   workflow_dispatch:
 
+# Keep a running contract verification alive when additional commits arrive.
+# Each commit must retain its own CI result; newer PR pushes must not cancel
+# an already-running safety check partway through its tests.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
 
 permissions: {}
 
