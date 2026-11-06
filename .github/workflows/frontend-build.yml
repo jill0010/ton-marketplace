@@ -155,5 +155,14 @@ jobs:
       - name: Type-check admin Marketplace V2 order inspection
         run: deno check --config supabase/functions/deno.json supabase/functions/admin-inspect-marketplace-v2-order/index.ts
 
+      - name: Test Marketplace V2 payment trace and order identity verification
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-payment-verification.test.ts
+
+      - name: Type-check Marketplace V2 payment verification
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v2-payment-verification.ts
+
+      - name: Type-check admin Marketplace V2 payment verifier
+        run: deno check --config supabase/functions/deno.json supabase/functions/admin-verify-marketplace-v2-payment/index.ts
+
       - name: Build production frontend
         run: npm run build
