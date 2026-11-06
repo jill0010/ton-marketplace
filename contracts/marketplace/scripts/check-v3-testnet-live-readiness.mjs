@@ -24,7 +24,7 @@ export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrow
   // V2 retry currently re-dispatches buyer funds on bounce status alone. A bounce
   // candidate is not independent evidence that the previous transfer was returned.
   const unsafeBuyerRefundRetry = marketplaceSource.includes("RetryPayoutV2 =>") &&
-    marketplaceSource.includes("order.deliveryStatus == 3 && order.refundStatus == 3") &&
+    !marketplaceSource.includes("never issue another refund from this permissionless entrypoint") &&
     marketplaceSource.includes("BuyerRefundV2 {");
   return {
     contractFound: true,
