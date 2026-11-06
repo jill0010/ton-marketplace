@@ -3,7 +3,7 @@
 // A self-reported evidence bundle can never be upgraded to chain proof.
 import { auditV3RefundReleaseGate } from "./v3-refund-release-gate.mjs";
 
-const raw = (x) => typeof x === "string" && /^-?1:[a-fA-F0-9]{64}$|^0:[a-fA-F0-9]{64}$/.test(x);
+const raw = (x) => typeof x === "string" && /^(?:-1|0):[a-fA-F0-9]{64}$/.test(x);
 const hash = (x) => typeof x === "string" &&
   (/^[a-fA-F0-9]{64}$/.test(x) || /^[A-Za-z0-9+/]{43}=$/.test(x));
 const decimal = (x) => typeof x === "string" && /^(0|[1-9][0-9]*)$/.test(x);
@@ -18,6 +18,7 @@ export function auditV3TestnetEvidenceBundle(bundle) {
     throw new TypeError("Invalid V3 testnet evidence bundle");
   }
   const seen = new Set();
+  const seenHashes = new Set();
   const reasons = [];
   for (const item of bundle.transactions) {
     if (!item || !hash(item.hash) || !decimal(item.lt) ||
@@ -26,6 +27,15 @@ export function auditV3TestnetEvidenceBundle(bundle) {
     const key = item.account.toLowerCase() + ":" + item.lt;
     if (seen.has(key)) reasons.push("DUPLICATE_ACCOUNT_LT");
     seen.add(key);
+    const canonicalHash = item.hash.toLowerCase();
+    if (seenHashes.has(canonicalHash)) reasons.push("DUPLICATE_TRANSACTION_HASH");
+    seenHashes.add(canonicalHash);
+    if (item.role === "funding" && item.account.toLowerCase() !== bundle.vault.toLowerCase()) {
+      reasons.push("FUNDING_ACCOUNT_MISMATCH");
+    }
+    if (item.role === "dispatch" && item.account.toLowerCase() !== bundle.vault.toLowerCase()) {
+      reasons.push("DISPATCH_ACCOUNT_MISMATCH");
+    }
     if (item.role === "buyer_receipt" && item.account.toLowerCase() !== bundle.buyer.toLowerCase()) {
       reasons.push("RECEIPT_ACCOUNT_MISMATCH");
     }
