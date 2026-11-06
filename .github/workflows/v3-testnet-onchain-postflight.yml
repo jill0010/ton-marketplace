@@ -59,6 +59,22 @@ jobs:
           V3_EXPECTED_COORDINATOR_CODE_HASH: ${{ inputs.expected_coordinator_code_hash }}
           V3_EVIDENCE_OUTPUT: v3-testnet-evidence.json
         run: node contracts/marketplace/scripts/collect-v3-testnet-evidence.mjs
+      - name: Confirm observed testnet contracts are active and carry code
+        if: always()
+        env:
+          V3_EVIDENCE_FILE: v3-testnet-evidence.json
+        run: |
+          node --input-type=module -e '
+            import { readFileSync, appendFileSync } from "node:fs";
+            const evidence = JSON.parse(readFileSync(process.env.V3_EVIDENCE_FILE, "utf8"));
+            const p = evidence.postflight;
+            const results = ["marketplace", "escrow", "coordinator"].map((name) => {
+              const v = p.contracts[name];
+              return `${name}: ${v.address} active=${v.active} code=${v.codePresent} codeHash=${v.codeHash}`;
+            });
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, "\n## Observed testnet contracts\n" + results.join("\n") + "\n\nProduction release remains blocked pending independent proofs.\n");
+            if (!p.allActive || !p.allCodePresent) process.exitCode = 1;
+          '
       - name: Upload evidence (including inactive-state reports)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
