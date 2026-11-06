@@ -2,7 +2,7 @@
 // inbound TON Center v2 transaction records. API responses are not chain proofs.
 import { findV3RefundMessageCandidates } from "./v3-refund-message-matcher.mjs";
 
-const raw = (x) => typeof x === "string" && /^(?:-?1|0):[a-fA-F0-9]{64}$/.test(x);
+const raw = (x) => typeof x === "string" && /^(?:-1|0):[a-fA-F0-9]{64}$/.test(x);
 const normalize = (x) => typeof x === "string" ? x.toLowerCase() : "";
 const decimal = (x) => typeof x === "string" && /^[0-9]+$/.test(x);
 
@@ -17,6 +17,13 @@ export function correlateV3RefundRecipient({
       normalize(buyerResponse.address) !== normalize(buyer) ||
       !Array.isArray(buyerResponse.transactions)) {
     throw new TypeError("Invalid buyer transaction evidence");
+  }
+  // Bound the cross-product of untrusted provider records before matching.
+  if (outbound.matches.length > 20 || buyerResponse.transactions.length > 200) {
+    return {
+      recipientCandidates: [], ambiguous: true, proofStatus: "UNVERIFIED",
+      mayRetry: false, reason: "TOO_MANY_UNVERIFIED_CANDIDATES",
+    };
   }
   const recipientCandidates = [];
   for (const match of outbound.matches) {
