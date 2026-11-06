@@ -55,7 +55,7 @@ export function hasPlausibleContractCode(code) {
   if (typeof code !== "string" || code.length < 12 || code.length % 4 !== 0 ||
       !/^[A-Za-z0-9+/]+={0,2}$/.test(code)) return false;
   const bytes = Buffer.from(code, "base64");
-  if (bytes.length < 12 || bytes.toString("base64") !== code) return false;
+  if (bytes.length < 20 || bytes.toString("base64") !== code) return false;
   // Standard TON Bag-of-Cells magic, followed by BOC metadata.
   if (bytes.subarray(0, 4).toString("hex") !== "b5ee9c72") return false;
   // Header contains at least one root and one cell; exact cell validation and
