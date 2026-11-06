@@ -53,7 +53,7 @@ export function observeMarketplaceV2Buys(
     if (!msg || typeof msg !== "object") continue;
     if (typeof msg.message_content?.body !== "string") continue;
     if (typeof msg.source !== "string" || typeof msg.destination !== "string") continue;
-    if (typeof msg.value !== "string" && typeof msg.value !== "number") continue;
+    if (typeof msg.value !== "string" || !/^(0|[1-9][0-9]*)$/.test(msg.value)) continue;
     if (typeof tx.hash !== "string" || typeof msg.hash !== "string") continue;
     if (typeof tx.mc_block_seqno !== "number" || typeof tx.lt !== "string") continue;
     if (typeof msg.in_msg_tx_hash !== "string" ||
@@ -65,7 +65,7 @@ export function observeMarketplaceV2Buys(
         destination: msg.destination,
         expectedMarketplaceAddress,
         source: msg.source,
-        transactionValueNano: String(msg.value),
+        transactionValueNano: msg.value,
         transactionHash: tx.hash,
         messageHash: msg.hash,
         masterchainBlockSeqno: tx.mc_block_seqno,
