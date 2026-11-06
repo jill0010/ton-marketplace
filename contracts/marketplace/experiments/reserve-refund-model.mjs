@@ -84,6 +84,9 @@ export function observeResult(state, observation) {
   check(observation.paymentHash === state.paymentHash, "Receipt payment identity mismatch");
   check(["credited", "bounced"].includes(observation.kind), "Receipt is not terminal");
   const receiptEvidenceHash = hash(observation.receiptEvidenceHash);
+  check(receiptEvidenceHash !== state.paymentHash && receiptEvidenceHash !== state.evidenceHash &&
+    receiptEvidenceHash !== state.compensationReviewHash,
+    "Receipt must be distinct from payment and review evidence");
   check(!state.receiptEvidenceHashes.includes(receiptEvidenceHash),
     "Reused refund receipt evidence");
   if (observation.kind === "credited") {
