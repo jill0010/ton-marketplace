@@ -52,3 +52,28 @@ test("missing bounce transaction identity cannot be paired", () => {
   });
   assert.equal(result.candidates.length, 0);
 });
+
+test("rejects insufficient returned principal even when bounced flag is set", () => {
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response([
+      tx("out-tx", null, [outgoing]),
+      tx("bounce-tx", bounced("183999999")),
+    ]),
+  });
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.verifiedReturnedNano, "0");
+});
+test("quarantines ambiguous multiple bounces and never sums candidate amounts", () => {
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response([
+      tx("out-tx", null, [outgoing]),
+      tx("bounce-1", bounced("193000000")),
+      tx("bounce-2", { ...bounced("192000000"), hash: "other-bounce" }),
+    ]),
+  });
+  assert.equal(result.candidates.length, 2);
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.candidates[0].linkageStatus, "AMBIGUOUS_UNPROVEN");
+  assert.equal(result.verifiedReturnedNano, "0");
+  assert.equal(result.mayRetry, false);
+});
