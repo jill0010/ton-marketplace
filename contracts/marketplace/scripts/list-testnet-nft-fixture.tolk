@@ -36,7 +36,7 @@ fun listTestFixture(marketplace: MarketplaceV2, escrow: NFTEscrowV2, seller: add
     );
     assert (published.waitForFirstTransaction() != null) throw 404;
     // Prove the reservation exists before giving up NFT ownership.
-    assert (marketplace.productStatusV2(productId) == 1) throw 405;
+    assert (marketplace.productStatusV2(productId)!! == 1) throw 405;
     val escrowId = escrow.escrowIdForQueryV2(queryId);
     assert (escrowId > 0) throw 405;
     val payload = beginCell()
@@ -60,8 +60,8 @@ fun listTestFixture(marketplace: MarketplaceV2, escrow: NFTEscrowV2, seller: add
     assert (deposited.waitForFirstTransaction() != null) throw 404;
     val after = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert ((after.get(3) as address) == escrow.address) throw 406;
-    assert (marketplace.productStatusV2(productId) == 2) throw 406;
-    assert (marketplace.productEscrowIdV2(productId) == escrowId) throw 406;
+    assert (marketplace.productStatusV2(productId)!! == 2) throw 406;
+    assert (marketplace.productEscrowIdV2(productId)!! == escrowId) throw 406;
     println("Test listing active; product ID: {}", productId);
     println("Test listing escrow ID: {}", escrowId);
     println("NFT custody verified: {}", nftItem);
