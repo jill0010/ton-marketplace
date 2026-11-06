@@ -17,6 +17,7 @@ export function auditV3RefundSettlement({
   const reasons = [];
   if (externallyCompensated) reasons.push("EXTERNALLY_COMPENSATED_NO_REPAYMENT");
   if (bounce.ambiguous) reasons.push("AMBIGUOUS_BOUNCE");
+  if (bounce.identityConflict) reasons.push("DUPLICATE_BOUNCE_IDENTITY");
   if (recipient.ambiguous) reasons.push("AMBIGUOUS_BUYER_RECEIPT");
   if (conflicts) reasons.push("BOUNCE_AND_RECEIPT_CONFLICT");
   if (!bounce.candidates.length && !recipient.recipientCandidates.length) {
