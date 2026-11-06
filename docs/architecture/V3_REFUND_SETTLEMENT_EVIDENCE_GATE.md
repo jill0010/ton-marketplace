@@ -31,3 +31,16 @@ Until all gates pass, `auditV3RefundSettlement` always reports zero verified
 credited/returned principal and denies receipt confirmation, bounce
 confirmation, retry and fund release. It is intentionally not connected to
 production payment code.
+
+## Provider-reported execution status (investigative only)
+
+The outbound refund matcher now excludes vault transactions explicitly reported
+as aborted, compute-failed, or action-failed. If all three reported fields
+indicate success, the candidate is labeled `REPORTED_SUCCESS`; otherwise
+the execution status is `UNKNOWN`. Neither state is a cryptographic proof,
+a confirmation of delivery, or authorization to retry. A provider can omit
+or misreport these fields, so the accounting gate remains closed.
+
+A valid rich-bounce BOC is likewise only a structural observation. Exact
+order/query/amount matching does not establish that the message was emitted
+by the TON protocol or that spendable principal returned to the vault.
