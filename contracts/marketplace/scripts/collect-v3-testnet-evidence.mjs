@@ -4,8 +4,8 @@ import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { verifyV3Testnet } from "./verify-v3-testnet.mjs";
 
-export async function collectV3TestnetEvidence(addresses, fetcher = fetch) {
-  const postflight = await verifyV3Testnet(addresses, fetcher);
+export async function collectV3TestnetEvidence(addresses, fetcher = fetch, expectedHashes = null) {
+  const postflight = await verifyV3Testnet(addresses, fetcher, expectedHashes);
   return {
     schemaVersion: 1,
     collectedAt: new Date().toISOString(),
@@ -33,6 +33,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       marketplace: process.env.V3_TESTNET_MARKETPLACE_ADDRESS,
       escrow: process.env.V3_TESTNET_ESCROW_ADDRESS,
       coordinator: process.env.V3_TESTNET_COORDINATOR_ADDRESS,
+    }, fetch, {
+      marketplace: process.env.V3_EXPECTED_MARKETPLACE_CODE_HASH,
+      escrow: process.env.V3_EXPECTED_ESCROW_CODE_HASH,
+      coordinator: process.env.V3_EXPECTED_COORDINATOR_CODE_HASH,
     });
     const serialized = JSON.stringify(evidence, null, 2) + "\n";
     if (process.env.V3_EVIDENCE_OUTPUT) {
