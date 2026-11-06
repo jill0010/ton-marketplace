@@ -12,6 +12,7 @@ on:
       - 'contracts/marketplace/experiments/reserve-refund-model.mjs'
       - 'contracts/marketplace/experiments/reserve-refund-model.test.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
+      - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
 
 permissions:
   contents: read
