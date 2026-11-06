@@ -48,6 +48,6 @@ test("testnet friendly address CRC is verified and aliases cannot duplicate cont
   const canonical = normalizeV3TestnetAddress(friendly);
   assert.match(canonical, /^0:[0-9a-f]{64}$/);
   assert.throws(() => normalizeV3TestnetAddress("U" + friendly.slice(1)), /checksum|testnet-only/);
-  assert.throws(() => normalizeV3TestnetAddress(friendly.slice(0, -1) + (friendly.endsWith("A") ? "B" : "A")), /checksum/);
+  assert.throws(() => normalizeV3TestnetAddress(friendly.slice(0, 10) + (friendly[10] === "A" ? "B" : "A") + friendly.slice(11)), /checksum/);
   assert.throws(() => validateV3Addresses({ marketplace: friendly, escrow: canonical, coordinator: addresses.coordinator }), /distinct/);
 });
