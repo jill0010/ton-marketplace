@@ -64,6 +64,10 @@ jobs:
           fi
           echo "V3 production deployment remains blocked; this CI run is not a release approval."
 
+      - name: Install locked Node dependencies for TON BOC verification
+        working-directory: .
+        run: npm ci --ignore-scripts
+
       - name: Test V3 read-only on-chain postflight verifier (mock RPC)
         run: node --test scripts/verify-v3-testnet.test.mjs scripts/collect-v3-testnet-evidence.test.mjs scripts/check-v3-deployment-invariants.test.mjs
 
