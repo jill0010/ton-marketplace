@@ -1,4 +1,4 @@
-// Decode the first 96 bits of a TON V3 refund body from an externally supplied
+// Decode the full opcode, order, query and coin amount of a TON V3 refund body from an externally supplied
 // base64 BOC. Parsing is not cryptographic verification of the source transaction.
 import { Cell } from "@ton/core";
 
@@ -18,8 +18,9 @@ export function decodeTestReserveBuyerPaymentBody(bodyBocBase64) {
     if (opcode !== TEST_RESERVE_BUYER_PAYMENT_OPCODE) return null;
     const orderId = slice.loadUintBig(64);
     const queryId = slice.loadUintBig(64);
-    if (slice.remainingBits !== 0 || slice.remainingRefs !== 0) return null;
-    return { opcode, orderId: orderId.toString(), queryId: queryId.toString(), verified: false };
+    const amountNano = slice.loadCoins();
+    if (amountNano <= 0n || slice.remainingBits !== 0 || slice.remainingRefs !== 0) return null;
+    return { opcode, orderId: orderId.toString(), queryId: queryId.toString(), amountNano: amountNano.toString(), verified: false };
   } catch {
     return null;
   }
