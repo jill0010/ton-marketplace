@@ -63,7 +63,7 @@ export function validateBuyProductV2Transaction(input: {
   aborted: boolean;
   computeSuccess: boolean;
   actionSuccess: boolean;
-}): DecodedBuyProductV2 & { buyerRaw: string; paymentTransactionHash: string; inboundMessageHash: string } {
+}): DecodedBuyProductV2 & { buyerRaw: string; marketplaceTransactionHash: string; inboundMessageHash: string } {
   const marketplace = Address.parse(input.expectedMarketplaceAddress).toRawString().toLowerCase();
   const destination = Address.parse(input.destination).toRawString().toLowerCase();
   const buyerRaw = Address.parse(input.source).toRawString().toLowerCase();
@@ -91,7 +91,7 @@ export function validateBuyProductV2Transaction(input: {
     reserveNano,
     totalPaymentNano,
     buyerRaw,
-    paymentTransactionHash: input.transactionHash.toLowerCase(),
+    marketplaceTransactionHash: input.transactionHash.toLowerCase(),
     inboundMessageHash: input.messageHash.toLowerCase(),
   };
 }
