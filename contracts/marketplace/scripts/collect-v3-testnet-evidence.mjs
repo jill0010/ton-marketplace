@@ -39,7 +39,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       await writeFile(process.env.V3_EVIDENCE_OUTPUT, serialized, { flag: "wx", mode: 0o600 });
     }
     process.stdout.write(serialized);
-    if (!evidence.postflight.allActive) process.exitCode = 1;
+    if (!evidence.postflight.allActive || !evidence.postflight.allCodePresent) process.exitCode = 1;
   } catch (error) {
     console.error(`V3 evidence collection blocked: ${error.message}`);
     process.exitCode = 1;
