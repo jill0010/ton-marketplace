@@ -60,6 +60,8 @@ export function beginDispatch(state, identity) {
   check(["approved", "bounced"].includes(state.phase), "Refund cannot be dispatched");
   check(identity.buyer === state.buyer && identity.orderId === state.orderId, "Wrong beneficiary or order");
   check(identity.evidenceHash === state.evidenceHash, "Changed evidence");
+  check(identity.compensationReviewHash === state.compensationReviewHash,
+    "Changed or missing compensation review evidence");
   check(identity.amountNano === state.refundNano, "Changed refund amount");
   check(identity.attempt === state.attempt + 1, "Stale dispatch attempt");
   const messageHash = hash(identity.messageHash);
