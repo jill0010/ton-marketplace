@@ -12,6 +12,9 @@ fun main() {
     val expectedOwner = env<address>("TESTNET_FIXTURE_OWNER") ?? deployer.address;
     assert (deployer.address == expectedOwner) throw 401;
 
+    val seller = env<address>("FIXTURE_SELLER_ADDRESS") ?? scripts.wallet("treasury").address;
+    assert (seller != deployer.address) throw 401;
+
     // Emulator-only registration does not publish a library on any network.
     if (env<bool>("FIXTURE_EMULATION") ?? false) {
         testing.registerLibrary(
@@ -25,7 +28,7 @@ fun main() {
         0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251,
     );
 
-    val config = beginCell().storeUint(0, 256).storeAddress(deployer.address).endCell();
+    val config = beginCell().storeUint(1, 256).storeAddress(deployer.address).endCell();
 
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
 
@@ -64,7 +67,7 @@ fun main() {
 
     val deployBody = beginCell()
         .storeUint(0x299a3e15, 32)
-        .storeAddress(deployer.address)
+        .storeAddress(seller)
         .storeCoins(grams("1"))
         .storeRef(tokenInfo)
         .storeRef(nftContent)
@@ -80,16 +83,17 @@ fun main() {
     });
 
     println("Fixture collection: {}", deployer.address);
-    println("Fixture seller: {}", deployer.address);
+    println("Fixture seller: {}", seller);
+    println("Fixture Item index: 1");
     println("Fixture NFT expected at: {}", nftItem);
     val result = net.send(deployer.address, deployMessage);
     assert (result.waitForFirstTransaction() != null) throw 402;
     val stack = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert (stack.size() == 5) throw 403;
     assert ((stack.get(0) as int) == -1) throw 403;
-    assert ((stack.get(1) as int) == 0) throw 403;
+    assert ((stack.get(1) as int) == 1) throw 403;
     assert ((stack.get(2) as address) == deployer.address) throw 403;
-    assert ((stack.get(3) as address) == deployer.address) throw 403;
+    assert ((stack.get(3) as address) == seller) throw 403;
     println("Test fixture deployed and ownership verified: {}", nftItem);
     println("Test-only synthetic collection; not an official Telegram collectible.");
 }
