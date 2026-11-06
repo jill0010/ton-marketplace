@@ -1139,6 +1139,16 @@ fun onBouncedMessage(in: InMessageBounced) {
         if (opcode == 0x71b00002) {
             val release = lazy ReleaseEscrowV2.fromCell(originalBody);
             var purchase = storage.purchaseStorage.load();
+            // A release can only have been legitimately sent after the
+            // coordinator confirmed this order's funded reserve vault.
+            val reserveResult = purchase.reserves.get(release.orderId);
+            if (!reserveResult.isFound) {
+                return;
+            }
+            val reserve = TestPurchaseReserveBinding.fromCell(reserveResult.loadValue());
+            if (reserve.status != 2 || reserve.vault == null) {
+                return;
+            }
             var orderStorage = purchase.orders.load();
             val orderResult = orderStorage.orders.get(release.orderId);
             if (!orderResult.isFound) {
