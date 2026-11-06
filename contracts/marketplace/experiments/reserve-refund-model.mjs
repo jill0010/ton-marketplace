@@ -36,6 +36,10 @@ export function approveReconciliation(state, reconciliation) {
   // status alone cannot establish that the reserve is still owed to the buyer.
   check(reconciliation.externalCompensationVerified === false,
     "External compensation status must be explicitly verified as absent");
+  check(reconciliation.externalCompensationEvidenceHash !== undefined &&
+    reconciliation.externalCompensationEvidenceHash !== null,
+    "External compensation review evidence is required");
+  const compensationReviewHash = hash(reconciliation.externalCompensationEvidenceHash);
   // A required input, NOT evidence this model can independently establish.
   check(reconciliation.fundingModel === "isolated-order-ledger-v3", "Pooled funding cannot authorize a refund");
   check(reconciliation.evidenceKind === "reviewed-isolated-ledger", "Trace fees alone are insufficient");
@@ -49,7 +53,7 @@ export function approveReconciliation(state, reconciliation) {
   const evidenceHash = hash(reconciliation.evidenceHash);
   return Object.freeze({
     ...state, phase: residual === 0n ? "closed-zero" : "approved",
-    refundNano: residual, evidenceHash,
+    refundNano: residual, evidenceHash, compensationReviewHash,
   });
 }
 export function beginDispatch(state, identity) {
