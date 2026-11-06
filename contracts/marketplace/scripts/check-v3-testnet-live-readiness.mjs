@@ -23,9 +23,15 @@ export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrow
   const hasSettlementHandler = marketplaceSource.includes("| EscrowReleasedV2") && marketplaceSource.includes("EscrowReleasedV2 =>") && marketplaceSource.includes("SellerPayoutV2") && marketplaceSource.includes("PlatformPayoutV2");
   // V2 retry currently re-dispatches buyer funds on bounce status alone. A bounce
   // candidate is not independent evidence that the previous transfer was returned.
+  const retryHandler = marketplaceSource.split("RetryPayoutV2 => {")[1]?.split("PublishProductV2 => {")[0] ?? "";
+  const refundGuard = /if \(payout\.kind == 3\) \{(?:\s|\/\/[^\n]*\n)*throw ErrorsV2\.InvalidPayout;/;
+  const guardMatch = refundGuard.exec(retryHandler);
+  // An earlier refund dispatch makes a later fail-closed guard ineffective.
+  // This is conservative static screening, not proof of control-flow safety.
+  const refundBeforeGuard = !guardMatch ||
+    retryHandler.slice(0, guardMatch.index).includes("BuyerRefundV2 {");
   const unsafeBuyerRefundRetry = marketplaceSource.includes("RetryPayoutV2 =>") &&
-    !/if \(payout\.kind == 3\) \{(?:\s|\/\/[^\n]*\n)*throw ErrorsV2\.InvalidPayout;/.test(marketplaceSource) &&
-    marketplaceSource.includes("BuyerRefundV2 {");
+    (refundBeforeGuard || !guardMatch);
   return {
     contractFound: true,
     unsafeBuyerRefundRetry,
