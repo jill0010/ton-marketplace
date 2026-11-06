@@ -633,3 +633,73 @@ get fun `test adequately funded fabricated bounce remains unverified and never a
     ).toHaveFailedTx({ to: vault, exitCode: 703 });
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
 }
+
+get fun `test stale bounce after retry cannot change new refund operation`() {
+    val owner = testing.treasury("reserveOwner").address;
+    val rejectState: ContractState = {
+        code: build("Empty"),
+        data: beginCell().storeAddress(owner).endCell(),
+    };
+    val rejectDest = AutoDeployAddress {
+        workchain: 0,
+        stateInit: rejectState,
+    };
+    val rejector = rejectDest.calculateAddress();
+    expect(
+        net.send(owner, createMessage({ bounce: false, value: grams("0.1"), dest: rejectDest })),
+    ).toHaveSuccessfulDeploy({ to: rejector });
+    val (vault, _, funder, _) = reserveSetup(rejector);
+    expect(
+        reserveSend(funder, vault, FundTestReserve { orderId: 1 }.toCell(), grams("0.3")),
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            ReviewTestReserve {
+                orderId: 1,
+                evidenceHash: 456,
+                attributedCosts: grams("0.006"),
+                terminalKind: 1,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            RetryTestReserve {
+                orderId: 1,
+                returnEvidenceHash: 1234,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    testing.processSingleTraceStep(
+        rejector,
+        createMessage({
+            bounce: false,
+            value: grams("0.194"),
+            dest: vault,
+            body: reserveRichBounce(1, 1, grams("0.194")),
+        }).bounced(),
+    );
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            ConfirmTestReserveReceipt {
+                orderId: 1,
+                queryId: 1,
+                receiptHash: 789,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 703 });
+}
