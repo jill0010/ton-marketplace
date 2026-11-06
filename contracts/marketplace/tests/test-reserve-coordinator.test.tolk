@@ -217,3 +217,39 @@ get fun `test coordinator quarantines insufficient returned principal despite po
     expect(saved.status).toEqual(3);
     expect(saved.returnedNano).toEqual(190000000);
 }
+
+get fun `test owner may retry funding confirmation without reallocating reserve`() {
+    val (coordinator, owner, marketplace, buyer) = coordinatorSetup();
+    expect(
+        coordinatorSend(marketplace, coordinator, 1, buyer, grams("0.28")),
+    ).toHaveSuccessfulTx({ to: coordinator });
+    val first = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
+    val request = RetryTestReserveAllocationAck { orderId: 1 }.toCell();
+    expect(
+        net.send(
+            buyer,
+            createMessage({
+                bounce: false,
+                value: grams("0.02"),
+                dest: coordinator,
+                body: request,
+            }),
+        ),
+    ).toHaveFailedTx({ to: coordinator, exitCode: 721 });
+    val retry = net.send(
+        owner,
+        createMessage({
+            bounce: false,
+            value: grams("0.02"),
+            dest: coordinator,
+            body: request,
+        }),
+    );
+    expect(
+        retry,
+    ).toHaveSuccessfulTx<TestReserveAllocationConfirmed>({ from: coordinator, to: marketplace });
+    expect(retry.findTransaction<FundTestReserve>({}) == null).toEqual(true);
+    val after = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
+    expect(after.vault).toEqual(first.vault);
+    expect(after.status).toEqual(2);
+}
