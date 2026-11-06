@@ -30,7 +30,23 @@ test("duplicate transaction and mismatched order are rejected", () => {
 });
 test("invalid chain record cannot promote evidence", () => {
   const result = prepare({ orderId: "order-2", records: [{ ...record, transactionId: "fake" }] });
-  assert.equal(result.state, "UNKNOWN");
+  assert.equal(result.state, "CONFLICT");
   assert.equal(result.retryAuthorized, false);
   assert.ok(result.diagnostics.includes("INVALID_CHAIN_IDENTIFIERS"));
+});
+
+test("null or malformed entries cannot crash or clear a conflict", () => {
+  for (const invalid of [null, [], "fake", 123]) {
+    const result = prepare({ orderId: "order-2", records: [record, invalid] });
+    assert.equal(result.state, "CONFLICT");
+    assert.equal(result.retryAuthorized, false);
+    assert.ok(result.diagnostics.includes("MALFORMED_CHAIN_RECORD"));
+  }
+});
+test("duplicate hash is detected even when logical time differs", () => {
+  const result = prepare({ orderId: "order-2", records: [
+    record, { ...record, logicalTime: "107886213000004", operationId: "refund-2" },
+  ] });
+  assert.equal(result.state, "CONFLICT");
+  assert.ok(result.diagnostics.includes("DUPLICATE_TRANSACTION"));
 });
