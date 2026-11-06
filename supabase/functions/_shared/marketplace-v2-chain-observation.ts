@@ -20,6 +20,20 @@ type ToncenterV3Transaction = {
   } | null;
 };
 
+function normalizeHash(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
+  if (!/^[A-Za-z0-9_+/=-]+$/.test(value) || value.length > 128) return null;
+  try {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(padded);
+    if (binary.length !== 32) return null;
+    let hex = "";
+    for (let i = 0; i < binary.length; i += 1) hex += binary.charCodeAt(i).toString(16).padStart(2, "0");
+    return hex;
+  } catch { return null; }
+}
 export type MarketplaceV2BuyObservation = {
   productId: string;
   expectedPriceNano: string;
@@ -54,10 +68,11 @@ export function observeMarketplaceV2Buys(
     if (typeof msg.message_content?.body !== "string") continue;
     if (typeof msg.source !== "string" || typeof msg.destination !== "string") continue;
     if (typeof msg.value !== "string" || !/^(0|[1-9][0-9]*)$/.test(msg.value)) continue;
-    if (typeof tx.hash !== "string" || typeof msg.hash !== "string") continue;
+    const transactionHash = normalizeHash(tx.hash);
+    const messageHash = normalizeHash(msg.hash);
+    const parentTransactionHash = normalizeHash(msg.in_msg_tx_hash);
+    if (!transactionHash || !messageHash || !parentTransactionHash) continue;
     if (typeof tx.mc_block_seqno !== "number" || typeof tx.lt !== "string") continue;
-    if (typeof msg.in_msg_tx_hash !== "string" ||
-      !/^[0-9a-f]{64}$/i.test(msg.in_msg_tx_hash)) continue;
 
     try {
       const decoded = validateBuyProductV2Transaction({
@@ -66,8 +81,8 @@ export function observeMarketplaceV2Buys(
         expectedMarketplaceAddress,
         source: msg.source,
         transactionValueNano: msg.value,
-        transactionHash: tx.hash,
-        messageHash: msg.hash,
+        transactionHash,
+        messageHash,
         masterchainBlockSeqno: tx.mc_block_seqno,
         emulated: tx.emulated === true,
         aborted: tx.description?.aborted !== false,
@@ -87,7 +102,7 @@ export function observeMarketplaceV2Buys(
         inboundMessageHash: decoded.inboundMessageHash,
         // This is only the transaction that emitted the inbound message.
         // It must be followed and verified before being treated as a wallet root.
-        parentTransactionHash: msg.in_msg_tx_hash.toLowerCase(),
+        parentTransactionHash,
         transactionLt: tx.lt,
         masterchainBlockSeqno: tx.mc_block_seqno,
       });
