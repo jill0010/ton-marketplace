@@ -44,3 +44,28 @@ test("rejects wrong source identity and malformed search identifiers", () => {
   assert.throws(() => findV3RefundMessageCandidates({ ...response([]), trusted: true }, options), TypeError);
   assert.throws(() => findV3RefundMessageCandidates({ ...response([]), address: other }, options), TypeError);
 });
+
+test("rejects provider-reported failed vault dispatch, never upgrading unknown execution", () => {
+  for (const description of [
+    { aborted: true },
+    { compute_ph: { success: false } },
+    { action: { success: false } },
+  ]) {
+    const candidate = response([msg(1, 2)]);
+    candidate.transactions[0].description = description;
+    const report = findV3RefundMessageCandidates(candidate, options);
+    assert.equal(report.matches.length, 0);
+    assert.equal(report.mayRetry, false);
+  }
+  const unknown = findV3RefundMessageCandidates(response([msg(1, 2)]), options);
+  assert.equal(unknown.matches[0].executionStatus, "UNKNOWN");
+  assert.equal(unknown.matches[0].verified, false);
+  const reported = response([msg(1, 2)]);
+  reported.transactions[0].description = {
+    aborted: false, compute_ph: { success: true }, action: { success: true },
+  };
+  const report = findV3RefundMessageCandidates(reported, options);
+  assert.equal(report.matches[0].executionStatus, "REPORTED_SUCCESS");
+  assert.equal(report.matches[0].verified, false);
+  assert.equal(report.matches[0].finalized, false);
+});
