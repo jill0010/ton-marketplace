@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
+import { hasPlausibleContractCode, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
 
 const addresses = {
   marketplace: "0:" + "1".repeat(64),
@@ -20,7 +20,7 @@ test("read-only verifier reports active state without approving release", async 
     urls.push(url);
     assert.equal(options.method, "GET");
     assert.ok(url.startsWith("https://testnet.toncenter.com/"));
-    return { ok: true, json: async () => ({ ok: true, result: { state: "active", code: "te6ccgEBAgEAAwABAgE=" } }) };
+    return { ok: true, json: async () => ({ ok: true, result: { state: "active", code: "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog==" } }) };
   };
   const report = await verifyV3Testnet(addresses, fetcher);
   assert.equal(urls.length, 3);
@@ -59,4 +59,11 @@ test("active account without contract code is not a valid deployment", async () 
   }));
   assert.equal(report.allActive, true);
   assert.equal(report.allCodePresent, false);
+});
+
+test("contract code validation rejects arbitrary text, empty and malformed BOCs", () => {
+  assert.equal(hasPlausibleContractCode("te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog=="), true);
+  for (const code of ["", "hello world", "dGVzdA==", "te6ccgEBAQEAAgAAAA==", "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog="]) {
+    assert.equal(hasPlausibleContractCode(code), false, code);
+  }
 });
