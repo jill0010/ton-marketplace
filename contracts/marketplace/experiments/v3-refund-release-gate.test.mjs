@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { auditV3RefundReleaseGate } from "./v3-refund-release-gate.mjs";
 import { assessV3IndependentSettlement } from "./v3-independent-settlement-proof.mjs";
 import { inspectV3BuyerReceiptProofRequirements } from "./v3-buyer-receipt-proof-requirements.mjs";
+import { inspectV3ReturnedRefundEvidence } from "./v3-refund-return-evidence-gate.mjs";
 
 const vault = "0:" + "a".repeat(64);
 const buyer = "0:" + "b".repeat(64);
@@ -110,4 +111,42 @@ test("missing receipt message identity cannot be treated as settlement", () => {
   });
   assert.ok(evidence.reasons.includes("MISSING_MATCHING_BUYER_RECEIPT_IDENTITY"));
   assert.equal(evidence.mayConfirmReceipt, false);
+});
+
+test("a structurally linked bounce remains unverified and cannot be retried", () => {
+  const evidence = inspectV3ReturnedRefundEvidence({
+    network: "testnet", vault, buyer, orderId: "2", queryId: "1",
+    sentAmountNano: "200000000",
+    failedBuyerTransaction: {
+      account: buyer, lt: "100", transactionHash: "failed",
+      aborted: true, bouncePhase: "ok",
+    },
+    bouncedMessage: {
+      source: buyer, destination: vault, bounced: true, bounceable: false,
+      hash: "return-msg", amountNano: "198000000",
+      orderId: "2", queryId: "1", originalAmountNano: "200000000",
+      originatingBuyerTransactionHash: "failed",
+    },
+    vaultReceiptTransaction: {
+      account: vault, lt: "101", transactionHash: "vault-receipt",
+      inboundMessageHash: "return-msg", source: buyer,
+      inboundBounced: true, inboundAmountNano: "198000000", aborted: false,
+    },
+  });
+  assert.equal(evidence.observedStructureComplete, true);
+  assert.equal(evidence.reportedReturnNano, "198000000");
+  assert.equal(evidence.verifiedReturnedToVaultNano, "0");
+  assert.equal(evidence.mayConfirmBounce, false);
+  assert.equal(evidence.mayRetry, false);
+});
+test("missing vault receipt or failed bounce cannot prove returned funds", () => {
+  const evidence = inspectV3ReturnedRefundEvidence({
+    network: "testnet", vault, buyer, orderId: "2", queryId: "1",
+    sentAmountNano: "200000000",
+    failedBuyerTransaction: { account: buyer, lt: "100",
+      transactionHash: "failed", aborted: true, bouncePhase: "no-funds" },
+  });
+  assert.equal(evidence.observedStructureComplete, false);
+  assert.ok(evidence.reasons.includes("MISSING_SUCCESSFUL_VAULT_RETURN_RECEIPT"));
+  assert.equal(evidence.mayRetry, false);
 });
