@@ -1101,6 +1101,19 @@ get fun orderV2(orderId: uint64): MarketplaceV2Order? {
 
 // Resolve the immutable order ID from its unique product reservation.
 // Indexers use this getter instead of guessing order IDs from transaction order.
+// Return the exact persisted order cell for external indexers.
+// This avoids guessing how nested order structs are flattened onto the TVM stack;
+// callers decode the returned cell using the contract's declared Tolk structs.
+get fun orderCellV2(orderId: uint64): cell? {
+    val purchase = MarketplaceV2Storage.load().purchaseStorage.load();
+    val orderStorage = purchase.orders.load();
+    val result = orderStorage.orders.get(orderId);
+    if (!result.isFound) {
+        return null;
+    }
+    return result.loadValue();
+}
+
 get fun orderIdForProductV2(productId: uint64): uint64? {
     val purchase = MarketplaceV2Storage.load().purchaseStorage.load();
     val orderStorage = purchase.orders.load();
