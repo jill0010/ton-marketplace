@@ -77,8 +77,6 @@ fun main() {
         body: deployBody,
     });
 
-
-
     println("Fixture collection: {}", deployer.address);
     println("Fixture seller: {}", deployer.address);
     println("Fixture NFT expected at: {}", nftItem);
