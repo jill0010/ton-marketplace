@@ -33,6 +33,8 @@ test("reports a plausible bounce as unproven and never retryable", () => {
   assert.equal(result.candidates[0].linkageStatus, "UNPROVEN");
   assert.equal(result.candidates[0].principalVerified, false);
   assert.equal(result.mayRetry, false);
+  assert.equal(result.mayConfirmBounce, false);
+  assert.equal(result.accountingStatus, "NO_VERIFIED_PRINCIPAL");
 });
 test("rejects bounced amounts larger than original outgoing payment", () => {
   const result = correlateV3RefundBounce({
@@ -75,5 +77,19 @@ test("quarantines ambiguous multiple bounces and never sums candidate amounts", 
   assert.equal(result.ambiguous, true);
   assert.equal(result.candidates[0].linkageStatus, "AMBIGUOUS_UNPROVEN");
   assert.equal(result.verifiedReturnedNano, "0");
+  assert.equal(result.mayRetry, false);
+});
+
+test("rejects accounting even when one bounce candidate appears unique", () => {
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response([
+      tx("out-tx", null, [outgoing]),
+      tx("bounce-tx", bounced("194000000")),
+    ]),
+  });
+  assert.equal(result.ambiguous, false);
+  assert.equal(result.verifiedReturnedNano, "0");
+  assert.equal(result.accountingStatus, "NO_VERIFIED_PRINCIPAL");
+  assert.equal(result.mayConfirmBounce, false);
   assert.equal(result.mayRetry, false);
 });
