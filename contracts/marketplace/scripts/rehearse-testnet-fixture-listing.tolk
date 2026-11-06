@@ -31,7 +31,8 @@ fun deployRehearsalFixture(): address {
         0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251,
     );
 
-    val config = beginCell().storeUint(0, 256).storeAddress(deployer.address).endCell();
+    val collection = testing.treasury("fixtureSeparateCollection");
+    val config = beginCell().storeUint(0, 256).storeAddress(collection.address).endCell();
 
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
 
@@ -88,13 +89,13 @@ fun deployRehearsalFixture(): address {
     println("Fixture collection: {}", deployer.address);
     println("Fixture seller: {}", deployer.address);
     println("Fixture NFT expected at: {}", nftItem);
-    val result = net.send(deployer.address, deployMessage);
+    val result = net.send(collection.address, deployMessage);
     assert (result.waitForFirstTransaction() != null) throw 402;
     val stack = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert (stack.size() == 5) throw 403;
     assert ((stack.get(0) as int) == -1) throw 403;
     assert ((stack.get(1) as int) == 0) throw 403;
-    assert ((stack.get(2) as address) == deployer.address) throw 403;
+    assert ((stack.get(2) as address) == collection.address) throw 403;
     assert ((stack.get(3) as address) == deployer.address) throw 403;
     println("Test fixture deployed and ownership verified: {}", nftItem);
     println("Test-only synthetic collection; not an official Telegram collectible.");
@@ -227,5 +228,8 @@ fun main() {
     println("Escrow binding and immutable treasury configuration verified");
     println("No collections are approved; listings remain unavailable until official collection policy is configured");
     val nftItem = deployRehearsalFixture();
-    listTestFixture(marketplace, escrow, scripts.wallet("deployer").address, nftItem);
+    listTestFixture(
+        marketplace, escrow, scripts.wallet("deployer").address, nftItem,
+        testing.treasury("fixtureSeparateCollection").address,
+    );
 }
