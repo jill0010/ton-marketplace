@@ -59,9 +59,12 @@ fun listTestFixture(marketplace: MarketplaceV2, escrow: NFTEscrowV2, seller: add
     val deposited = net.send(seller, transfer);
     assert (deposited.waitForFirstTransaction() != null) throw 404;
     val after = net.runGetMethod<tuple>(nftItem, "get_nft_data");
+    println("Observed NFT owner: {}", after.get(3) as address);
+    println("Expected escrow: {}", escrow.address);
+    println("Observed product status: {}", marketplace.productStatusV2(productId)!!);
     assert ((after.get(3) as address) == escrow.address) throw 406;
-    assert (marketplace.productStatusV2(productId)!! == 2) throw 406;
-    assert (marketplace.productEscrowIdV2(productId)!! == escrowId) throw 406;
+    assert (marketplace.productStatusV2(productId)!! == 2) throw 407;
+    assert (marketplace.productEscrowIdV2(productId)!! == escrowId) throw 408;
     println("Test listing active; product ID: {}", productId);
     println("Test listing escrow ID: {}", escrowId);
     println("NFT custody verified: {}", nftItem);
