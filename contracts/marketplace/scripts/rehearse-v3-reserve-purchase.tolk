@@ -335,7 +335,16 @@ fun main() {
     ).toHaveFailedTx({ to: marketplace.address, exitCode: 742 });
     val before = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     expect(before.get(3) as address).toEqual(escrow.address);
-    cursor.executeAllRemaining();
+    if (badVault) {
+        cursor.executeTill<RefundEscrowV2>({ to: escrow.address });
+        val pendingReturn = net.runGetMethod<tuple>(nftItem, "get_nft_data");
+        expect(pendingReturn.get(3) as address).toEqual(escrow.address);
+        val pendingOrder = MarketplaceV2Order.fromCell(marketplace.orderCellV2(1)!!);
+        expect(pendingOrder.refundStatus).toEqual(1);
+        val refundId = pendingOrder.extra.load().operations.load().buyerRefundOperationId;
+        expect(marketplace.payoutV2(refundId)!!.status).toEqual(0);
+    }
+    val completed = cursor.executeAllRemaining();
     cursor.close();
     val allocation = net.runGetMethod<TestReserveBinding?>(
         coordinator,
@@ -348,12 +357,39 @@ fun main() {
         [1],
     )!!;
     if (badVault) {
-        expect(allocation.status).toEqual(3);
-        expect(binding.status).toEqual(1);
-        expect(binding.vault == null).toEqual(true);
-        val unchanged = net.runGetMethod<tuple>(nftItem, "get_nft_data");
-        expect(unchanged.get(3) as address).toEqual(escrow.address);
-        println("Funding failure gate verified: NFT remains in custody; compensation NOT implemented.");
+        expect(allocation.status).toEqual(4);
+        expect(binding.status).toEqual(3);
+        val returned = net.runGetMethod<tuple>(nftItem, "get_nft_data");
+        expect(returned.get(3) as address).toEqual(scripts.wallet("seller").address);
+        val refundedOrder = MarketplaceV2Order.fromCell(marketplace.orderCellV2(1)!!);
+        expect(refundedOrder.refundStatus).toEqual(2);
+        expect(refundedOrder.status).toEqual(8);
+        val refundId = refundedOrder.extra.load().operations.load().buyerRefundOperationId;
+        expect(marketplace.payoutV2(refundId)!!.amount).toEqual(grams("0.21"));
+        expect(completed).toHaveSuccessfulTx<BuyerRefundV2>({
+            from: marketplace.address,
+            to: deployer.address,
+        });
+        // Fault injection: even an authenticated-looking duplicate must not refund twice.
+        val duplicate = net.send(
+            coordinator,
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.2"),
+                dest: marketplace.address,
+                body: TestReserveAllocationFailed {
+                    orderId: 1,
+                    paymentHash: binding.paymentHash,
+                    vault: allocation.vault,
+                },
+            }),
+        );
+        expect(duplicate).toHaveFailedTx({ to: marketplace.address, exitCode: 743 });
+        expect(
+            duplicate.findTransaction<BuyerRefundV2>({ from: marketplace.address }) == null,
+        ).toEqual(true);
+        println("Funding failure compensation verified: NFT returned to seller, full 0.21 TON refund dispatched.");
+        println("Failure fees subsidized by platform operations in this experiment.");
         return;
     }
     expect(binding.status).toEqual(2);
