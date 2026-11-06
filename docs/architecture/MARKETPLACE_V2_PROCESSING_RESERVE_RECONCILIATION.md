@@ -52,3 +52,42 @@ The trace must have a completed masterchain sequence and zero pending messages. 
 ## Safety boundary
 
 The current feature only calculates and displays a read-only preview. It deliberately does not authorize, sign, or broadcast refunds. The existing 0.2 TON reserve must continue to be treated as a buyer liability until the on-chain refund path and its tests are complete. Do not enable customer purchases or Mainnet activation based solely on a successful fee preview.
+
+## Contract-level value-flow audit (2026-11-06)
+
+The current V2 source was reviewed across the Marketplace and NFT Escrow handlers. This confirms why account-level `total_fees` cannot be assigned to the 0.2 TON reserve, and identifies the message edges that a future order-scoped ledger must correlate.
+
+### Successful purchase / delivery
+
+| Edge | Sender → recipient | Message value | Fee mode / accounting implication |
+|---|---|---:|---|
+| Buyer payment | Buyer → Marketplace | product gross + 0.2 TON | The reserve enters the Marketplace balance together with the purchase payment. |
+| Start release | Marketplace → Escrow | 0.05 TON | `SEND_MODE_REGULAR`; Marketplace pays forwarding/compute costs from its balance. |
+| NFT transfer | Escrow → NFT Item | 0.05 TON | `SEND_MODE_PAY_FEES_SEPARATELY`; the Escrow must fund message fees in addition to the specified value. |
+| Delivery excess | NFT Item → Escrow | protocol-calculated excess | Must be correlated by the exact NFT transfer query ID; it is not a fixed amount and must not be guessed. |
+| Delivery callback | Escrow → Marketplace | 0.03 TON | `SEND_MODE_REGULAR`; the Escrow funds its transaction and forwarding costs. |
+| Seller payout | Marketplace → Seller | immutable seller proceeds | `SEND_MODE_PAY_FEES_SEPARATELY`; Marketplace pays fees in addition to the payout value. |
+| Platform payout | Marketplace → Treasury | immutable platform fee | `SEND_MODE_PAY_FEES_SEPARATELY`; Marketplace pays fees in addition to the payout value. |
+| Delivery acknowledgement | Marketplace → Escrow | 0.03 TON | `SEND_MODE_REGULAR`; this is a transfer value, not a fee measurement. |
+| Escrow acknowledgement cleanup | Marketplace → Escrow callback state | no further outbound payment | Escrow deletes the persisted callback after validating the acknowledgement. |
+
+The seller proceeds plus platform fee equal the product gross. They do not include the 0.2 TON reserve. The Marketplace's reserve is therefore not automatically consumed by the nominal 0.05/0.03 TON message values: those values are transfers, while network fees are separate transaction fields. In particular, the Escrow's `PAY_FEES_SEPARATELY` NFT transfer can consume Escrow operational balance that was not demonstrably funded by this order's reserve.
+
+### Failed delivery / NFT return
+
+The failed-release path adds further order-correlated edges:
+
+- Escrow's bounced NFT transfer is correlated to its pending release by NFT Item address, query ID, buyer and escrow record. Escrow restores the record to Deposited and sends a 0.03 TON failure callback to Marketplace.
+- Marketplace marks the order for compensation and sends 0.05 TON to Escrow for `RefundEscrowV2`, then sends a separate 0.03 TON failure acknowledgement.
+- Escrow transfers the NFT back to the seller with a 0.05 TON message using `SEND_MODE_PAY_FEES_SEPARATELY`; the resulting NFT excess is correlated by refund query ID.
+- After the NFT return is confirmed, Escrow sends a 0.03 TON refund callback to Marketplace. Marketplace then dispatches the gross product-price refund to the buyer with `SEND_MODE_PAY_FEES_SEPARATELY`. The 0.2 TON reserve is not part of that gross-price refund and remains a separate buyer liability.
+
+### Consequences for scheme C
+
+1. Do not sum the 0.05/0.03 TON message values and call them costs. They are value transfers and may later be returned or used as the value of another protocol message.
+2. Do not assign all Marketplace/Escrow/NFT Item transaction fees to the order. The contracts can have pooled pre-existing balances and unrelated storage/administrative activity.
+3. A usable ledger must correlate the complete message graph by immutable order ID, escrow ID, product ID, and every distinct query ID (payment, release, NFT transfer, refund, callbacks, acknowledgements and payouts). It must separately record each transaction's actual compute, storage, action and forwarding fees and each message's value, bounce/excess result and destination.
+4. The ledger also needs opening and closing attributable balances or a protocol-level reserve sub-account. Without isolation, fungible TON cannot be proven to originate from one order after entering a pooled contract balance.
+5. Any missing, duplicated, bounced, uncorrelated or incomplete edge keeps the order in manual review. No refund amount may be inferred from a partial trace.
+
+This audit is source-level only. It does not modify contract behavior, prove a live deployment matches this source, or authorize any refund. The read-only preview remains fail-closed with `refundableNano: null`.
