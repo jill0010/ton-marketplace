@@ -149,7 +149,9 @@ get fun `test experimental vault binds review to owner order evidence and costs`
         queryId: 1,
         receiptHash: 789,
     }.toCell();
-    expect(reserveSend(owner, vault, confirm, grams("0.05"))).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(
+        reserveSend(owner, vault, confirm, grams("0.05")),
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(
         reserveSend(owner, vault, confirm, grams("0.05")),
