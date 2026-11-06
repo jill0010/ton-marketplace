@@ -18,7 +18,7 @@ export async function collectV3TestnetEvidence(addresses, fetcher = fetch, expec
     realFundsApproved: false,
     mainnetApproved: false,
     missingProof: [
-      "ONCHAIN_CODE_HASH_MATCH",
+      ...(!postflight.codeHashesVerified ? ["ONCHAIN_CODE_HASH_MATCH"] : []),
       "MARKETPLACE_ESCROW_COORDINATOR_BINDINGS",
       "REAL_TESTNET_SETTLEMENT_TRACE",
       "RESERVE_REFUND_FINALITY_AND_IDEMPOTENCY",
