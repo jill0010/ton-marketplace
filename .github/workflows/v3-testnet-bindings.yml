@@ -1,0 +1,38 @@
+name: Verify Deployed V3 Testnet Bindings (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: ${{ github.ref == 'refs/heads/feature/reserve-refund-v3-audit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_TESTNET_MARKETPLACE_ADDRESS: kQAa5cnyurZayVXfJE_rkBiWz19w487aklFEAu6Wm9Fm-Sc6
+      V3_TESTNET_ESCROW_ADDRESS: kQCD_2amR3idpahAfj0xdgU9m34Z7s933HtXoDx-ka3J4_Rr
+      V3_TESTNET_COORDINATOR_ADDRESS: kQCC2k5wZSjitzFvGGUgyx_6KMWIIuSDQViNy_kw2j6OtqXy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify getter decoding tests
+        run: node --test contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs
+      - name: Verify eight deployed contract bindings (read-only)
+        run: node contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs
+      - name: Safety summary
+        if: always()
+        run: |
+          echo "V3 TESTNET ONLY. No transaction was sent by this verifier." >> "$GITHUB_STEP_SUMMARY"
+          echo "Binding checks do not prove trusted code hashes, funded settlement, refund finality, or mainnet readiness." >> "$GITHUB_STEP_SUMMARY"
