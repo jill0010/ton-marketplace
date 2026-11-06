@@ -110,3 +110,43 @@ test("fails closed on too many unverified bounced transfers", () => {
   assert.equal(result.mayConfirmBounce, false);
   assert.equal(result.mayRetry, false);
 });
+
+test("quarantines duplicate outgoing vault transaction hashes", () => {
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response([
+      tx("out-tx", null, [outgoing]),
+      tx("out-tx", null, [outgoing]),
+      tx("bounce-tx", bounced("193000000")),
+    ]),
+  });
+  assert.equal(result.identityConflict, true);
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.mayRetry, false);
+});
+test("quarantines duplicate bounce transaction identities", () => {
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response([
+      tx("out-tx", null, [outgoing]),
+      tx("bounce-tx", bounced("193000000")),
+      tx("bounce-tx", { ...bounced("193000000"), hash: "bounce-msg-2" }),
+    ]),
+  });
+  assert.equal(result.identityConflict, true);
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.verifiedReturnedNano, "0");
+});
+test("quarantines duplicated bounce message hashes even with distinct transactions", () => {
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response([
+      tx("out-tx", null, [outgoing]),
+      tx("bounce-tx-1", bounced("193000000")),
+      tx("bounce-tx-2", bounced("193000000")),
+    ]),
+  });
+  assert.equal(result.identityConflict, true);
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.mayConfirmBounce, false);
+});
