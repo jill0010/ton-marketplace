@@ -165,14 +165,20 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.orderId == identity.orderId) throw 702;
             assert (storage.status == 4) throw 703;
             assert (msg.returnEvidenceHash != 0) throw 702;
+            assert (msg.returnEvidenceHash != storage.evidenceHash) throw 702;
+            assert (msg.returnEvidenceHash != storage.receiptHash) throw 702;
             storage.receiptHash = msg.returnEvidenceHash;
             dispatchTestReserve(mutate storage);
         }
         ConfirmTestReserveReceipt => {
             assert (in.senderAddress == storage.owner) throw 701;
-            assert (storage.status == 2 || storage.status == 4) throw 703;
+            // A bounced transfer cannot be attested as credited; require
+            // a new dispatch and independently verified receiver receipt.
+            assert (storage.status == 2) throw 703;
             assert (msg.orderId == identity.orderId && msg.queryId == storage.queryId) throw 702;
             assert (msg.receiptHash != 0) throw 702;
+            assert (msg.receiptHash != storage.evidenceHash) throw 702;
+            assert (msg.receiptHash != storage.receiptHash) throw 702;
             storage.status = 3;
             storage.receiptHash = msg.receiptHash;
             storage.save();
