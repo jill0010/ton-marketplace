@@ -44,3 +44,18 @@ or misreport these fields, so the accounting gate remains closed.
 A valid rich-bounce BOC is likewise only a structural observation. Exact
 order/query/amount matching does not establish that the message was emitted
 by the TON protocol or that spendable principal returned to the vault.
+
+## Offline conservation model
+
+`v3-reserve-conservation.mjs` checks, using explicit nonnegative nanoTON
+ledger values:
+
+`funded = vault remaining + buyer credited + pending outbound + fees`.
+
+`returnedToVaultNano` is an event-history amount, not an additional balance:
+adding it to the right side would double-count returned principal already in
+the vault. Gas is an explicit separate cost. External compensation triggers
+an unconditional no-repayment barrier. Pending transfers and any inconsistent
+amounts are quarantined. This model does not fetch chain state, authenticate
+ledger inputs, or authorize payouts. Even a caller claiming
+`evidenceVerified: true` cannot turn arithmetic into proof.
