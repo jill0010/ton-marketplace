@@ -32,6 +32,10 @@ export function approveReconciliation(state, reconciliation) {
   // External compensation is already a buyer payment. Never authorize a second
   // reserve return based solely on a compensated terminal state.
   check(reconciliation.terminalState === "delivered", "Order not eligible for reserve refund");
+  // A delivered order may also have been compensated externally. The terminal
+  // status alone cannot establish that the reserve is still owed to the buyer.
+  check(reconciliation.externalCompensationVerified === false,
+    "External compensation status must be explicitly verified as absent");
   // A required input, NOT evidence this model can independently establish.
   check(reconciliation.fundingModel === "isolated-order-ledger-v3", "Pooled funding cannot authorize a refund");
   check(reconciliation.evidenceKind === "reviewed-isolated-ledger", "Trace fees alone are insufficient");
