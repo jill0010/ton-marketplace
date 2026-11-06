@@ -48,6 +48,9 @@ jobs:
       - name: Check Mainnet workflow safety
         run: node scripts/check-mainnet-workflow-safety.mjs
 
+      - name: Test reserve refund design model (no signer or network)
+        run: node --test experiments/reserve-refund-model.test.mjs
+
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
 
