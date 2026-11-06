@@ -71,3 +71,27 @@ Deno.test("fails closed when the transaction page is not an array", () => {
   try { observeMarketplaceV2Buys({}, marketplace.toString()); } catch { rejected = true; }
   if (!rejected) throw new Error("Invalid transaction page was accepted");
 });
+
+Deno.test("normalizes TON Center base64 hashes into canonical 256-bit hex", () => {
+  const toBase64 = (hex: string) => {
+    const bytes = new Uint8Array(hex.match(/../g)!.map((byte) => Number.parseInt(byte, 16)));
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  };
+  const row = tx({
+    hash: toBase64("a".repeat(64)),
+    in_msg: {
+      ...tx().in_msg,
+      hash: toBase64("b".repeat(64)),
+      in_msg_tx_hash: toBase64("c".repeat(64)),
+    },
+  });
+  const observed = observeMarketplaceV2Buys([row], marketplace.toString());
+  if (observed.length !== 1 ||
+      observed[0].marketplaceTransactionHash !== "a".repeat(64) ||
+      observed[0].inboundMessageHash !== "b".repeat(64) ||
+      observed[0].parentTransactionHash !== "c".repeat(64)) {
+    throw new Error("TON Center base64 hashes were not normalized");
+  }
+});
