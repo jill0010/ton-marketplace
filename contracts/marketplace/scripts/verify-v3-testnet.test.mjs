@@ -101,3 +101,24 @@ test("inactive contracts cannot pass code hash verification even when their code
   assert.equal(report.codeHashesVerified, false);
   assert.equal(report.mainnetReleaseApproved, false);
 });
+
+test("TON Center 429 rate limit is retried and the successful code is checked", async () => {
+  let calls = 0;
+  const valid = "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog==";
+  const result = await verifyV3Testnet(addresses, async () => {
+    calls++;
+    if (calls === 3) return { ok: false, status: 429 };
+    return { ok: true, json: async () => ({ ok: true, result: { state: "active", code: valid } }) };
+  });
+  assert.equal(calls, 4);
+  assert.equal(result.allActive, true);
+  assert.equal(result.mainnetReleaseApproved, false);
+});
+test("permanent non-retryable RPC errors fail immediately", async () => {
+  let calls = 0;
+  await assert.rejects(verifyV3Testnet(addresses, async () => {
+    calls++;
+    return { ok: false, status: 403 };
+  }), /RPC HTTP error for marketplace: 403/);
+  assert.equal(calls, 1);
+});
