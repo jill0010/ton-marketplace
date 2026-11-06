@@ -51,6 +51,16 @@ jobs:
       - name: Test reserve refund design model (no signer or network)
         run: node --test experiments/reserve-refund-model.test.mjs
 
+      - name: Verify V3 production release gate remains closed until production contracts exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/check-v3-mainnet-release-readiness.mjs; then
+            echo "::error::V3 gate unexpectedly passed; manual production security review required."
+            exit 1
+          fi
+          echo "V3 production deployment remains blocked; this CI run is not a release approval."
+
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
 
