@@ -73,6 +73,8 @@ test("contract BOC decoder exposes a reproducible 256-bit code hash", () => {
   const valid = "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog==";
   assert.match(parseV3ContractCode(valid).codeHash, /^[0-9a-f]{64}$/);
   const corrupted = Buffer.from(valid, "base64");
-  corrupted[corrupted.length - 1] ^= 0xff;
+  // Corrupt the mandatory BOC magic rather than arbitrary cell data,
+  // which may still decode as a different valid cell.
+  corrupted[0] ^= 0xff;
   assert.equal(parseV3ContractCode(corrupted.toString("base64")), null);
 });
