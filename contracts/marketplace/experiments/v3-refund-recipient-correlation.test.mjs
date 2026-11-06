@@ -164,3 +164,13 @@ test("rejects positive workchain 1 as a vault or buyer address", () => {
     vaultResponse, buyerResponse: buyerResponse(message()),
   }), TypeError);
 });
+
+test("bounced incoming buyer message cannot be counted as credited refund", () => {
+  const result = correlateV3RefundRecipient({
+    ...options, vaultResponse,
+    buyerResponse: buyerResponse(message(1, 2, { bounced: true })),
+  });
+  assert.equal(result.recipientCandidates.length, 0);
+  assert.equal(result.proofStatus, "UNVERIFIED");
+  assert.equal(result.mayRetry, false);
+});
