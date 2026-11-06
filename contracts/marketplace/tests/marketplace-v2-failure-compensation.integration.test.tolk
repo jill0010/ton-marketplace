@@ -47,8 +47,10 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
         controller: owner.address,
         escrow: fakeEscrow.address,
-        marketplace: marketplace.address,
-        testNftItem: nftItem,
+        extra: RejectingMarketplaceCallbackExtra {
+            marketplace: marketplace.address,
+            testNftItem: nftItem,
+        }.toCell(),
         rejectAction: true,
     });
     val buyer = rejector.address;
