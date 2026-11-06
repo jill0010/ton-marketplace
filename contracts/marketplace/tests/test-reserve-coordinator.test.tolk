@@ -163,9 +163,57 @@ get fun `test coordinator records failed vault funding without marking it funded
     val result = coordinatorSend(marketplace, coordinator, 1, buyer, grams("0.28"));
     expect(result).toHaveSuccessfulTx({ to: coordinator });
     val binding = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
-    expect(binding.status).toEqual(3);
+    expect(binding.status).toEqual(4);
     expect(binding.returnedNano > 200000000).toEqual(true);
     expect(
         coordinatorSend(marketplace, coordinator, 1, buyer, grams("0.28")),
     ).toHaveFailedTx({ to: coordinator, exitCode: 723 });
+}
+
+get fun `test coordinator quarantines insufficient returned principal despite pooled balance`() {
+    val (coordinator, _, marketplace, buyer) = coordinatorSetup();
+    val cursor = testing.createTraceIterationCursor(
+        marketplace,
+        createMessage({
+            bounce: BounceMode.RichBounce,
+            value: grams("0.28"),
+            dest: coordinator,
+            body: AllocateTestReserve {
+                orderId: 1,
+                buyer,
+                paymentHash: 12345,
+            },
+        }),
+    );
+    expect(cursor.executeN(1)).toHaveSuccessfulTx({ to: coordinator });
+    val binding = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
+    // Fault injection models a costly failed receiver returning too little.
+    val bounced = RichBounceBody {
+        originalBody: FundTestReserve { orderId: 1 }.toCell(),
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.25"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: 42,
+        computePhase: RichBounceComputePhaseInfo {
+            gasUsed: 100,
+            vmSteps: 10,
+        },
+    };
+    testing.processSingleTraceStep(
+        binding.vault,
+        createMessage({
+            bounce: false,
+            value: grams("0.19"),
+            dest: coordinator,
+            body: bounced,
+        }).bounced(),
+    );
+    cursor.close();
+    val saved = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
+    expect(saved.status).toEqual(3);
+    expect(saved.returnedNano).toEqual(190000000);
 }
