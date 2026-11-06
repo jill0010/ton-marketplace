@@ -1099,6 +1099,18 @@ get fun orderV2(orderId: uint64): MarketplaceV2Order? {
     return MarketplaceV2Order.fromCell(result.loadValue());
 }
 
+// Resolve the immutable order ID from its unique product reservation.
+// Indexers use this getter instead of guessing order IDs from transaction order.
+get fun orderIdForProductV2(productId: uint64): uint64? {
+    val purchase = MarketplaceV2Storage.load().purchaseStorage.load();
+    val orderStorage = purchase.orders.load();
+    val result = orderStorage.productToOrder.get(productId);
+    if (!result.isFound) {
+        return null;
+    }
+    return result.loadValue();
+}
+
 get fun productStatusV2(productId: uint64): uint8? {
     val result = MarketplaceV2Storage.load().products.get(productId);
     if (!result.isFound) {
