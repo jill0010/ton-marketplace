@@ -8,6 +8,7 @@ on:
       - 'contracts/marketplace/experiments/v3-refund-reconciliation*.mjs'
       - 'contracts/marketplace/experiments/v3-toncenter-readonly*.mjs'
       - 'contracts/marketplace/experiments/v3-toncenter-candidates*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-inspector*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
   push:
@@ -17,6 +18,7 @@ on:
       - 'contracts/marketplace/experiments/v3-refund-reconciliation*.mjs'
       - 'contracts/marketplace/experiments/v3-toncenter-readonly*.mjs'
       - 'contracts/marketplace/experiments/v3-toncenter-candidates*.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-inspector*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
 
@@ -38,4 +40,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run reserve-refund regression tests
-        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs contracts/marketplace/experiments/v3-refund-reconciliation.test.mjs contracts/marketplace/experiments/v3-toncenter-readonly.test.mjs contracts/marketplace/experiments/v3-toncenter-candidates.test.mjs
+        run: node --test contracts/marketplace/experiments/reserve-refund-model.test.mjs contracts/marketplace/scripts/check-v3-mainnet-release-readiness.test.mjs contracts/marketplace/experiments/v3-refund-reconciliation.test.mjs contracts/marketplace/experiments/v3-toncenter-readonly.test.mjs contracts/marketplace/experiments/v3-toncenter-candidates.test.mjs contracts/marketplace/experiments/v3-refund-inspector.test.mjs
