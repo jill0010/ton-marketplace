@@ -12,4 +12,7 @@ test("V3 Mainnet release is blocked while production components are absent", () 
   assert.equal(result.status, 1, "Preflight must fail closed until production V3 is implemented");
   assert.match(result.stderr, /MAINNET RELEASE BLOCKED/);
   assert.match(result.stderr, /No transactions sent/);
+  assert.match(result.stderr, /production V3 marketplace/);
+  assert.match(result.stderr, /production V3 coordinator/);
+  assert.match(result.stderr, /production V3 reserve vault/);
 });
