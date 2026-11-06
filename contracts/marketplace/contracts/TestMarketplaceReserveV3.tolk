@@ -499,6 +499,12 @@ fun onInternalMessage(in: InMessage) {
         EscrowReleasedV2 => {
             var storage = lazy TestMarketplaceStorageV3.load();
             var purchase = storage.purchaseStorage.load();
+            // A delivery callback must never settle an order whose reserve
+            // allocation has not been acknowledged by the coordinator.
+            val reserveResult = purchase.reserves.get(msg.orderId);
+            assert (reserveResult.isFound) throw 743;
+            val reserve = TestPurchaseReserveBinding.fromCell(reserveResult.loadValue());
+            assert (reserve.status == 2 && reserve.vault != null) throw 743;
             var orderStorage = purchase.orders.load();
             var payoutStorage = purchase.payoutStorage.load();
             assert (storage.escrowConfigured) throw ErrorsV2.InvalidDelivery;
