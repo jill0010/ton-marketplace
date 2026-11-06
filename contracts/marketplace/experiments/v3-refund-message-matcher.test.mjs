@@ -8,7 +8,7 @@ const vault = "0:" + "a".repeat(64);
 const buyer = "0:" + "b".repeat(64);
 const other = "0:" + "c".repeat(64);
 const body = (opcode, order, query) => beginCell()
-  .storeUint(opcode, 32).storeUint(order, 64).storeUint(query, 64)
+  .storeUint(opcode, 32).storeUint(order, 64).storeUint(query, 64).storeCoins(194000000n)
   .endCell().toBoc().toString("base64");
 const msg = (order, query, overrides = {}) => ({
   source: vault, destination: buyer, value: "194000000",
