@@ -167,6 +167,7 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.returnEvidenceHash != 0) throw 702;
             assert (msg.returnEvidenceHash != storage.evidenceHash) throw 702;
             assert (msg.returnEvidenceHash != storage.receiptHash) throw 702;
+            assert (msg.returnEvidenceHash != identity.paymentHash) throw 702;
             storage.receiptHash = msg.returnEvidenceHash;
             dispatchTestReserve(mutate storage);
         }
@@ -179,6 +180,7 @@ fun onInternalMessage(in: InMessage) {
             assert (msg.receiptHash != 0) throw 702;
             assert (msg.receiptHash != storage.evidenceHash) throw 702;
             assert (msg.receiptHash != storage.receiptHash) throw 702;
+            assert (msg.receiptHash != identity.paymentHash) throw 702;
             storage.status = 3;
             storage.receiptHash = msg.receiptHash;
             storage.save();
