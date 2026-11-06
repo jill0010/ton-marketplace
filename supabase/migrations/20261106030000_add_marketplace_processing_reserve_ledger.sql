@@ -62,10 +62,6 @@ CREATE TABLE IF NOT EXISTS public.marketplace_processing_reserves (
     status <> 'refunded'
     OR (refund_tx_hash IS NOT NULL AND refunded_at IS NOT NULL)
   ),
-  CHECK (
-    status <> 'manual_review'
-    OR true
-  )
 );
 
 CREATE INDEX IF NOT EXISTS marketplace_processing_reserves_status_idx
