@@ -2,7 +2,7 @@
 // refund order/query body. Matches are INVESTIGATION CANDIDATES, not proof.
 import { decodeTestReserveBuyerPaymentBody } from "./v3-refund-body-decoder.mjs";
 
-const raw = (value) => typeof value === "string" && /^(?:-?1|0):[0-9a-fA-F]{64}$/.test(value);
+const raw = (value) => typeof value === "string" && /^(?:-1|0):[0-9a-fA-F]{64}$/.test(value);
 const decimal = (value) => typeof value === "string" && /^[0-9]+$/.test(value);
 
 export function findV3RefundMessageCandidates(response, { vault, buyer, orderId, queryId }) {
@@ -12,6 +12,10 @@ export function findV3RefundMessageCandidates(response, { vault, buyer, orderId,
       response.address?.toLowerCase() !== vault.toLowerCase() ||
       !decimal(orderId) || !decimal(queryId) || BigInt(queryId) === 0n) {
     throw new TypeError("Invalid V3 investigation input");
+  }
+  if (response.transactions.length > 200) {
+    return { matches: [], ambiguous: true, reason: "TOO_MANY_UNVERIFIED_TRANSACTIONS",
+      proofStatus: "UNVERIFIED", mayRetry: false };
   }
   const matches = [];
   for (const tx of response.transactions) {
