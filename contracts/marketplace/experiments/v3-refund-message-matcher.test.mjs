@@ -69,3 +69,17 @@ test("rejects provider-reported failed vault dispatch, never upgrading unknown e
   assert.equal(report.matches[0].verified, false);
   assert.equal(report.matches[0].finalized, false);
 });
+
+test("quarantines oversized outgoing history and invalid workchain", () => {
+  const oversized = response([msg(1, 2)]);
+  oversized.transactions = Array.from({ length: 201 }, (_, i) => ({
+    transaction_id: { lt: String(i + 1), hash: "tx-" + i }, out_msgs: [msg(1, 2)],
+  }));
+  const result = findV3RefundMessageCandidates(oversized, options);
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.matches.length, 0);
+  assert.equal(result.mayRetry, false);
+  assert.throws(() => findV3RefundMessageCandidates(response([]), {
+    ...options, buyer: "1:" + "b".repeat(64),
+  }), TypeError);
+});
