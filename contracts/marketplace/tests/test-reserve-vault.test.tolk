@@ -534,3 +534,37 @@ get fun `test buyer-controlled bounce candidate quarantines receipt pending reco
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 703 });
 }
+
+
+get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithmetic underflow`() {
+    val (vault, owner, funder, buyer) = reserveSetup();
+    expect(
+        reserveSend(funder, vault, FundTestReserve { orderId: 1 }.toCell(), grams("0.3")),
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            ReviewTestReserve {
+                orderId: 1,
+                evidenceHash: 456,
+                attributedCosts: grams("0.195"),
+                terminalKind: 1,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveSuccessfulTx({ to: buyer });
+    expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.005"));
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
+    testing.processSingleTraceStep(
+        buyer,
+        createMessage({
+            bounce: false,
+            value: grams("0.001"),
+            dest: vault,
+            body: reserveRichBounce(1, 1, grams("0.005")),
+        }).bounced(),
+    );
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+}
