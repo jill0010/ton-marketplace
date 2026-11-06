@@ -24,11 +24,15 @@ struct (0x7f000004) StartTestReleaseV2 {
     buyer: address
 }
 
+struct RejectingMarketplaceCallbackExtra {
+    marketplace: address
+    testNftItem: address
+}
+
 struct RejectingMarketplaceCallbackStorage {
     controller: address
     escrow: address
-    marketplace: address
-    testNftItem: address
+    extra: Cell<RejectingMarketplaceCallbackExtra>
     rejectAction: bool
 }
 
@@ -81,35 +85,16 @@ fun onInternalMessage(in: InMessage) {
         }
 
         StartTestEscrowV2 => {
-            val storage = lazy RejectingMarketplaceCallbackStorage.load();
-            assert (in.senderAddress == storage.controller) throw ErrorsV2.NotOwner;
-            createMessage({
-                bounce: BounceMode.Only256BitsOfBody,
-                value: grams("0.05"),
-                dest: storage.escrow,
-                body: CreateEscrowV2 {
-                    productId: msg.productId,
-                    nftItem: msg.nftItem,
-                    collection: storage.controller,
-                    seller: msg.seller,
-                    queryId: msg.queryId,
-                    extra: CreateEscrowV2Extra {
-                        itemIndex: 0,
-                        kind: 3,
-                    }.toCell(),
-                },
-            }).send(SEND_MODE_PAY_FEES_SEPARATELY);
-        }
-
-        StartTestEscrowV2 => {
             var storage = lazy RejectingMarketplaceCallbackStorage.load();
             assert (in.senderAddress == storage.controller) throw ErrorsV2.NotOwner;
-            storage.testNftItem = msg.nftItem;
+            var extra = storage.extra.load();
+            extra.testNftItem = msg.nftItem;
+            storage.extra = extra.toCell();
             storage.save();
             createMessage({
                 bounce: BounceMode.Only256BitsOfBody,
                 value: grams("0.03"),
-                dest: storage.marketplace,
+                dest: storage.extra.load().marketplace,
                 body: EscrowDepositedV2 {
                     escrowId: 1,
                     productId: msg.productId,
@@ -134,7 +119,7 @@ fun onInternalMessage(in: InMessage) {
                     escrowId: msg.escrowId,
                     productId: msg.productId,
                     queryId: msg.queryId,
-                    nftItem: storage.testNftItem,
+                    nftItem: storage.extra.load().testNftItem,
                     seller: msg.seller,
                 },
             }).send(SEND_MODE_REGULAR);
