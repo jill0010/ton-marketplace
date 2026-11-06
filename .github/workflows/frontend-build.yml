@@ -19,6 +19,8 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"
+      - "supabase/functions/marketplace-v2-state/**"
       - "public/**"
       - "package.json"
       - "package-lock.json"
