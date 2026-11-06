@@ -74,6 +74,35 @@ Deno.test("rejects incomplete traces, missing root linkage, and duplicate Market
   assertThrows(() => findFinalizedMarketplaceBuyInTrace(duplicate, input));
 });
 
+Deno.test("rejects mismatched trace map keys and normalized duplicate transaction hashes", () => {
+  const input = {
+    buyerRootTransactionHash: rootHash,
+    inboundMessageHash: msgHash,
+    buyerAddress: buyer,
+    marketplaceAddress: marketplace,
+  };
+
+  const wrongKey = trace();
+  (wrongKey.transactions as Record<string, unknown>)["e".repeat(64)] = {
+    ...(wrongKey.transactions as Record<string, Record<string, unknown>>)[rootHash],
+    hash: "f".repeat(64),
+  };
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(wrongKey, input));
+
+  const duplicateAlias = trace();
+  const rootBytes = new Uint8Array(32).fill(0xaa);
+  const rootBase64 = btoa(String.fromCharCode(...rootBytes));
+  (duplicateAlias.transactions as Record<string, unknown>)[rootBase64] = {
+    ...(duplicateAlias.transactions as Record<string, Record<string, unknown>>)[rootHash],
+    hash: rootBase64,
+  };
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(duplicateAlias, input));
+
+  const invalid = trace();
+  (invalid.transactions as Record<string, unknown>)["e".repeat(64)] = null;
+  assertThrows(() => findFinalizedMarketplaceBuyInTrace(invalid, input));
+});
+
 Deno.test("cross-checks immutable order identity and the 0.2 TON reserve", () => {
   const order = {
     productId: "7", buyer, grossNano: "1000000000",
