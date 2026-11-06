@@ -166,3 +166,11 @@ V3 uses a fresh storage schema and shares existing purchase/delivery wire messag
 | `0x72730203` | `TestReserveAllocationFailed` | Returns exactly 0.2 TON principal to V3 and starts NFT-return-before-buyer-refund compensation |
 
 The experimental failure path subsidizes processing fees; it is not final scheme-C fee reconciliation.
+
+## Experimental funding confirmation recovery
+
+| Opcode | Message | Purpose |
+|---|---|---|
+| `0x72730204` | `RetryTestReserveAllocationAck` | Owner-funded replay of an already confirmed funding callback; no new reserve transfer |
+
+Requires confirmed funding status and at least 0.01 TON newly attached operational funding. Only the original order, payment commitment and vault are sent. It cannot retry failed principal-return messages or recover deployed V2 funds.
