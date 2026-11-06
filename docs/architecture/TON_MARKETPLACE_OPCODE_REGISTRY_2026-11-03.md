@@ -125,3 +125,17 @@ NFTEscrowV2 now supports seller-directed NFT refund from a deposited record, Ric
 
 
 Latest Contracts workflow #322 passed on `cbc1306c0ba70dd3577b069a1bceeb3d76a8fb1c`: 39 declarations with no opcode collisions, build, 100 tests in 12 files, linter, formatter. V2 refund opcodes are implemented in NFTEscrowV2 only; MarketplaceV2 seller cancellation/callback handling is still pending.
+
+## Experimental single-order reserve vault (not deployed)
+
+These messages belong to a standalone owner-attested prototype, not Marketplace V2.
+
+| Opcode | Message | Purpose |
+|---|---|---|
+| `0x72730101` | `FundTestReserve` | Immutable funding source deposits reserve and separate operational funding |
+| `0x72730102` | `ReviewTestReserve` | Owner attests terminal state and reviewed attributed costs |
+| `0x72730103` | `RetryTestReserve` | Owner attests returned funds evidence before retry |
+| `0x72730104` | `ConfirmTestReserveReceipt` | Owner records independently reviewed recipient credit evidence |
+| `0x72730105` | `TestReserveBuyerPayment` | Exact immutable buyer payment, order and attempt correlation |
+
+Owner attestations are trusted review, not independently verified on-chain proofs.
