@@ -62,6 +62,21 @@ jobs:
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
+      - name: Check installed Acton BIP39 support using public test vector only
+        env:
+          PUBLIC_TEST_MNEMONIC: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f wallets.toml' EXIT
+          cat > wallets.toml <<'WALLETS'
+          [wallets.seller]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          keys = { mnemonic-env = "PUBLIC_TEST_MNEMONIC" }
+          WALLETS
+          acton script scripts/check-testnet-wallet-profile.tolk --net testnet
+
       - name: Build
         run: acton build
 
