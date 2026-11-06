@@ -70,7 +70,23 @@ export function hasPlausibleContractCode(code) {
   return parseV3ContractCode(code) !== null;
 }
 
-export async function verifyV3Testnet(addresses, fetcher = fetch) {
+export function compareV3CodeHashes(contracts, expectedHashes) {
+  const names = ["marketplace", "escrow", "coordinator"];
+  if (!expectedHashes || names.some((name) =>
+    typeof expectedHashes[name] !== "string" ||
+    !/^[0-9a-fA-F]{64}$/.test(expectedHashes[name])
+  )) return { verified: false, matches: null, reason: "EXPECTED_HASHES_MISSING_OR_INVALID" };
+  const matches = Object.fromEntries(names.map((name) => [
+    name, contracts[name]?.codeHash === expectedHashes[name].toLowerCase(),
+  ]));
+  return {
+    verified: Object.values(matches).every(Boolean),
+    matches,
+    reason: Object.values(matches).every(Boolean) ? null : "ONCHAIN_CODE_HASH_MISMATCH",
+  };
+}
+
+export async function verifyV3Testnet(addresses, fetcher = fetch, expectedHashes = null) {
   const entries = validateV3Addresses(addresses);
   const endpoint = "https://testnet.toncenter.com/api/v2/getAddressInformation";
   const results = {};
@@ -90,13 +106,15 @@ export async function verifyV3Testnet(addresses, fetcher = fetch) {
     const codePresent = parsedCode !== null;
     results[name] = { address, state, active: state === "active", codePresent, codeHash: parsedCode?.codeHash ?? null };
   }
+  const codeHashComparison = compareV3CodeHashes(results, expectedHashes);
   return {
     network: "testnet",
     contracts: results,
     allActive: Object.values(results).every((item) => item.active),
     allCodePresent: Object.values(results).every((item) => item.codePresent),
     // Active code is not proof of correct code hash, bindings, funding, or security.
-    codeHashesVerified: false,
+    codeHashesVerified: codeHashComparison.verified,
+    codeHashComparison,
     bindingsVerified: false,
     fundedTransactionVerified: false,
     mainnetReleaseApproved: false,
@@ -110,6 +128,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       marketplace: process.env.V3_TESTNET_MARKETPLACE_ADDRESS,
       escrow: process.env.V3_TESTNET_ESCROW_ADDRESS,
       coordinator: process.env.V3_TESTNET_COORDINATOR_ADDRESS,
+    }, fetch, {
+      marketplace: process.env.V3_EXPECTED_MARKETPLACE_CODE_HASH,
+      escrow: process.env.V3_EXPECTED_ESCROW_CODE_HASH,
+      coordinator: process.env.V3_EXPECTED_COORDINATOR_CODE_HASH,
     });
     console.log(JSON.stringify(report, null, 2));
     if (!report.allActive || !report.allCodePresent) process.exitCode = 1;
