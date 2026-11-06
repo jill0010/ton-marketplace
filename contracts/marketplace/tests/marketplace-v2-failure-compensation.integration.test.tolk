@@ -314,8 +314,10 @@ get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEsc
     val rejector = RejectingMarketplaceCallback.fromStorage(RejectingMarketplaceCallbackStorage {
         controller: owner.address,
         escrow: owner.address,
-        marketplace: marketplace.address,
-        testNftItem: nftItem,
+        extra: RejectingMarketplaceCallbackExtra {
+            marketplace: marketplace.address,
+            testNftItem: nftItem,
+        }.toCell(),
         rejectAction: false,
     });
 
