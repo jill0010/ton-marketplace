@@ -139,3 +139,13 @@ These messages belong to a standalone owner-attested prototype, not Marketplace 
 | `0x72730105` | `TestReserveBuyerPayment` | Exact immutable buyer payment, order and attempt correlation |
 
 Owner attestations are trusted review, not independently verified on-chain proofs.
+
+## Experimental reserve allocation callbacks (not deployed)
+
+| Opcode | Message | Purpose |
+|---|---|---|
+| `0x72730106` | `TestReserveFunded` | Vault confirms order/payment funding to its immutable funding source |
+| `0x72730107` | `RetryTestReserveFundingAck` | Owner retries funding ACK while reserve remains unreviewed |
+| `0x72730201` | `AllocateTestReserve` | Configured emulated marketplace requests one immutable per-order vault |
+
+These are prototype messages and do not add an entrypoint to deployed Marketplace V2.
