@@ -71,7 +71,7 @@ export function extractOrderCellBoc(response: unknown): string {
 }
 
 /** Parse the single decimal uint64 result returned by TON Center V3. */
-export function extractSingleUint64StackValue(response: unknown): string {
+export function extractSingleUint64StackValue(response: unknown): string | null {
   if (!response || typeof response !== "object" || Array.isArray(response)) {
     throw new Error("TON Center returned an invalid get-method response");
   }
@@ -87,6 +87,7 @@ export function extractSingleUint64StackValue(response: unknown): string {
     throw new Error("Getter returned an unsupported stack item");
   }
   const item = entry as Record<string, unknown>;
+  if (item.type === "null") return null;
   if (item.type !== "num" || typeof item.value !== "string" || !/^(0|[1-9][0-9]*)$/.test(item.value)) {
     throw new Error("Getter did not return a decimal uint64 number");
   }
