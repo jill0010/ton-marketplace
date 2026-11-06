@@ -57,6 +57,7 @@ contract TestMarketplaceReserveV3 {
 
 type TestMarketplaceReserveV3Message =
     | SetTestReserveCoordinator
+    | TestReserveAllocationFailed
     | TestReserveAllocationConfirmed
     | SetMarketplaceV2Escrow
     | SetMarketplaceV2Treasury
@@ -85,6 +86,76 @@ fun onInternalMessage(in: InMessage) {
             purchase.coordinatorConfigured = true;
             storage.purchaseStorage = purchase.toCell();
             storage.save();
+        }
+        TestReserveAllocationFailed => {
+            var storage = TestMarketplaceStorageV3.load();
+            var purchase = storage.purchaseStorage.load();
+            assert (
+                purchase.coordinatorConfigured && in.senderAddress == purchase.coordinator
+            ) throw 742;
+            assert (in.valueCoins == grams("0.2")) throw 744;
+            val found = purchase.reserves.get(msg.orderId);
+            assert (found.isFound) throw 743;
+            var binding = TestPurchaseReserveBinding.fromCell(found.loadValue());
+            assert (binding.status == 1 && binding.vault == null) throw 743;
+            assert (binding.paymentHash == msg.paymentHash) throw 743;
+            var orders = purchase.orders.load();
+            var payouts = purchase.payoutStorage.load();
+            val orderFound = orders.orders.get(msg.orderId);
+            assert (orderFound.isFound) throw 743;
+            var order = MarketplaceV2Order.fromCell(orderFound.loadValue());
+            val extra = order.extra.load();
+            val asset = extra.asset.load();
+            val parties = extra.parties.load();
+            val settlement = extra.settlement.load();
+            val operations = extra.operations.load();
+            assert (
+                order.status == 2 && order.deliveryStatus == 1 && order.refundStatus == 0
+            ) throw 743;
+            var product = MarketplaceV2Product.fromCell(
+                storage.products.get(order.productId).loadValue(),
+            );
+            assert (product.status == 3 && product.escrowId == asset.escrowId) throw 743;
+            val queryId = storage.nextQueryId;
+            assert (queryId > 0 && !orders.refundQueryToOrder.get(queryId).isFound) throw 743;
+            var refund = MarketplaceV2Payout.fromCell(
+                payouts.payouts.get(operations.buyerRefundOperationId).loadValue(),
+            );
+            assert (
+                refund.status == 0 && refund.kind == 3 && refund.beneficiary == parties.buyer
+            ) throw 743;
+            // Experimental failure subsidy: full gross+reserve, no fee deduction.
+            refund.amount = settlement.gross + settlement.processingReserve;
+            payouts.payouts.set(refund.operationId, refund.toCell());
+            order.status = 6;
+            order.deliveryStatus = 3;
+            order.refundStatus = 1;
+            orders.orders.set(order.id, order.toCell());
+            orders.refundQueryToOrder.set(queryId, order.id);
+            purchase.refundQueryToProduct.set(queryId, order.productId);
+            product.status = 6;
+            product.refundQueryId = queryId;
+            storage.products.set(product.id, product.toCell());
+            binding.status = 3;
+            binding.vault = msg.vault;
+            purchase.reserves.set(order.id, binding.toCell());
+            purchase.orders = orders.toCell();
+            purchase.payoutStorage = payouts.toCell();
+            storage.purchaseStorage = purchase.toCell();
+            storage.nextQueryId = queryId + 1;
+            storage.save();
+            // Existing EscrowRefunded handler will pay only after NFT return.
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.05"),
+                dest: storage.escrow,
+                body: RefundEscrowV2 {
+                    escrowId: asset.escrowId,
+                    productId: order.productId,
+                    queryId,
+                    seller: parties.seller,
+                },
+            }).send(SEND_MODE_PAY_FEES_SEPARATELY);
         }
         TestReserveAllocationConfirmed => {
             var storage = TestMarketplaceStorageV3.load();
