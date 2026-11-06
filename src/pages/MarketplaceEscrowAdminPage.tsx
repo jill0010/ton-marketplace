@@ -138,7 +138,7 @@ export function MarketplaceEscrowAdminPage() {
         <div>
           <p className="text-xs uppercase tracking-widest text-zinc-500">TON MARKETPLACE · ADMIN</p>
           <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">普通用户交易托管</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">只读监控链上托管订单、NFT 交付、卖家 97% 收款、平台 3% 手续费及退款状态。链上合约状态为最终依据，此后台不直接改写资金状态。</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">当前页面展示 Supabase 中的订单数据库镜像、交易观察记录及分账记录；它们尚未由完整的链上索引器持续核验。链上合约状态才是最终依据，本后台不直接改写资金状态。</p>
         </div>
         <button type="button" onClick={() => void loadOrders()} disabled={loading} className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">{loading ? "读取中…" : "刷新订单"}</button>
       </header>
