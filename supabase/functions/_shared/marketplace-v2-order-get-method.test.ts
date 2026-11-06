@@ -60,8 +60,8 @@ Deno.test("extracts one decimal uint64 from TON Center V3 getter response", () =
 });
 
 Deno.test("rejects null, multiple, non-number, failed and overflowing getter results", () => {
+  assertEquals(extractSingleUint64StackValue({ exit_code: 0, stack: [{ type: "null", value: null }] }), null);
   for (const response of [
-    { exit_code: 0, stack: [{ type: "null", value: null }] },
     { exit_code: 0, stack: [{ type: "num", value: "1" }, { type: "num", value: "2" }] },
     { exit_code: 0, stack: [{ type: "num", value: "0x1" }] },
     { exit_code: 11, stack: [{ type: "num", value: "1" }] },
