@@ -1,0 +1,89 @@
+name: Buy Testnet NFT Fixture
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_purchase:
+        description: "Buy test product 1 with 0.01 TON + 0.2 TON reserve. Reserve refund is not implemented."
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: testnet-fixture-purchase
+  cancel-in-progress: false
+jobs:
+  rehearsal:
+    if: ${{ inputs.confirm_testnet_purchase == true && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Rehearse custody, purchase, delivery and payout dispatch in emulator
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/rehearse-testnet-fixture-purchase.tolk
+  buy:
+    needs: rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Submit one Testnet purchase with the original administrator wallet
+        env:
+          DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          TESTNET_PURCHASE_ENABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          trap 'rm -f wallets.toml' EXIT
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+          export TESTNET_BUY_DEADLINE="$(( $(date +%s) + 600 ))"
+          acton script scripts/buy-testnet-fixture.tolk --net testnet 2>&1 | tee purchase.log
+          grep -Fq "Test purchase submitted once." purchase.log
+      - name: Verify delivery and immutable order snapshot (read-only retries)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified=false
+          for attempt in 1 2 3 4 5 6; do
+            if acton script scripts/verify-testnet-fixture-purchase.tolk --net testnet > verification.log 2>&1; then
+              verified=true
+              break
+            fi
+            echo "Read-only verification attempt $attempt is not complete."
+            if [ "$attempt" -lt 6 ]; then sleep 10; fi
+          done
+          cat verification.log
+          test "$verified" = true
+          {
+            echo "## Testnet fixture purchase"
+            echo "Commit: $GITHUB_SHA"
+            grep -E "Order ID:|NFT buyer ownership verified:|payout dispatched" verification.log
+            echo "Attached: 0.21 test TON, plus wallet fees. No Mainnet transaction."
+            echo "Payout dispatch states require separate receipt-trace verification."
+            echo "The 0.2 TON reserve remains unrefunded. This is not full refund acceptance."
+          } >> "$GITHUB_STEP_SUMMARY"
