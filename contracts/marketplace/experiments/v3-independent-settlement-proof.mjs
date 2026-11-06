@@ -36,7 +36,17 @@ export function assessV3IndependentSettlement({
     conflict: r.conflictingEvidence,
     ambiguous: r.ambiguousEvidence,
   });
-  const sameObservation = signature(reports[0]) === signature(reports[1]);
+  // Equal candidate counts are not agreement on transaction identity.
+  // Compare exact candidate identities from both providers as well.
+  const identities = observations.map((o) => {
+    const outgoing = o.vaultResponse.transactions.flatMap((tx) =>
+      (tx?.out_msgs ?? []).map((msg) => [tx?.transaction_id?.hash, msg?.hash]));
+    const incoming = o.buyerResponse.transactions.map((tx) =>
+      [tx?.transaction_id?.hash, tx?.in_msg?.hash]);
+    return JSON.stringify({ outgoing: outgoing.sort(), incoming: incoming.sort() });
+  });
+  const sameObservation = signature(reports[0]) === signature(reports[1]) &&
+    identities[0] === identities[1];
   const candidateCredit = reports.every((r) =>
     r.outboundToBuyerCandidateCount === 1 &&
     r.returnedToVaultCandidateCount === 0 && !r.ambiguousEvidence);
