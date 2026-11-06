@@ -566,4 +566,29 @@ get fun `test sub 0.01 reserve refund ignores tiny forged bounce without arithme
     );
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    // A rejected forged bounce must not block legitimate receipt reconciliation.
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            ConfirmTestReserveReceipt {
+                orderId: 1,
+                queryId: 1,
+                receiptHash: 789,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(3);
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            RetryTestReserve {
+                orderId: 1,
+                returnEvidenceHash: 1234,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 703 });
 }
