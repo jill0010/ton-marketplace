@@ -15,6 +15,11 @@ export function findV3RefundMessageCandidates(response, { vault, buyer, orderId,
   }
   const matches = [];
   for (const tx of response.transactions) {
+    // Provider-reported failed execution cannot support a refund dispatch
+    // candidate. Missing execution fields are still UNVERIFIED, not success.
+    if (tx?.description?.aborted === true ||
+        tx?.description?.compute_ph?.success === false ||
+        tx?.description?.action?.success === false) continue;
     if (!Array.isArray(tx?.out_msgs)) continue;
     for (const msg of tx.out_msgs) {
       if (msg?.source?.toLowerCase() !== vault.toLowerCase() ||
@@ -33,6 +38,9 @@ export function findV3RefundMessageCandidates(response, { vault, buyer, orderId,
         amountNano: decoded.amountNano,
         orderId: decoded.orderId,
         queryId: decoded.queryId,
+        executionStatus: tx?.description?.aborted === false &&
+          tx?.description?.compute_ph?.success === true &&
+          tx?.description?.action?.success === true ? "REPORTED_SUCCESS" : "UNKNOWN",
         verified: false,
         finalized: false,
       });
