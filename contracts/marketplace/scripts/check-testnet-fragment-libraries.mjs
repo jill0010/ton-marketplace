@@ -6,10 +6,17 @@ if (!apiKey) {
   process.exit(1);
 }
 
-const requiredLibraries = [
+const allLibraries = [
   "2498bd63f3e9cc2c20c79abe58899a4816ea156855b8d4fcd47cda4bae9e911a",
   "91d9e2ac169fc785ce00de0a81af27622b9b7d1764415c775e7e50c03ce98aa2",
 ];
+
+const variant = process.env.TESTNET_ITEM_VARIANT ?? "all";
+if (variant !== "all" && variant !== "peppermint") {
+  console.error("Unknown TESTNET_ITEM_VARIANT; expected all or peppermint.");
+  process.exit(1);
+}
+const requiredLibraries = variant === "peppermint" ? [allLibraries[1]] : allLibraries;
 
 function normalizeTonHash(value) {
   const hash = String(value ?? "").trim().replace(/^0x/i, "");
@@ -65,9 +72,9 @@ if (missing.length) {
     "This does not authorize or enable a Mainnet deployment.",
   );
   if (strict) {
-    console.error("Current fixture readiness blocked: it requires both libraries. An available variant needs its own deployment/transfer rehearsal before use.");
+    console.error("Selected Testnet Item variant is blocked: its required shared library is missing.");
     process.exit(1);
   }
 } else {
-  console.log("Both official Fragment Item libraries are available on TON Testnet.");
+  console.log("All libraries required by the selected Item variant are available on TON Testnet.");
 }
