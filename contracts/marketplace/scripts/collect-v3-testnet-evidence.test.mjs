@@ -13,7 +13,7 @@ test("evidence collector reads three contracts and never approves real funds", a
   const evidence = await collectV3TestnetEvidence(addresses, async (_url, options) => {
     calls++;
     assert.equal(options.method, "GET");
-    return { ok: true, json: async () => ({ ok: true, result: { state: "active" } }) };
+    return { ok: true, json: async () => ({ ok: true, result: { state: "active", code: "te6ccgEBAgEAAwABAgE=" } }) };
   });
   assert.equal(calls, 3);
   assert.equal(evidence.postflight.allActive, true);
