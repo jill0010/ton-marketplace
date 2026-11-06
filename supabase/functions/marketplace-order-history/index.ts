@@ -102,7 +102,8 @@ Deno.serve(async (request: Request) => {
       wallet: wallet.walletAddress,
       orders,
       payouts,
-      chainIsAuthoritative: true,
+      dataSource: "database_mirror",
+      chainIsAuthoritative: false,
     }, 200, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unauthorized";
