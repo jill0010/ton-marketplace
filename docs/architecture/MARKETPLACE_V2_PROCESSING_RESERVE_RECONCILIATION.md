@@ -91,3 +91,7 @@ The failed-release path adds further order-correlated edges:
 5. Any missing, duplicated, bounced, uncorrelated or incomplete edge keeps the order in manual review. No refund amount may be inferred from a partial trace.
 
 This audit is source-level only. It does not modify contract behavior, prove a live deployment matches this source, or authorize any refund. The read-only preview remains fail-closed with `refundableNano: null`.
+
+### NFT excess calculation is not yet a production proof
+
+The repository's `MockNFTItem.tolk` models the reference NFT Item behavior: it reserves 0.05 TON, estimates forwarding fees from `in.originalForwardFee`, subtracts the forwarded notification amount and response forwarding estimate, then sends the remaining balance to the response destination as `NftExcesses`. This is useful for emulator tests only. It is not evidence that every live Fragment NFT Item uses the same code or fee schedule. Production accounting must identify and verify the exact NFT Item code hash/version and derive the actual excess from the observed on-chain message value and transaction actions; never reuse the mock's estimate as a refund amount.
