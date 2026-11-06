@@ -5,11 +5,11 @@ import {
   parseMarketplaceV2OrderId,
 } from "./marketplace-v2-order-get-method.ts";
 
-Deno.test("builds the exact orderCellV2 request with hexadecimal uint64 stack value", () => {
+Deno.test("builds the exact orderCellV2 request with decimal uint64 stack value", () => {
   assertEquals(buildOrderCellRunGetMethodRequest("0:abc", "15"), {
     address: "0:abc",
     method: "orderCellV2",
-    stack: [{ type: "num", value: "0xf" }],
+    stack: [{ type: "num", value: "15" }],
   });
 });
 
