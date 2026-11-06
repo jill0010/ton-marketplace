@@ -19,10 +19,14 @@ const wrap = (address, transactions) => ({
 const options = { vault, buyer, orderId: "1", queryId: "2" };
 const outgoing = { transaction_id: { lt: "1", hash: "out-tx" }, out_msgs: [sent] };
 const receipt = { transaction_id: { lt: "2", hash: "buyer-tx" }, in_msg: sent };
+const richBounceBody = beginCell().storeUint(0xfffffffe, 32)
+  .storeUint(0x72730105, 32).storeUint(1, 64).storeUint(2, 64)
+  .storeCoins(194000000n).endCell().toBoc().toString("base64");
 const bounce = {
   transaction_id: { lt: "3", hash: "bounce-tx" },
   in_msg: { source: buyer, destination: vault, value: "193000000",
-    bounced: true, hash: "bounce-msg" },
+    bounced: true, hash: "bounce-msg",
+    msg_data: { "@type": "msg.dataRaw", body: richBounceBody } },
 };
 const audit = (vaultTxs, buyerTxs, compensated = false) =>
   auditV3RefundSettlement({
