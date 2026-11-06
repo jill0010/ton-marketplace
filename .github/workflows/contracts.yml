@@ -65,6 +65,12 @@ jobs:
       - name: Build
         run: acton build
 
+      - name: Rehearse Testnet fixture custody listing
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/rehearse-testnet-fixture-listing.tolk
+
       - name: Test
         run: acton test --backtrace full
 
