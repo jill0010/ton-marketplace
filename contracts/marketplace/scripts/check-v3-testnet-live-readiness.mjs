@@ -31,7 +31,7 @@ export function inspectV3TestnetReadiness(source) {
   };
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) ===
-    fileURLToPath(new URL("file://" + process.argv[1], import.meta.url))) {
+    process.argv[1]) {
   const result = inspectV3TestnetReadiness(readFileSync(contractPath, "utf8"));
   console.log(JSON.stringify(result, null, 2));
   if (!result.testnetDeploymentApproved) process.exitCode = 1;
