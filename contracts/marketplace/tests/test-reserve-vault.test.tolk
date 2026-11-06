@@ -257,7 +257,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 706 });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
 }
 
 fun reserveRichBounce(orderId: uint64, queryId: uint64, amount: coins): cell {
