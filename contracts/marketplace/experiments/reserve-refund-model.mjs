@@ -78,6 +78,9 @@ export function observeResult(state, observation) {
   check(observation.messageHash === state.messageHash && observation.attempt === state.attempt, "Stale or unrelated receipt");
   check(observation.orderId === state.orderId && observation.buyer === state.buyer, "Wrong receipt identity");
   check(observation.amountNano === state.refundNano, "Wrong receipt amount");
+  check(observation.network === state.network && observation.marketplace === state.marketplace,
+    "Receipt chain or marketplace mismatch");
+  check(observation.paymentHash === state.paymentHash, "Receipt payment identity mismatch");
   check(["credited", "bounced"].includes(observation.kind), "Receipt is not terminal");
   const receiptEvidenceHash = hash(observation.receiptEvidenceHash);
   if (observation.kind === "credited") {
