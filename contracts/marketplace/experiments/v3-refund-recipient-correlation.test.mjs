@@ -7,7 +7,7 @@ const vault = "0:" + "a".repeat(64);
 const buyer = "0:" + "b".repeat(64);
 const other = "0:" + "c".repeat(64);
 const body = (order, query) => beginCell().storeUint(0x72730105, 32)
-  .storeUint(order, 64).storeUint(query, 64).endCell().toBoc().toString("base64");
+  .storeUint(order, 64).storeUint(query, 64).storeCoins(194000000n).endCell().toBoc().toString("base64");
 const message = (order = 1, query = 2, overrides = {}) => ({
   source: vault, destination: buyer, value: "194000000", hash: "same-message-hash",
   msg_data: { "@type": "msg.dataRaw", body: body(order, query) }, ...overrides,
