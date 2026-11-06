@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 const migration = readFileSync(
-  "supabase/migrations/20261106030000_add_marketplace_processing_reserve_ledger.sql",
+  "supabase/migrations/20261106024206_add_marketplace_processing_reserve_ledger.sql",
   "utf8",
 );
 const preview = readFileSync(
