@@ -75,9 +75,9 @@ fun runTestnetFixtureListing() {
     val marketplace = MarketplaceV2 {
         address: parseAddress("kQCvvuBddeebgdI08jUkTGzfulLRg2B8hqXWZrlHigKUsdNZ"),
     };
-    val escrow = NFTEscrowV2.fromAddress(
-        parseAddress("kQD0jzR2NK-s4rbvczeHdmYJedfsRge9PsdWbT52NGsEdTB4"),
-    );
+    val escrow = NFTEscrowV2 {
+        address: parseAddress("kQD0jzR2NK-s4rbvczeHdmYJedfsRge9PsdWbT52NGsEdTB4"),
+    };
     listTestFixture(
         marketplace, escrow, seller.address,
         parseAddress("kQBOI9-mfGHvWhW9qMRT4PGXpMBybDDIRqvp3towexy72p90"),
