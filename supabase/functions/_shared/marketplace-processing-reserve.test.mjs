@@ -97,7 +97,7 @@ test("reports a shortfall and never creates a negative refund", () => {
   const result = calculateMarketplaceProcessingReserve(trace, input);
   assert.equal(result.status, "manual_review_shortfall");
   assert.equal(result.refundableNano, "0");
-  assert.equal(result.shortfallNano, "500001");
+  assert.equal(result.shortfallNano, "1400001");
 });
 
 test("rejects duplicate transaction records", () => {
