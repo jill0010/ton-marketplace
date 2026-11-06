@@ -36,6 +36,21 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Install locked verifier dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+
+      - name: Check testnet wallet preflight and regression tests
+        working-directory: .
+        run: |
+          node --test contracts/marketplace/scripts/preflight-v3-testnet-wallets.test.mjs
+          node contracts/marketplace/scripts/preflight-v3-testnet-wallets.mjs
+
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
