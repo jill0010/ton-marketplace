@@ -21,8 +21,14 @@ export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrow
   const hasPurchaseHandler = marketplaceSource.includes("| BuyProductV2") && marketplaceSource.includes("BuyProductV2 =>");
   const hasNftReleaseHandler = escrowSource.includes("| ReleaseEscrowV2") && escrowSource.includes("ReleaseEscrowV2 =>");
   const hasSettlementHandler = marketplaceSource.includes("| EscrowReleasedV2") && marketplaceSource.includes("EscrowReleasedV2 =>") && marketplaceSource.includes("SellerPayoutV2") && marketplaceSource.includes("PlatformPayoutV2");
+  // V2 retry currently re-dispatches buyer funds on bounce status alone. A bounce
+  // candidate is not independent evidence that the previous transfer was returned.
+  const unsafeBuyerRefundRetry = marketplaceSource.includes("RetryPayoutV2 =>") &&
+    marketplaceSource.includes("order.deliveryStatus == 3 && order.refundStatus == 3") &&
+    marketplaceSource.includes("BuyerRefundV2 {");
   return {
     contractFound: true,
+    unsafeBuyerRefundRetry,
     hasPurchaseHandler,
     hasNftReleaseHandler,
     hasSettlementHandler,
@@ -38,6 +44,7 @@ export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrow
       ...(!hasPurchaseHandler ? ["NO_ONCHAIN_PURCHASE_HANDLER"] : []),
       ...(!hasNftReleaseHandler ? ["NO_NFT_DELIVERY_HANDLER"] : []),
       ...(!hasSettlementHandler ? ["NO_SELLER_FEE_SETTLEMENT_HANDLER"] : []),
+      ...(unsafeBuyerRefundRetry ? ["V2_BUYER_REFUND_RETRY_LACKS_INDEPENDENT_RETURN_PROOF"] : []),
       "V3_VAULT_NOT_INTEGRATED_WITH_V2_PURCHASE_SETTLEMENT",
       "NO_INDEPENDENT_ONCHAIN_SETTLEMENT_PROOF",
       "NO_ATOMIC_ONCHAIN_REFUND_IDEMPOTENCY_PROOF",
