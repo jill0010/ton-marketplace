@@ -29,7 +29,9 @@ export function approveReconciliation(state, reconciliation) {
   for (const key of ["network", "orderId", "buyer", "marketplace", "paymentHash"]) {
     check(reconciliation[key] === state[key], "Reconciliation identity mismatch");
   }
-  // External compensation is already a buyer payment. Never authorize a second\n  // reserve return based solely on a compensated terminal state.\n  check(reconciliation.terminalState === "delivered", "Order not eligible for reserve refund");
+  // External compensation is already a buyer payment. Never authorize a second
+  // reserve return based solely on a compensated terminal state.
+  check(reconciliation.terminalState === "delivered", "Order not eligible for reserve refund");
   // A required input, NOT evidence this model can independently establish.
   check(reconciliation.fundingModel === "isolated-order-ledger-v3", "Pooled funding cannot authorize a refund");
   check(reconciliation.evidenceKind === "reviewed-isolated-ledger", "Trace fees alone are insufficient");
