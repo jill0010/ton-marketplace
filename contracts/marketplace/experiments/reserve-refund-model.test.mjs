@@ -10,7 +10,7 @@ const approve = (overrides = {}) => approveReconciliation(createLiability(identi
 const dispatch = (state = approve(), overrides = {}) => beginDispatch(state, {
   orderId: "1", buyer: "buyer", evidenceHash: E, compensationReviewHash: H, amountNano: 194000000n,
   attempt: state.attempt + 1, principalReturnEvidenceHash: state.receiptEvidenceHash, messageHash: state.attempt === 0 ? M : N, ...overrides });
-const receipt = (overrides = {}) => ({ orderId: "1", buyer: "buyer", amountNano: 194000000n,
+const receipt = (overrides = {}) => ({ network: "-3", marketplace: "market", paymentHash: H, orderId: "1", buyer: "buyer", amountNano: 194000000n,
   messageHash: M, attempt: 1, kind: "credited", receiptEvidenceHash: H, receiverSuccess: true, creditNano: 194000000n, ...overrides });
 test("prototype rejects Mainnet", () => assert.throws(() => createLiability({ ...identity, network: "-239" })));
 test("conserves isolated reserve and binds reviewed evidence", () => {
@@ -67,7 +67,8 @@ test("receipt evidence is mandatory for success and bounce", () => {
 });
 test("rejects unrelated or unsuccessful receipts", () => {
   for (const change of [{ messageHash: N }, { attempt: 2 }, { creditNano: 1n }, { receiverSuccess: false },
-    { buyer: "attacker" }, { orderId: "2" }]) assert.throws(() => observeResult(dispatch(), receipt(change)));
+    { buyer: "attacker" }, { orderId: "2" }, { network: "-239" },
+    { marketplace: "attacker" }, { paymentHash: E }]) assert.throws(() => observeResult(dispatch(), receipt(change)));
 });
 test("bounce requires exact principal return and retry preserves amount", () => {
   const bad = receipt({ kind: "bounced", returnVerified: false, returnedPrincipalNano: 194000000n });
