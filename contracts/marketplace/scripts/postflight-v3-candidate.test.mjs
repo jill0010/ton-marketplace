@@ -35,3 +35,10 @@ test("missing contract code blocks candidate acceptance", async () => {
   }));
   assert.equal(result.candidateAccountsActive, false);
 });
+
+test("candidate parser rejects appended tokens and log injection", () => {
+  assert.throws(() => extractV3CandidateAddresses(log.replace(
+    "V3 testnet candidate marketplace: 0:" + "1".repeat(64),
+    "V3 testnet candidate marketplace: 0:" + "1".repeat(64) + " unexpected",
+  )), /Invalid marketplace address token/);
+});
