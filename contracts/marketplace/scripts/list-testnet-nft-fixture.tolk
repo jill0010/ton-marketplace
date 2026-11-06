@@ -3,6 +3,7 @@ import "@acton/fmt"
 import "@acton/io"
 import "@acton/emulation/network"
 import "@acton/emulation/scripts"
+import "@acton/testing/expect"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/NFTEscrowV2.gen"
@@ -58,6 +59,9 @@ fun listTestFixture(marketplace: MarketplaceV2, escrow: NFTEscrowV2, seller: add
     });
     val deposited = net.send(seller, transfer);
     assert (deposited.waitForFirstTransaction() != null) throw 404;
+    if (env<bool>("FIXTURE_EMULATION") ?? false) {
+        expect(deposited).toHaveSuccessfulTx({ from: seller, to: nftItem });
+    }
     val after = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     println("Observed NFT owner: {}", after.get(3) as address);
     println("Expected escrow: {}", escrow.address);
