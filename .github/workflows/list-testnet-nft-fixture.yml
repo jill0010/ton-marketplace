@@ -37,7 +37,7 @@ jobs:
         env:
           TESTNET_FIXTURE_ENABLED: "true"
           FIXTURE_EMULATION: "true"
-        run: acton script scripts/deploy-testnet-nft-listing.tolk
+        run: acton script scripts/rehearse-testnet-fixture-listing.tolk
 
   deploy:
     needs: rehearsal
@@ -61,6 +61,7 @@ jobs:
         run: acton build
       - name: Configure and list existing fixture on TON Testnet
         env:
+          SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
           DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
           TESTNET_LISTING_ENABLED: "true"
@@ -70,6 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC" || { echo "::error::Missing TESTNET_SELLER_MNEMONIC"; exit 1; }
           test -n "$TONCENTER_API_KEY"
           trap 'rm -f wallets.toml' EXIT
           umask 077
@@ -78,13 +80,17 @@ jobs:
           kind = "v5r1"
           workchain = 0
           keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          [wallets.seller]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
           WALLETS
-          acton script scripts/deploy-testnet-nft-listing.tolk --net testnet 2>&1 | tee testnet-fixture.log
+          acton script scripts/run-testnet-fixture-listing.tolk --net testnet 2>&1 | tee testnet-fixture.log
           grep -Fq "Test listing active; product ID:" testnet-fixture.log
           {
             echo "## TON Testnet fixture custody listing"
             echo "Commit: $GITHUB_SHA"
-            grep -E "Fixture collection:|Fixture seller:|Test fixture deployed and ownership verified:" testnet-fixture.log
+            grep -E "Test listing active; product ID:|Test listing escrow ID:|NFT custody verified:" testnet-fixture.log
             echo "Configuration, registration and transfer attach up to 0.55 test TON, plus wallet network fees."
             echo "Synthetic test asset using approved Item code; not an official Telegram gift."
             echo "Uses existing Marketplace and Escrow. Test collection is enabled and NFT is transferred into custody. No purchase or refund is performed."
