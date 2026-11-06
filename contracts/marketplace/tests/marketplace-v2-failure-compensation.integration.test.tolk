@@ -218,7 +218,7 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
 
     val refundedOrder = marketplace.orderV2(1);
     assert (refundedOrder != null) throw ErrorsV2.InvalidPayout;
-    expect(refundedOrder!!.status).toEqual(7);
+    expect(refundedOrder!!.status).toEqual(6);
     expect(refundedOrder.refundStatus).toEqual(3);
     val retriedRefund = marketplace.payoutV2(operations.buyerRefundOperationId);
     assert (retriedRefund != null) throw ErrorsV2.InvalidPayout;
