@@ -321,24 +321,59 @@ get fun `test Marketplace V2 compensates an actual bounced RichBounce ReleaseEsc
         rejectAction: false,
     });
 
-    expect(marketplace.deploy(owner.address, { value: grams("0.3") })).toHaveSuccessfulDeploy({ to: marketplace.address });
-    expect(rejector.deploy(owner.address, { value: grams("0.3") })).toHaveSuccessfulDeploy({ to: rejector.address });
-    expect(marketplace.sendSetMarketplaceV2Escrow(owner.address, rejector.address, { value: grams("0.03") })).toHaveSuccessfulTx();
-    expect(marketplace.sendSetMarketplaceV2Treasury(owner.address, treasury.address, { value: grams("0.03") })).toHaveSuccessfulTx();
+    expect(
+        marketplace.deploy(owner.address, { value: grams("0.3") }),
+    ).toHaveSuccessfulDeploy({ to: marketplace.address });
+    expect(
+        rejector.deploy(owner.address, { value: grams("0.3") }),
+    ).toHaveSuccessfulDeploy({ to: rejector.address });
+    expect(
+        marketplace.sendSetMarketplaceV2Escrow(
+            owner.address,
+            rejector.address,
+            { value: grams("0.03") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendSetMarketplaceV2Treasury(
+            owner.address,
+            treasury.address,
+            { value: grams("0.03") },
+        ),
+    ).toHaveSuccessfulTx();
 
-    expect(marketplace.sendPublishProductV2(
-        seller.address, 1, 1, nftItem, collection, 77, 3, grams("4"),
-        { value: grams("0.2") },
-    )).toHaveSuccessfulTx();
-    expect(rejector.sendStartTestEscrowV2(
-        owner.address, 1, nftItem, seller.address, 1,
-        { value: grams("0.03") },
-    )).toHaveSuccessfulTx();
+    expect(
+        marketplace.sendPublishProductV2(
+            seller.address,
+            1,
+            1,
+            nftItem,
+            collection,
+            77,
+            3,
+            grams("4"),
+            { value: grams("0.2") },
+        ),
+    ).toHaveSuccessfulTx();
+    expect(
+        rejector.sendStartTestEscrowV2(
+            owner.address,
+            1,
+            nftItem,
+            seller.address,
+            1,
+            { value: grams("0.03") },
+        ),
+    ).toHaveSuccessfulTx();
     expect(marketplace.productV2(1)!!.status).toEqual(2);
 
     val now = testing.getNow();
     val purchase = marketplace.sendBuyProductV2(
-        buyer.address, 1, grams("4"), 9001, now + 600,
+        buyer.address,
+        1,
+        grams("4"),
+        9001,
+        now + 600,
         { value: grams("4.2") },
     );
     expect(purchase).toHaveSuccessfulTx();
