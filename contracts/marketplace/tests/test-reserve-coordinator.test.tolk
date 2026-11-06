@@ -218,6 +218,53 @@ get fun `test coordinator quarantines insufficient returned principal despite po
     expect(saved.returnedNano).toEqual(190000000);
 }
 
+get fun `test coordinator rejects bounce with mismatched original funding amount`() {
+    val (coordinator, _, marketplace, buyer) = coordinatorSetup();
+    val cursor = testing.createTraceIterationCursor(
+        marketplace,
+        createMessage({
+            bounce: BounceMode.RichBounce,
+            value: grams("0.28"),
+            dest: coordinator,
+            body: AllocateTestReserve {
+                orderId: 1,
+                buyer,
+                paymentHash: 12345,
+            },
+        }),
+    );
+    expect(cursor.executeN(1)).toHaveSuccessfulTx({ to: coordinator });
+    val binding = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
+    val forged = RichBounceBody {
+        originalBody: FundTestReserve { orderId: 1 }.toCell(),
+        originalInfo: RichBounceOriginalMsgInfo {
+            valueCoins: grams("0.24"),
+            valueExtra: [],
+            createdLt: 0,
+            createdAt: 0,
+        }.toCell(),
+        bouncedByPhase: 1,
+        exitCode: 42,
+        computePhase: RichBounceComputePhaseInfo {
+            gasUsed: 100,
+            vmSteps: 10,
+        },
+    };
+    testing.processSingleTraceStep(
+        binding.vault,
+        createMessage({
+            bounce: false,
+            value: grams("0.24"),
+            dest: coordinator,
+            body: forged,
+        }).bounced(),
+    );
+    val saved = net.runGetMethod<TestReserveBinding?>(coordinator, "testReserveBinding", [1])!!;
+    expect(saved.status).toEqual(1);
+    expect(saved.returnedNano).toEqual(0);
+    cursor.close();
+}
+
 get fun `test owner may retry funding confirmation without reallocating reserve`() {
     val (coordinator, owner, marketplace, buyer) = coordinatorSetup();
     expect(
