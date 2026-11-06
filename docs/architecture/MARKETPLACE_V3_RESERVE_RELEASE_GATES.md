@@ -32,3 +32,20 @@ Status: **NOT IMPLEMENTED, NOT DEPLOYED, NOT MAINNET READY**.
 ## Deployment policy
 
 No silent upgrade of V2. Deploy V3 to fresh testnet addresses, independently verify code hash and wallets, run real NFT purchase/settlement/refund scenarios, then obtain explicit approval for any mainnet funds-moving deployment. Mainnet deployment must remain blocked until all gates are met.
+
+
+## Bounce reconciliation and retry authorization (unresolved production gate)
+
+The experimental `TestReserveVault` currently accepts an owner-provided receipt hash and return-evidence hash. Neither value is verified against an authenticated TON transaction by the contract. Its bounced-message handler checks sender, operation identity and a minimum returned value; **this is not cryptographic proof that the original outbound refund was returned**, because a recipient-controlled message can imitate the bounced payload. The threshold is an economic filter only. In particular, a sufficiently funded malicious recipient may fabricate a matching candidate. Do not enable automatic retries from status 4.
+
+Production reconciliation must be fail-closed:
+
+1. Persist the outbound refund operation, full destination address, amount, query ID, originating transaction LT/hash and outgoing message hash before any retry is authorized.
+2. Verify the actual outbound transaction and the exact message against trusted chain data. Identify the corresponding destination transaction, whether it credited the recipient, and whether a bounce was emitted. Never infer credit from the sending transaction alone.
+3. For a bounce, verify the bounced message's source transaction, original outbound message linkage, operation/query ID, and the value actually returned to the *same isolated vault*. A matching body or owner-entered hash alone is insufficient.
+4. Require reconciliation to distinguish **credited**, **returned**, and **unknown**. Only `returned` with sufficient verified funds permits a retry; `credited` permanently forbids retry; `unknown` freezes funds for manual investigation.
+5. A retry must atomically consume the specific return proof, advance the operation sequence, and reserve the entire refund liability. Old receipts and bounced messages must not authorize another retry.
+6. For small residuals, explicitly account for actual bounce fees. A hard-coded minimum that requires 100% of a sub-0.01 TON refund to return can leave legitimate bounces in `unknown`; never solve that by accepting unverified partial principal.
+7. Require independent testnet transaction receipts for successful credit, genuine bounce, forged bounce (including adequately funded forged messages), delayed bounce, stale operation, and repeated retry before removing this release gate.
+
+**Operational rule:** An operator must not click retry based solely on `status == 4`, a plausible bounce body, a buyer claim, or a transaction hash supplied by the buyer. Record independently checked transaction hashes and balances, and keep uncertain cases frozen. The old V2 order 1 was already externally compensated and must never enter this process.
