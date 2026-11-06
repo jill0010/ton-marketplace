@@ -37,14 +37,14 @@ The NFT wallet-assets Edge Function now includes the verified Item index needed 
 
 ## Verification and release status
 
-The Contracts workflow builds the contracts, runs emulator integration tests, checks the opcode registry, runs the Tolk linter, and enforces formatting. The V2 test suite covers official Item deployment/transfer, escrow registration, successful purchase and NFT delivery, 97/3 settlement, payout bounce/retry, failed delivery, seller return, buyer refund, and refund bounce/retry.
+The Contracts workflow builds the contracts, runs emulator integration tests, checks the opcode registry, runs the Tolk linter, and enforces formatting. The V2 test suite covers official Item deployment/transfer, escrow registration, successful purchase and NFT delivery, 97/3 settlement, payout bounce/retry, failed delivery, seller return, buyer refund, refund bounce/retry, and a real emulator RichBounce caused by rejecting the Marketplace's outbound ReleaseEscrowV2 request.
 
 Passing emulator tests are not a substitute for a testnet rehearsal or an independent security review. Current V2 code has not been deployed to testnet or mainnet in this release process. The Publish page listing flow is implemented but gated by MARKETPLACE_V2_LISTING_ENABLED and the on-chain Escrow collection policy. The publish-nft-product endpoint only mirrors a fully verified on-chain product, Escrow record, and NFT ownership state. The buyer purchase button remains disabled; frontend purchase, order synchronization, and buyer delivery confirmation are not yet enabled. Do not accept real buyer funds or expose real-asset listings yet.
 
 ## Deployment safety
 
 - `MarketplaceV2Storage` and `NFTEscrowV2Storage` are fresh-deployment schemas. Do not point this code at an older V1 contract address or assume serialized storage compatibility.
-- The deployer becomes Marketplace/Escrow owner. The 3% fee treasury is a separate public address and must not equal the deployer. For emulator/testnet, the script can use the separate `treasury` wallet in `wallets.toml`; for mainnet TON Connect, set `PLATFORM_TREASURY_ADDRESS` to the chosen public address so no treasury private key is needed.
+- The deployer becomes Marketplace/Escrow owner. The 3% fee treasury is a separate public address and must not equal the deployer. Marketplace V2 itself holds buyer purchase principal during escrow; the separately configured external marketplace custody wallet is not the buyer-payment recipient in this contract flow. For emulator/testnet, the script can use the separate `treasury` wallet in `wallets.toml`; for mainnet TON Connect, set `PLATFORM_TREASURY_ADDRESS` to the chosen public address so no treasury private key is needed.
 - `deploy-v2-mainnet` uses a configured local deployer wallet. `deploy-v2-mainnet-tonconnect` uses Acton's interactive TON Connect signer. With TON Connect, run the script locally and approve the deployment in your wallet; the assistant cannot sign or approve wallet transactions. Never send a mnemonic or private key in chat, commit it to GitHub, or place it in application logs.
 - A mainnet deployment requires a funded, authorized deployer signer; a verified production treasury address; a successful testnet rehearsal against current live Fragment collections; and independent review of the compiled code, ABI, storage, and recovery paths.
 
@@ -67,17 +67,24 @@ Configure these repository secrets for the testnet workflow:
 
 The testnet workflow does not enable any NFT collection and does not make listings available. A successful deployment is only the start of rehearsal: test official collection Item code hashes, seller deposit, buyer purchase, NFT delivery, both payout legs, failure compensation, and recovery against the deployed testnet addresses before requesting mainnet release.
 
-### GitHub Actions mainnet deployment
+### GitHub Actions Mainnet preflight
 
-The repository includes a manually dispatched workflow at `.github/workflows/deploy-marketplace-v2-mainnet.yml`. It does not deploy on push. The operator must explicitly check the irreversible-mainnet-deployment confirmation input.
+The repository includes a manually dispatched, **read-only** preflight workflow at `.github/workflows/deploy-marketplace-v2-mainnet.yml`. It does not deploy on push, does not load a deployer mnemonic, and does not sign or broadcast Mainnet transactions. The operator must explicitly check the preflight confirmation input.
 
-Configure these GitHub Actions repository secrets before dispatching:
+Configure these repository secrets before dispatching:
 
-- `DEPLOYER_MNEMONIC` — the dedicated, funded V5R1 deployment wallet mnemonic. Never paste it into chat or commit it.
 - `PLATFORM_TREASURY_ADDRESS` — the public address that receives the Marketplace V2 3% fee. It must be controlled by the project owner and must differ from the deployer wallet.
-- `TONCENTER_MAINNET_API_KEY` — a TON Center mainnet API key.
+- `TONCENTER_MAINNET_API_KEY` — a TON Center Mainnet API key.
 
-The workflow writes a temporary, permission-restricted `wallets.toml` that references the mnemonic only through the environment. It builds the production contracts, runs the mainnet deployment script, and requires the script's final escrow/treasury verification marker before reporting success. It adds the resulting public contract addresses to the GitHub Actions run summary. The workflow cannot run successfully until all three secrets are configured; no secret values belong in the repository.
+The workflow checks the opcode registry, Item code policy, contract build, full emulator suite, deployment script in emulation, linter, formatter, and official Fragment Mainnet library availability. It reports preflight results only; it does not report deployed contract addresses.
+
+Actual deployment must be initiated separately from a trusted local environment using the interactive TON Connect signer:
+
+```bash
+acton script scripts/deploy-v2.tolk --net mainnet --tonconnect
+```
+
+The deployer approves the deployment in their own wallet. Do not put a production/Mainnet mnemonic in GitHub Actions, Supabase, repository files, or chat.
 
 ## Admin custody wallet settings
 
