@@ -89,3 +89,15 @@ test("code hash comparison fails closed without explicit expected hashes", () =>
   assert.equal(compareV3CodeHashes(contracts, expected).verified, true);
   assert.equal(compareV3CodeHashes(contracts, { ...expected, escrow: "b".repeat(64) }).verified, false);
 });
+
+test("inactive contracts cannot pass code hash verification even when their code matches", async () => {
+  const code = "te6ccgEBAQEAIwAIQgKR2eKsFp/Hhc4A3gqBrydiK5t9F2RBXHdeflDAPOmKog==";
+  const hash = parseV3ContractCode(code).codeHash;
+  const expected = { marketplace: hash, escrow: hash, coordinator: hash };
+  const report = await verifyV3Testnet(addresses, async () => ({
+    ok: true, json: async () => ({ ok: true, result: { state: "frozen", code } }),
+  }), expected);
+  assert.equal(report.codeHashComparison.verified, true);
+  assert.equal(report.codeHashesVerified, false);
+  assert.equal(report.mainnetReleaseApproved, false);
+});
