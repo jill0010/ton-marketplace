@@ -231,7 +231,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    ).toHaveFailedTx({ to: vault, exitCode: 702 });
     val retried = reserveSend(
         owner,
         vault,
