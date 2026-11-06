@@ -1,6 +1,6 @@
 export type RunGetMethodRequest = {
   address: string;
-  method: "orderCellV2";
+  method: "orderCellV2" | "orderIdForProductV2";
   stack: Array<{ type: "num"; value: string }>;
 };
 
@@ -15,12 +15,13 @@ export function parseMarketplaceV2OrderId(value: unknown): string {
 
 export function buildOrderCellRunGetMethodRequest(
   address: string,
-  orderId: string,
+  method: RunGetMethodRequest["method"],
+  argumentId: string,
 ): RunGetMethodRequest {
-  const id = parseMarketplaceV2OrderId(orderId);
+  const id = parseMarketplaceV2OrderId(argumentId);
   return {
     address,
-    method: "orderCellV2",
+    method,
     stack: [{ type: "num", value: BigInt(id).toString(10) }],
   };
 }
@@ -67,4 +68,29 @@ export function extractOrderCellBoc(response: unknown): string {
     throw new Error("Marketplace V2 order does not exist or returned a null cell");
   }
   throw new Error("orderCellV2 did not return a documented cell stack item");
+}
+
+/** Parse the single decimal uint64 result returned by TON Center V3. */
+export function extractSingleUint64StackValue(response: unknown): string {
+  if (!response || typeof response !== "object" || Array.isArray(response)) {
+    throw new Error("TON Center returned an invalid get-method response");
+  }
+  const root = response as Record<string, unknown>;
+  if (typeof root.exit_code === "number" && root.exit_code !== 0) {
+    throw new Error(`Marketplace V2 get-method failed with exit code ${root.exit_code}`);
+  }
+  if (!Array.isArray(root.stack) || root.stack.length !== 1) {
+    throw new Error("Getter must return exactly one stack item");
+  }
+  const entry = root.stack[0];
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    throw new Error("Getter returned an unsupported stack item");
+  }
+  const item = entry as Record<string, unknown>;
+  if (item.type !== "num" || typeof item.value !== "string" || !/^(0|[1-9][0-9]*)$/.test(item.value)) {
+    throw new Error("Getter did not return a decimal uint64 number");
+  }
+  const value = BigInt(item.value);
+  if (value > 0xffff_ffff_ffff_ffffn) throw new Error("Getter result exceeds uint64");
+  return value.toString(10);
 }
