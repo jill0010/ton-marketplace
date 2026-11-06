@@ -93,3 +93,20 @@ test("rejects accounting even when one bounce candidate appears unique", () => {
   assert.equal(result.mayConfirmBounce, false);
   assert.equal(result.mayRetry, false);
 });
+
+test("fails closed on too many unverified bounced transfers", () => {
+  const transactions = [
+    tx("out-tx", null, [outgoing]),
+    ...Array.from({ length: 21 }, (_, index) =>
+      tx("bounce-" + index, { ...bounced("193000000"), hash: "bounce-msg-" + index })),
+  ];
+  const result = correlateV3RefundBounce({
+    ...options, vaultResponse: response(transactions),
+  });
+  assert.equal(result.reason, "TOO_MANY_UNVERIFIED_CANDIDATES");
+  assert.equal(result.ambiguous, true);
+  assert.deepEqual(result.candidates, []);
+  assert.equal(result.verifiedReturnedNano, "0");
+  assert.equal(result.mayConfirmBounce, false);
+  assert.equal(result.mayRetry, false);
+});
