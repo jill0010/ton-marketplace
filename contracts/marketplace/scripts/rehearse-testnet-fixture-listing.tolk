@@ -15,6 +15,7 @@ import "list-testnet-nft-fixture"
 fun deployRehearsalFixture(): address {
     assert (env<bool>("TESTNET_FIXTURE_ENABLED") ?? false) throw 401;
     val deployer = scripts.wallet("deployer");
+    val seller = scripts.wallet("seller");
     val expectedOwner = env<address>("TESTNET_FIXTURE_OWNER") ?? deployer.address;
     assert (deployer.address == expectedOwner) throw 401;
 
@@ -32,7 +33,7 @@ fun deployRehearsalFixture(): address {
     );
 
     val collection = testing.treasury("fixtureSeparateCollection");
-    val config = beginCell().storeUint(0, 256).storeAddress(collection.address).endCell();
+    val config = beginCell().storeUint(1, 256).storeAddress(collection.address).endCell();
 
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
 
@@ -71,7 +72,7 @@ fun deployRehearsalFixture(): address {
 
     val deployBody = beginCell()
         .storeUint(0x299a3e15, 32)
-        .storeAddress(deployer.address)
+        .storeAddress(seller.address)
         .storeCoins(grams("1"))
         .storeRef(tokenInfo)
         .storeRef(nftContent)
@@ -94,9 +95,9 @@ fun deployRehearsalFixture(): address {
     val stack = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert (stack.size() == 5) throw 403;
     assert ((stack.get(0) as int) == -1) throw 403;
-    assert ((stack.get(1) as int) == 0) throw 403;
+    assert ((stack.get(1) as int) == 1) throw 403;
     assert ((stack.get(2) as address) == collection.address) throw 403;
-    assert ((stack.get(3) as address) == deployer.address) throw 403;
+    assert ((stack.get(3) as address) == seller.address) throw 403;
     println("Test fixture deployed and ownership verified: {}", nftItem);
     println("Test-only synthetic collection; not an official Telegram collectible.");
     return nftItem;
@@ -231,8 +232,10 @@ fun main() {
     listTestFixture(
         marketplace,
         escrow,
-        scripts.wallet("deployer").address,
+        seller.address,
         nftItem,
         testing.treasury("fixtureSeparateCollection").address,
+        deployer.address,
+        1,
     );
 }
