@@ -18,7 +18,8 @@ on:
       - 'contracts/marketplace/experiments/v3-refund-rich-bounce-body*.mjs'
       - 'contracts/marketplace/experiments/v3-reserve-conservation*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-release-gate*.mjs'
-      - 'contracts/marketplace/experiments/v3-refund-invariants.test.mjs'
+      - 'contracts/marketplace/experiments/v3-refund-invariants.test.mjs contracts/marketplace/experiments/v3-testnet-evidence-bundle.test.mjs'
+      - 'contracts/marketplace/experiments/v3-testnet-evidence-bundle*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
   push:
@@ -39,6 +40,7 @@ on:
       - 'contracts/marketplace/experiments/v3-reserve-conservation*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-release-gate*.mjs'
       - 'contracts/marketplace/experiments/v3-refund-invariants.test.mjs'
+      - 'contracts/marketplace/experiments/v3-testnet-evidence-bundle*.mjs'
       - '.github/workflows/reserve-refund-prototype-tests.yml'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness*.mjs'
 
