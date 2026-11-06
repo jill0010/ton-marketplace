@@ -113,7 +113,7 @@ export async function verifyV3Testnet(addresses, fetcher = fetch, expectedHashes
     allActive: Object.values(results).every((item) => item.active),
     allCodePresent: Object.values(results).every((item) => item.codePresent),
     // Active code is not proof of correct code hash, bindings, funding, or security.
-    codeHashesVerified: codeHashComparison.verified,
+    codeHashesVerified: codeHashComparison.verified && Object.values(results).every((item) => item.active && item.codePresent),
     codeHashComparison,
     bindingsVerified: false,
     fundedTransactionVerified: false,
@@ -134,7 +134,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       coordinator: process.env.V3_EXPECTED_COORDINATOR_CODE_HASH,
     });
     console.log(JSON.stringify(report, null, 2));
-    if (!report.allActive || !report.allCodePresent) process.exitCode = 1;
+    if (!report.allActive || !report.allCodePresent || !report.codeHashesVerified) process.exitCode = 1;
   } catch (error) {
     console.error(`V3 testnet postflight blocked: ${error.message}`);
     process.exitCode = 1;
