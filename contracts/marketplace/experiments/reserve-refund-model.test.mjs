@@ -124,3 +124,22 @@ test("nonterminal or unsupported receipts never finalize liability", () => {
     { kind: "credited", creditNano: 0n },
   ]) assert.throws(() => observeResult(dispatch(), receipt(change)));
 });
+
+test("a completed retry cannot reuse its own return receipt as a new payout authorization", () => {
+  const first = dispatch();
+  const bounced = observeResult(first, receipt({
+    kind: "bounced", returnVerified: true, returnedPrincipalNano: 194000000n,
+  }));
+  const second = dispatch(bounced);
+  assert.equal(second.attempt, 2);
+  assert.equal(second.phase, "in-flight");
+  assert.throws(() => dispatch(second, { principalReturnEvidenceHash: R }));
+  const bouncedAgain = observeResult(second, receipt({
+    messageHash: N, attempt: 2, kind: "bounced",
+    receiptEvidenceHash: S, returnVerified: true, returnedPrincipalNano: 194000000n,
+  }));
+  assert.throws(() => dispatch(bouncedAgain, { principalReturnEvidenceHash: R }));
+  assert.throws(() => dispatch(bouncedAgain, { messageHash: M }));
+  assert.equal(bouncedAgain.receiptEvidenceHash, S);
+  assert.deepEqual(bouncedAgain.receiptEvidenceHashes, [R, S]);
+});
