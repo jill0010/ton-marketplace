@@ -224,6 +224,23 @@ get fun `test Marketplace V2 returns buyer funds only after Escrow confirms sell
     assert (retriedRefund != null) throw ErrorsV2.InvalidPayout;
     expect(retriedRefund!!.status).toEqual(3);
 
+    // Repeating the same refund retry must not create a second payment,
+    // advance query IDs, or mutate the unresolved buyer liability.
+    val secondRetryBuyerRefund = marketplace.sendRetryPayoutV2(
+        owner.address,
+        operations.buyerRefundOperationId,
+        { value: grams("0.05") },
+    );
+    expect(secondRetryBuyerRefund).toHaveFailedTx({
+        from: owner.address,
+        to: marketplace.address,
+        exitCode: ErrorsV2.InvalidPayout,
+    });
+    expect(marketplace.orderV2(1)!!.status).toEqual(6);
+    expect(marketplace.orderV2(1)!!.refundStatus).toEqual(3);
+    expect(marketplace.payoutV2(operations.buyerRefundOperationId)!!.status).toEqual(3);
+    expect(marketplace.nextQueryIdV2()).toEqual(7);
+
     expect(marketplace.nextProductIdV2()).toEqual(2);
     expect(marketplace.nextQueryIdV2()).toEqual(7);
 
