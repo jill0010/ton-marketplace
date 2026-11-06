@@ -29,6 +29,8 @@ export function correlateV3RefundRecipient({
   for (const match of outbound.matches) {
     for (const tx of buyerResponse.transactions) {
       const inbound = tx?.in_msg;
+      // A bounced inbound message is a return path, never buyer credit.
+      if (inbound?.bounced === true) continue;
       if (normalize(inbound?.source) !== normalize(vault) ||
           normalize(inbound?.destination) !== normalize(buyer) ||
           !decimal(inbound?.value) ||
