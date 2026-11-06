@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { auditV3RefundReleaseGate } from "./v3-refund-release-gate.mjs";
 import { assessV3IndependentSettlement } from "./v3-independent-settlement-proof.mjs";
+import { inspectV3BuyerReceiptProofRequirements } from "./v3-buyer-receipt-proof-requirements.mjs";
 
 const vault = "0:" + "a".repeat(64);
 const buyer = "0:" + "b".repeat(64);
@@ -78,4 +79,35 @@ test("two provider reports with different transaction hashes are not independent
   assert.equal(report.cryptographicInclusionVerified, false);
   assert.equal(report.mayConfirmReceipt, false);
   assert.equal(report.mayRetry, false);
+});
+
+test("self-reported cryptographic receipt flags never unlock buyer credit", () => {
+  const evidence = inspectV3BuyerReceiptProofRequirements({
+    network: "testnet", vault, buyer, orderId: "2", queryId: "1",
+    amountNano: "194000000",
+    dispatch: { account: vault, lt: "100", transactionHash: "dispatch", messageHash: "msg" },
+    receipt: {
+      account: buyer, lt: "101", transactionHash: "receipt",
+      inboundMessageHash: "msg", amountNano: "194000000",
+      orderId: "2", queryId: "1", source: vault, bounced: false, aborted: false,
+    },
+    independentVerifier: {
+      kind: "audited-ton-lite-proof-verifier", masterchainAnchorVerified: true,
+      dispatchInclusionVerified: true, receiptInclusionVerified: true,
+      finalityVerified: true,
+    },
+  });
+  assert.equal(evidence.requirementsDescribed, true);
+  assert.equal(evidence.cryptographicInclusionVerified, false);
+  assert.equal(evidence.finalized, false);
+  assert.equal(evidence.mayConfirmReceipt, false);
+  assert.equal(evidence.mayRetry, false);
+});
+test("missing receipt message identity cannot be treated as settlement", () => {
+  const evidence = inspectV3BuyerReceiptProofRequirements({
+    network: "testnet", vault, buyer, orderId: "2", queryId: "1",
+    amountNano: "194000000",
+  });
+  assert.ok(evidence.reasons.includes("MISSING_MATCHING_BUYER_RECEIPT_IDENTITY"));
+  assert.equal(evidence.mayConfirmReceipt, false);
 });
