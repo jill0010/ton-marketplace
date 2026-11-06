@@ -68,3 +68,16 @@ test("rejects a bounced flag without a valid rich bounce envelope", () => {
   assert.equal(report.candidates[0].originalAmountNano, "194000000");
   assert.equal(report.candidates[0].principalVerified, false);
 });
+
+test("quarantines oversized incoming history and invalid workchain", () => {
+  const result = findV3RefundBounceCandidates({
+    vaultResponse: response(Array.from({ length: 201 }, () => message())),
+    vault, buyer,
+  });
+  assert.equal(result.ambiguous, true);
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.mayRetry, false);
+  assert.throws(() => findV3RefundBounceCandidates({
+    vaultResponse: response([]), vault, buyer: "1:" + "b".repeat(64),
+  }), TypeError);
+});
