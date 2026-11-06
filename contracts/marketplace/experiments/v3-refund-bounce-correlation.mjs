@@ -14,6 +14,20 @@ export function correlateV3RefundBounce({
   const incoming = findV3RefundBounceCandidates({
     vaultResponse, vault, buyer,
   });
+  // A large cross-product of unrelated messages is an ambiguity signal, not
+  // evidence. Refuse to correlate beyond a small bounded investigation set.
+  if (outgoing.matches.length > 20 || incoming.candidates.length > 20) {
+    return {
+      candidates: [],
+      ambiguous: true,
+      verifiedReturnedNano: "0",
+      accountingStatus: "NO_VERIFIED_PRINCIPAL",
+      mayConfirmBounce: false,
+      proofStatus: "UNVERIFIED",
+      mayRetry: false,
+      reason: "TOO_MANY_UNVERIFIED_CANDIDATES",
+    };
+  }
   const candidates = [];
   for (const sent of outgoing.matches) {
     if (!sent.transactionHash || !decimal(sent.amountNano)) continue;
