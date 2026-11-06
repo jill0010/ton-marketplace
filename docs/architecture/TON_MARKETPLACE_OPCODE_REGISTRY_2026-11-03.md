@@ -158,3 +158,11 @@ These are prototype messages and do not add an entrypoint to deployed Marketplac
 | `0x72730301` | `SetTestReserveCoordinator` | One-time owner binding of experimental purchase coordinator |
 
 V3 uses a fresh storage schema and shares existing purchase/delivery wire messages for its emulator fixtures. This is not an upgrade to V2.
+
+## Experimental V3 allocation failure compensation (not deployed)
+
+| Opcode | Message | Purpose |
+|---|---|---|
+| `0x72730203` | `TestReserveAllocationFailed` | Returns exactly 0.2 TON principal to V3 and starts NFT-return-before-buyer-refund compensation |
+
+The experimental failure path subsidizes processing fees; it is not final scheme-C fee reconciliation.
