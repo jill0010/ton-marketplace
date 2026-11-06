@@ -4,8 +4,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const contractPath = fileURLToPath(new URL("../contracts/TestReserveVault.tolk", import.meta.url));
-const marketplacePath = fileURLToPath(new URL("../contracts/Marketplace.tolk", import.meta.url));
-const escrowPath = fileURLToPath(new URL("../contracts/NFTEscrow.tolk", import.meta.url));
+const marketplacePath = fileURLToPath(new URL("../contracts/MarketplaceV2.tolk", import.meta.url));
+const escrowPath = fileURLToPath(new URL("../contracts/NFTEscrowV2.tolk", import.meta.url));
 export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrowSource = "") {
   if (typeof source !== "string" || !source.includes("contract TestReserveVault")) {
     throw new TypeError("Missing experimental V3 vault contract");
@@ -16,14 +16,11 @@ export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrow
   const receipt = source.match(/ConfirmTestReserveReceipt\s*=>\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
   const ownerAttestedReceipt = receipt.includes("receiptHash") &&
     !receipt.includes("independentVerifiedReceipt");
-  // These are explicit blockers, not evidence that a matched opcode is secure.
+  // Inspect the actual V2 implementation, not legacy V1. Presence is not a security proof.
   // Full purchase/delivery/payout still requires end-to-end contract tests and audit.
-  const hasPurchaseHandler = /\|\s*(?:BuyProduct|PurchaseProduct|PurchaseNft)\b/.test(marketplaceSource) &&
-    /(?:BuyProduct|PurchaseProduct|PurchaseNft)\s*=>/.test(marketplaceSource);
-  const hasNftReleaseHandler = /\|\s*(?:ReleaseNft|ReleaseNFT|DeliverNft)\b/.test(escrowSource) &&
-    /(?:ReleaseNft|ReleaseNFT|DeliverNft)\s*=>/.test(escrowSource);
-  const hasSettlementHandler = /\|\s*(?:SettlePurchase|SettleSale|FinalizePurchase)\b/.test(marketplaceSource) &&
-    /(?:SettlePurchase|SettleSale|FinalizePurchase)\s*=>/.test(marketplaceSource);
+  const hasPurchaseHandler = marketplaceSource.includes("| BuyProductV2") && marketplaceSource.includes("BuyProductV2 =>");
+  const hasNftReleaseHandler = escrowSource.includes("| ReleaseEscrowV2") && escrowSource.includes("ReleaseEscrowV2 =>");
+  const hasSettlementHandler = marketplaceSource.includes("| EscrowReleasedV2") && marketplaceSource.includes("EscrowReleasedV2 =>") && marketplaceSource.includes("SellerPayoutV2") && marketplaceSource.includes("PlatformPayoutV2");
   return {
     contractFound: true,
     hasPurchaseHandler,
@@ -41,6 +38,7 @@ export function inspectV3TestnetReadiness(source, marketplaceSource = "", escrow
       ...(!hasPurchaseHandler ? ["NO_ONCHAIN_PURCHASE_HANDLER"] : []),
       ...(!hasNftReleaseHandler ? ["NO_NFT_DELIVERY_HANDLER"] : []),
       ...(!hasSettlementHandler ? ["NO_SELLER_FEE_SETTLEMENT_HANDLER"] : []),
+      "V3_VAULT_NOT_INTEGRATED_WITH_V2_PURCHASE_SETTLEMENT",
       "NO_INDEPENDENT_ONCHAIN_SETTLEMENT_PROOF",
       "NO_ATOMIC_ONCHAIN_REFUND_IDEMPOTENCY_PROOF",
     ],
