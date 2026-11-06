@@ -10,6 +10,8 @@ on:
       - "supabase/functions/marketplace-v2-state/**"
       - "supabase/functions/admin-marketplace-orders/**"
       - "supabase/functions/marketplace-order-history/**"
+      - "supabase/functions/_shared/marketplace-processing-reserve.*"
+      - "supabase/functions/admin-preview-marketplace-processing-reserve/**"
       - "public/**"
       - "package.json"
       - "package-lock.json"
@@ -72,6 +74,9 @@ jobs:
 
       - name: Verify Marketplace V2 order mirror truthfulness
         run: node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs
+
+      - name: Test Marketplace V2 processing reserve fee reconciliation
+        run: node --test supabase/functions/_shared/marketplace-processing-reserve.test.mjs
 
       - name: Build production frontend
         run: npm run build
