@@ -1422,3 +1422,19 @@ get fun purchaseReserveV3(orderId: uint64): MarketplaceReserveBindingV3? {
     }
     return MarketplaceReserveBindingV3.fromCell(found.loadValue());
 }
+
+get fun marketplaceReserveVaultV3(orderId: uint64): address? {
+    val found = MarketplaceReserveStorageV3.load().purchaseStorage.load().reserves.get(orderId);
+    if (!found.isFound) {
+        return null;
+    }
+    return MarketplaceReserveBindingV3.fromCell(found.loadValue()).vault;
+}
+
+get fun marketplaceReserveStatusV3(orderId: uint64): uint8 {
+    val found = MarketplaceReserveStorageV3.load().purchaseStorage.load().reserves.get(orderId);
+    if (!found.isFound) {
+        return 0;
+    }
+    return MarketplaceReserveBindingV3.fromCell(found.loadValue()).status;
+}
