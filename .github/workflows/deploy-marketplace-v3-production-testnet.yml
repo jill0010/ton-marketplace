@@ -26,6 +26,7 @@ jobs:
         working-directory: contracts/marketplace
     env:
       DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
       V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
@@ -64,6 +65,7 @@ jobs:
           set -euo pipefail
           test -n "$DEPLOYER_MNEMONIC" || { echo "::error::TESTNET_DEPLOYER_MNEMONIC is missing"; exit 1; }
           test -n "$TONCENTER_API_KEY" || { echo "::error::TONCENTER_TESTNET_API_KEY is missing"; exit 1; }
+          test -n "$SELLER_MNEMONIC" || { echo "::error::TESTNET_SELLER_MNEMONIC is missing"; exit 1; }
           for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
             value="${!name:-}"
             test -n "$value" || { echo "::error::$name is missing"; exit 1; }
@@ -90,8 +92,15 @@ jobs:
           kind = "v5r1"
           workchain = 0
           keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
           WALLETS
           chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
 
       - name: Build production V3 contracts
         run: acton build
@@ -112,6 +121,23 @@ jobs:
             grep -Fq "V3 trusted compiled $name code hash:" v3-production-testnet-deployment.log
           done
           grep -Fq "V3 trusted compiled vault code hash:" v3-production-testnet-deployment.log
+
+      - name: Export deployed V3 Testnet addresses for the funded integration steps
+        working-directory: .
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const log = await readFile("contracts/marketplace/v3-production-testnet-deployment.log", "utf8");
+          for (const name of ["marketplace", "escrow", "coordinator", "verifier"]) {
+            const label = "V3 testnet candidate " + name + ":";
+            const matches = log.split(/\r?\n/).filter(line => line.includes(label));
+            if (matches.length !== 1) throw new Error("Missing/duplicate deployed address: " + name);
+            const address = matches[0].slice(matches[0].indexOf(label) + label.length).trim().split(/\s+/)[0];
+            if (!address) throw new Error("Empty deployed address: " + name);
+            await appendFile(process.env.GITHUB_ENV, "V3_PRODUCTION_TESTNET_" + name.toUpperCase() + "_ADDRESS=" + address + "\n");
+          }
+          NODE
 
       - name: Read-only postflight — four contract code hashes and immutable bindings
         working-directory: .
@@ -141,6 +167,75 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           '
 
+      - name: Deploy a fresh synthetic NFT and list it through production Marketplace V3 / NFT Escrow V2
+        env:
+          V3_TESTNET_FIXTURE_ENABLED: "true"
+          V3_TESTNET_FIXTURE_ITEM_INDEX: ${{ github.run_number }}
+          FIXTURE_EMULATION: "false"
+        run: |
+          set -euo pipefail
+          acton script scripts/run-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee v3-production-testnet-fixture.log
+          grep -Fq "V3_TESTNET_FIXTURE_NFT_ADDRESS:" v3-production-testnet-fixture.log
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const log = await readFile("v3-production-testnet-fixture.log", "utf8");
+          const line = log.split(/\r?\n/).find(value => value.includes("V3_TESTNET_FIXTURE_NFT_ADDRESS:"));
+          if (!line) throw new Error("Missing deployed Testnet fixture NFT address");
+          const address = line.split("V3_TESTNET_FIXTURE_NFT_ADDRESS:")[1].trim().split(/\s+/)[0];
+          await appendFile(process.env.GITHUB_ENV, "V3_TESTNET_FIXTURE_NFT_ADDRESS=" + address + "\n");
+          NODE
+
+      - name: Submit one real Testnet purchase through production Marketplace V3
+        env:
+          V3_TESTNET_PURCHASE_ENABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          export V3_TESTNET_BUY_DEADLINE="$(( $(date +%s) + 900 ))"
+          acton script scripts/buy-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee v3-production-testnet-purchase.log
+          grep -Fq "V3 Testnet purchase submitted once." v3-production-testnet-purchase.log
+
+      - name: Verify real Testnet NFT delivery and in-flight reserve before attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet > v3-production-testnet-purchase-verification.log 2>&1; then
+              verified=true
+              break
+            fi
+            echo "Read-only purchase/reserve verification attempt $attempt is not complete."
+            if [ "$attempt" -lt 12 ]; then sleep 10; fi
+          done
+          cat v3-production-testnet-purchase-verification.log
+          test "$verified" = true
+          grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-production-testnet-purchase-verification.log
+
+      - name: Install isolated TON SDK for Testnet receipt attestation
+        working-directory: .
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v3-attestor"
+          npm install --prefix "$RUNNER_TEMP/v3-attestor" --ignore-scripts --no-audit --no-fund --save-exact \
+            @ton/core@0.63.1 @ton/ton@16.3.0 @ton/crypto@3.3.0
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs "$RUNNER_TEMP/v3-attestor/attest.mjs"
+
+      - name: Verify actual buyer receipt and submit 3-of-3 settlement attestation on Testnet
+        working-directory: .
+        env:
+          BUYER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/v3-attestor/attest.mjs" 2>&1 | tee v3-production-testnet-attestation.log
+          grep -Fq '"vaultStatus": 3' v3-production-testnet-attestation.log
+
+      - name: Verify final production V3 Testnet settlement state
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-production-testnet-settlement.tolk --net testnet 2>&1 | tee v3-production-testnet-settlement.log
+          grep -Fq "PRODUCTION V3 TESTNET END-TO-END SETTLEMENT VERIFIED." v3-production-testnet-settlement.log
+
       - name: Upload production V3 Testnet evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -149,6 +244,11 @@ jobs:
           path: |
             contracts/marketplace/v3-production-testnet-deployment.log
             v3-production-testnet-postflight.json
+            contracts/marketplace/v3-production-testnet-fixture.log
+            contracts/marketplace/v3-production-testnet-purchase.log
+            v3-production-testnet-purchase-verification.log
+            v3-production-testnet-attestation.log
+            contracts/marketplace/v3-production-testnet-settlement.log
           if-no-files-found: ignore
           retention-days: 30
 
