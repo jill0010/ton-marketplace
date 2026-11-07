@@ -52,8 +52,9 @@ fun main() {
     // read-only script and conceal the original preflight diagnostics.
     println("V3_DIAGNOSTIC_PURCHASE_SCHEMA_STATUS: unavailable_on_existing_deployment");
     println("V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_STATUS: unavailable_on_existing_deployment");
-    println("V3_DIAGNOSTIC_CODE_VERSION_MISMATCH: true");
-    println("V3_DIAGNOSTIC_NEXT_STEP: compare existing on-chain code hash with historical deployment commit, without any transaction");
+    println("V3_DIAGNOSTIC_CODE_VERSION_MISMATCH: unverified_by_getter_coverage");
+    println("V3_DIAGNOSTIC_GETTER_COVERAGE: legacy deployment does not expose newer schema/query introspection getters; this alone does not prove a code-hash mismatch");
+    println("V3_DIAGNOSTIC_NEXT_STEP: inspect the exact inbound transaction timestamp and query-index state; the four-second deadline margin is a high-priority InvalidPurchase candidate");
 
     println("V3_DIAGNOSTIC_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
     println("V3_DIAGNOSTIC_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
