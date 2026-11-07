@@ -205,6 +205,12 @@ async function findConfirmedRefund(vault, buyer) {
     const dispatch = findReserveRefundDispatch(vaultTransactions, buyer);
     const receipt = findReserveRefundReceipt(buyerTransactions, vault);
     if (dispatch && receipt) {
+      // Matching amount/opcode/source alone is insufficient when the same buyer
+      // has received multiple reserve refunds. Bind both legs to the exact
+      // serialized refund body before issuing any validator signatures.
+      if (!dispatch.body.hash().equals(receipt.body.hash())) {
+        throw new Error("Vault dispatch and buyer receipt refer to different refund messages");
+      }
       const dispatchHash = dispatch.transaction.transaction_id?.hash;
       const receiptHash = receipt.transaction.transaction_id?.hash;
       if (!dispatchHash || !receiptHash) throw new Error("Transaction hash missing from Testnet RPC response");
