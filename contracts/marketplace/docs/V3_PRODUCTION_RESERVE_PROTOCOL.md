@@ -91,3 +91,26 @@ Production deployment remains blocked until all of the following exist and are i
 - explicit release approval after review.
 
 The current testnet binding and read-only inspection evidence does not satisfy these gates. No mainnet deployment or funded transaction is authorized by this document.
+
+## TON Rich Bounce protocol findings (verified against Tolk/TON message semantics)
+
+The production implementation must distinguish the following values:
+
+- `InMessageBounced` is delivered to the dedicated `onBouncedMessage` entrypoint for protocol-generated bounced internal messages. A normal wallet-originated internal message is not equivalent to this entrypoint.
+- `RichBounceBody.originalInfo.valueCoins` is the value of the original outbound message. It is not the amount that returned to the sender.
+- `in.valueCoins` is the actual value carried by the bounced message back to the original sender, after the destination-side processing and bounce fees. It is the value that must be reconciled against the still-open liability.
+- The Rich Bounce envelope uses prefix `0xfffffffe`; the handler must parse the exact original opcode/body and correlate the sender (the original destination), order ID, query ID, and original amount to the currently pending refund operation.
+
+Consequences for the current prototype:
+
+- `TestReserveVault.onBouncedMessage` already checks the protocol-specific handler, buyer sender, Rich Bounce prefix, original refund opcode/body, order ID, query ID, original value, and a minimum returned-value threshold.
+- It currently changes only `status = 4`; it does not persist `in.valueCoins` as a returned-funds balance. Consequently, status 4 is not sufficient authority for retry and must remain quarantined.
+- `RetryTestReserve` must remain blocked until a production state model stores the actual returned amount and proves that the contract balance can fund exactly one retry while preserving the remaining liability and operational reserve.
+- The original refund operation must be marked consumed before dispatching a retry. A retry must use a fresh query ID, and a delayed bounce from an earlier operation must not mutate the newer operation.
+
+Official protocol references:
+- https://docs.ton.org/v3/documentation/smart-contracts/tolk/tolk-vs-func/message-handling
+- https://docs.ton.org/v3/documentation/smart-contracts/func/docs/internal-messages
+- https://ton-blockchain.github.io/acton/docs/tolk_standard_library/common
+
+These findings clarify the implementation boundary; they do not approve deployment or claim that the current prototype supports safe retry.
