@@ -89,3 +89,7 @@ depends = ["TestReserveCoordinator"]
 display-name = "V3 settlement attestation quorum verifier"
 src = "contracts/SettlementAttestationVerifierV3.tolk"
 depends = []
+
+[[test]]
+name = "V3 settlement attestation quorum verifier"
+path = "tests/settlement-attestation-verifier-v3.test.tolk"
