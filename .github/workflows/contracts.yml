@@ -125,6 +125,19 @@ jobs:
           TEST_BAD_VAULT: "true"
         run: acton script scripts/rehearse-v3-reserve-purchase.tolk
 
+      - name: Rehearse production V3 purchase, reserve refund and NFT Escrow V2 delivery
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/rehearse-v3-production-purchase.tolk
+
+      - name: Rehearse production V3 reserve allocation failure compensation
+        env:
+          TESTNET_FIXTURE_ENABLED: "true"
+          FIXTURE_EMULATION: "true"
+          TEST_BAD_VAULT: "true"
+        run: acton script scripts/rehearse-v3-production-purchase.tolk
+
       - name: Test
         run: acton test --backtrace full
 
