@@ -179,6 +179,27 @@ These opcodes belong to the isolated Ed25519 quorum verifier component. The veri
 
 The verifier is a separately registered contract and is not yet integrated into a production reserve vault or Marketplace V3. No Mainnet deployment or fund acceptance is authorized.
 
+## Production Marketplace V3 reserve settlement (Testnet candidate; not yet deployed)
+
+The production V3 contracts use a separate opcode family from the experimental prototype. These messages are not part of Marketplace V2 and must not be sent to V2 addresses.
+
+| Opcode | Message | Direction / Purpose |
+|---|---|---|
+| `0x72730501` | `FundReserveV3` | Coordinator → per-order ReserveVaultV3; exact order/payment funding |
+| `0x72730502` | `DispatchReserveRefundV3` | MarketplaceReserveV3 → order vault; dispatch reserve principal to buyer |
+| `0x72730503` | `SubmitReserveAttestationV3` | Marketplace/owner → order vault; submit canonical signed settlement statement |
+| `0x72730504` | `TopUpReserveV3` | Coordinator/owner → order vault; exact order-local principal shortfall |
+| `0x72730505` | `ReserveFundedV3` | Vault → coordinator; authenticated funding ACK |
+| `0x72730506` | `ReserveRefundDispatchedV3` | Vault → buyer; reserve refund transfer with operation/query IDs |
+| `0x72730507` | `RetryReserveRefundV3` | Marketplace/owner → order vault; one bounded retry after verified return and exact top-up |
+| `0x72730601` | `AllocateReserveV3` | MarketplaceReserveV3 → coordinator; allocate immutable per-order vault |
+| `0x72730602` | `ReserveAllocationConfirmedV3` | Coordinator → marketplace; exact vault funding confirmation |
+| `0x72730603` | `ReserveAllocationFailedV3` | Coordinator → marketplace; failed funding compensation after original allocation bounce |
+| `0x72730604` | `RetryReserveAllocationAckV3` | Owner → coordinator; replay already-confirmed funding ACK |
+| `0x72730701` | `SetReserveCoordinatorV3` | Owner → MarketplaceReserveV3; one-time coordinator binding |
+
+The production vault stores identity, accounting and operation state in separate referenced cells to respect TVM cell bit limits. A bounced buyer refund does not restore available principal; only a matching 2-of-3 verifier callback can transition in-flight principal to returned/available. This is a Testnet candidate implementation, not a deployment approval. The production coordinator and marketplace still require full adversarial integration tests, testnet deployment, real NFT custody traces, and independent review.
+
 ## Experimental funding confirmation recovery
 
 | Opcode | Message | Purpose |
