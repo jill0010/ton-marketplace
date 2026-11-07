@@ -141,8 +141,8 @@ fun onInternalMessage(in: InMessage) {
             assert (result.transactionHash != 0 && result.messageHash != 0) throw 753;
             assert (result.masterchainSeqno > 0) throw 753;
             assert (result.epoch == storage.epoch) throw 754;
-            assert (result.expiresAt >= now()) throw 754;
-            assert (result.expiresAt <= now() + 900) throw 754;
+            assert (result.expiresAt >= blockchain.now()) throw 754;
+            assert (result.expiresAt <= blockchain.now() + 900) throw 754;
             assert (result.outcome == 1 || result.outcome == 2) throw 753;
             assert (result.settledAmount > 0 && result.settledAmount <= identity.principal) throw 753;
             if (result.outcome == 1) {
