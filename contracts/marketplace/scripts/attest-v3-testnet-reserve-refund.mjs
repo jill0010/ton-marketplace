@@ -1,6 +1,6 @@
-import { createPrivateKey, createPublicKey, sign } from "node:crypto";
+import { createHmac, createPrivateKey, createPublicKey, pbkdf2Sync, sign } from "node:crypto";
 import { Address, beginCell, Cell, Dictionary, toNano } from "@ton/core";
-import { mnemonicToPrivateKey } from "@ton/crypto";
+import { keyPairFromSeed, mnemonicToPrivateKey } from "@ton/crypto";
 import { TonClient, WalletContractV5R1, internal } from "@ton/ton";
 
 const API = "https://testnet.toncenter.com/api/v2";
@@ -13,6 +13,26 @@ function required(name) {
   const value = process.env[name];
   if (!value) throw new Error("Missing required environment variable " + name);
   return value;
+}
+
+// Match Acton's explicit mnemonic-scheme="bip39" wallet profile:
+// BIP-39 seed, then SLIP-0010 Ed25519 m/44'/607'/0' (hardened).
+// This is intentionally distinct from @ton/crypto's TON-native mnemonic KDF.
+export function deriveBip39TonWalletKeys(words) {
+  if (!Array.isArray(words) || ![12, 24].includes(words.length)) {
+    throw new Error("BIP39 Testnet buyer mnemonic must contain 12 or 24 words");
+  }
+  const phrase = words.join(" ").normalize("NFKD");
+  const bip39Seed = pbkdf2Sync(phrase, "mnemonic", 2048, 64, "sha512");
+  let material = createHmac("sha512", "ed25519 seed").update(bip39Seed).digest();
+  for (const index of [44, 607, 0]) {
+    const hardened = Buffer.alloc(4);
+    hardened.writeUInt32BE((index + 0x80000000) >>> 0, 0);
+    material = createHmac("sha512", material.subarray(32)).update(
+      Buffer.concat([Buffer.from([0]), material.subarray(0, 32), hardened]),
+    ).digest();
+  }
+  return keyPairFromSeed(material.subarray(0, 32));
 }
 
 function normalizeAddress(value) {
@@ -253,7 +273,7 @@ async function main() {
   if (!owner.equals(expectedOwner)) {
     throw new Error("Derived admin wallet does not match the deployment preflight address; verify mnemonic scheme before signing");
   }
-  const buyerKeys = await mnemonicToPrivateKey(buyerMnemonic);
+  const buyerKeys = deriveBip39TonWalletKeys(buyerMnemonic);
   const buyerWallet = WalletContractV5R1.create({ workchain: 0, publicKey: buyerKeys.publicKey, walletId: { networkGlobalId: -3 } });
   const buyerAddress = buyerWallet.address;
   if (!buyerAddress.equals(Address.parse(required("PLATFORM_TREASURY_ADDRESS")))) {
