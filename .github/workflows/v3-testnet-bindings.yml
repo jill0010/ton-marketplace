@@ -13,6 +13,7 @@ jobs:
     env:
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
       V3_BINDINGS_EVIDENCE_OUTPUT: v3-testnet-bindings-evidence.json
+      V3_COMBINED_EVIDENCE_OUTPUT: v3-testnet-combined-evidence.json
       V3_TESTNET_MARKETPLACE_ADDRESS: kQAa5cnyurZayVXfJE_rkBiWz19w487aklFEAu6Wm9Fm-Sc6
       V3_TESTNET_ESCROW_ADDRESS: kQCD_2amR3idpahAfj0xdgU9m34Z7s933HtXoDx-ka3J4_Rr
       V3_TESTNET_COORDINATOR_ADDRESS: kQCC2k5wZSjitzFvGGUgyx_6KMWIIuSDQViNy_kw2j6OtqXy
@@ -33,6 +34,16 @@ jobs:
         run: node --test contracts/marketplace/scripts/merge-v3-evidence.test.mjs
       - name: Verify eight deployed contract bindings (read-only)
         run: node contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs
+      - name: Audit deployment and bindings in one read-only testnet snapshot
+        run: node contracts/marketplace/scripts/audit-v3-testnet.mjs
+      - name: Upload correlated V3 testnet evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: v3-testnet-combined-evidence
+          path: v3-testnet-combined-evidence.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Upload on-chain binding evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
