@@ -100,3 +100,8 @@ display-name = "Production V3 reserve coordinator"
 src = "contracts/ReserveCoordinatorV3.tolk"
 depends = ["ReserveVaultV3"]
 
+[contracts.MarketplaceReserveV3]
+display-name = "Production V3 reserve marketplace"
+src = "contracts/MarketplaceReserveV3.tolk"
+depends = ["ReserveCoordinatorV3", "NFTEscrowV2"]
+
