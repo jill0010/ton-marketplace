@@ -184,14 +184,18 @@ fun main() {
         escrow.address,
         { value: grams("0.05") },
     );
-    if (configureEscrow.waitForFirstTransaction() == null) throw 828;
+    if (configureEscrow.waitForFirstTransaction() == null) {
+        throw 828;
+    }
 
     val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
         deployer.address,
         treasuryAddress,
         { value: grams("0.05") },
     );
-    if (configureTreasury.waitForFirstTransaction() == null) throw 829;
+    if (configureTreasury.waitForFirstTransaction() == null) {
+        throw 829;
+    }
 
     val configureCoordinator = net.send(
         deployer.address,
@@ -202,7 +206,9 @@ fun main() {
             body: SetReserveCoordinatorV3 { coordinator }.toCell(),
         }),
     );
-    if (configureCoordinator.waitForFirstTransaction() == null) throw 830;
+    if (configureCoordinator.waitForFirstTransaction() == null) {
+        throw 830;
+    }
 
     assert (marketplace.escrowV2() == escrow.address) throw 831;
     assert (marketplace.escrowConfiguredV2()) throw 831;
