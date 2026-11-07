@@ -47,17 +47,17 @@ fun main() {
     val marketplaceVault = net.runGetMethod<address?>(
         marketplace.address,
         "marketplaceReserveVaultV3",
-        [1],
+        [orderId],
     )!!;
     val coordinatorStatus = net.runGetMethod<uint8>(
         coordinatorAddress!!,
         "reserveCoordinatorStatusV3",
-        [1],
+        [orderId],
     );
     val coordinatorVault = net.runGetMethod<address?>(
         coordinatorAddress!!,
         "reserveCoordinatorVaultV3",
-        [1],
+        [orderId],
     )!!;
     assert (marketplaceReserveStatus == 2 && coordinatorStatus == 2) throw 926;
     assert (marketplaceVault == coordinatorVault) throw 926;
