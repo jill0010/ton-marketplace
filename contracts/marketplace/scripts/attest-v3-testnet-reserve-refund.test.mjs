@@ -4,6 +4,7 @@ import { Address, beginCell, Cell } from "@ton/core";
 import {
   findReserveRefundDispatch,
   findReserveRefundReceipt,
+  findMarketplacePayoutReceipt,
   buildV3SettlementStatement,
 } from "./attest.mjs";
 
@@ -47,6 +48,41 @@ test("finds buyer-side receipt only when source, amount and opcode all match", (
     },
   }];
   assert.equal(findReserveRefundReceipt(bounced, vault.toString()), null);
+});
+
+test("requires actual seller and platform payout receipts from the Marketplace", () => {
+  const sellerBody = beginCell()
+    .storeUint(0x71b00101, 32)
+    .storeUint(1, 64)
+    .storeUint(1, 64)
+    .storeUint(2, 64)
+    .endCell();
+  const platformBody = beginCell()
+    .storeUint(0x71b00102, 32)
+    .storeUint(1, 64)
+    .storeUint(2, 64)
+    .storeUint(3, 64)
+    .endCell();
+  const marketplace = Address.parseRaw("0:" + "03".repeat(32));
+  const sellerTransactions = [{
+    transaction_id: { hash: "66".repeat(32) },
+    in_msg: {
+      source: marketplace.toString(),
+      value: "9700000",
+      msg_data: { body: sellerBody.toBoc().toString("base64") },
+    },
+  }];
+  const treasuryTransactions = [{
+    transaction_id: { hash: "77".repeat(32) },
+    in_msg: {
+      source: marketplace.toString(),
+      value: "300000",
+      msg_data: { body: platformBody.toBoc().toString("base64") },
+    },
+  }];
+  assert.equal(findMarketplacePayoutReceipt(sellerTransactions, marketplace.toString(), "9700000", 0x71b00101)?.transaction, sellerTransactions[0]);
+  assert.equal(findMarketplacePayoutReceipt(treasuryTransactions, marketplace.toString(), "300000", 0x71b00102)?.transaction, treasuryTransactions[0]);
+  assert.equal(findMarketplacePayoutReceipt(sellerTransactions, marketplace.toString(), "9700000", 0x71b00102), null);
 });
 
 test("builds domain-separated Testnet settlement statement with immutable operation identity", () => {
