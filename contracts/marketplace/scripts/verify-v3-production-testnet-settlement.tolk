@@ -64,15 +64,15 @@ fun main() {
     assert (net.runGetMethod<coins>(vault, "reserveVaultInFlightV3") == 0) throw 938;
     assert (net.runGetMethod<coins>(vault, "reserveVaultAvailableV3") == 0) throw 938;
 
-    println("PRODUCTION V3 TESTNET END-TO-END SETTLEMENT VERIFIED.");
+    println("PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED; INDEPENDENT TRANSFER FINALITY NOT ATTESTED.");
     println("Verified product ID: {}; order ID: {}", productId!!, orderId!!);
     println("Marketplace V3: {}", marketplace.address);
     println("NFT Escrow V2: {}", marketplace.escrowV2());
     println("Reserve Coordinator V3: {}", coordinatorAddress!!);
     println("Per-order Reserve Vault V3: {}", vault);
     println("Buyer NFT ownership: verified");
-    println("Seller/platform payout dispatch: verified");
-    println("Buyer 0.2 TON reserve receipt: attested by 3/3 configured validators");
+    println("Seller/platform payout status: contract reports dispatched; recipient credit requires independent trace verification");
+    println("Buyer 0.2 TON reserve: vault reports paid; independent recipient receipt and validator quorum evidence must be audited separately");
     println("Vault status: paid; in-flight: 0; available: 0");
     println("Network: Testnet only. Mainnet remains blocked.");
 }
