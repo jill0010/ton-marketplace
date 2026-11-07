@@ -8,9 +8,9 @@ export function prepareRefundReconciliation({ orderId, records, expected = null 
     throw new TypeError("Order ID and records are required");
   }
   if (expected !== null && (!expected || typeof expected !== "object" ||
-      !/^-?\\d+:[0-9a-f]{64}$/i.test(expected.accountAddress ?? "") ||
-      !/^-?\\d+:[0-9a-f]{64}$/i.test(expected.counterpartyAddress ?? "") ||
-      !/^[1-9]\\d*$/.test(expected.amountNano ?? ""))) {
+      !/^-?\d+:[0-9a-f]{64}$/i.test(expected.accountAddress ?? "") ||
+      !/^-?\d+:[0-9a-f]{64}$/i.test(expected.counterpartyAddress ?? "") ||
+      !/^[1-9]\d*$/.test(expected.amountNano ?? ""))) {
     throw new TypeError("Expected account, counterparty and positive amount are required");
   }
   const seen = new Set();
