@@ -17,8 +17,8 @@ struct MockNFTItemV3Storage {
 }
 
 fun MockNFTItemV3Storage.load(): MockNFTItemV3Storage {
-    val root = contract.getData().beginParse();
-    val config = root.loadRef().beginParse();
+    var root = contract.getData().beginParse();
+    var config = root.loadRef().beginParse();
     val itemIndex = config.loadUint(256);
     val collection = config.loadAddress();
     val initialized = root.loadUint(1) == 1;
@@ -31,7 +31,7 @@ fun MockNFTItemV3Storage.load(): MockNFTItemV3Storage {
             content: beginCell().endCell(),
         };
     }
-    val state = root.loadRef().beginParse();
+    var state = root.loadRef().beginParse();
     val owner = state.loadAddress();
     val content = state.loadRef();
     state.assertEnd();
