@@ -38,10 +38,27 @@ jobs:
       V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: ${{ inputs.coordinator_address }}
       V3_TESTNET_FIXTURE_NFT_ADDRESS: ${{ inputs.nft_item_address }}
     steps:
+      - name: Enforce dedicated read-only Testnet diagnostic branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/feature/reserve-refund-v3-audit" || {
+            echo "::error::Select feature/reserve-refund-v3-audit in Run workflow; main lacks V3 diagnostic scripts."
+            exit 1
+          }
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: feature/reserve-refund-v3-audit
           persist-credentials: false
+      - name: Confirm diagnostic script is present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f scripts/diagnose-v3-existing-testnet-order.tolk || {
+            echo "::error::Incorrect checkout: read-only diagnostic script missing"
+            exit 1
+          }
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Create ephemeral read-only wallet profiles
