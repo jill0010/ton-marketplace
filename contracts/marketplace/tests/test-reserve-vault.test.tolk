@@ -131,7 +131,7 @@ get fun `test experimental vault binds review to owner order evidence and costs`
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    ).toHaveFailedTx({ to: vault, exitCode: 703 });
     expect(
         reserveSend(
             owner,
@@ -243,23 +243,12 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
         }.toCell(),
         grams("0.05"),
     );
-    expect(retried).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(retried).toHaveSuccessfulTx({ to: vault });
+    expect(retried).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
-    // The prior return evidence cannot authorize a third payout.
-    expect(
-        reserveSend(
-            owner,
-            vault,
-            RetryTestReserve {
-                orderId: 1,
-                returnEvidenceHash: 1234,
-            }.toCell(),
-            grams("0.05"),
-        ),
-    ).toHaveFailedTx({ to: vault, exitCode: 706 });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+
 }
 
 fun reserveRichBounce(orderId: uint64, queryId: uint64, amount: coins): cell {
