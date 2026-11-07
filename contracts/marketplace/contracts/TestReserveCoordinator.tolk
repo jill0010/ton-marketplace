@@ -93,6 +93,7 @@ fun onInternalMessage(in: InMessage) {
                     evidenceHash: 0,
                     returnedNano: 0,
                     topUpNano: 0,
+                    retryOperationalNano: 0,
                     retryCount: 0,
                 }.toCell(),
             };
