@@ -47,7 +47,7 @@ fun onInternalMessage(in: InMessage) {
                 assert (
                     codeHash ==
                     0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
-                    codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251 || codeHash == 0x1111111111111111111111111111111111111111111111111111111111111111
+                    codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251 || codeHash == 0x1111111111111111111111111111111111111111111111111111111111111111 || codeHash == 0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f
                 ) throw ErrorsV2.InvalidCollectionItemCode;
             }
             collectionStorage.collections.set(msg.collection, msg.newStatus);
@@ -64,7 +64,7 @@ fun onInternalMessage(in: InMessage) {
             val codeHash = msg.code.hash();
             assert (
                 codeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
-                codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251 || codeHash == 0x1111111111111111111111111111111111111111111111111111111111111111
+                codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251 || codeHash == 0x1111111111111111111111111111111111111111111111111111111111111111 || codeHash == 0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f
             ) throw ErrorsV2.InvalidCollectionItemCode;
 
             var callbacks = storage.callbacks.load();
@@ -139,7 +139,7 @@ fun onInternalMessage(in: InMessage) {
             val codeHash = itemCode.code.hash();
             assert (
                 codeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
-                codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251 || codeHash == 0x1111111111111111111111111111111111111111111111111111111111111111
+                codeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251 || codeHash == 0x1111111111111111111111111111111111111111111111111111111111111111 || codeHash == 0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f
             ) throw ErrorsV2.InvalidCollectionItemCode;
 
             // Fragment collectible Item StateInit (TeleMint usernames/numbers and
