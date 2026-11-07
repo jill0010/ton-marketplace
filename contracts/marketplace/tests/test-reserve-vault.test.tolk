@@ -212,7 +212,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
     expect(reviewed).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
-    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toBeGreaterThan(0);
+    expect(net.runGetMethod<coins>(vault, "testReserveReturned") == 0).toEqual(false);
     expect(
         reserveSend(
             funder,
