@@ -66,6 +66,8 @@ export function buildV3SettlementStatementCell(s) {
     .storeAddress(buyer)
     .storeUint(orderId, 64)
     .storeCoins(principal)
+    .endCell();
+  const operationCell = beginCell()
     .storeUint(operationId, 64)
     .storeUint(queryId, 64)
     .endCell();
@@ -87,6 +89,7 @@ export function buildV3SettlementStatementCell(s) {
     .storeUint(schemaVersion, 16)
     .storeInt(networkGlobalId, 32)
     .storeRef(identityCell)
+    .storeRef(operationCell)
     .storeRef(dispatchCell)
     .storeRef(resultCell)
     .endCell();
