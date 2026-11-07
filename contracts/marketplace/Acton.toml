@@ -95,3 +95,8 @@ display-name = "Production V3 per-order reserve vault"
 src = "contracts/ReserveVaultV3.tolk"
 depends = ["SettlementAttestationVerifierV3"]
 
+[contracts.ReserveCoordinatorV3]
+display-name = "Production V3 reserve coordinator"
+src = "contracts/ReserveCoordinatorV3.tolk"
+depends = ["ReserveVaultV3"]
+
