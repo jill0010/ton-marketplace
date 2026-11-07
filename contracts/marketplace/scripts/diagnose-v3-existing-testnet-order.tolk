@@ -18,6 +18,39 @@ fun main() {
 
     val status = marketplace.productStatusV2(productId!!);
     println("V3_DIAGNOSTIC_PRODUCT_STATUS: {}", status);
+    // The fresh-fixture mode is strictly getter-only and must not apply the
+    // historical transaction's hard-coded buyer, deadline or query ID.
+    if (env<bool>("V3_INSPECT_FRESH_FIXTURE") ?? false) {
+        val listing = marketplace.productV2(productId!!);
+        assert (listing != null) throw 953;
+        println("V3_FRESH_PRODUCT_PRICE_NANOTON: {}", listing!!.price);
+        println("V3_FRESH_PRODUCT_ESCROW_ID: {}", listing!!.escrowId);
+        println("V3_FRESH_PRODUCT_NFT_MATCHES: {}", listing!!.nftItem == nftItem!!);
+        println("V3_FRESH_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
+        println("V3_FRESH_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
+        println("V3_FRESH_COORDINATOR_CONFIGURED: {}", net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"));
+        val nft = net.runGetMethod<tuple>(nftItem!!, "get_nft_data");
+        println("V3_FRESH_NFT_OWNER: {}", nft.get(3) as address);
+        val freshOrderId = marketplace.orderIdForProductV2(productId!!);
+        println("V3_FRESH_ORDER_ID: {}", freshOrderId);
+        if (freshOrderId == null) {
+            println("V3_FRESH_RESULT: LISTED_WITHOUT_ORDER. Purchase step did not run; do not replay a payment automatically.");
+            return;
+        }
+        val orderCell = marketplace.orderCellV2(freshOrderId!!);
+        println("V3_FRESH_ORDER_CELL_EXISTS: {}", orderCell != null);
+        if (orderCell == null) return;
+        val order = MarketplaceV2Order.fromCell(orderCell!!);
+        println("V3_FRESH_ORDER_STATUS: {}", order.status);
+        println("V3_FRESH_DELIVERY_STATUS: {}", order.deliveryStatus);
+        println("V3_FRESH_SELLER_PAYOUT_STATUS: {}", order.sellerPayoutStatus);
+        println("V3_FRESH_PLATFORM_PAYOUT_STATUS: {}", order.platformPayoutStatus);
+        println("V3_FRESH_MARKETPLACE_RESERVE_STATUS: {}", net.runGetMethod<uint8>(marketplace.address, "marketplaceReserveStatusV3", [freshOrderId!!]));
+        println("V3_FRESH_COORDINATOR_RESERVE_STATUS: {}", net.runGetMethod<uint8>(coordinatorAddress!!, "reserveCoordinatorStatusV3", [freshOrderId!!]));
+        println("V3_FRESH_COORDINATOR_VAULT: {}", net.runGetMethod<address?>(coordinatorAddress!!, "reserveCoordinatorVaultV3", [freshOrderId!!]));
+        println("V3_FRESH_RESULT: ORDER_EXISTS. Getter-only inspection complete; settlement is not attested.");
+        return;
+    }
     // Compare the exact historical BuyProductV2 fields with persisted state.
     // This is a getter-only preflight; no new purchase or transfer is sent.
     val productResult = marketplace.productV2(productId!!);
