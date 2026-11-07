@@ -62,10 +62,7 @@ fun main() {
     };
     val marketCode = build("TestMarketplaceReserveV3");
     println("V3 trusted compiled marketplace code hash: {}", marketCode.hash());
-    val marketState: ContractState = {
-        code: marketCode,
-        data: initial.toCell(),
-    };
+    val marketState: ContractState = { code: marketCode, data: initial.toCell() };
     val marketDestination = AutoDeployAddress {
         workchain: 0,
         stateInit: marketState,
