@@ -55,8 +55,10 @@ export async function inspectV3TestnetOrder({ marketplace, orderId }, fetcher = 
   const orderStack = await getter("orderCellV2", input);
   const orderExists = validV3GetterCell(orderStack);
   if (!orderExists) {
-    if (!Array.isArray(orderStack) || orderStack.length !== 1 || orderStack[0][0] !== "null") {
-      throw new Error("Unrecognized order getter response");
+    if (!Array.isArray(orderStack) || orderStack.length !== 1 ||
+        !["null", "num"].includes(orderStack[0]?.[0]) ||
+        (orderStack[0]?.[0] === "num" && !["0", "0x0"].includes(String(orderStack[0]?.[1])))) {
+      throw new Error("Unrecognized order getter response: " + JSON.stringify(orderStack));
     }
   }
   const reserveStack = await getter("testPurchaseReserve", input);
