@@ -16,13 +16,14 @@ fun main() {
     // The fixture's product ID and resulting order ID are monotonic. Resolve
     // both from the unique NFT Item instead of assuming either starts at 1.
     val productIdResult = marketplace.assetProductIdV2(nftItem!!);
-    assert (productIdResult != null) throw 922;
+    assert (productIdResult != null) throw 928;
     val productId = productIdResult!!;
     val orderIdResult = marketplace.orderIdForProductV2(productId);
-    assert (orderIdResult != null) throw 922;
+    println("V3 purchase verifier lookup: productId={}, orderId={}", productId, orderIdResult);
+    assert (orderIdResult != null) throw 929;
     val orderId = orderIdResult!!;
     val orderCell = marketplace.orderCellV2(orderId);
-    assert (orderCell != null) throw 922;
+    assert (orderCell != null) throw 930;
     val order = MarketplaceV2Order.fromCell(orderCell!!);
     val extra = order.extra.load();
     val parties = extra.parties.load();
@@ -42,7 +43,7 @@ fun main() {
     val marketplaceReserveStatus = net.runGetMethod<uint8>(
         marketplace.address,
         "marketplaceReserveStatusV3",
-        [productId],
+        [orderId],
     );
     val marketplaceVault = net.runGetMethod<address?>(
         marketplace.address,
