@@ -1,6 +1,21 @@
 # Marketplace V3 production settlement protocol
 
-Status: design contract for implementation and independent review. This document is not deployment approval.
+Status: production V3 contract implementation in progress; emulator-tested, Testnet deployment and independent security review pending. This document is not deployment approval.
+
+## Current implementation checkpoint (2026-11-07)
+
+The production contract files now exist as separate implementations; they are not aliases of the experimental prototype:
+
+- `contracts/ReserveVaultV3.tolk`: per-order principal ledger, dispatch state, strict verifier callback binding, quorum-attested success/return transitions, exact principal top-up and one bounded retry.
+- `contracts/ReserveCoordinatorV3.tolk`: immutable per-order vault derivation, exact 0.2 TON principal plus 0.08 TON operational allocation, verified funding ACK and failure-principal return.
+- `contracts/MarketplaceReserveV3.tolk`: fresh Marketplace V3 storage, one-time coordinator binding, V2 NFT Escrow callbacks, reserve release after NFT delivery or seller-return confirmation.
+- `contracts/SettlementAttestationVerifierV3.tolk`: 2-of-3 Ed25519 statement verifier with network/epoch/expiry checks and replay protection.
+- `scripts/deploy-v3-production-testnet.tolk`: explicit Testnet-only deployment candidate.
+- `scripts/rehearse-v3-production-purchase.tolk`: full emulator trace for purchase, NFT Escrow V2 delivery, payouts, reserve refund and verifier callback.
+
+The production vault identity and accounting structures are split into referenced cells to remain within TVM cell serialization limits. The first production reserve-vault and coordinator adversarial suites are included in Acton tests. Production Marketplace/Escrow end-to-end emulation and Testnet deployment postflight are being integrated.
+
+**Important remaining trust boundary:** the verifier authenticates an attestor quorum; it does not implement a TON light client. The independent validator signing service, secure key custody/rotation, and proof validation against finalized Testnet transactions must be implemented and reviewed before a funded Testnet settlement trial. Deployment and getter checks alone do not prove a purchase or refund.
 
 ## Scope
 
