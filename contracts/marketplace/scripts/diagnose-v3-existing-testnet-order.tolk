@@ -32,8 +32,10 @@ fun main() {
     // These values are fixed evidence, not a new transaction request.
     val historicalCreatedAt: int = 1794066402;
     val historicalDeadline: int = 1794067298;
+    val historicalDeadlineMargin = historicalCreatedAt + 900 - historicalDeadline;
     println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_VALID: {}", historicalDeadline >= historicalCreatedAt && historicalDeadline <= historicalCreatedAt + 900);
-    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_MARGIN_SECONDS: {}", historicalCreatedAt + 900 - historicalDeadline);
+    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_MARGIN_SECONDS: {}", historicalDeadlineMargin);
+    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_NEAR_LIMIT: {}", historicalDeadlineMargin >= 0 && historicalDeadlineMargin <= 30);
     println("V3_DIAGNOSTIC_PRODUCT_ID_MATCHES: {}", product.id == productId!!);
     println("V3_DIAGNOSTIC_BUYER_EQUALS_NFT_ITEM: {}", historicalBuyer != null && historicalBuyer!! == product.nftItem);
     println("V3_DIAGNOSTIC_PRODUCT_NFT_MATCHES_FIXTURE: {}", product.nftItem == nftItem!!);
