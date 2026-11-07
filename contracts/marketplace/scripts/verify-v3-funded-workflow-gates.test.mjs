@@ -27,3 +27,19 @@ test("purchase script verifies listing, ownership and uniqueness before sending"
  assert.match(script,/result\.waitForTrace\(\)/);
  assert.match(script,/if \(persistedOrderId == null\)/);
 });
+
+test("purchase and settlement verifiers bind to the exact NFT and distinguish payout status from receipt",()=>{
+ const purchase=readFileSync(new URL("./verify-v3-production-testnet-purchase.tolk",import.meta.url),"utf8");
+ const settlement=readFileSync(new URL("./verify-v3-production-testnet-settlement.tolk",import.meta.url),"utf8");
+ for(const script of [purchase,settlement]){
+   assert.match(script,/assetProductIdV2\(nftItem!!\)/);
+   assert.match(script,/orderIdForProductV2\(/);
+   assert.match(script,/reserveCoordinatorVaultV3/);
+   assert.match(script,/reserveVaultPrincipalV3/);
+   assert.match(script,/grams\("0\.2"\)/);
+ }
+ assert.match(purchase,/Reserve is in-flight pending actual buyer receipt attestation/);
+ assert.match(settlement,/INDEPENDENT TRANSFER FINALITY NOT ATTESTED/);
+ assert.match(settlement,/recipient credit requires independent trace verification/);
+ assert.match(settlement,/independent recipient receipt and validator quorum evidence must be audited separately/);
+});
