@@ -168,12 +168,16 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq "V3_FRESH_RESULT:" v3-existing-testnet-diagnostic.log
+          grep -Fq "V3_FRESH_ESCROW_OWNS_NFT: true" v3-existing-testnet-diagnostic.log
+          grep -Fq "V3_FRESH_LISTING_READY_FOR_CONTROLLED_TEST: true" v3-existing-testnet-diagnostic.log
           {
             echo "### Fresh V3 Testnet fixture — read-only inspection"
             echo "- Source: previously deployed Marketplace, Coordinator and synthetic NFT"
             echo "- No deployment, purchase, refund, transfer or attestation was submitted."
             echo "- Status: $(grep -F 'V3_FRESH_RESULT:' v3-existing-testnet-diagnostic.log | tail -1)"
             echo "- Order: $(grep -F 'V3_FRESH_ORDER_ID:' v3-existing-testnet-diagnostic.log | tail -1)"
+            echo "- NFT custody: $(grep -F 'V3_FRESH_ESCROW_OWNS_NFT:' v3-existing-testnet-diagnostic.log | tail -1)"
+            echo "- Listing readiness: $(grep -F 'V3_FRESH_LISTING_READY_FOR_CONTROLLED_TEST:' v3-existing-testnet-diagnostic.log | tail -1)"
             echo "- Mainnet remains blocked."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload read-only evidence
