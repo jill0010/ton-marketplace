@@ -121,6 +121,7 @@ fun onInternalMessage(in: InMessage) {
                         operationId: 0,
                         queryId: 0,
                         activeStatementHash: 0,
+                        dispatchMessageHash: 0,
                         status: 0,
                         retryCount: 0,
                     }.toCell(),
