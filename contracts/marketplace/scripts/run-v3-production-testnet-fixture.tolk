@@ -1,4 +1,5 @@
 import "@acton/env"
+import "@acton/io"
 import "@acton/emulation/scripts"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
@@ -12,7 +13,7 @@ fun main() {
     val buyer = scripts.wallet("treasury");
     val marketplaceAddress = env<address>("V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS");
     val escrowAddress = env<address>("V3_PRODUCTION_TESTNET_ESCROW_ADDRESS");
-    val itemIndex = env<uint256>("V3_TESTNET_FIXTURE_ITEM_INDEX") ?? 1000;
+    val itemIndex: uint256 = (env<int>("V3_TESTNET_FIXTURE_ITEM_INDEX") ?? 1000) as uint256;
     assert (marketplaceAddress != null && escrowAddress != null) throw 902;
     val marketplace = MarketplaceV2 { address: marketplaceAddress! };
     val escrow = NFTEscrowV2Testnet { address: escrowAddress! };
