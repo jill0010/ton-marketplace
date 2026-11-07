@@ -1,0 +1,34 @@
+name: V3 Candidate Build Check (No Transactions)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/reserve-refund-v3-audit
+    paths:
+      - 'contracts/marketplace/**'
+      - '.github/workflows/v3-candidate-build-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Compile V3 candidate and escrow without deploying
+        run: acton build
+      - name: Confirm build result
+        run: |
+          echo "Marketplace V3 candidate compiled on the selected commit." >> "$GITHUB_STEP_SUMMARY"
+          echo "No wallet secret, transaction, or deployment was used." >> "$GITHUB_STEP_SUMMARY"
