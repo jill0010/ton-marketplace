@@ -9,6 +9,8 @@ on:
       - .github/workflows/audit-historical-v3-testnet-payment.yml
       - contracts/marketplace/scripts/inspect-historical-testnet-payment.mjs
       - contracts/marketplace/scripts/inspect-historical-testnet-payment.test.mjs
+      - contracts/marketplace/scripts/audit-historical-payment-followup.mjs
+      - contracts/marketplace/scripts/audit-historical-payment-followup.test.mjs
 
 permissions:
   contents: read
@@ -32,6 +34,13 @@ jobs:
         run: |
           set -euo pipefail
           node contracts/marketplace/scripts/inspect-historical-testnet-payment.mjs | tee historical-payment-report.json
+      - name: Inspect later Marketplace outflows without signing
+        shell: bash
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/audit-historical-payment-followup.mjs | tee historical-payment-followup.json
       - name: Publish read-only evidence status
         if: always()
         shell: bash
@@ -45,5 +54,11 @@ jobs:
               echo '~~~'
             else
               echo "Transaction lookup did not produce a complete report."
+            fi
+            if [ -f historical-payment-followup.json ]; then
+              echo "### Subsequent outflow candidates (refund not yet confirmed)"
+              echo '~~~json'
+              cat historical-payment-followup.json
+              echo '~~~'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
