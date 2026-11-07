@@ -107,7 +107,7 @@ fun verifierSend(from: address, verifier: address, statement: cell, signatures: 
             bounce: BounceMode.RichBounce,
             value: grams("0.1"),
             dest: verifier,
-            body: VerifySettlementAttestationV3 { statement, signatures }.toCell(),
+            body: VerifySettlementAttestationV3 { statement, signatures: signatures as Cell<SettlementSignatureBundleV3> }.toCell(),
         }),
     );
 }
