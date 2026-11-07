@@ -97,7 +97,7 @@ test("partial return cannot be retried until exact order-local principal is rest
     amountNano: 200_000_000n, operationId: 2n }), /Insufficient/);
   const topped = topUpReserve(bounced, { orderId: "order-1", buyer: "buyer-1",
     amountNano: 50_000_000n, fundingMessageHash: "funding-partial-1" });
-  assert.equal(topped.availableNano + topped.inFlightNano + topped.paidNano, 250_000_000n);
+  assert.equal(topped.availableNano + topped.inFlightNano + topped.paidNano + topped.feesNano, 250_000_000n);
   const retry = dispatchReserveRefund(topped, { orderId: "order-1", buyer: "buyer-1",
     amountNano: 200_000_000n, operationId: 2n });
   assert.equal(retry.inFlightNano, 200_000_000n);
