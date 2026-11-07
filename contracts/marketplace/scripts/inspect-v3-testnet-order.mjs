@@ -13,7 +13,21 @@ export function parseV3StackInteger(stack) {
   }
   return BigInt(value);
 }
+function unwrapOptionalGetterStack(stack) {
+  if (!Array.isArray(stack) || stack.length !== 1) throw new Error("Unexpected optional TVM getter stack");
+  const [type, value] = stack[0];
+  // TON Center v2 serializes Tolk's null optional as an empty tvm.list.
+  if (type === "list" && value?.["@type"] === "tvm.list" && Array.isArray(value.elements)) {
+    if (value.elements.length === 0) return null;
+    if (value.elements.length === 1) return [value.elements[0]];
+    throw new Error("Unexpected optional getter list length");
+  }
+  if (type === "null") return null;
+  return stack;
+}
 export function validV3GetterCell(stack) {
+  stack = unwrapOptionalGetterStack(stack);
+  if (stack === null) return false;
   if (!Array.isArray(stack) || stack.length !== 1) return false;
   const [type, value] = stack[0];
   if (!["cell", "slice"].includes(type) || typeof value?.bytes !== "string") return false;
@@ -55,16 +69,15 @@ export async function inspectV3TestnetOrder({ marketplace, orderId }, fetcher = 
   const orderStack = await getter("orderCellV2", input);
   const orderExists = validV3GetterCell(orderStack);
   if (!orderExists) {
-    if (!Array.isArray(orderStack) || orderStack.length !== 1 ||
-        !["null", "num"].includes(orderStack[0]?.[0]) ||
-        (orderStack[0]?.[0] === "num" && !["0", "0x0"].includes(String(orderStack[0]?.[1])))) {
+    if (unwrapOptionalGetterStack(orderStack) !== null) {
       throw new Error("Unrecognized order getter response: " + JSON.stringify(orderStack));
     }
   }
   const reserveStack = await getter("testPurchaseReserve", input);
   const reservePresent = validV3GetterCell(reserveStack);
-  if (!reservePresent && !(Array.isArray(reserveStack) && reserveStack.length === 1 &&
-    reserveStack[0][0] === "null")) throw new Error("Unrecognized reserve getter response");
+  if (!reservePresent && unwrapOptionalGetterStack(reserveStack) !== null) {
+    throw new Error("Unrecognized reserve getter response: " + JSON.stringify(reserveStack));
+  }
   return {
     network: "testnet", address, orderId, orderExists, reservePresent,
     settlementVerified: false, refundFinalityVerified: false,
