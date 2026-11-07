@@ -28,6 +28,7 @@ fun reserveSetup(buyerOverride: address? = null, orderId: uint64 = 1): (
         queryId: 0,
         evidenceHash: 0,
         returnedNano: 0,
+        topUpNano: 0,
         retryCount: 0,
     };
     val state: ContractState = { code: build("TestReserveVault"), data: storage.toCell() };
@@ -408,6 +409,7 @@ get fun `test underfunded retry preserves liability and succeeds after operation
             queryId: 1,
             evidenceHash: 456,
             returnedNano: 0,
+            topUpNano: 0,
             retryCount: 0,
         }.toCell(),
     };
