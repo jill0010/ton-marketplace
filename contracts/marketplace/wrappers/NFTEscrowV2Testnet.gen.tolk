@@ -306,7 +306,7 @@ fun NFTEscrowV2Testnet.marketplace(self): address {
     return net.runGetMethod(self.address, "marketplace");
 }
 
-fun NFTEscrowV2Testnet.escrowRecordV2(self, escrowId: uint64): NFTEscrowV2TestnetRecord? {
+fun NFTEscrowV2Testnet.escrowRecordV2(self, escrowId: uint64): NFTEscrowV2Record? {
     return net.runGetMethod(self.address, "escrowRecordV2", [escrowId]);
 }
 
