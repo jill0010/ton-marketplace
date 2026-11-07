@@ -9,7 +9,7 @@ import "list-testnet-nft-fixture"
 fun main() {
     assert (env<bool>("V3_TESTNET_FIXTURE_ENABLED") ?? false) throw 901;
     val deployer = scripts.wallet("deployer");
-    val buyer = scripts.wallet("seller");
+    val buyer = scripts.wallet("treasury");
     val marketplaceAddress = env<address>("V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS");
     val escrowAddress = env<address>("V3_PRODUCTION_TESTNET_ESCROW_ADDRESS");
     val itemIndex = env<uint256>("V3_TESTNET_FIXTURE_ITEM_INDEX") ?? 1000;
