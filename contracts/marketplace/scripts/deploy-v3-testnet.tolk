@@ -60,8 +60,10 @@ fun main() {
             }.toCell(),
         }.toCell(),
     };
+    val marketCode = build("TestMarketplaceReserveV3");
+    println("V3 trusted compiled marketplace code hash: {}", marketCode.hash());
     val marketState: ContractState = {
-        code: build("TestMarketplaceReserveV3"),
+        code: marketCode,
         data: initial.toCell(),
     };
     val marketDestination = AutoDeployAddress {
@@ -73,6 +75,8 @@ fun main() {
         address: marketDestination.calculateAddress(),
         stateInit: marketState,
     };
+
+    println("V3 trusted compiled escrow code hash: {}", build("NFTEscrowV2").hash());
 
     val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
         owner: deployer.address,
@@ -152,8 +156,10 @@ fun main() {
         throw 811;
     }
 
+    val coordinatorCode = build("TestReserveCoordinator");
+    println("V3 trusted compiled coordinator code hash: {}", coordinatorCode.hash());
     val coordinatorState: ContractState = {
-        code: build("TestReserveCoordinator"),
+        code: coordinatorCode,
         data: TestReserveCoordinatorStorage {
             owner: deployer.address,
             marketplace: marketplace.address,
