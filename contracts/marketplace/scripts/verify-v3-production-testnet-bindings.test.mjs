@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { beginCell } from "@ton/core";
+import { Address, beginCell } from "@ton/core";
+import { normalizeV3TestnetAddress } from "./verify-v3-testnet.mjs";
+import { V3_TESTNET_OWNER, V3_TESTNET_TREASURY } from "./verify-v3-testnet-bindings.mjs";
 import { decodeV3IntegerGetter, verifyV3ProductionBindings } from "./verify-v3-production-testnet-bindings.mjs";
 
+const ownerRaw = normalizeV3TestnetAddress(V3_TESTNET_OWNER);
+const treasuryRaw = normalizeV3TestnetAddress(V3_TESTNET_TREASURY);
 const addresses = {
   marketplace: "0:" + "01".repeat(32),
   escrow: "0:" + "02".repeat(32),
@@ -12,7 +16,7 @@ const addresses = {
 
 function addrStack(raw) {
   const [wc, hash] = raw.split(":");
-  const cell = beginCell().storeAddress({ workChain: Number(wc), hash: Buffer.from(hash, "hex") }).endCell();
+  const cell = beginCell().storeAddress(Address.parseRaw(raw)).endCell();
   return [["cell", { bytes: cell.toBoc().toString("base64") }]];
 }
 
@@ -25,14 +29,14 @@ test("numeric getter decoder handles signed and unsigned TVM integers", () => {
 test("production V3 binding verifier checks marketplace, escrow, coordinator and verifier configuration", async () => {
   const vaultHash = "ab".repeat(32);
   const values = {
-    ownerV2: addrStack(addresses.marketplace),
+    ownerV2: addrStack(ownerRaw),
     escrowV2: addrStack(addresses.escrow),
-    treasuryV2: addrStack("0:" + "05".repeat(32)),
+    treasuryV2: addrStack(treasuryRaw),
     reserveCoordinatorV3: addrStack(addresses.coordinator),
     marketplace: addrStack(addresses.marketplace),
     reserveCoordinatorMarketplaceV3: addrStack(addresses.marketplace),
     reserveCoordinatorVerifierV3: addrStack(addresses.verifier),
-    reserveCoordinatorOwnerV3: addrStack(addresses.marketplace),
+    reserveCoordinatorOwnerV3: addrStack(ownerRaw),
     verifierMarketplace: addrStack(addresses.marketplace),
     verifierNetwork: [["num", "-0x3"]],
     verifierEpoch: [["num", "0x1"]],
