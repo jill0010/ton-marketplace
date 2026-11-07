@@ -53,8 +53,9 @@ export function dispatchReserveRefund(state, { orderId, buyer, amountNano, opera
   const next = mutable(state);
   invariant(orderId === next.orderId && buyer === next.buyer, "Refund identity mismatch");
   const amount = nano(amountNano);
+  invariant(amount > 0n, "Refund must settle a positive outstanding liability");
   invariant(amount === next.principalNano - next.paidNano, "Refund must settle exact outstanding liability");
-  invariant(amount > 0n && next.availableNano >= amount, "Insufficient order-isolated available funds");
+  invariant(next.availableNano >= amount, "Insufficient order-isolated available funds");
   invariant(operationId === next.nextOperationId, "Stale or reused operation ID");
   next.availableNano -= amount;
   next.inFlightNano += amount;
