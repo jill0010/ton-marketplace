@@ -30,9 +30,9 @@ jobs:
       V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
-      V3_VALIDATOR_0_PUBLIC_KEY: ${{ secrets.V3_VALIDATOR_0_PUBLIC_KEY }}
-      V3_VALIDATOR_1_PUBLIC_KEY: ${{ secrets.V3_VALIDATOR_1_PUBLIC_KEY }}
-      V3_VALIDATOR_2_PUBLIC_KEY: ${{ secrets.V3_VALIDATOR_2_PUBLIC_KEY }}
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -55,7 +55,8 @@ jobs:
             contracts/marketplace/scripts/verify-v3-testnet.test.mjs \
             contracts/marketplace/scripts/verify-v3-production-testnet.test.mjs \
             contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs \
-            contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs
+            contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs \\
+            contracts/marketplace/scripts/derive-v3-validator-keys.test.mjs
 
       - name: Validate required Testnet-only secrets
         shell: bash
@@ -63,11 +64,19 @@ jobs:
           set -euo pipefail
           test -n "$DEPLOYER_MNEMONIC" || { echo "::error::TESTNET_DEPLOYER_MNEMONIC is missing"; exit 1; }
           test -n "$TONCENTER_API_KEY" || { echo "::error::TONCENTER_TESTNET_API_KEY is missing"; exit 1; }
-          for name in V3_VALIDATOR_0_PUBLIC_KEY V3_VALIDATOR_1_PUBLIC_KEY V3_VALIDATOR_2_PUBLIC_KEY; do
+          for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
             value="${!name:-}"
             test -n "$value" || { echo "::error::$name is missing"; exit 1; }
-            [[ "$value" =~ ^[0-9]+$ ]] || { echo "::error::$name must be an unsigned decimal uint256"; exit 1; }
+            [[ "$value" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "::error::$name must be a 32-byte Ed25519 seed encoded as 64 hex characters"; exit 1; }
           done
+
+      - name: Derive verifier public keys without printing private seeds
+        working-directory: .
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/v3-validator-public-keys.env"
+          cat "$RUNNER_TEMP/v3-validator-public-keys.env" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/v3-validator-public-keys.env"
 
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
