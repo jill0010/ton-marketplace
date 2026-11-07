@@ -74,6 +74,34 @@ test("two order ledgers cannot spend or observe each other's reserve", () => {
   assert.throws(() => dispatchReserveRefund(aBounced, { orderId: "order-B", buyer: "buyer-1",
     amountNano: 200_000_000n, operationId: 1n }), /identity mismatch/);
 });
+
+test("ledger rejects corrupted principal conservation and malformed top-up history", () => {
+  const s = start();
+  assert.throws(() => dispatchReserveRefund(
+    { ...s, availableNano: s.availableNano - 1n },
+    { orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 1n },
+  ), /principal conservation/);
+  assert.throws(() => dispatchReserveRefund(
+    { ...s, operations: [{ kind: "topup", amountNano: -1n }] },
+    { orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 1n },
+  ), /Invalid nano amount/);
+});
+
+test("partial return cannot be retried until exact order-local principal is restored", () => {
+  const bounced = reconcileRefundResult(dispatch(start()), { orderId: "order-1", buyer: "buyer-1",
+    operationId: 1n, result: "bounced", returnedNano: 150_000_000n, evidenceHash: H(11) });
+  assert.equal(bounced.shortfallNano, 50_000_000n);
+  assert.throws(() => dispatchReserveRefund(bounced, { orderId: "order-1", buyer: "buyer-1",
+    amountNano: 200_000_000n, operationId: 2n }), /Insufficient/);
+  const topped = topUpReserve(bounced, { orderId: "order-1", buyer: "buyer-1",
+    amountNano: 50_000_000n, fundingMessageHash: "funding-partial-1" });
+  assert.equal(topped.availableNano + topped.inFlightNano + topped.paidNano, 250_000_000n);
+  const retry = dispatchReserveRefund(topped, { orderId: "order-1", buyer: "buyer-1",
+    amountNano: 200_000_000n, operationId: 2n });
+  assert.equal(retry.inFlightNano, 200_000_000n);
+  assert.equal(retry.availableNano, 50_000_000n);
+});
+
 test("zero, negative, non-integer and missing evidence inputs are rejected", () => {
   assert.throws(() => createReserveLedger({ orderId: "x", buyer: "b", principalNano: 0n }));
   assert.throws(() => createReserveLedger({ orderId: "x", buyer: "b", principalNano: -1n }));
