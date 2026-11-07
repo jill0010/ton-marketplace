@@ -27,7 +27,7 @@ fun reserveSetup(buyerOverride: address? = null, orderId: uint64 = 1): (
         reviewedCosts: 0,
         queryId: 0,
         evidenceHash: 0,
-        receiptHash: 0,
+        returnedNano: 0,
     };
     val state: ContractState = { code: build("TestReserveVault"), data: storage.toCell() };
     val destination = AutoDeployAddress {
@@ -411,7 +411,7 @@ get fun `test underfunded retry preserves liability and succeeds after operation
             reviewedCosts: 6000000,
             queryId: 1,
             evidenceHash: 456,
-            receiptHash: 0,
+            returnedNano: 0,
         }.toCell(),
     };
     val destination = AutoDeployAddress {
