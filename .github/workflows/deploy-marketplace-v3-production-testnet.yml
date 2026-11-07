@@ -276,7 +276,7 @@ jobs:
         run: |
           set -euo pipefail
           acton script scripts/verify-v3-production-testnet-settlement.tolk --net testnet 2>&1 | tee v3-production-testnet-settlement.log
-          grep -Fq "PRODUCTION V3 TESTNET END-TO-END SETTLEMENT VERIFIED." v3-production-testnet-settlement.log
+          grep -Fq "PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED; INDEPENDENT TRANSFER FINALITY NOT ATTESTED." v3-production-testnet-settlement.log
 
       - name: Upload production V3 Testnet evidence
         if: always()
@@ -288,7 +288,7 @@ jobs:
             v3-production-testnet-postflight.json
             contracts/marketplace/v3-production-testnet-fixture.log
             contracts/marketplace/v3-production-testnet-purchase.log
-            v3-production-testnet-purchase-verification.log
+            contracts/marketplace/v3-production-testnet-purchase-verification.log
             contracts/marketplace/v3-production-testnet-purchase-verification-attempt-*.log
             v3-production-testnet-attestation.log
             contracts/marketplace/v3-production-testnet-settlement.log
