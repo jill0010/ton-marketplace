@@ -21,6 +21,17 @@ function unwrapOptionalGetterStack(stack) {
       typeof stack[0] === "string" && stack[0] === "list") {
     stack = [stack];
   }
+  // The deployed Tolk optional-cell ABI is also returned by TON Center as
+  // a four-slot tuple: three empty lists plus a zero presence discriminator.
+  // Accept only this exact all-empty representation; any populated slot fails closed.
+  if (Array.isArray(stack) && stack.length === 4) {
+    const emptyList = (item) => Array.isArray(item) && item.length === 2 &&
+      item[0] === "list" && item[1]?.["@type"] === "tvm.list" &&
+      Array.isArray(item[1].elements) && item[1].elements.length === 0;
+    const absentFlag = Array.isArray(stack[3]) && stack[3].length === 2 &&
+      stack[3][0] === "num" && ["0x0", "0"].includes(String(stack[3][1]).toLowerCase());
+    if (stack.slice(0, 3).every(emptyList) && absentFlag) return null;
+  }
   if (!Array.isArray(stack) || stack.length !== 1 || !Array.isArray(stack[0]) || stack[0].length !== 2) {
     throw new Error("Unexpected optional TVM getter stack: " + JSON.stringify(stack));
   }
