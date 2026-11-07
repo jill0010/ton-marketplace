@@ -5,7 +5,7 @@ import "@wrappers/MarketplaceV2.gen"
 
 fun main() {
     val deployer = scripts.wallet("deployer");
-    val buyer = scripts.wallet("seller");
+    val buyer = scripts.wallet("treasury");
     val marketplaceAddress = env<address>("V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS");
     val coordinatorAddress = env<address>("V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS");
     val nftItem = env<address>("V3_TESTNET_FIXTURE_NFT_ADDRESS");
