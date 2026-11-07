@@ -42,7 +42,7 @@ fun main() {
         grams("0.01"),
         paymentQueryId,
         deadline as uint32,
-        { bounce: BounceMode.RichBounce, value: grams("0.21") },
+        { bounce: true, value: grams("0.21") },
     );
     // Wait for the complete wallet -> Marketplace -> reserve/escrow trace.
     // Waiting only for the buyer wallet transaction can let the following
