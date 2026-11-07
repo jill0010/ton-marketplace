@@ -236,34 +236,24 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 702 });
-    val retried = reserveSend(
-        owner,
-        vault,
-        RetryTestReserve {
-            orderId: 1,
-            returnEvidenceHash: 1234,
-        }.toCell(),
-        grams("0.05"),
-    );
-    // The retry is dispatched, but this test buyer rejects every payment.
-    // Its second genuine bounce returns the vault to quarantine for review.
-    expect(retried).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
-    expect(net.runGetMethod<coins>(vault, "testReserveReturned") > 0).toEqual(true);
-    expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
-    // Even a second genuine bounce cannot authorize another operator retry.
+    // Retry remains blocked until the production ledger can cap dispatch to
+    // returned principal and retain any fee-reduced residual liability.
+    val returnedBeforeRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
     expect(
         reserveSend(
             owner,
             vault,
             RetryTestReserve {
                 orderId: 1,
-                returnEvidenceHash: 9999,
+                returnEvidenceHash: 1234,
             }.toCell(),
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedBeforeRetry);
+    expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
 }
 
@@ -689,8 +679,8 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
         ),
     ).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    // The matching genuine bounce authorizes one retry. The recipient is
-    // deliberately rejecting, so the retry itself bounces under fresh query 2.
+    // Retry is deliberately blocked: the prototype has no residual-debt ledger.
+    val returnedBeforeRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
     expect(
         reserveSend(
             owner,
@@ -701,10 +691,9 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    val returnedAfterRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
     testing.processSingleTraceStep(
         rejector,
         createMessage({
@@ -714,9 +703,9 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             body: reserveRichBounce(1, 1, grams("0.194")),
         }).bounced(),
     );
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedAfterRetry);
+    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedBeforeRetry);
     expect(
         reserveSend(
             owner,
