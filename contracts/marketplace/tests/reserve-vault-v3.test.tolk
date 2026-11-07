@@ -191,7 +191,7 @@ fun productionReserveSubmit(
 }
 
 get fun `test production reserve vault funds dispatches and settles only after verifier quorum`() {
-    val (vault, _, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    val (vault, verifier, owner, marketplace, funder, key0, key1) = productionReserveSetup();
     productionReserveFund(vault, funder);
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "reserveVaultAvailableV3")).toEqual(grams("0.2"));
@@ -203,7 +203,7 @@ get fun `test production reserve vault funds dispatches and settles only after v
     val signatures = productionReserveSignatures(statement, key0, key1);
     val result = productionReserveSubmit(vault, owner, statement, signatures);
     expect(result).toHaveSuccessfulTx({ to: vault });
-    expect(result).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: _, to: vault });
+    expect(result).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: verifier, to: vault });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
     expect(net.runGetMethod<coins>(vault, "reserveVaultPaidV3")).toEqual(grams("0.2"));
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(0);
