@@ -48,6 +48,7 @@ fun verifierStatement(
 
 fun verifierSetup(): (address, address, KeyPair, KeyPair, KeyPair) {
     val owner = testing.treasury("verifierOwner").address;
+    val marketplace = testing.treasury("statementMarketplace").address;
     val vault = testing.treasury("verifierVault").address;
     val key0 = crypto.generateKeyPair();
     val key1 = crypto.generateKeyPair();
@@ -60,6 +61,7 @@ fun verifierSetup(): (address, address, KeyPair, KeyPair, KeyPair) {
         code: build("SettlementAttestationVerifierV3"),
         data: SettlementVerifierStorageV3 {
             owner,
+            marketplace,
             networkGlobalId: -3,
             epoch: 4,
             threshold: 2,
