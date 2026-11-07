@@ -13,9 +13,17 @@ fun main() {
     val nftItem = env<address>("V3_TESTNET_FIXTURE_NFT_ADDRESS");
     assert (marketplaceAddress != null && coordinatorAddress != null && nftItem != null) throw 921;
     val marketplace = MarketplaceV2 { address: marketplaceAddress! };
-    val orderId = marketplace.orderIdForProductV2(1);
-    assert (orderId != null && orderId!! == 1) throw 922;
-    val order = MarketplaceV2Order.fromCell(marketplace.orderCellV2(1)!!);
+    // The fixture's product ID and resulting order ID are monotonic. Resolve
+    // both from the unique NFT Item instead of assuming either starts at 1.
+    val productIdResult = marketplace.assetProductIdV2(nftItem!!);
+    assert (productIdResult != null) throw 922;
+    val productId = productIdResult!!;
+    val orderIdResult = marketplace.orderIdForProductV2(productId);
+    assert (orderIdResult != null) throw 922;
+    val orderId = orderIdResult!!;
+    val orderCell = marketplace.orderCellV2(orderId);
+    assert (orderCell != null) throw 922;
+    val order = MarketplaceV2Order.fromCell(orderCell!!);
     val extra = order.extra.load();
     val parties = extra.parties.load();
     val asset = extra.asset.load();
@@ -34,7 +42,7 @@ fun main() {
     val marketplaceReserveStatus = net.runGetMethod<uint8>(
         marketplace.address,
         "marketplaceReserveStatusV3",
-        [1],
+        [productId],
     );
     val marketplaceVault = net.runGetMethod<address?>(
         marketplace.address,
@@ -58,6 +66,8 @@ fun main() {
     assert (net.runGetMethod<coins>(coordinatorVault, "reserveVaultInFlightV3") == grams("0.2")) throw 927;
     assert (net.runGetMethod<coins>(coordinatorVault, "reserveVaultAvailableV3") == 0) throw 927;
 
+    println("V3_TESTNET_PRODUCT_ID: {}", productId);
+    println("V3_TESTNET_ORDER_ID: {}", orderId);
     println("V3_TESTNET_VAULT_ADDRESS: {}", coordinatorVault);
     println("V3 Testnet purchase, NFT buyer ownership, payout dispatch and isolated 0.2 TON reserve verified.");
     println("Reserve is in-flight pending actual buyer receipt attestation; this is not yet final settlement.");
