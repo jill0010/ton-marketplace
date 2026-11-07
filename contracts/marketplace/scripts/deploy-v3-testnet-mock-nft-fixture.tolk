@@ -8,7 +8,7 @@ fun deployV3TestnetMockNftFixture(collection: address, seller: address, itemInde
     val code = build("MockNFTItemV3");
     val config = beginCell().storeUint(itemIndex, 256).storeAddress(collection).endCell();
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
-    val stateInit: ContractState = { code, data };
+    val stateInit: ContractState = { code: code, data: data };
     val destination = AutoDeployAddress { workchain: 0, stateInit };
     val nftItem = destination.calculateAddress();
 
