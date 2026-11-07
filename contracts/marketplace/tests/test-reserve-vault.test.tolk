@@ -623,6 +623,7 @@ get fun `test adequately funded fabricated bounce remains unverified and never a
     );
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(grams("0.194"));
     expect(
         reserveSend(
             buyer,
