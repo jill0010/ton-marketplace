@@ -99,7 +99,7 @@ test("partial return cannot be retried until exact order-local principal is rest
   const retry = dispatchReserveRefund(topped, { orderId: "order-1", buyer: "buyer-1",
     amountNano: 200_000_000n, operationId: 2n });
   assert.equal(retry.inFlightNano, 200_000_000n);
-  assert.equal(retry.availableNano, 50_000_000n);
+  assert.equal(retry.availableNano, 0n);
 });
 
 test("zero, negative, non-integer and missing evidence inputs are rejected", () => {
