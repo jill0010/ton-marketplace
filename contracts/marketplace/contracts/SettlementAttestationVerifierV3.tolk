@@ -1,7 +1,7 @@
 import "@stdlib/tvm-lowlevel"
 
-const SETTLEMENT_DOMAIN_V3 = 0x56523301;
-const SETTLEMENT_SCHEMA_V3 = 1;
+const SETTLEMENT_DOMAIN_V3 = 0x56523301
+const SETTLEMENT_SCHEMA_V3 = 1
 
 struct SettlementIdentityV3 {
     marketplace: address
@@ -83,7 +83,9 @@ struct SettlementVerifierCallbackV3 {
     vault: address
 }
 
-type SettlementVerifierMessageV3 = VerifySettlementAttestationV3 | AcknowledgeSettlementAttestationV3
+type SettlementVerifierMessageV3 =
+    | VerifySettlementAttestationV3
+    | AcknowledgeSettlementAttestationV3
 
 contract SettlementAttestationVerifierV3 {
     author: "TON Market"
@@ -133,8 +135,12 @@ fun onInternalMessage(in: InMessage) {
             assert (identity.marketplace == storage.marketplace) throw 755;
             assert (identity.marketplace != identity.vault) throw 753;
             assert (identity.marketplace != contract.getAddress()) throw 753;
-            assert (identity.vault == in.senderAddress && identity.vault != contract.getAddress()) throw 755;
-            assert (identity.buyer != identity.vault && identity.buyer != identity.marketplace) throw 753;
+            assert (
+                identity.vault == in.senderAddress && identity.vault != contract.getAddress()
+            ) throw 755;
+            assert (
+                identity.buyer != identity.vault && identity.buyer != identity.marketplace
+            ) throw 753;
             assert (identity.orderId > 0 && identity.principal > 0) throw 753;
             assert (operation.operationId > 0 && operation.queryId > 0) throw 753;
             assert (dispatch.transactionHash != 0 && dispatch.messageHash != 0) throw 753;
@@ -144,7 +150,9 @@ fun onInternalMessage(in: InMessage) {
             assert (result.expiresAt >= blockchain.now()) throw 754;
             assert (result.expiresAt <= blockchain.now() + 900) throw 754;
             assert (result.outcome == 1 || result.outcome == 2) throw 753;
-            assert (result.settledAmount > 0 && result.settledAmount <= identity.principal) throw 753;
+            assert (
+                result.settledAmount > 0 && result.settledAmount <= identity.principal
+            ) throw 753;
             if (result.outcome == 1) {
                 assert (result.settledAmount == identity.principal) throw 753;
             } else {
@@ -175,7 +183,9 @@ fun onInternalMessage(in: InMessage) {
                     var signatureSlice = signatureCell.beginParse();
                     assert (signatureSlice.remainingBitsCount() == 512) throw 757;
                     assert (signatureSlice.remainingRefsCount() == 0) throw 757;
-                    assert (isSignatureValid(statementHash, signatureSlice, keyFound.loadValue())) throw 758;
+                    assert (
+                        isSignatureValid(statementHash, signatureSlice, keyFound.loadValue())
+                    ) throw 758;
                     validSignatures += 1;
                 }
                 signerIndex += 1;
