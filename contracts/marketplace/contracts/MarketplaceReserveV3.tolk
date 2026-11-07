@@ -1438,3 +1438,11 @@ get fun marketplaceReserveStatusV3(orderId: uint64): uint8 {
     }
     return MarketplaceReserveBindingV3.fromCell(found.loadValue()).status;
 }
+
+get fun marketplaceReserveCoordinatorV3(): address {
+    return MarketplaceReserveStorageV3.load().purchaseStorage.load().coordinator;
+}
+
+get fun marketplaceReserveCoordinatorConfiguredV3(): bool {
+    return MarketplaceReserveStorageV3.load().purchaseStorage.load().coordinatorConfigured;
+}
