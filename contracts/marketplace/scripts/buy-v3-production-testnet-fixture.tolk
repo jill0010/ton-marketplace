@@ -22,6 +22,15 @@ fun main() {
     val productStatus = marketplace.productStatusV2(productId);
     assert (productStatus != null && productStatus!! == 2) throw 913;
     assert (marketplace.orderIdForProductV2(productId) == null) throw 914;
+    // Prevent expensive or non-bouncing invalid purchases before wallet submission.
+    val listing = marketplace.productV2(productId);
+    assert (listing != null) throw 915;
+    assert (listing!!.id == productId && listing!!.price == grams("0.01")) throw 915;
+    assert (listing!!.seller != buyer.address && listing!!.escrowId > 0) throw 915;
+    assert (marketplace.treasuryConfiguredV2() && marketplace.escrowConfiguredV2()) throw 915;
+    assert (net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")) throw 915;
+    // Payment query IDs must be outside the internal release/refund ID range.
+    assert (8005 > marketplace.nextQueryIdV2() + 3) throw 915;
     val nft = net.runGetMethod<tuple>(nftItem!!, "get_nft_data");
     assert ((nft.get(3) as address) == marketplace.escrowV2()) throw 913;
     val result = marketplace.sendBuyProductV2(
@@ -30,7 +39,7 @@ fun main() {
         grams("0.01"),
         8005,
         deadline as uint32,
-        { value: grams("0.21") },
+        { bounce: BounceMode.RichBounce, value: grams("0.21") },
     );
     // Wait for the complete wallet -> Marketplace -> reserve/escrow trace.
     // Waiting only for the buyer wallet transaction can let the following
