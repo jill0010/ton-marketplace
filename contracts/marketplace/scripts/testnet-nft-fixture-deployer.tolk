@@ -6,7 +6,7 @@ import "@acton/emulation/scripts"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
 
-fun deployTestnetNftFixture(deployer: address, seller: address, itemIndex: uint256) {
+fun deployTestnetNftFixture(deployer: address, seller: address, itemIndex: uint256): address {
     assert (seller != deployer) throw 401;
 
     // Emulator-only registration does not publish a library on any network.
@@ -90,4 +90,5 @@ fun deployTestnetNftFixture(deployer: address, seller: address, itemIndex: uint2
     assert ((stack.get(3) as address) == seller) throw 403;
     println("Test fixture deployed and ownership verified: {}", nftItem);
     println("Test-only synthetic collection; not an official Telegram collectible.");
+    return nftItem;
 }
