@@ -71,6 +71,7 @@ fun productionReserveSetup(): (address, address, address, address, address, KeyP
                 operationId: 0,
                 queryId: 0,
                 activeStatementHash: 0,
+                dispatchMessageHash: 0,
                 status: 0,
                 retryCount: 0,
             }.toCell(),
@@ -127,6 +128,7 @@ fun productionReserveStatement(
     queryId: uint64,
     outcome: uint8,
     settledAmount: coins,
+    dispatchMessageHash: uint256,
 ): cell {
     val identity = beginCell()
         .storeAddress(marketplace)
@@ -136,7 +138,7 @@ fun productionReserveStatement(
         .storeCoins(grams("0.2"))
         .endCell();
     val operation = beginCell().storeUint(operationId, 64).storeUint(queryId, 64).endCell();
-    val dispatch = beginCell().storeUint(4, 256).storeUint(5, 256).endCell();
+    val dispatch = beginCell().storeUint(4, 256).storeUint(dispatchMessageHash, 256).endCell();
     val result = beginCell()
         .storeUint(outcome, 8)
         .storeUint(6, 256)
@@ -199,7 +201,8 @@ get fun `test production reserve vault funds dispatches and settles only after v
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(2);
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(grams("0.2"));
     val buyer = testing.treasury("productionReserveBuyer").address;
-    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"));
+    val dispatchMessageHash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
+    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"), dispatchMessageHash);
     val signatures = productionReserveSignatures(statement, key0, key1);
     val result = productionReserveSubmit(vault, owner, statement, signatures);
     expect(result).toHaveSuccessfulTx({ to: vault });
@@ -214,7 +217,8 @@ get fun `test production reserve vault quarantines returned principal and requir
     productionReserveFund(vault, funder);
     productionReserveDispatch(vault, marketplace);
     val buyer = testing.treasury("productionReserveBuyer").address;
-    val returned = productionReserveStatement(vault, marketplace, buyer, 1, 1, 2, grams("0.19"));
+    val dispatchMessageHash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
+    val returned = productionReserveStatement(vault, marketplace, buyer, 1, 1, 2, grams("0.19"), dispatchMessageHash);
     val signatures = productionReserveSignatures(returned, key0, key1);
     expect(productionReserveSubmit(vault, owner, returned, signatures)).toHaveSuccessfulTx({ to: vault });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(4);
