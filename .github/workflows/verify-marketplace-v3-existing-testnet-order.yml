@@ -37,6 +37,8 @@ jobs:
       V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: ${{ inputs.marketplace_address }}
       V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: ${{ inputs.coordinator_address }}
       V3_TESTNET_FIXTURE_NFT_ADDRESS: ${{ inputs.nft_item_address }}
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
