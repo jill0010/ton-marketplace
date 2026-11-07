@@ -8,6 +8,7 @@ on:
     paths:
       - 'contracts/marketplace/**'
       - '.github/workflows/v3-candidate-build-check.yml'
+      - '.github/workflows/verify-marketplace-v3-existing-testnet-order.yml'
 
 permissions:
   contents: read
