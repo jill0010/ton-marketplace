@@ -210,16 +210,18 @@ fun main() {
     // for the deployer wallet's external message to be accepted.
     configureCoordinator.waitForTrace();
 
-    // Print persisted configuration after every full message trace. A settled
-    // trace can still contain a bounced destination transaction, so never infer
-    // successful contract state mutation from trace completion alone.
+    // Print persisted configuration in small groups because Acton println
+    // supports at most six total arguments per call.
     println(
-        "V3 deployment binding diagnostics: owner={}, escrow={}, escrowConfigured={}, treasury={}, treasuryConfigured={}, coordinator={}, coordinatorConfigured={}",
+        "V3 binding diagnostics: owner={}, escrow={}, escrowConfigured={}, treasury={}, treasuryConfigured={}",
         marketplace.ownerV2(),
         marketplace.escrowV2(),
         marketplace.escrowConfiguredV2(),
         marketplace.treasuryV2(),
         marketplace.treasuryConfiguredV2(),
+    );
+    println(
+        "V3 coordinator diagnostics: coordinator={}, coordinatorConfigured={}",
         net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3"),
         net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"),
     );
