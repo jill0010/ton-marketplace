@@ -451,7 +451,8 @@ fun main() {
         .storeCoins(grams("0.2"))
         .endCell();
     val statementOperation = beginCell().storeUint(1, 64).storeUint(1, 64).endCell();
-    val statementDispatch = beginCell().storeUint(4, 256).storeUint(5, 256).endCell();
+    val dispatchMessageHash = net.runGetMethod<uint256>(allocation.vault, "reserveVaultDispatchMessageHashV3");
+    val statementDispatch = beginCell().storeUint(4, 256).storeUint(dispatchMessageHash, 256).endCell();
     val statementResult = beginCell()
         .storeUint(1, 8)
         .storeUint(6, 256)
