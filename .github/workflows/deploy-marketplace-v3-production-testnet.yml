@@ -55,7 +55,7 @@ jobs:
             contracts/marketplace/scripts/verify-v3-testnet.test.mjs \
             contracts/marketplace/scripts/verify-v3-production-testnet.test.mjs \
             contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs \
-            contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs \\
+            contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs \
             contracts/marketplace/scripts/derive-v3-validator-keys.test.mjs
 
       - name: Validate required Testnet-only secrets
