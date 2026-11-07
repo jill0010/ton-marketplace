@@ -33,6 +33,7 @@ struct ReserveVaultOperationV3 {
     operationId: uint64
     queryId: uint64
     activeStatementHash: uint256
+    dispatchMessageHash: uint256
     status: uint8
     retryCount: uint8
 }
@@ -126,7 +127,7 @@ fun dispatchReserveRefundV3(mutate storage: ReserveVaultStorageV3) {
     storage.balances = balances.toCell();
     storage.operation = operation.toCell();
     storage.save();
-    createMessage({
+    val refundMessage = createMessage({
         bounce: BounceMode.RichBounce,
         value: balances.inFlight,
         dest: parties.buyer,
@@ -136,7 +137,11 @@ fun dispatchReserveRefundV3(mutate storage: ReserveVaultStorageV3) {
             queryId: operation.queryId,
             amount: balances.inFlight,
         },
-    }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+    });
+    operation.dispatchMessageHash = refundMessage.toCell().hash();
+    storage.operation = operation.toCell();
+    storage.save();
+    refundMessage.send(SEND_MODE_PAY_FEES_SEPARATELY);
 }
 
 fun onInternalMessage(in: InMessage) {
@@ -185,6 +190,7 @@ fun onInternalMessage(in: InMessage) {
             val root = SettlementStatementRootV3.fromCell(msg.statement);
             val statementIdentity = root.identity.load();
             val statementOperation = root.operation.load();
+            val statementDispatch = root.dispatch.load();
             assert (root.networkGlobalId == -3) throw 769;
             assert (statementIdentity.marketplace == funding.marketplace) throw 769;
             assert (statementIdentity.vault == contract.getAddress()) throw 769;
@@ -194,6 +200,10 @@ fun onInternalMessage(in: InMessage) {
             assert (
                 statementOperation.operationId == operation.operationId &&
                 statementOperation.queryId == operation.queryId
+            ) throw 769;
+            assert (
+                statementDispatch.messageHash == operation.dispatchMessageHash &&
+                statementDispatch.messageHash != 0
             ) throw 769;
             assert (!storage.consumedStatements.get(msg.statement.hash()).isFound) throw 770;
             operation.activeStatementHash = msg.statement.hash();
@@ -302,4 +312,8 @@ get fun reserveVaultQueryV3(): uint64 {
 
 get fun reserveVaultRetryCountV3(): uint8 {
     return ReserveVaultStorageV3.load().operation.load().retryCount;
+}
+
+get fun reserveVaultDispatchMessageHashV3(): uint256 {
+    return ReserveVaultStorageV3.load().operation.load().dispatchMessageHash;
 }
