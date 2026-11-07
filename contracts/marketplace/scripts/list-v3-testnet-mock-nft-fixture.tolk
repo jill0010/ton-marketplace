@@ -71,14 +71,19 @@ fun listV3TestnetMockNftFixture(
     // Marketplace state. The external wallet is not the direct message sender
     // recorded on the destination contract transaction.
     published.waitForTrace();
-    // PublishProductV2 creates the escrow record first, but NFT custody is
-    // not acknowledged until the explicit TEP-62 transfer below. At this point
-    // the product must still be pending (1); after custody, status becomes 2.
+    // The completed PublishProductV2 trace must have registered the escrow
+    // record, while NFT custody is still pending. Capture both states before
+    // transferring the NFT so a failure reports the actual on-chain values.
     val productStatus = marketplace.productStatusV2(productId)!!;
-    // Escrow's CreateEscrowV2 message is asynchronous. Before the NFT transfer,
-    // the Marketplace must still be pending; the Escrow record may not yet be
-    // visible to a getter, so do not require escrowId until after custody starts.
-    assert (productStatus == 1) throw 967;
+    val registeredEscrowId = escrow.escrowIdForQueryV2(queryId);
+    println(
+        "V3 fixture pre-transfer diagnostics: productId={}, queryId={}, status={}, escrowId={}",
+        productId,
+        queryId,
+        productStatus,
+        registeredEscrowId,
+    );
+    assert (productStatus == 1 && registeredEscrowId > 0) throw 967;
 
     val payload = beginCell()
         .storeUint(1, 1)
