@@ -249,6 +249,10 @@ async function main() {
   const wallet = WalletContractV5R1.create({ workchain: 0, publicKey: ownerKeys.publicKey });
   const openedWallet = client.open(wallet);
   const owner = wallet.address;
+  const expectedOwner = Address.parse(required("V3_TESTNET_DEPLOYER_ADDRESS"));
+  if (!owner.equals(expectedOwner)) {
+    throw new Error("Derived admin wallet does not match the deployment preflight address; verify mnemonic scheme before signing");
+  }
   const buyerKeys = await mnemonicToPrivateKey(buyerMnemonic);
   const buyerWallet = WalletContractV5R1.create({ workchain: 0, publicKey: buyerKeys.publicKey });
   const buyerAddress = buyerWallet.address;
