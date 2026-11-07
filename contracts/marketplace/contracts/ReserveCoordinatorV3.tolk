@@ -250,3 +250,19 @@ get fun reserveCoordinatorVaultCodeHashV3(): uint256 {
 get fun reserveCoordinatorOwnerV3(): address {
     return ReserveCoordinatorStorageV3.load().owner;
 }
+
+get fun reserveCoordinatorVaultV3(orderId: uint64): address? {
+    val found = ReserveCoordinatorStorageV3.load().bindings.get(orderId);
+    if (!found.isFound) {
+        return null;
+    }
+    return ReserveCoordinatorBindingV3.fromCell(found.loadValue()).vault;
+}
+
+get fun reserveCoordinatorStatusV3(orderId: uint64): uint8 {
+    val found = ReserveCoordinatorStorageV3.load().bindings.get(orderId);
+    if (!found.isFound) {
+        return 0;
+    }
+    return ReserveCoordinatorBindingV3.fromCell(found.loadValue()).status;
+}
