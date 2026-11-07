@@ -22,9 +22,9 @@ fun main() {
         scripts.wallet("treasury").address;
     assert (deployer.address != treasuryAddress) throw 822;
 
-    val validator0 = env<uint256>("V3_VALIDATOR_0_PUBLIC_KEY");
-    val validator1 = env<uint256>("V3_VALIDATOR_1_PUBLIC_KEY");
-    val validator2 = env<uint256>("V3_VALIDATOR_2_PUBLIC_KEY");
+    val validator0 = env<int>("V3_VALIDATOR_0_PUBLIC_KEY");
+    val validator1 = env<int>("V3_VALIDATOR_1_PUBLIC_KEY");
+    val validator2 = env<int>("V3_VALIDATOR_2_PUBLIC_KEY");
     assert (validator0 != null && validator1 != null && validator2 != null) throw 823;
     assert (
         validator0!! != validator1!! &&
@@ -100,9 +100,9 @@ fun main() {
     });
 
     var validatorKeys: map<uint8, uint256> = [];
-    validatorKeys.set(0, validator0!!);
-    validatorKeys.set(1, validator1!!);
-    validatorKeys.set(2, validator2!!);
+    validatorKeys.set(0, validator0!! as uint256);
+    validatorKeys.set(1, validator1!! as uint256);
+    validatorKeys.set(2, validator2!! as uint256);
     val verifierState: ContractState = {
         code: build("SettlementAttestationVerifierV3"),
         data: SettlementVerifierStorageV3 {
