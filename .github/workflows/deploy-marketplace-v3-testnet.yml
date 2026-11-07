@@ -128,7 +128,7 @@ jobs:
           const expected = {};
           for (const name of ["marketplace", "escrow", "coordinator"]) {
             const prefix = "V3 trusted compiled " + name + " code hash:";
-            const lines = log.split(/\\r?\\n/).filter(line => line.includes(prefix));
+            const lines = log.split(/\r?\n/).filter(line => line.includes(prefix));
             if (lines.length !== 1) throw new Error("Missing or duplicate trusted build hash: " + name);
             const hash = lines[0].slice(lines[0].indexOf(prefix) + prefix.length).trim().replace(/^0x/i, "");
             if (!/^[a-fA-F0-9]{64}$/.test(hash)) throw new Error("Invalid trusted build hash: " + name);
@@ -137,7 +137,7 @@ jobs:
           const report = await verifyV3Testnet(extractV3CandidateAddresses(log), fetch, expected);
           await writeFile("v3-testnet-code-hashes.json", JSON.stringify({
             schemaVersion: 1, expected, ...report, checkedAt: new Date().toISOString(),
-          }, null, 2) + "\\n", { flag: "wx", mode: 0o600 });
+          }, null, 2) + "\n", { flag: "wx", mode: 0o600 });
           if (!report.codeHashesVerified) throw new Error("On-chain code differs from trusted compiled V3 candidate");
           console.log("All three V3 testnet contract code hashes match this build.");
           NODE
