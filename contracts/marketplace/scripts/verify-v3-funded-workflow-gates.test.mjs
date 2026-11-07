@@ -15,3 +15,15 @@ test("funded V3 Testnet workflow does not invoke mainnet",()=>{
  assert.doesNotMatch(workflow,/acton (?:script|rpc)[^\n]*--net mainnet/);
  assert.match(workflow,/acton script scripts\/buy-v3-production-testnet-fixture\.tolk --net testnet/);
 });
+
+test("purchase script verifies listing, ownership and uniqueness before sending",()=>{
+ const script=readFileSync(new URL("./buy-v3-production-testnet-fixture.tolk",import.meta.url),"utf8");
+ const send=script.indexOf("marketplace.sendBuyProductV2(");
+ assert.ok(send>0);
+ for(const guard of ["assetProductIdV2(nftItem!!)", "productStatusV2(productId)", "orderIdForProductV2(productId) == null", "listing!!.price == grams(\"0.01\")", "listing!!.seller != buyer.address", "paymentQueryUsedV3", "get_nft_data", "marketplaceReserveCoordinatorConfiguredV3"]) {
+   assert.ok(script.indexOf(guard)>=0 && script.indexOf(guard)<send, "Missing pre-send guard: "+guard);
+ }
+ assert.match(script,/value: grams\("0\.21"\)/);
+ assert.match(script,/result\.waitForTrace\(\)/);
+ assert.match(script,/if \(persistedOrderId == null\)/);
+});
