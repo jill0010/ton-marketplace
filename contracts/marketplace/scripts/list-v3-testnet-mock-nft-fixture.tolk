@@ -65,9 +65,13 @@ fun listV3TestnetMockNftFixture(
         { value: grams("0.2") },
     );
     assert (published.waitForFirstTransaction() != null) throw 966;
-    assert (marketplace.productStatusV2(productId)!! == 1) throw 967;
+    // Escrow creation is asynchronous. By the time the getter is read, the
+    // Marketplace may already have processed EscrowDepositedV2 and moved
+    // the product from pending (1) to listed/active (2). Only continue once
+    // the exact escrow record is confirmed; never require the transient state 1.
+    val productStatus = marketplace.productStatusV2(productId)!!;
     val escrowId = escrow.escrowIdForQueryV2(queryId);
-    assert (escrowId > 0) throw 967;
+    assert (productStatus == 2 && escrowId > 0) throw 967;
 
     val payload = beginCell()
         .storeUint(1, 1)
