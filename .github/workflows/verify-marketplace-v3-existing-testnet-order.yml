@@ -66,6 +66,16 @@ jobs:
           chmod 600 wallets.toml
       - name: Build verifier (no deployment)
         run: acton build
+      - name: Inspect historical Testnet purchase trace (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Fixed prior purchase transaction; do not submit a second payment.
+          acton rpc trace e7a04f5f059ae336811a4b135231a5ad5785743c08e01098b34788c18d527e9f --net testnet --verbose --show-bodies > v3-existing-testnet-purchase-trace.log 2>&1 || {
+            echo "Historical trace lookup failed; retain the diagnostic and proceed with account getters."
+            tail -60 v3-existing-testnet-purchase-trace.log
+          }
+          cat v3-existing-testnet-purchase-trace.log
       - name: Diagnose existing order and reserve (no transfers)
         shell: bash
         run: |
@@ -83,6 +93,7 @@ jobs:
         with:
           name: v3-existing-testnet-readonly-evidence
           path: |
+            contracts/marketplace/v3-existing-testnet-purchase-trace.log
             contracts/marketplace/v3-existing-testnet-diagnostic.log
             contracts/marketplace/v3-existing-testnet-readonly.log
           if-no-files-found: ignore
