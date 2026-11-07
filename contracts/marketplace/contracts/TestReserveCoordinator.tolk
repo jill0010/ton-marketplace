@@ -92,6 +92,7 @@ fun onInternalMessage(in: InMessage) {
                     queryId: 0,
                     evidenceHash: 0,
                     returnedNano: 0,
+                    retryCount: 0,
                 }.toCell(),
             };
             val destination = AutoDeployAddress {
