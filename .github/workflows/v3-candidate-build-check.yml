@@ -39,6 +39,8 @@ jobs:
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Compile V3 candidate and escrow without deploying
         run: acton build
+      - name: Run reserve vault emulation tests
+        run: acton test tests/test-reserve-vault.test.tolk
       - name: Confirm build result
         run: |
           echo "Marketplace V3 candidate compiled on the selected commit." >> "$GITHUB_STEP_SUMMARY"
