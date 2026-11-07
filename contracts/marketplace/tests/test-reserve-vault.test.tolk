@@ -237,8 +237,8 @@ get fun `test experimental vault genuine bounced refund remains quarantined`() {
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 702 });
-    // Retry remains blocked until the production ledger can cap dispatch to
-    // returned principal and retain any fee-reduced residual liability.
+    // Retry requires an explicit order-local top-up for the exact fee-reduced
+    // shortfall. It dispatches the same refund liability once, with a new query ID.
     val returnedBeforeRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
     expect(
         reserveSend(
@@ -250,12 +250,24 @@ get fun `test experimental vault genuine bounced refund remains quarantined`() {
             }.toCell(),
             grams("0.05"),
         ),
-    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedBeforeRetry);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    // The rejecting recipient bounces the retry too; a second retry is forbidden.
+    expect(
+        reserveSend(
+            owner,
+            vault,
+            RetryTestReserve {
+                orderId: 1,
+                returnEvidenceHash: 5678,
+            }.toCell(),
+            grams("0.05"),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
 }
 
 fun reserveRichBounce(orderId: uint64, queryId: uint64, amount: coins): cell {
