@@ -2,7 +2,7 @@ import "@acton/build"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@stdlib/crypto"
+import "@acton/crypto"
 import "@contracts/SettlementAttestationVerifierV3"
 
 fun verifierStatement(
