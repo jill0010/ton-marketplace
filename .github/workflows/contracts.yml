@@ -72,7 +72,18 @@ jobs:
         run: node --test experiments/v3-settlement-attestation.test.mjs
 
       - name: Test V3 read-only on-chain postflight verifier (mock RPC)
-        run: node --test scripts/verify-v3-testnet.test.mjs scripts/verify-v3-production-testnet.test.mjs scripts/verify-v3-production-testnet-bindings.test.mjs scripts/postflight-v3-production-testnet.test.mjs scripts/collect-v3-testnet-evidence.test.mjs scripts/check-v3-deployment-invariants.test.mjs scripts/preflight-v3-testnet-wallets.test.mjs scripts/postflight-v3-candidate.test.mjs
+        run: node --test scripts/verify-v3-testnet.test.mjs scripts/verify-v3-production-testnet.test.mjs scripts/verify-v3-production-testnet-bindings.test.mjs scripts/postflight-v3-production-testnet.test.mjs scripts/derive-v3-validator-keys.test.mjs scripts/collect-v3-testnet-evidence.test.mjs scripts/check-v3-deployment-invariants.test.mjs scripts/preflight-v3-testnet-wallets.test.mjs scripts/postflight-v3-candidate.test.mjs
+
+      - name: Test production V3 Testnet receipt attestor (isolated TON SDK)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v3-attestor"
+          npm install --prefix "$RUNNER_TEMP/v3-attestor" --ignore-scripts --no-audit --no-fund --save-exact \
+            @ton/core@0.63.1 @ton/ton@16.3.0 @ton/crypto@3.3.0
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs "$RUNNER_TEMP/v3-attestor/attest.mjs"
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.test.mjs "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
+          node --test "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
 
       - name: Check opcode registry
         run: node scripts/check-opcode-registry.mjs
