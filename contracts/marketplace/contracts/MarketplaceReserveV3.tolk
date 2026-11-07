@@ -954,18 +954,26 @@ fun onInternalMessage(in: InMessage) {
                     });
                     buyerRefund.send(SEND_MODE_PAY_FEES_SEPARATELY);
 
-                    // NFT has returned to the seller. Refund the separate reserve
-                    // from this order's isolated vault; never mix it with gross.
+                    // The reserve has exactly two mutually exclusive custody states here:
+                    // (1) a funded per-order vault, which must dispatch its own principal;
+                    // (2) coordinator funding failure, where the exact 0.2 TON principal
+                    // was already returned to this Marketplace before NFT return.
+                    // Never dispatch from a failed/non-existent vault or refund twice.
                     val reserveResult = purchase.reserves.get(order.id);
                     assert (reserveResult.isFound) throw 743;
                     val reserve = MarketplaceReserveBindingV3.fromCell(reserveResult.loadValue());
-                    assert (reserve.status == 2 && reserve.vault != null) throw 743;
-                    createMessage({
-                        bounce: BounceMode.RichBounce,
-                        value: grams("0.03"),
-                        dest: reserve.vault!!,
-                        body: DispatchReserveRefundV3 { orderId: order.id },
-                    }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+                    if (reserve.status == 2 && reserve.vault != null) {
+                        createMessage({
+                            bounce: BounceMode.RichBounce,
+                            value: grams("0.03"),
+                            dest: reserve.vault!!,
+                            body: DispatchReserveRefundV3 { orderId: order.id },
+                        }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+                    } else {
+                        // Status 3 is set only by the authenticated coordinator callback
+                        // that returned exactly 0.2 TON to MarketplaceReserveV3.
+                        assert (reserve.status == 3 && reserve.vault != null) throw 743;
+                    }
                 } else {
                     assert (
                         refundPayout.status == 2 || refundPayout.status == 3
