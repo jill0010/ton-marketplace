@@ -11,7 +11,7 @@ struct NFTEscrowV2Testnet {
 }
 
 fun NFTEscrowV2Testnet.fromStorage(
-    storage: NFTEscrowV2TestnetStorage,
+    storage: NFTEscrowV2Storage,
     toShard: AddressShardingOptions? = null,
     workchain: int8 = BASECHAIN,
 ): NFTEscrowV2Testnet {
