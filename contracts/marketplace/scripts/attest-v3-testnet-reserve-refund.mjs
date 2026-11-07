@@ -246,7 +246,7 @@ async function main() {
     ...(apiKey ? { apiKey } : {}),
   });
   const ownerKeys = await mnemonicToPrivateKey(mnemonic);
-  const wallet = WalletContractV5R1.create({ workchain: 0, publicKey: ownerKeys.publicKey });
+  const wallet = WalletContractV5R1.create({ workchain: 0, publicKey: ownerKeys.publicKey, walletId: { networkGlobalId: -3 } });
   const openedWallet = client.open(wallet);
   const owner = wallet.address;
   const expectedOwner = Address.parse(required("V3_TESTNET_DEPLOYER_ADDRESS"));
@@ -254,8 +254,11 @@ async function main() {
     throw new Error("Derived admin wallet does not match the deployment preflight address; verify mnemonic scheme before signing");
   }
   const buyerKeys = await mnemonicToPrivateKey(buyerMnemonic);
-  const buyerWallet = WalletContractV5R1.create({ workchain: 0, publicKey: buyerKeys.publicKey });
+  const buyerWallet = WalletContractV5R1.create({ workchain: 0, publicKey: buyerKeys.publicKey, walletId: { networkGlobalId: -3 } });
   const buyerAddress = buyerWallet.address;
+  if (!buyerAddress.equals(Address.parse(required("PLATFORM_TREASURY_ADDRESS")))) {
+    throw new Error("Derived buyer wallet does not match Testnet fixture wallet; settlement withheld");
+  }
 
   const marketplaceOwner = (await client.runMethod(marketplace, "ownerV2")).stack.readAddress();
   if (!marketplaceOwner.equals(owner)) throw new Error("Deployer wallet is not the production Marketplace owner");
