@@ -80,7 +80,8 @@ fun onInternalMessage(in: InMessage) {
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
             assert (!purchase.coordinatorConfigured && purchase.nextOrderId == 1) throw 741;
             assert (
-                msg.coordinator != contract.getAddress() && msg.coordinator != storage.escrow
+                msg.coordinator != contract.getAddress() && msg.coordinator != storage.escrow &&
+                msg.coordinator != storage.owner
             ) throw 741;
             purchase.coordinator = msg.coordinator;
             purchase.coordinatorConfigured = true;
