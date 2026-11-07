@@ -168,6 +168,7 @@ async function main() {
   const orderId = BigInt(process.env.V3_TESTNET_ORDER_ID ?? "1");
   const principal = 200000000n;
   const mnemonic = required("DEPLOYER_MNEMONIC").trim().split(/\s+/);
+  const buyerMnemonic = required("BUYER_MNEMONIC").trim().split(/\s+/);
   const apiKey = process.env.TONCENTER_API_KEY;
   const client = new TonClient({
     endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
@@ -177,6 +178,9 @@ async function main() {
   const wallet = WalletContractV5R1.create({ workchain: 0, publicKey: ownerKeys.publicKey });
   const openedWallet = client.open(wallet);
   const owner = wallet.address;
+  const buyerKeys = await mnemonicToPrivateKey(buyerMnemonic);
+  const buyerWallet = WalletContractV5R1.create({ workchain: 0, publicKey: buyerKeys.publicKey });
+  const buyerAddress = buyerWallet.address;
 
   const marketplaceOwner = (await client.runMethod(marketplace, "ownerV2")).stack.readAddress();
   if (!marketplaceOwner.equals(owner)) throw new Error("Deployer wallet is not the production Marketplace owner");
@@ -207,7 +211,7 @@ async function main() {
     throw new Error("Vault is not in the expected single-dispatch in-flight state");
   }
 
-  const proof = await findConfirmedRefund(vault.toString(), owner.toString());
+  const proof = await findConfirmedRefund(vault.toString(), buyerAddress.toString());
   const masterchain = await toncenter("getMasterchainInfo");
   const masterchainSeqno = BigInt(masterchain.last?.seqno ?? 0);
   if (masterchainSeqno <= 0n) throw new Error("Could not obtain a finalized Testnet masterchain sequence number");
@@ -215,7 +219,7 @@ async function main() {
   const statement = buildV3SettlementStatement({
     marketplace: marketplace.toRawString(),
     vault: vault.toRawString(),
-    buyer: owner.toRawString(),
+    buyer: buyerAddress.toRawString(),
     orderId,
     principal,
     operationId,
@@ -282,7 +286,7 @@ async function main() {
     marketplace: marketplace.toString(),
     coordinator: coordinator.toString(),
     vault: vault.toString(),
-    buyer: owner.toString(),
+    buyer: buyerAddress.toString(),
     orderId: orderId.toString(),
     reservePrincipalNano: principal.toString(),
     dispatchTransactionHash: proof.dispatchHash,
