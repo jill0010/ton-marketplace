@@ -113,12 +113,36 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           '
 
+      - name: Verify all eight V3 testnet contract bindings read-only
+        working-directory: .
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          import { extractV3CandidateAddresses } from "./contracts/marketplace/scripts/postflight-v3-candidate.mjs";
+          import { verifyV3Bindings } from "./contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs";
+          const log = await readFile("contracts/marketplace/v3-testnet-deployment.log", "utf8");
+          const addresses = extractV3CandidateAddresses(log);
+          const report = await verifyV3Bindings(addresses);
+          await writeFile("v3-testnet-bindings.json", JSON.stringify({
+            schemaVersion: 1, addresses, ...report, checkedAt: new Date().toISOString(),
+          }, null, 2) + "\n", { flag: "wx", mode: 0o600 });
+          const passed = Object.entries(report.checks).filter(([, check]) => check.matches);
+          console.log("V3 testnet bindings verified: " + passed.length + "/8");
+          if (!report.bindingsVerified) throw new Error("V3 contract binding mismatch; settlement blocked");
+          NODE
+
       - name: Upload candidate deployment evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: v3-testnet-candidate-postflight
-          path: v3-testnet-candidate-postflight.json
+          path: |
+            v3-testnet-candidate-postflight.json
+            v3-testnet-bindings.json
           if-no-files-found: ignore
           retention-days: 30
 
