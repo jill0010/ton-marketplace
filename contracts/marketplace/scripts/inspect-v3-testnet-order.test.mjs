@@ -81,3 +81,26 @@ test("normalizes empty optional getter stack variants", async () => {
     assert.equal(report.reservePresent, false);
   }
 });
+
+test("recognizes only the exact empty four-slot Tolk optional result", async () => {
+  const emptyOptional = [
+    ["list", { "@type": "tvm.list", elements: [] }],
+    ["list", { "@type": "tvm.list", elements: [] }],
+    ["list", { "@type": "tvm.list", elements: [] }],
+    ["num", "0x0"],
+  ];
+  const fetcher = async () => ({ ok: true, json: async () => ({
+    ok: true, result: { exit_code: 0, stack: emptyOptional },
+  }) });
+  const report = await inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher);
+  assert.equal(report.orderExists, false);
+  assert.equal(report.reservePresent, false);
+  assert.equal(report.noTransactionSent, true);
+  const malformed = [...emptyOptional];
+  malformed[2] = ["num", "0x1"];
+  const malformedFetcher = async () => ({ ok: true, json: async () => ({
+    ok: true, result: { exit_code: 0, stack: malformed },
+  }) });
+  await assert.rejects(inspectV3TestnetOrder({ marketplace, orderId: 1 }, malformedFetcher),
+    /Unexpected optional TVM getter stack/);
+});
