@@ -27,6 +27,26 @@ The signed statement must bind all of the following fields in a canonical cell/h
 
 A successful credit statement must prove exactly one matching inbound message from the vault to the buyer, exact principal amount, successful non-aborted transaction execution, and finality. A returned-funds statement must prove the matching outbound message bounced and the returned value was credited to the same vault account. The two outcomes are mutually exclusive for a given operation.
 
+## Tolk / TVM signature-verification implementation notes
+
+The production verifier may use the Tolk standard-library primitive
+`isSignatureValid(hash, signature, publicKey)`. The canonical statement must
+first be serialized into one deterministic cell; validators sign the
+32-byte big-endian representation of that cell's representation hash, and
+the contract verifies that same hash. Signature slices must contain at least
+512 bits. Do not accidentally mix this with `isSliceSignatureValid` /
+`CHKSIGNS`, which signs raw slice data and ignores references. The off-chain
+signing implementation and on-chain verifier must share test vectors for
+the exact cell layout, hash, network domain, and signature bytes.
+
+The verifier must reject malformed signature lengths, duplicate signer
+indices, duplicate validator public keys, and signatures from any key outside
+the active epoch. A quorum signature authenticates an attestor statement; it
+does not itself make the TON contract a light client. Attestors remain
+responsible for independently verifying transaction inclusion and
+masterchain finality. This trust assumption must be disclosed to users and
+reviewed before funds are accepted.
+
 ## Quorum verifier
 
 - Maintain an on-chain validator set with explicit epoch, threshold, activation time and delayed rotation.
