@@ -389,7 +389,7 @@ fun main() {
         [1],
     )!!;
     if (badVault) {
-        expect(allocation.status).toEqual(4);
+        expect(allocation.status).toEqual(3);
         expect(binding.status).toEqual(3);
         val returned = net.runGetMethod<tuple>(nftItem, "get_nft_data");
         expect(returned.get(3) as address).toEqual(scripts.wallet("seller").address);
