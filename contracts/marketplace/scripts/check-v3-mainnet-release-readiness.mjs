@@ -29,9 +29,19 @@ for (const [label, relative] of checks) {
     console.log("PRESENT (not independently audited): " + label);
   }
 }
-if (failures) {
-  console.error("MAINNET RELEASE BLOCKED: " + failures + " missing or experimental components. No transactions sent.");
-  process.exitCode = 1;
-} else {
-  console.error("Files present only; this is NOT an audit or authorization to deploy Mainnet funds.");
+// A source-file presence check can NEVER approve a production release.
+// Explicitly require independently verified safety evidence, not filenames,
+// testnet account activation, owner-supplied hashes, or emulator-only tests.
+const mandatoryProofs = [
+  "TRUSTED_REPRODUCIBLE_PRODUCTION_CODE_HASHES",
+  "INDEPENDENT_SECURITY_REVIEW",
+  "REAL_TESTNET_PURCHASE_DELIVERY_SETTLEMENT",
+  "RESERVE_REFUND_FINALITY_NO_DOUBLE_PAYOUT",
+  "PRODUCTION_DEPLOYMENT_CONFIGURATION_AND_ROLLBACK",
+];
+for (const proof of mandatoryProofs) {
+  console.error("BLOCKED: independent release proof required: " + proof);
 }
+console.error("MAINNET RELEASE BLOCKED: " + failures + " missing or experimental components; " +
+  mandatoryProofs.length + " independent release proofs outstanding. No transactions sent.");
+process.exitCode = 1;
