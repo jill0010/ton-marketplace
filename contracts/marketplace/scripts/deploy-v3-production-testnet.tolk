@@ -214,6 +214,8 @@ fun main() {
     assert (marketplace.escrowConfiguredV2()) throw 831;
     assert (marketplace.treasuryV2() == treasuryAddress) throw 832;
     assert (marketplace.treasuryConfiguredV2()) throw 832;
+    assert (net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3") == coordinator) throw 836;
+    assert (net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")) throw 836;
     assert (escrow.marketplace() == marketplace.address) throw 833;
     assert (escrow.owner() == deployer.address) throw 833;
     assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorMarketplaceV3") == marketplace.address) throw 834;
