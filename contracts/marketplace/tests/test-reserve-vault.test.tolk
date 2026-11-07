@@ -29,6 +29,7 @@ fun reserveSetup(buyerOverride: address? = null, orderId: uint64 = 1): (
         evidenceHash: 0,
         returnedNano: 0,
         topUpNano: 0,
+        retryOperationalNano: 0,
         retryCount: 0,
     };
     val state: ContractState = { code: build("TestReserveVault"), data: storage.toCell() };
@@ -254,7 +255,11 @@ get fun `test experimental vault genuine bounced refund remains quarantined`() {
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedBeforeRetry);
-    expect(net.runGetMethod<coins>(vault, "testReserveTopUp")).toEqual(grams("0.05"));
+    val exactShortfall = grams("0.194") - returnedBeforeRetry;
+    expect(net.runGetMethod<coins>(vault, "testReserveTopUp")).toEqual(exactShortfall);
+    expect(net.runGetMethod<coins>(vault, "testReserveRetryOperational")).toEqual(
+        grams("0.05") - exactShortfall,
+    );
     expect(net.runGetMethod<uint8>(vault, "testReserveRetryCount")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
     // The rejecting recipient bounces the retry too; a second retry is forbidden.
