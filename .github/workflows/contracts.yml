@@ -54,6 +54,8 @@ jobs:
 
       - name: Test reserve refund design model (no signer or network)
         run: node --test experiments/reserve-refund-model.test.mjs experiments/reserve-liability-ledger.test.mjs
+      - name: Test V3 settlement attestation ABI and Ed25519 quorum model (reference only)
+        run: node --test experiments/v3-settlement-attestation.test.mjs
 
       - name: Verify V3 production release gate remains closed until production contracts exist
         shell: bash
