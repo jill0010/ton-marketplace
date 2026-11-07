@@ -51,7 +51,13 @@ fun main() {
         "reserveCoordinatorVaultV3",
         [orderId!!],
     )!!;
+    val marketplaceVault = net.runGetMethod<address?>(
+        marketplace.address,
+        "marketplaceReserveVaultV3",
+        [orderId!!],
+    );
     assert (marketplaceReserveStatus == 2 && coordinatorStatus == 2) throw 937;
+    assert (marketplaceVault != null && marketplaceVault!! == vault) throw 937;
     assert (net.runGetMethod<uint8>(vault, "reserveVaultStatusV3") == 3) throw 938;
     assert (net.runGetMethod<coins>(vault, "reserveVaultPrincipalV3") == grams("0.2")) throw 938;
     assert (net.runGetMethod<coins>(vault, "reserveVaultPaidV3") == grams("0.2")) throw 938;
