@@ -58,10 +58,9 @@ export function buildV3SettlementStatementCell(s) {
   const dispatchMessageHash = requireHash(s.dispatchMessageHash, "dispatch message hash");
   if (outcome === 1 && amount !== principal) throw new TypeError("Buyer-credit proof must cover full principal");
   if (outcome === 2 && amount >= principal) throw new TypeError("Bounce-return proof must expose a positive shortfall");
-  return beginCell()
-    .storeUint(DOMAIN, 32)
-    .storeUint(schemaVersion, 16)
-    .storeInt(networkGlobalId, 32)
+  // TON cells are limited to 1023 bits. Split the canonical statement into
+  // three deterministic referenced cells; the root hash commits to all refs.
+  const identityCell = beginCell()
     .storeAddress(marketplace)
     .storeAddress(vault)
     .storeAddress(buyer)
@@ -69,15 +68,27 @@ export function buildV3SettlementStatementCell(s) {
     .storeCoins(principal)
     .storeUint(operationId, 64)
     .storeUint(queryId, 64)
-    .storeUint(outcome, 8)
+    .endCell();
+  const dispatchCell = beginCell()
     .storeUint(dispatchTxHash, 256)
     .storeUint(dispatchMessageHash, 256)
+    .endCell();
+  const resultCell = beginCell()
+    .storeUint(outcome, 8)
     .storeUint(resultTxHash, 256)
     .storeUint(resultMessageHash, 256)
     .storeCoins(amount)
     .storeUint(anchorSeqno, 32)
     .storeUint(expiry, 64)
     .storeUint(epoch, 32)
+    .endCell();
+  return beginCell()
+    .storeUint(DOMAIN, 32)
+    .storeUint(schemaVersion, 16)
+    .storeInt(networkGlobalId, 32)
+    .storeRef(identityCell)
+    .storeRef(dispatchCell)
+    .storeRef(resultCell)
     .endCell();
 }
 
