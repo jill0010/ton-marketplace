@@ -57,7 +57,8 @@ jobs:
             contracts/marketplace/scripts/verify-v3-production-testnet.test.mjs \
             contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs \
             contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs \
-            contracts/marketplace/scripts/derive-v3-validator-keys.test.mjs
+            contracts/marketplace/scripts/derive-v3-validator-keys.test.mjs \\
+            contracts/marketplace/scripts/preflight-v3-testnet-funding.test.mjs
 
       - name: Validate required Testnet-only secrets
         shell: bash
@@ -79,6 +80,9 @@ jobs:
           node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/v3-validator-public-keys.env"
           cat "$RUNNER_TEMP/v3-validator-public-keys.env" >> "$GITHUB_ENV"
           rm -f "$RUNNER_TEMP/v3-validator-public-keys.env"
+
+      - name: Check Testnet balances before any deployment transaction
+        run: node scripts/preflight-v3-testnet-funding.mjs
 
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
