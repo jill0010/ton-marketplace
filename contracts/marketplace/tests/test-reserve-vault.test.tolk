@@ -693,21 +693,25 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
         ),
     ).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    // Retry is deliberately blocked: the prototype has no residual-debt ledger.
+    // Retry is allowed only after an order-local top-up. The recipient rejects
+    // the retried transfer too; its bounce must be reconciled under query ID 2.
     val returnedBeforeRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
-    expect(
-        reserveSend(
-            owner,
-            vault,
-            RetryTestReserve {
-                orderId: 1,
-                returnEvidenceHash: 1234,
-            }.toCell(),
-            grams("0.05"),
-        ),
-    ).toHaveFailedTx({ to: vault, exitCode: 706 });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    val retryResult = reserveSend(
+        owner,
+        vault,
+        RetryTestReserve {
+            orderId: 1,
+            returnEvidenceHash: 1234,
+        }.toCell(),
+        grams("0.05"),
+    );
+    expect(retryResult).toHaveSuccessfulTx({ to: vault });
+    expect(retryResult).toHaveFailedTx({ from: vault, to: rejector, exitCode: 65535 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
+    val returnedAfterRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
+    expect(returnedAfterRetry == returnedBeforeRetry).toEqual(false);
+    // Replay the stale first-transfer bounce. It must not overwrite query 2.
     testing.processSingleTraceStep(
         rejector,
         createMessage({
@@ -717,21 +721,22 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
             body: reserveRichBounce(1, 1, grams("0.194")),
         }).bounced(),
     );
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedBeforeRetry);
+    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedAfterRetry);
     expect(
         reserveSend(
             owner,
             vault,
-            ConfirmTestReserveReceipt {
+            RetryTestReserve {
                 orderId: 1,
-                queryId: 1,
-                receiptHash: 789,
+                returnEvidenceHash: 5678,
             }.toCell(),
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 706 });
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
 }
 
 get fun `test vault rejects underfunded matching bounce and preserves in-flight liability`() {
