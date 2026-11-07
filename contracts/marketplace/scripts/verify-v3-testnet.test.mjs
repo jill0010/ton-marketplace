@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasPlausibleContractCode, parseV3ContractCode, compareV3CodeHashes, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
+import { hasPlausibleContractCode, parseV3ContractCode, compareV3CodeHashes, normalizeV3CodeHash, normalizeV3TestnetAddress, validateV3Addresses, verifyV3Testnet } from "./verify-v3-testnet.mjs";
 
 const addresses = {
   marketplace: "0:" + "1".repeat(64),
@@ -121,4 +121,15 @@ test("permanent non-retryable RPC errors fail immediately", async () => {
     return { ok: false, status: 403 };
   }), /RPC HTTP error for marketplace: 403/);
   assert.equal(calls, 1);
+});
+
+test("trusted V3 code hash accepts Acton hex and base64 encodings", () => {
+  const hex = "ab".repeat(32);
+  const base64 = Buffer.from(hex, "hex").toString("base64");
+  assert.equal(normalizeV3CodeHash(hex), hex);
+  assert.equal(normalizeV3CodeHash("0x" + hex.toUpperCase()), hex);
+  assert.equal(normalizeV3CodeHash(base64), hex);
+  assert.equal(normalizeV3CodeHash(base64.replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "")), hex);
+  assert.throws(() => normalizeV3CodeHash("not a code hash"), /Invalid/);
+  assert.throws(() => normalizeV3CodeHash("aa".repeat(31)), /Invalid/);
 });
