@@ -137,10 +137,10 @@ fun main() {
     };
     val coordinator = coordinatorDestination.calculateAddress();
 
-    println("Marketplace V3 code hash: {}", marketCode.hash());
-    println("Reserve Vault V3 code hash: {}", build("ReserveVaultV3").hash());
-    println("Reserve Coordinator V3 code hash: {}", build("ReserveCoordinatorV3").hash());
-    println("Settlement Verifier V3 code hash: {}", build("SettlementAttestationVerifierV3").hash());
+    println("V3 trusted compiled marketplace code hash: {}", marketCode.hash());
+    println("V3 trusted compiled vault code hash: {}", build("ReserveVaultV3").hash());
+    println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
+    println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
 
     val marketDeploy = marketplace.deploy(deployer.address, { value: grams("0.6") });
     if (marketDeploy.waitForFirstTransaction() == null) {
@@ -217,10 +217,10 @@ fun main() {
     assert (net.runGetMethod<uint8>(verifier, "verifierThreshold") == 2) throw 835;
 
     println("PRODUCTION V3 TESTNET deployment and immutable bindings verified.");
-    println("Marketplace V3: {}", marketplace.address);
-    println("NFT Escrow V2: {}", escrow.address);
-    println("Reserve Coordinator V3: {}", coordinator);
-    println("Settlement Verifier V3: {}", verifier);
+    println("V3 testnet candidate marketplace: {}", marketplace.address);
+    println("V3 testnet candidate escrow: {}", escrow.address);
+    println("V3 testnet candidate coordinator: {}", coordinator);
+    println("V3 testnet candidate verifier: {}", verifier);
     println("Platform treasury: {}", treasuryAddress);
     println("Network: Testnet (-3). No Mainnet deployment or transaction.");
     println("Collection allowlist remains disabled pending official collection configuration.");
