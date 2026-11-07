@@ -9,7 +9,7 @@ fun verifierStatement(
     vault: address,
     networkGlobalId: int32 = -3,
     epoch: uint32 = 4,
-    expiresAt: uint64 = 2000000000,
+    expiresAt: uint64 = 1700000600,
 ): cell {
     val identity = beginCell()
         .storeAddress(testing.treasury("statementMarketplace").address)
@@ -47,6 +47,7 @@ fun verifierStatement(
 }
 
 fun verifierSetup(): (address, address, KeyPair, KeyPair, KeyPair) {
+    testing.setNow(1700000000);
     val owner = testing.treasury("verifierOwner").address;
     val marketplace = testing.treasury("statementMarketplace").address;
     val vault = testing.treasury("verifierVault").address;
