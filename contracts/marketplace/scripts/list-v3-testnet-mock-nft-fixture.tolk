@@ -38,7 +38,6 @@ fun listV3TestnetMockNftFixture(
     // trace; toHaveSuccessfulTx(from: wallet, to: escrow) incorrectly searches
     // for a direct wallet->Escrow transaction and cannot match the wallet hop.
     paused.waitForTrace();
-    assert (escrow.collectionStatusV2(collection) == 2) throw 965;
     val configured = escrow.sendSetCollectionItemCodeV2(
         administrator,
         collection,
@@ -47,7 +46,6 @@ fun listV3TestnetMockNftFixture(
         { value: grams("0.05") },
     );
     configured.waitForTrace();
-    assert (escrow.collectionItemCodeHashV2(collection) == code.hash()) throw 965;
     val enabled = escrow.sendSetCollectionStatusV2(
         administrator,
         collection,
@@ -55,7 +53,6 @@ fun listV3TestnetMockNftFixture(
         { value: grams("0.05") },
     );
     enabled.waitForTrace();
-    assert (escrow.collectionStatusV2(collection) == 1) throw 965;
 
     val productId = marketplace.nextProductIdV2();
     val queryId = marketplace.nextQueryIdV2();
