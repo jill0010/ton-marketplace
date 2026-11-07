@@ -15,6 +15,11 @@ on:
         description: "Existing TESTNET synthetic NFT Item address"
         required: true
         type: string
+      inspect_fresh_fixture:
+        description: "Inspect a newly deployed fixture without using the historical purchase trace or historical order assumptions (READ ONLY)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -37,6 +42,7 @@ jobs:
       V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: ${{ inputs.marketplace_address }}
       V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: ${{ inputs.coordinator_address }}
       V3_TESTNET_FIXTURE_NFT_ADDRESS: ${{ inputs.nft_item_address }}
+      V3_INSPECT_FRESH_FIXTURE: ${{ inputs.inspect_fresh_fixture }}
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
     steps:
@@ -83,6 +89,7 @@ jobs:
       - name: Build verifier (no deployment)
         run: acton build
       - name: Inspect historical Testnet purchase trace (read only)
+        if: ${{ !inputs.inspect_fresh_fixture }}
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +105,7 @@ jobs:
           set -euo pipefail
           acton script scripts/diagnose-v3-existing-testnet-order.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-diagnostic.log
       - name: Classify historical rejection and guard against duplicate payments
+        if: ${{ !inputs.inspect_fresh_fixture }}
         shell: bash
         run: |
           set -euo pipefail
@@ -138,6 +146,7 @@ jobs:
           if (!rejected || !missingOrder || failed.length) process.exitCode = 1;
           NODE
       - name: Verify existing order and reserve (no transfers)
+        if: ${{ !inputs.inspect_fresh_fixture }}
         shell: bash
         run: |
           set -euo pipefail
@@ -153,6 +162,20 @@ jobs:
           fi
           acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-readonly.log
           grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-existing-testnet-readonly.log
+      - name: Summarize fresh fixture without sending funds
+        if: ${{ inputs.inspect_fresh_fixture }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "V3_FRESH_RESULT:" v3-existing-testnet-diagnostic.log
+          {
+            echo "### Fresh V3 Testnet fixture — read-only inspection"
+            echo "- Source: previously deployed Marketplace, Coordinator and synthetic NFT"
+            echo "- No deployment, purchase, refund, transfer or attestation was submitted."
+            echo "- Status: $(grep -F 'V3_FRESH_RESULT:' v3-existing-testnet-diagnostic.log | tail -1)"
+            echo "- Order: $(grep -F 'V3_FRESH_ORDER_ID:' v3-existing-testnet-diagnostic.log | tail -1)"
+            echo "- Mainnet remains blocked."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload read-only evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
