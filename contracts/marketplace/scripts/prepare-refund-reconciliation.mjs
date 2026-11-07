@@ -3,7 +3,7 @@ import { validateRefundChainRecord } from "./validate-refund-chain-record.mjs";
 // Read-only adapter. Untrusted RPC/indexer JSON is not a chain proof.
 // Verification must be independently implemented and audited before any
 // evidence flag can be promoted. No signing or transfer authorization.
-export function prepareRefundReconciliation({ orderId, records }) {
+export function prepareRefundReconciliation({ orderId, records, expected = null }) {
   if (typeof orderId !== "string" || !orderId || !Array.isArray(records) || !records.length) {
     throw new TypeError("Order ID and records are required");
   }
