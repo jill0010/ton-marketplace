@@ -33,8 +33,19 @@ export function createReserveLedger({ orderId, buyer, principalNano }) {
 }
 function mutable(state) {
   invariant(state && typeof state === "object", "Invalid ledger");
-  invariant(state.paidNano + state.inFlightNano <= state.principalNano, "Ledger over-allocated");
-  invariant(state.availableNano >= 0n, "Negative available balance");
+  invariant(Array.isArray(state.operations), "Invalid ledger operations");
+  for (const field of ["principalNano", "paidNano", "inFlightNano", "availableNano", "nextOperationId"]) {
+    invariant(typeof state[field] === "bigint" && state[field] >= 0n, "Invalid ledger amount: " + field);
+  }
+  const fundedTopUps = state.operations
+    .filter((op) => op.kind === "topup")
+    .reduce((sum, op) => sum + nano(op.amountNano), 0n);
+  const accountedPrincipal = state.principalNano + fundedTopUps;
+  invariant(
+    state.paidNano + state.inFlightNano + state.availableNano === accountedPrincipal,
+    "Reserve principal conservation invariant violated",
+  );
+  invariant(state.paidNano + state.inFlightNano <= accountedPrincipal, "Ledger over-allocated");
   return { ...state, operations: state.operations.map((op) => ({ ...op })) };
 }
 export function topUpReserve(state, { orderId, buyer, amountNano, fundingMessageHash }) {
