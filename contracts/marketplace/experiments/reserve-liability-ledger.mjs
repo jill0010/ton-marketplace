@@ -19,6 +19,7 @@ function snapshot(state) {
     availableNano: state.availableNano,
     inFlightNano: state.inFlightNano,
     paidNano: state.paidNano,
+    feesNano: state.feesNano,
     shortfallNano: outstandingNano > state.availableNano + state.inFlightNano
       ? outstandingNano - state.availableNano - state.inFlightNano : 0n,
   });
@@ -28,13 +29,14 @@ export function createReserveLedger({ orderId, buyer, principalNano }) {
   invariant(principalNano > 0n, "Reserve principal must be positive");
   return snapshot({
     orderId, buyer, principalNano, availableNano: principalNano,
-    inFlightNano: 0n, paidNano: 0n, nextOperationId: 1n, operations: [],
+    inFlightNano: 0n, paidNano: 0n, feesNano: 0n,
+    nextOperationId: 1n, operations: [],
   });
 }
 function mutable(state) {
   invariant(state && typeof state === "object", "Invalid ledger");
   invariant(Array.isArray(state.operations), "Invalid ledger operations");
-  for (const field of ["principalNano", "paidNano", "inFlightNano", "availableNano", "nextOperationId"]) {
+  for (const field of ["principalNano", "paidNano", "inFlightNano", "availableNano", "feesNano", "nextOperationId"]) {
     invariant(typeof state[field] === "bigint" && state[field] >= 0n, "Invalid ledger amount: " + field);
   }
   const fundedTopUps = state.operations
@@ -42,7 +44,7 @@ function mutable(state) {
     .reduce((sum, op) => sum + nano(op.amountNano), 0n);
   const accountedPrincipal = state.principalNano + fundedTopUps;
   invariant(
-    state.paidNano + state.inFlightNano + state.availableNano === accountedPrincipal,
+    state.paidNano + state.inFlightNano + state.availableNano + state.feesNano === accountedPrincipal,
     "Reserve principal conservation invariant violated",
   );
   invariant(state.paidNano + state.inFlightNano <= accountedPrincipal, "Ledger over-allocated");
@@ -94,6 +96,7 @@ export function reconcileRefundResult(state, { orderId, buyer, operationId, retu
     invariant(returned <= operation.amountNano, "Returned value exceeds original dispatch");
     next.inFlightNano -= operation.amountNano;
     next.availableNano += returned;
+    next.feesNano += operation.amountNano - returned;
     operation.status = "bounced";
     operation.returnedNano = returned;
   } else if (result === "credited") {
