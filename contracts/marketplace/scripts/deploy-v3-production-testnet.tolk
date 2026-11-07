@@ -99,6 +99,10 @@ fun main() {
         }.toCell(),
     });
 
+    var validatorKeys: map<uint8, uint256> = [];
+    validatorKeys.set(0, validator0!!);
+    validatorKeys.set(1, validator1!!);
+    validatorKeys.set(2, validator2!!);
     val verifierState: ContractState = {
         code: build("SettlementAttestationVerifierV3"),
         data: SettlementVerifierStorageV3 {
@@ -107,11 +111,7 @@ fun main() {
             networkGlobalId: -3,
             epoch: 1,
             threshold: 2,
-            validatorKeys: [
-                0: validator0!!,
-                1: validator1!!,
-                2: validator2!!,
-            ],
+            validatorKeys,
             consumedStatements: [],
         }.toCell(),
     };
