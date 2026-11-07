@@ -27,6 +27,8 @@ struct TestReserveVaultStorage {
     queryId: uint64
     evidenceHash: uint256
     returnedNano: uint64
+    // At most one operator-triggered retry per reserve liability.
+    retryCount: uint8
 }
 
 struct (0x72730101) FundTestReserve {
@@ -167,11 +169,13 @@ fun onInternalMessage(in: InMessage) {
             // reconciled the exact pending refund and persisted returned value.
             // The evidence hash is deliberately NOT treated as proof.
             assert (storage.status == 4 && storage.returnedNano > 0) throw 706;
+            assert (storage.retryCount == 0) throw 706;
             // dispatchTestReserve checks that the contract can cover the full
             // original liability, reviewed costs, and operational gas reserve.
             // It allocates a fresh query ID before dispatch; stale bounces then
             // cannot match the active operation.
             storage.returnedNano = 0;
+            storage.retryCount = 1;
             dispatchTestReserve(mutate storage);
         }
         ConfirmTestReserveReceipt => {
