@@ -197,7 +197,7 @@ jobs:
           set -euo pipefail
           export V3_TESTNET_BUY_DEADLINE="$(( $(date +%s) + 900 ))"
           acton script scripts/buy-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee v3-production-testnet-purchase.log
-          grep -Fq "V3 Testnet purchase submitted once." v3-production-testnet-purchase.log
+          grep -Fq "Do not repeat this payment; run read-only delivery and reserve checks." v3-production-testnet-purchase.log
 
       - name: Verify real Testnet NFT delivery and in-flight reserve before attestation
         shell: bash
@@ -205,11 +205,14 @@ jobs:
           set -euo pipefail
           verified=false
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet > v3-production-testnet-purchase-verification.log 2>&1; then
+            if acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full > "v3-production-testnet-purchase-verification-attempt-${attempt}.log" 2>&1; then
+              cp "v3-production-testnet-purchase-verification-attempt-${attempt}.log" v3-production-testnet-purchase-verification.log
               verified=true
               break
             fi
+            cp "v3-production-testnet-purchase-verification-attempt-${attempt}.log" v3-production-testnet-purchase-verification.log
             echo "Read-only purchase/reserve verification attempt $attempt is not complete."
+            tail -30 "v3-production-testnet-purchase-verification-attempt-${attempt}.log"
             if [ "$attempt" -lt 12 ]; then sleep 10; fi
           done
           cat v3-production-testnet-purchase-verification.log
@@ -253,6 +256,7 @@ jobs:
             contracts/marketplace/v3-production-testnet-fixture.log
             contracts/marketplace/v3-production-testnet-purchase.log
             v3-production-testnet-purchase-verification.log
+            contracts/marketplace/v3-production-testnet-purchase-verification-attempt-*.log
             v3-production-testnet-attestation.log
             contracts/marketplace/v3-production-testnet-settlement.log
           if-no-files-found: ignore
