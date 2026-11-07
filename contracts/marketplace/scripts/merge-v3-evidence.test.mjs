@@ -1,21 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mergeV3Evidence } from "./merge-v3-evidence.mjs";
+import { normalizeV3TestnetAddress } from "./verify-v3-testnet.mjs";
+import { V3_TESTNET_OWNER, V3_TESTNET_TREASURY } from "./verify-v3-testnet-bindings.mjs";
 
 const addresses = {
   marketplace: "0:" + "1".repeat(64),
   escrow: "0:" + "2".repeat(64),
   coordinator: "0:" + "3".repeat(64),
 };
+const owner = normalizeV3TestnetAddress(V3_TESTNET_OWNER);
+const treasury = normalizeV3TestnetAddress(V3_TESTNET_TREASURY);
 const methods = {
-  marketplaceOwner: ["marketplace", "ownerV2", addresses.marketplace],
+  marketplaceOwner: ["marketplace", "ownerV2", owner],
   marketplaceEscrow: ["marketplace", "escrowV2", addresses.escrow],
-  marketplaceTreasury: ["marketplace", "treasuryV2", addresses.marketplace],
+  marketplaceTreasury: ["marketplace", "treasuryV2", treasury],
   marketplaceCoordinator: ["marketplace", "testReserveCoordinator", addresses.coordinator],
   escrowMarketplace: ["escrow", "marketplace", addresses.marketplace],
-  escrowOwner: ["escrow", "owner", addresses.marketplace],
+  escrowOwner: ["escrow", "owner", owner],
   coordinatorMarketplace: ["coordinator", "testReserveMarketplace", addresses.marketplace],
-  coordinatorOwner: ["coordinator", "testReserveOwner", addresses.marketplace],
+  coordinatorOwner: ["coordinator", "testReserveOwner", owner],
 };
 function fixture() {
   const deployment = {
@@ -57,4 +61,16 @@ test("rejects evidence claiming mainnet approval", () => {
   const { deployment, binding } = fixture();
   binding.mainnetApproved = true;
   assert.throws(() => mergeV3Evidence(deployment, binding), /Unsafe or contradictory/);
+});
+
+test("rejects self-consistent but attacker-controlled privileged wallet bindings", () => {
+  const { deployment, binding } = fixture();
+  binding.checks.marketplaceTreasury.actual = addresses.marketplace;
+  binding.checks.marketplaceTreasury.expected = addresses.marketplace;
+  assert.throws(() => mergeV3Evidence(deployment, binding), /Privileged binding mismatch/);
+});
+test("rejects incomplete verification even when all individual checks look valid", () => {
+  const { deployment, binding } = fixture();
+  binding.bindingsVerified = false;
+  assert.throws(() => mergeV3Evidence(deployment, binding), /Unverified account or binding evidence/);
 });
