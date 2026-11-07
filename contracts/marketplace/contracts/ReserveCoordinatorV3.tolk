@@ -11,6 +11,7 @@ struct ReserveCoordinatorBindingV3 {
 struct ReserveCoordinatorStorageV3 {
     owner: address
     marketplace: address
+    verifier: address
     vaultCode: cell
     bindings: map<uint64, Cell<ReserveCoordinatorBindingV3>>
 }
