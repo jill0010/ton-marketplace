@@ -142,7 +142,7 @@ fun main() {
     println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
     println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
 
-    val marketDeploy = marketplace.deploy(deployer.address, { value: grams("0.6") });
+    val marketDeploy = marketplace.deploy(deployer.address, { value: grams("0.5") });
     if (marketDeploy.waitForFirstTransaction() == null) {
         println("Production Marketplace V3 deployment failed");
         throw 824;
@@ -170,7 +170,7 @@ fun main() {
         deployer.address,
         createMessage({
             bounce: false,
-            value: grams("0.3"),
+            value: grams("0.1"),
             dest: coordinatorDestination,
         }),
     );
