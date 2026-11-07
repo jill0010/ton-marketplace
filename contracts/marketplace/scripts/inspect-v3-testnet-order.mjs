@@ -95,7 +95,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (process.env.V3_ORDER_EVIDENCE_OUTPUT) await writeFile(process.env.V3_ORDER_EVIDENCE_OUTPUT,
       JSON.stringify(report, null, 2) + "\n", { flag: "wx", mode: 0o600 });
     console.log(JSON.stringify(report, null, 2));
-    if (!report.orderExists || !report.reservePresent) process.exitCode = 1;
+    if (report.reservePresent && !report.orderExists) {
+      console.error("INCONSISTENT STATE: reserve exists without a corresponding order");
+      process.exitCode = 1;
+    }
   } catch (error) {
     console.error("V3 order inspection blocked: " + error.message);
     process.exitCode = 1;
