@@ -34,7 +34,10 @@ fun listV3TestnetMockNftFixture(
         2,
         { value: grams("0.05") },
     );
-    assert (paused.waitForFirstTransaction() != null) throw 965;
+    // Wait for the Escrow contract transaction, not merely the administrator
+    // wallet transaction. The latter can be confirmed before the async message
+    // has changed the collection state on Testnet.
+    expect(paused).toHaveSuccessfulTx({ from: administrator, to: escrow.address });
     val configured = escrow.sendSetCollectionItemCodeV2(
         administrator,
         collection,
@@ -42,14 +45,14 @@ fun listV3TestnetMockNftFixture(
         code,
         { value: grams("0.05") },
     );
-    assert (configured.waitForFirstTransaction() != null) throw 965;
+    expect(configured).toHaveSuccessfulTx({ from: administrator, to: escrow.address });
     val enabled = escrow.sendSetCollectionStatusV2(
         administrator,
         collection,
         1,
         { value: grams("0.05") },
     );
-    assert (enabled.waitForFirstTransaction() != null) throw 965;
+    expect(enabled).toHaveSuccessfulTx({ from: administrator, to: escrow.address });
 
     val productId = marketplace.nextProductIdV2();
     val queryId = marketplace.nextQueryIdV2();
@@ -64,7 +67,10 @@ fun listV3TestnetMockNftFixture(
         grams("0.01"),
         { value: grams("0.2") },
     );
-    assert (published.waitForFirstTransaction() != null) throw 966;
+    // Confirm PublishProductV2 actually executed on Marketplace before reading
+    // its state. waitForFirstTransaction() only confirms the seller wallet tx;
+    // it does not prove the destination contract accepted the message.
+    expect(published).toHaveSuccessfulTx({ from: seller, to: marketplace.address });
     // PublishProductV2 creates the escrow record first, but NFT custody is
     // not acknowledged until the explicit TEP-62 transfer below. At this point
     // the product must still be pending (1); after custody, status becomes 2.
@@ -92,10 +98,8 @@ fun listV3TestnetMockNftFixture(
         },
     });
     val deposited = net.send(seller, transfer);
-    assert (deposited.waitForFirstTransaction() != null) throw 968;
-    if (env<bool>("FIXTURE_EMULATION") ?? false) {
-        expect(deposited).toHaveSuccessfulTx({ from: seller, to: nftItem });
-    }
+    // Always verify the NFT Item transaction on Testnet as well as in emulation.
+    expect(deposited).toHaveSuccessfulTx({ from: seller, to: nftItem });
     val after = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert ((after.get(3) as address) == escrow.address) throw 969;
     val activeStatus = marketplace.productStatusV2(productId)!!;
