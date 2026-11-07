@@ -138,6 +138,7 @@ fun main() {
     val coordinator = coordinatorDestination.calculateAddress();
 
     println("V3 trusted compiled marketplace code hash: {}", marketCode.hash());
+    println("V3 trusted compiled escrow code hash: {}", build("NFTEscrowV2Testnet").hash());
     println("V3 trusted compiled vault code hash: {}", build("ReserveVaultV3").hash());
     println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
     println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
