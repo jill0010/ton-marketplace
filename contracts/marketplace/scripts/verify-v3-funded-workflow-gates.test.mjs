@@ -43,3 +43,14 @@ test("purchase and settlement verifiers bind to the exact NFT and distinguish pa
  assert.match(settlement,/recipient credit requires independent trace verification/);
  assert.match(settlement,/independent recipient receipt and validator quorum evidence must be audited separately/);
 });
+
+test("attestation uses verified dynamic order ID instead of defaulting to order one",()=>{
+ const attest=readFileSync(new URL("./attest-v3-testnet-reserve-refund.mjs",import.meta.url),"utf8");
+ assert.match(workflow,/Bind attestation to the verified on-chain order ID/);
+ assert.match(workflow,/V3_TESTNET_ORDER_ID=/);
+ assert.match(attest,/BigInt\(required\("V3_TESTNET_ORDER_ID"\)\)/);
+ assert.doesNotMatch(attest,/V3_TESTNET_ORDER_ID \?\? "1"/);
+ assert.match(attest,/findConfirmedPayouts\(owner\.toString\(\), buyerAddress\.toString\(\), marketplace\.toString\(\), orderId\)/);
+ assert.match(attest,/0x71b00101, orderId/);
+ assert.match(attest,/0x71b00102, orderId/);
+});
