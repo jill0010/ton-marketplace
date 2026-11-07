@@ -1,0 +1,148 @@
+name: Deploy Production Marketplace V3 Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_v3_testnet_only:
+        description: "I approve deploying the production V3 contracts to TON TESTNET only. No Mainnet transactions."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-v3-production-testnet
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_production_v3_testnet_only == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_VALIDATOR_0_PUBLIC_KEY: ${{ secrets.V3_VALIDATOR_0_PUBLIC_KEY }}
+      V3_VALIDATOR_1_PUBLIC_KEY: ${{ secrets.V3_VALIDATOR_1_PUBLIC_KEY }}
+      V3_VALIDATOR_2_PUBLIC_KEY: ${{ secrets.V3_VALIDATOR_2_PUBLIC_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Install locked verifier dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+
+      - name: Run production V3 contract and postflight regression tests
+        working-directory: .
+        run: |
+          node --test \
+            contracts/marketplace/scripts/verify-v3-testnet.test.mjs \
+            contracts/marketplace/scripts/verify-v3-production-testnet.test.mjs \
+            contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs \
+            contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs
+
+      - name: Validate required Testnet-only secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC" || { echo "::error::TESTNET_DEPLOYER_MNEMONIC is missing"; exit 1; }
+          test -n "$TONCENTER_API_KEY" || { echo "::error::TONCENTER_TESTNET_API_KEY is missing"; exit 1; }
+          for name in V3_VALIDATOR_0_PUBLIC_KEY V3_VALIDATOR_1_PUBLIC_KEY V3_VALIDATOR_2_PUBLIC_KEY; do
+            value="${!name:-}"
+            test -n "$value" || { echo "::error::$name is missing"; exit 1; }
+            [[ "$value" =~ ^[0-9]+$ ]] || { echo "::error::$name must be an unsigned decimal uint256"; exit 1; }
+          done
+
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+
+      - name: Create ephemeral Testnet deployer wallet profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+
+      - name: Build production V3 contracts
+        run: acton build
+
+      - name: Gate deployment on full production V3 emulation suite
+        run: acton test --backtrace full
+
+      - name: Deploy Marketplace V3, Reserve Coordinator, Vault code and Settlement Verifier to Testnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/deploy-v3-production-testnet.tolk --net testnet > v3-production-testnet-deployment.log 2>&1 || {
+            sed -E 's/([A-Za-z0-9_-]{48})/[TON_ADDRESS]/g' v3-production-testnet-deployment.log | tail -80
+            exit 1
+          }
+          for name in marketplace escrow coordinator verifier; do
+            grep -Fq "V3 testnet candidate $name:" v3-production-testnet-deployment.log
+            grep -Fq "V3 trusted compiled $name code hash:" v3-production-testnet-deployment.log
+          done
+          grep -Fq "V3 trusted compiled vault code hash:" v3-production-testnet-deployment.log
+
+      - name: Read-only postflight — four contract code hashes and immutable bindings
+        working-directory: .
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/postflight-v3-production-testnet.mjs \
+            contracts/marketplace/v3-production-testnet-deployment.log \
+            v3-production-testnet-postflight.json
+          node -e '
+            const fs = require("node:fs");
+            const report = JSON.parse(fs.readFileSync("v3-production-testnet-postflight.json", "utf8"));
+            if (!report.candidateAccountsActive || !report.codeHashesVerified || !report.bindingsVerified) {
+              throw new Error("Production V3 Testnet postflight did not fully verify");
+            }
+            const lines = ["", "## Production V3 Testnet deployment postflight", ""];
+            for (const name of ["marketplace", "escrow", "coordinator", "verifier"]) {
+              const contract = report.code.contracts[name];
+              lines.push("- " + name + ": " + contract.address + " (active=" + contract.active + ", code hash verified)");
+            }
+            lines.push("- Reserve Vault V3 code hash: verified in coordinator storage");
+            lines.push("- Verifier epoch / threshold / network: verified");
+            lines.push("- Validator public keys: three distinct keys verified");
+            lines.push("", "This confirms deployment and bindings only. A funded NFT purchase, buyer delivery, refund and settlement proof still require a separate Testnet transaction trace.");
+            lines.push("Mainnet remains blocked.");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
+
+      - name: Upload production V3 Testnet evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: production-v3-testnet-deployment-evidence
+          path: |
+            contracts/marketplace/v3-production-testnet-deployment.log
+            v3-production-testnet-postflight.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Remove temporary wallet profile
+        if: always()
+        run: rm -f wallets.toml
