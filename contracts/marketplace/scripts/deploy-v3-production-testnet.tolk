@@ -180,13 +180,19 @@ fun main() {
         throw 827;
     }
 
-    val configureEscrow = marketplace.sendSetMarketplaceV2Escrow(
+    // Send the canonical V2 escrow-binding message directly. This avoids
+    // relying on a wrapper generated for the legacy MarketplaceV2 artifact
+    // while the destination is the production MarketplaceReserveV3 code.
+    val configureEscrow = net.send(
         deployer.address,
-        escrow.address,
-        { value: grams("0.05") },
+        createMessage({
+            bounce: BounceMode.RichBounce,
+            value: grams("0.05"),
+            dest: marketplace.address,
+            body: SetMarketplaceV2Escrow { escrow: escrow.address }.toCell(),
+        }),
     );
-    // Await the full wallet -> Marketplace trace so the escrow binding is
-    // committed before any getter verifies it.
+    // Await the full wallet -> Marketplace trace before reading persisted state.
     configureEscrow.waitForTrace();
 
     val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
