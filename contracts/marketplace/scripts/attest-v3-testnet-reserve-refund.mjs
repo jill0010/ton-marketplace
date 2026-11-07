@@ -173,17 +173,17 @@ export function findMarketplacePayoutReceipt(transactions, marketplaceAddress, e
   return null;
 }
 
-async function findConfirmedPayouts(seller, treasury, marketplace) {
+async function findConfirmedPayouts(seller, treasury, marketplace, orderId) {
   for (let attempt = 0; attempt < 18; attempt++) {
     const [sellerTransactions, treasuryTransactions] = await Promise.all([
       toncenter("getTransactions", { address: seller, limit: 30, archival: "true" }),
       toncenter("getTransactions", { address: treasury, limit: 30, archival: "true" }),
     ]);
     const sellerPayout = findMarketplacePayoutReceipt(
-      sellerTransactions, marketplace, "9700000", 0x71b00101, 1,
+      sellerTransactions, marketplace, "9700000", 0x71b00101, orderId,
     );
     const platformPayout = findMarketplacePayoutReceipt(
-      treasuryTransactions, marketplace, "300000", 0x71b00102, 1,
+      treasuryTransactions, marketplace, "300000", 0x71b00102, orderId,
     );
     if (sellerPayout && platformPayout) {
       return {
@@ -224,7 +224,8 @@ async function main() {
   const marketplace = Address.parse(required("V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS"));
   const coordinator = Address.parse(required("V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS"));
   const verifier = Address.parse(required("V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS"));
-  const orderId = BigInt(process.env.V3_TESTNET_ORDER_ID ?? "1");
+  const orderId = BigInt(required("V3_TESTNET_ORDER_ID"));
+  if (orderId <= 0n) throw new Error("V3_TESTNET_ORDER_ID must be positive");
   const principal = 200000000n;
   const mnemonic = required("DEPLOYER_MNEMONIC").trim().split(/\s+/);
   const buyerMnemonic = required("BUYER_MNEMONIC").trim().split(/\s+/);
@@ -271,7 +272,7 @@ async function main() {
   }
 
   const proof = await findConfirmedRefund(vault.toString(), buyerAddress.toString());
-  const payoutReceipts = await findConfirmedPayouts(owner.toString(), buyerAddress.toString(), marketplace.toString());
+  const payoutReceipts = await findConfirmedPayouts(owner.toString(), buyerAddress.toString(), marketplace.toString(), orderId);
   const masterchain = await toncenter("getMasterchainInfo");
   const masterchainSeqno = BigInt(masterchain.last?.seqno ?? 0);
   if (masterchainSeqno <= 0n) throw new Error("Could not obtain a finalized Testnet masterchain sequence number");
