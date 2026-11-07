@@ -4,6 +4,7 @@ import { Address, beginCell, Cell } from "@ton/core";
 import {
   findReserveRefundDispatch,
   findReserveRefundReceipt,
+  sameReserveRefundBody,
   findMarketplacePayoutReceipt,
   buildV3SettlementStatement,
 } from "./attest.mjs";
@@ -107,4 +108,11 @@ test("builds domain-separated Testnet settlement statement with immutable operat
   assert.equal(root.loadUint(16), 1);
   assert.equal(root.loadInt(32), -3);
   assert.equal(root.remainingRefs, 4);
+});
+
+test("refuses to pair an unrelated historical refund with the current reserve dispatch",()=>{
+  const other=beginCell().storeUint(opcode,32).storeUint(2,64).endCell();
+  assert.equal(sameReserveRefundBody({body},{body}),true);
+  assert.equal(sameReserveRefundBody({body},{body:other}),false);
+  assert.equal(sameReserveRefundBody({body},null),false);
 });
