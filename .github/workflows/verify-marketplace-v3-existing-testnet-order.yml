@@ -139,6 +139,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          order_id="$(sed -n 's/^V3_DIAGNOSTIC_ORDER_ID: *//p' v3-existing-testnet-diagnostic.log | tail -1)"
+          if [ -z "$order_id" ] || [ "$order_id" = "null" ]; then
+            {
+              echo "### Existing-order reserve verification"
+              echo "- Status: **SKIPPED — no persisted order exists for the inspected listing.**"
+              echo "- No purchase, transfer, retry, or refund was submitted."
+              echo "- A reserve vault cannot be verified until a real Testnet order is created through the corrected V3 purchase flow."
+            } | tee v3-existing-testnet-readonly.log >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-readonly.log
           grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-existing-testnet-readonly.log
       - name: Upload read-only evidence
