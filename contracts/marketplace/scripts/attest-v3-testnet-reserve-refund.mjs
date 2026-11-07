@@ -196,6 +196,11 @@ async function findConfirmedPayouts(seller, treasury, marketplace, orderId) {
   throw new Error("Seller and platform payout receipts were not both confirmed; settlement attestation withheld");
 }
 
+export function sameReserveRefundBody(dispatch, receipt) {
+  return Boolean(dispatch?.body && receipt?.body &&
+    dispatch.body.hash().equals(receipt.body.hash()));
+}
+
 async function findConfirmedRefund(vault, buyer) {
   for (let attempt = 0; attempt < 18; attempt++) {
     const [vaultTransactions, buyerTransactions] = await Promise.all([
@@ -208,7 +213,7 @@ async function findConfirmedRefund(vault, buyer) {
       // Matching amount/opcode/source alone is insufficient when the same buyer
       // has received multiple reserve refunds. Bind both legs to the exact
       // serialized refund body before issuing any validator signatures.
-      if (!dispatch.body.hash().equals(receipt.body.hash())) {
+      if (!sameReserveRefundBody(dispatch, receipt)) {
         throw new Error("Vault dispatch and buyer receipt refer to different refund messages");
       }
       const dispatchHash = dispatch.transaction.transaction_id?.hash;
