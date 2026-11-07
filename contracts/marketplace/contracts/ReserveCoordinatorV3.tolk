@@ -194,10 +194,25 @@ fun onBouncedMessage(in: InMessageBounced) {
         ) {
             return;
         }
-        binding.status = 3; // failed allocation; funds remain quarantined for reconciliation
+        binding.status = 3;
         binding.returnedNano = in.valueCoins as uint64;
         storage.bindings.set(funded.orderId, binding.toCell());
         storage.save();
+        // Only return the reserve principal after the exact original 0.28 TON
+        // funding transfer bounced back to this coordinator. The 0.08 TON
+        // operational allocation remains separately accounted.
+        if (in.valueCoins >= grams("0.2")) {
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.2"),
+                dest: storage.marketplace,
+                body: ReserveAllocationFailedV3 {
+                    orderId: funded.orderId,
+                    paymentHash: binding.paymentHash,
+                    vault: binding.vault,
+                },
+            }).send(SEND_MODE_PAY_FEES_SEPARATELY);
+        }
     } catch {}
 }
 
