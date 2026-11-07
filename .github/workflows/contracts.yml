@@ -148,6 +148,15 @@ jobs:
           V3_TESTNET_DEPLOYER_ADDRESS: "kQBvDB_H7FFBs0nF4ap_DBdcOrwY_rMIpNVVOR6SWYFHB5iD"
         run: acton script scripts/deploy-v3-testnet.tolk
 
+      - name: Exercise production V3 Testnet deployment topology in emulator (no transactions broadcast)
+        env:
+          V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
+          V3_TESTNET_DEPLOYER_ADDRESS: "kQBvDB_H7FFBs0nF4ap_DBdcOrwY_rMIpNVVOR6SWYFHB5iD"
+          V3_VALIDATOR_0_PUBLIC_KEY: "1"
+          V3_VALIDATOR_1_PUBLIC_KEY: "2"
+          V3_VALIDATOR_2_PUBLIC_KEY: "3"
+        run: acton script scripts/deploy-v3-production-testnet.tolk
+
       - name: Linter
         run: acton check --output-format github
 
