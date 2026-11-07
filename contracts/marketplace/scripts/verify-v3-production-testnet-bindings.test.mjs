@@ -30,6 +30,7 @@ test("production V3 binding verifier checks marketplace, escrow, coordinator and
   const vaultHash = "ab".repeat(32);
   const values = {
     ownerV2: addrStack(ownerRaw),
+    owner: addrStack(ownerRaw),
     escrowV2: addrStack(addresses.escrow),
     treasuryV2: addrStack(treasuryRaw),
     reserveCoordinatorV3: addrStack(addresses.coordinator),
