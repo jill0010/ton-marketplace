@@ -91,7 +91,7 @@ fun onInternalMessage(in: InMessage) {
                     reviewedCosts: 0,
                     queryId: 0,
                     evidenceHash: 0,
-                    receiptHash: 0,
+                    returnedNano: 0,
                 }.toCell(),
             };
             val destination = AutoDeployAddress {
