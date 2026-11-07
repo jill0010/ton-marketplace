@@ -1,4 +1,6 @@
 import "@acton/env"
+import "@acton/build"
+import "@acton/io"
 import "@acton/emulation/network"
 import "@acton/testing/expect"
 import "@contracts/types"
