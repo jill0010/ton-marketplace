@@ -49,7 +49,7 @@ export async function verifyV3ProductionBindings(addresses, expectedVaultCodeHas
     ["marketplaceOwner", "marketplace", "ownerV2", V3_TESTNET_OWNER],
     ["marketplaceEscrow", "marketplace", "escrowV2", normalized.escrow],
     ["marketplaceTreasury", "marketplace", "treasuryV2", V3_TESTNET_TREASURY],
-    ["marketplaceCoordinator", "marketplace", "reserveCoordinatorV3", normalized.coordinator],
+    ["marketplaceCoordinator", "marketplace", "marketplaceReserveCoordinatorV3", normalized.coordinator],
     ["escrowMarketplace", "escrow", "marketplace", normalized.marketplace],
     ["escrowOwner", "escrow", "owner", V3_TESTNET_OWNER],
     ["coordinatorMarketplace", "coordinator", "reserveCoordinatorMarketplaceV3", normalized.marketplace],
