@@ -232,3 +232,15 @@ get fun isSettlementStatementConsumed(statementHash: uint256): uint8 {
     }
     return found.loadValue();
 }
+
+get fun verifierMarketplace(): address {
+    return SettlementVerifierStorageV3.load().marketplace;
+}
+
+get fun verifierValidatorKey(index: uint8): uint256? {
+    val found = SettlementVerifierStorageV3.load().validatorKeys.get(index);
+    if (!found.isFound) {
+        return null;
+    }
+    return found.loadValue();
+}
