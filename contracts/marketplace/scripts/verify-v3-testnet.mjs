@@ -72,8 +72,16 @@ export function normalizeV3CodeHash(value) {
   if (typeof value !== "string") throw new Error("Invalid V3 code hash");
   const input = value.trim();
   if (/^(?:0x)?[a-fA-F0-9]{64}$/.test(input)) return input.replace(/^0x/i, "").toLowerCase();
+  // Acton Cell.hash() may print the unsigned 256-bit hash as a decimal integer.
+  if (/^(0|[1-9][0-9]*)$/.test(input)) {
+    const integer = BigInt(input);
+    if (integer >= 0n && integer < (1n << 256n)) {
+      return integer.toString(16).padStart(64, "0");
+    }
+  }
   if (/^[A-Za-z0-9+/_-]{43}=?$/.test(input)) {
-    const bytes = Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    const normalized = input.replace(/-/g, "+").replace(/_/g, "/").replace(/=$/, "");
+    const bytes = Buffer.from(normalized, "base64");
     if (bytes.length === 32) return bytes.toString("hex");
   }
   throw new Error("Invalid V3 code hash encoding");
