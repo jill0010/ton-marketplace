@@ -104,8 +104,9 @@ The production implementation must distinguish the following values:
 Consequences for the current prototype:
 
 - `TestReserveVault.onBouncedMessage` already checks the protocol-specific handler, buyer sender, Rich Bounce prefix, original refund opcode/body, order ID, query ID, original value, and a minimum returned-value threshold.
-- It currently changes only `status = 4`; it does not persist `in.valueCoins` as a returned-funds balance. Consequently, status 4 is not sufficient authority for retry and must remain quarantined.
-- `RetryTestReserve` must remain blocked until a production state model stores the actual returned amount and proves that the contract balance can fund exactly one retry while preserving the remaining liability and operational reserve.
+- The current experimental handler stores `in.valueCoins` in `returnedNano` and changes `status = 4` only after matching the Rich Bounce envelope, buyer sender, original refund opcode, order ID, query ID, original amount, and minimum returned-value threshold.
+- This stored value is quarantine/accounting evidence only. It is not currently reconciled against a durable residual-liability ledger, and the prototype does not cap a future dispatch to the exact returned principal.
+- `RetryTestReserve` therefore remains blocked (exit 706). It must stay blocked until a production state model records the original liability, actual returned amount, fees, residual debt, amount eligible for retry, and operation consumption, then proves the contract balance can fund exactly that amount without using another order's reserve or reviewed costs.
 - The original refund operation must be marked consumed before dispatching a retry. A retry must use a fresh query ID, and a delayed bounce from an earlier operation must not mutate the newer operation.
 
 Official protocol references:
