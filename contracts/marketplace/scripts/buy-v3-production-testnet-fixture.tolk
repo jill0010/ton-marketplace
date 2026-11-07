@@ -5,7 +5,7 @@ import "@wrappers/MarketplaceV2.gen"
 
 fun main() {
     assert (env<bool>("V3_TESTNET_PURCHASE_ENABLED") ?? false) throw 911;
-    val buyer = scripts.wallet("seller");
+    val buyer = scripts.wallet("treasury");
     val marketplaceAddress = env<address>("V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS");
     val nftItem = env<address>("V3_TESTNET_FIXTURE_NFT_ADDRESS");
     val deadline = env<int>("V3_TESTNET_BUY_DEADLINE") ?? 0;
