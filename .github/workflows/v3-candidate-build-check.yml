@@ -35,6 +35,9 @@ jobs:
         working-directory: .
         run: |
           node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs
+      - name: Test V3 settlement attestation ABI and Ed25519 quorum model (reference only)
+        working-directory: .
+        run: node --test contracts/marketplace/experiments/v3-settlement-attestation.test.mjs
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Compile V3 candidate and escrow without deploying
