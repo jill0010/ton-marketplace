@@ -39,7 +39,10 @@ fun main() {
         }
         val orderCell = marketplace.orderCellV2(freshOrderId!!);
         println("V3_FRESH_ORDER_CELL_EXISTS: {}", orderCell != null);
-        if (orderCell == null) return;
+        if (orderCell == null) {
+            println("V3_FRESH_RESULT: ORDER_INDEX_WITHOUT_CELL. Read-only inspection stopped.");
+            return;
+        }
         val order = MarketplaceV2Order.fromCell(orderCell!!);
         println("V3_FRESH_ORDER_STATUS: {}", order.status);
         println("V3_FRESH_DELIVERY_STATUS: {}", order.deliveryStatus);
