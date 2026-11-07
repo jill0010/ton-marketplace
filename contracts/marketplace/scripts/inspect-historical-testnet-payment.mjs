@@ -35,6 +35,55 @@ export function classifyHistoricalPayment(txs, payment = HISTORICAL_PAYMENT) {
     requiresIndependentBalanceAndRecipientTrace: true,
   };
 }
+// API v3 indexes transactions by exact hash, avoiding overloaded archival
+// liteservers. Treat indexer output as reported evidence, NOT a verified refund.
+export async function inspectHistoricalByHashV3(fetcher = fetch) {
+  const account = normalizeV3TestnetAddress(HISTORICAL_PAYMENT.marketplace);
+  const url = new URL("https://testnet.toncenter.com/api/v3/transactions");
+  url.searchParams.set("account", account);
+  url.searchParams.set("hash", HISTORICAL_PAYMENT.hash);
+  url.searchParams.set("limit", "10");
+  const response = await fetcher(url.toString(), {
+    method: "GET", redirect: "error",
+    headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
+  });
+  if (!response.ok) throw new Error("Historical indexed RPC HTTP " + response.status);
+  const body = await response.json();
+  if (!Array.isArray(body.transactions)) throw new Error("Invalid indexed transaction response");
+  const matches = body.transactions.filter(tx => hashHex(tx.hash) === HISTORICAL_PAYMENT.hash);
+  if (matches.length !== 1) return {
+    network: "testnet", marketplace: account, source: "TON Center v3 indexed",
+    state: "UNRESOLVED", reason: matches.length ? "DUPLICATE_TRANSACTION" : "HASH_NOT_FOUND_IN_INDEX",
+    refundConfirmed: false, retryAuthorized: false, mainnetApproved: false, readOnly: true,
+  };
+  const tx = matches[0];
+  if (typeof tx.account !== "string" || normalizeV3TestnetAddress(tx.account) !== account) {
+    throw new Error("Indexed transaction account does not match historical Marketplace");
+  }
+  const inboundNano = String(tx.in_msg?.value ?? "");
+  const balances = [tx.account_state_before?.balance, tx.account_state_after?.balance];
+  const validBalance = balances.every(n => typeof n === "string" && /^(0|[1-9][0-9]*)$/.test(n));
+  const outbound = Array.isArray(tx.out_msgs) ? tx.out_msgs : null;
+  return {
+    network: "testnet", marketplace: account, source: "TON Center v3 indexed",
+    transactionHash: HISTORICAL_PAYMENT.hash,
+    state: "UNRESOLVED",
+    reason: inboundNano === HISTORICAL_PAYMENT.amountNano ?
+      "INDEXED_INBOUND_FOUND_REFUND_UNVERIFIED" : "INDEXED_INBOUND_AMOUNT_MISMATCH",
+    inboundNano, inboundMatches: inboundNano === HISTORICAL_PAYMENT.amountNano,
+    balanceBeforeNano: validBalance ? balances[0] : null,
+    balanceAfterNano: validBalance ? balances[1] : null,
+    balanceDeltaNano: validBalance ? String(BigInt(balances[1]) - BigInt(balances[0])) : null,
+    totalFeesNano: /^(0|[1-9][0-9]*)$/.test(String(tx.total_fees ?? "")) ? String(tx.total_fees) : null,
+    outboundCount: outbound?.length ?? null,
+    outbounds: outbound?.map(m => ({ destination: m.destination ?? null, valueNano: String(m.value ?? "") })) ?? null,
+    aborted: tx.description?.aborted === true,
+    computeExitCode: Number.isInteger(tx.description?.compute_ph?.exit_code) ? tx.description.compute_ph.exit_code : null,
+    refundConfirmed: false, retryAuthorized: false, mainnetApproved: false,
+    requiresIndependentBalanceAndRecipientTrace: true, readOnly: true,
+  };
+}
+
 export async function inspectHistoricalTestnetPayment(fetcher = fetch, { maxPages = 10 } = {}) {
   if (!Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 50) {
     throw new RangeError("maxPages must be between 1 and 50");
@@ -65,7 +114,20 @@ export async function inspectHistoricalTestnetPayment(fetcher = fetch, { maxPage
       if (response.ok || ![429, 500, 502, 503, 504, 542].includes(response.status)) break;
       if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
     }
-    if (!response.ok) throw new Error("Historical transaction RPC HTTP " + response.status);
+    if (!response.ok) {
+      // Only use v3 fallback for transient upstream failures; strict
+      // validation still prevents treating incomplete records as settlement.
+      if ([429, 500, 502, 503, 504, 542].includes(response.status)) {
+        try {
+          const indexed = await inspectHistoricalByHashV3(fetcher);
+          return { ...indexed, archivalV2FailureStatus: response.status };
+        } catch (error) {
+          throw new Error("Historical transaction RPC HTTP " + response.status +
+            "; indexed hash fallback also failed: " + error.message);
+        }
+      }
+      throw new Error("Historical transaction RPC HTTP " + response.status);
+    }
     const body = await response.json();
     if (body.ok !== true || !Array.isArray(body.result)) throw new Error("Invalid historical transaction RPC response");
     const transactions = body.result;
