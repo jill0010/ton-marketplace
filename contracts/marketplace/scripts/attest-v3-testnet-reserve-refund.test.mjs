@@ -36,6 +36,17 @@ test("finds buyer-side receipt only when source, amount and opcode all match", (
   }];
   assert.equal(findReserveRefundReceipt(transactions, vault.toString()).transaction, transactions[0]);
   assert.equal(findReserveRefundReceipt(transactions, buyer.toString()), null);
+  const bounced = [{
+    transaction_id: { hash: "33".repeat(32) },
+    aborted: true,
+    in_msg: {
+      source: vault.toString(),
+      value: "200000000",
+      bounced: true,
+      msg_data: { body: bodyB64 },
+    },
+  }];
+  assert.equal(findReserveRefundReceipt(bounced, vault.toString()), null);
 });
 
 test("builds domain-separated Testnet settlement statement with immutable operation identity", () => {
