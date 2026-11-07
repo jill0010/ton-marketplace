@@ -71,7 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           # Fixed prior purchase transaction; do not submit a second payment.
-          acton rpc trace e7a04f5f059ae336811a4b135231a5ad5785743c08e01098b34788c18d527e9f --net testnet --verbose --show-bodies > v3-existing-testnet-purchase-trace.log 2>&1 || {
+          acton rpc trace --net testnet --verbose --show-bodies e7a04f5f059ae336811a4b135231a5ad5785743c08e01098b34788c18d527e9f > v3-existing-testnet-purchase-trace.log 2>&1 || {
             echo "Historical trace lookup failed; retain the diagnostic and proceed with account getters."
             tail -60 v3-existing-testnet-purchase-trace.log
           }
