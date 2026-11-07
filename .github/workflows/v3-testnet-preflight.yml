@@ -16,6 +16,7 @@ on:
       - 'contracts/marketplace/contracts/TestReserve*.tolk'
       - 'contracts/marketplace/contracts/TestMarketplaceReserveV3.tolk'
       - 'contracts/marketplace/experiments/v3-*.mjs'
+      - 'contracts/marketplace/docs/architecture/V3_PRODUCTION_SETTLEMENT_PROTOCOL.md'
       - 'contracts/marketplace/scripts/check-v3-mainnet-release-readiness.mjs'
       - 'contracts/marketplace/scripts/check-v3-testnet-funded-readiness.mjs'
 
