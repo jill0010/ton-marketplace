@@ -60,13 +60,13 @@ export function mergeV3Evidence(deployment, binding) {
   }
   const activeAndBound = deployment.postflight.allActive === true &&
     deployment.postflight.allCodePresent === true && binding.bindingsVerified === true;
-  const trustedCodeHashes = deployment.postflight.codeHashesVerified === true;
+  // A matching caller-supplied expected hash is not an independently reproducible build.\n  // Keep trusted-code status false until an independent compiler artifact is attested.\n  const observedCodeHashesMatchExpected = deployment.postflight.codeHashesVerified === true;\n  const trustedCodeHashes = false;
   return {
     schemaVersion: 1,
     network: "testnet",
     contracts: addr,
     activeAndBound,
-    trustedCodeHashes,
+    trustedCodeHashes,\n    observedCodeHashesMatchExpected,
     // On-chain activation and binding proofs do not establish safe fund settlement.
     evidenceComplete: false,
     realFundsApproved: false,
