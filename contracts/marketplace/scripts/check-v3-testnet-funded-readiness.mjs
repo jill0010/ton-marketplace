@@ -16,6 +16,11 @@ const required = [
 ];
 const blockers = [
   {
+    label: "emulator purchase rehearsal is not a funded Testnet transaction",
+    path: "scripts/rehearse-v3-production-purchase.tolk",
+    reason: "SIMULATION_ONLY",
+  },
+  {
     label: "validator key custody and rotation review",
     path: "audits/v3-validator-key-custody-review.md",
     reason: "MISSING_INDEPENDENT_REVIEW",
