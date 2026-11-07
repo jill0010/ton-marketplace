@@ -42,6 +42,7 @@ jobs:
     steps:
       - name: Enforce read-only diagnostic branch
         shell: bash
+        working-directory: .
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/feature/reserve-refund-v3-audit" || {
@@ -115,4 +116,8 @@ jobs:
           retention-days: 30
       - name: Remove temporary wallet profile
         if: always()
-        run: rm -f wallets.toml
+        run: |
+          if [ -d contracts/marketplace ]; then
+            rm -f contracts/marketplace/wallets.toml
+          fi
+        working-directory: .
