@@ -13,8 +13,10 @@ export function extractV3ProductionDeploymentEvidence(log) {
     const addressLabel = "V3 testnet candidate " + name + ":";
     const addressLines = log.split(/\r?\n/).filter((line) => line.includes(addressLabel));
     if (addressLines.length !== 1) throw new Error("Expected exactly one deployment address for " + name);
-    const address = addressLines[0].slice(addressLines[0].indexOf(addressLabel) + addressLabel.length).trim();
-    if (!address || /\s/.test(address)) throw new Error("Invalid deployment address for " + name);
+    // Deployment logs append a human-readable contract description after the friendly address.
+    // Parse only the first token; the downstream TON testnet address validator verifies checksum/network.
+    const address = addressLines[0].slice(addressLines[0].indexOf(addressLabel) + addressLabel.length).trim().split(/\s+/)[0];
+    if (!address) throw new Error("Invalid deployment address for " + name);
     addresses[name] = address;
 
     const hashLabel = "V3 trusted compiled " + name + " code hash:";
