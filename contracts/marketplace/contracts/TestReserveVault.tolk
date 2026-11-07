@@ -26,7 +26,7 @@ struct TestReserveVaultStorage {
     reviewedCosts: uint32
     queryId: uint64
     evidenceHash: uint256
-    receiptHash: uint256
+    returnedNano: uint64
 }
 
 struct (0x72730101) FundTestReserve {
@@ -215,6 +215,9 @@ fun onBouncedMessage(in: InMessageBounced) {
         if (in.valueCoins < minimumReturned) {
             return;
         }
+        // Persist the actual value returned by the protocol bounce. This is
+        // accounting evidence only; it does not authorize a second payout.
+        storage.returnedNano = in.valueCoins as uint64;
         storage.status = 4;
         storage.save();
     } catch {}
@@ -242,4 +245,8 @@ get fun testReserveRefund(): coins {
 
 get fun testReserveQuery(): uint64 {
     return TestReserveVaultStorage.load().queryId;
+}
+
+get fun testReserveReturned(): coins {
+    return TestReserveVaultStorage.load().returnedNano as coins;
 }
