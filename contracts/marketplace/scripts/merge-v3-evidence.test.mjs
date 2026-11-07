@@ -74,3 +74,13 @@ test("rejects incomplete verification even when all individual checks look valid
   binding.bindingsVerified = false;
   assert.throws(() => mergeV3Evidence(deployment, binding), /Unverified account or binding evidence/);
 });
+
+test("caller-supplied matching hashes never count as independent reproducible build proof", () => {
+  const { deployment, binding } = fixture();
+  deployment.postflight.codeHashesVerified = true;
+  const report = mergeV3Evidence(deployment, binding);
+  assert.equal(report.observedCodeHashesMatchExpected, true);
+  assert.equal(report.trustedCodeHashes, false);
+  assert.ok(report.missingProof.includes("TRUSTED_ONCHAIN_CODE_HASH_MATCH"));
+  assert.equal(report.mainnetApproved, false);
+});
