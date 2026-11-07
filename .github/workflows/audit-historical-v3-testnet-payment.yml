@@ -1,0 +1,47 @@
+name: Audit Historical 0.21 TON Testnet Payment (Read Only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/reserve-refund-v3-audit
+    paths:
+      - .github/workflows/audit-historical-v3-testnet-payment.yml
+
+permissions:
+  contents: read
+
+jobs:
+  historical-payment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Inspect historical testnet transaction without signing or transfers
+        id: inspect
+        shell: bash
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/inspect-historical-testnet-payment.mjs | tee historical-payment-report.json
+      - name: Publish read-only evidence status
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Historical 0.21 TON testnet payment"
+            echo "This job is read-only and does not authorize retries, refunds or transfers."
+            if [ -f historical-payment-report.json ]; then
+              echo '~~~json'
+              cat historical-payment-report.json
+              echo '~~~'
+            else
+              echo "Transaction lookup did not produce a complete report."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
