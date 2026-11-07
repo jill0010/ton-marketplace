@@ -16,6 +16,18 @@ test("production deployment evidence requires four unique addresses and four tru
   assert.equal(evidence.hashes.vault, "ab".repeat(32));
 });
 
+test("production deployment evidence extracts address token before human-readable annotation", () => {
+  const names = ["marketplace", "escrow", "coordinator", "verifier"];
+  const lines = [];
+  for (const [index, name] of names.entries()) {
+    lines.push("V3 testnet candidate " + name + ": 0:" + String(index + 1).padStart(64, "0") + " (verified Testnet contract)");
+    lines.push("V3 trusted compiled " + name + " code hash: " + String(index + 1).padStart(64, "0"));
+  }
+  lines.push("V3 trusted compiled vault code hash: " + "ab".repeat(32));
+  const evidence = extractV3ProductionDeploymentEvidence(lines.join("\n"));
+  assert.equal(evidence.addresses.marketplace, "0:" + "0".repeat(63) + "1");
+});
+
 test("production deployment evidence rejects missing and duplicate address labels", () => {
   assert.throws(() => extractV3ProductionDeploymentEvidence(""));
   const line = "V3 testnet candidate marketplace: 0:" + "01".repeat(32);
