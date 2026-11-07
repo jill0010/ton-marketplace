@@ -97,13 +97,35 @@ fun onInternalMessage(in: InMessage) {
                 data: ReserveVaultStorageV3 {
                     owner: storage.owner,
                     identity: ReserveVaultIdentityV3 {
-                        fundingSource: contract.getAddress(),
-                        marketplace: storage.marketplace,
-                        verifier: storage.verifier,
-                        buyer: msg.buyer,
-                        orderId: msg.orderId,
-                        paymentHash: msg.paymentHash,
+                        funding: ReserveVaultFundingIdentityV3 {
+                            fundingSource: contract.getAddress(),
+                            marketplace: storage.marketplace,
+                        }.toCell(),
+                        parties: ReserveVaultPartiesV3 {
+                            verifier: storage.verifier,
+                            buyer: msg.buyer,
+                        }.toCell(),
+                        order: ReserveVaultOrderIdentityV3 {
+                            orderId: msg.orderId,
+                            paymentHash: msg.paymentHash,
+                        }.toCell(),
                     }.toCell(),
+                    balances: ReserveVaultBalancesV3 {
+                        principal: grams("0.2"),
+                        available: 0,
+                        inFlight: 0,
+                        paid: 0,
+                        operationalBudget: 0,
+                    }.toCell(),
+                    operation: ReserveVaultOperationV3 {
+                        operationId: 0,
+                        queryId: 0,
+                        activeStatementHash: 0,
+                        status: 0,
+                        retryCount: 0,
+                    }.toCell(),
+                    consumedStatements: [],
+                }.toCell(),
                     principal: grams("0.2"),
                     available: 0,
                     inFlight: 0,
