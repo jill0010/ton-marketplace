@@ -1297,6 +1297,27 @@ fun onBouncedMessage(in: InMessageBounced) {
     }
 }
 
+// Getter-only purchase readiness introspection. No state mutation or fund movement.
+get fun purchaseSchemaVersionV3(): uint16 {
+    return MarketplaceReserveStorageV3.load().purchaseStorage.load().schemaVersion;
+}
+
+get fun nextOrderIdV3(): uint64 {
+    return MarketplaceReserveStorageV3.load().purchaseStorage.load().nextOrderId;
+}
+
+get fun nextPayoutOperationIdV3(): uint64 {
+    return MarketplaceReserveStorageV3.load().purchaseStorage.load().nextOperationId;
+}
+
+get fun paymentQueryUsedV3(queryId: uint64): bool {
+    val purchase = MarketplaceReserveStorageV3.load().purchaseStorage.load();
+    val orders = purchase.orders.load();
+    val payouts = purchase.payoutStorage.load();
+    return orders.paymentQueryToOrder.get(queryId).isFound ||
+        payouts.payoutQueryToOperation.get(queryId).isFound;
+}
+
 get fun ownerV2(): address {
     return MarketplaceReserveStorageV3.load().owner;
 }
