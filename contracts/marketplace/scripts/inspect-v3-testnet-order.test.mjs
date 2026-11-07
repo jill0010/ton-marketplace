@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectV3TestnetOrder, parseV3StackInteger } from "./inspect-v3-testnet-order.mjs";
+import { inspectV3TestnetOrder, parseV3StackInteger, validV3GetterCell } from "./inspect-v3-testnet-order.mjs";
+import { beginCell } from "@ton/core";
 const marketplace = "0:" + "a".repeat(64);
+const validBoc = beginCell().storeUint(1, 1).endCell().toBoc().toString("base64");
 test("rejects malformed and negative getter integers", () => {
   assert.equal(parseV3StackInteger([["num", "0x2a"]]), 42n);
   assert.equal(parseV3StackInteger([["null", ""]]), null);
@@ -18,7 +20,7 @@ test("order inspector uses read-only POST getters and never claims settlement", 
     assert.equal(req.address, marketplace);
     assert.deepEqual(req.stack, [["num", "0x1"]]);
     return { ok: true, json: async () => ({ ok: true, result: {
-      exit_code: 0, stack: [["cell", { bytes: "mock" }]],
+      exit_code: 0, stack: [["cell", { bytes: validBoc }]],
     } }) };
   };
   const report = await inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher);
@@ -42,4 +44,9 @@ test("rejects malformed response and invalid order IDs", async () => {
     ({ ok: true, result: { exit_code: 0, stack: [["num", "0x1"]] } }) });
   await assert.rejects(inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher),
     /Unrecognized order getter response/);
+});
+
+test("malformed BOC cannot masquerade as an existing order or reserve", () => {
+  assert.equal(validV3GetterCell([["cell", { bytes: "mock" }]]), false);
+  assert.equal(validV3GetterCell([["cell", { bytes: validBoc }]]), true);
 });
