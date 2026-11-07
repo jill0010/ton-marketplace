@@ -25,6 +25,17 @@ function uint256FromHex(value) {
   return BigInt("0x" + normalized);
 }
 
+function transactionIsSuccessful(transaction, message) {
+  if (message?.bounced === true) return false;
+  const tx = transaction?.transaction ?? transaction;
+  if (tx?.aborted === true || tx?.description?.aborted === true) return false;
+  const compute = tx?.description?.compute_ph ?? tx?.compute_ph;
+  if (compute?.success === false) return false;
+  const action = tx?.description?.action ?? tx?.action;
+  if (action?.success === false) return false;
+  return true;
+}
+
 function parseMessageBody(message) {
   const body = message?.msg_data?.body ?? message?.message_content?.body ?? message?.body;
   if (typeof body !== "string" || !body) return null;
@@ -51,7 +62,8 @@ export function findReserveRefundDispatch(transactions, buyerAddress, expectedAm
       if (
         destination && normalizeAddress(destination) === buyer &&
         String(message.value) === expectedAmount &&
-        parsed?.opcode === REFUND_OPCODE
+        parsed?.opcode === REFUND_OPCODE &&
+        transactionIsSuccessful(transaction, message)
       ) {
         return { transaction, message, body: parsed.cell };
       }
@@ -69,7 +81,8 @@ export function findReserveRefundReceipt(transactions, vaultAddress, expectedAmo
     if (
       source && normalizeAddress(source) === vault &&
       String(message.value) === expectedAmount &&
-      parsed?.opcode === REFUND_OPCODE
+      parsed?.opcode === REFUND_OPCODE &&
+      transactionIsSuccessful(transaction, message)
     ) {
       return { transaction, message, body: parsed.cell };
     }
