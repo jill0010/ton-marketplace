@@ -1,5 +1,6 @@
 // Read-only testnet getter verification. A failed or undecodable getter blocks binding approval.
 import { Cell } from "@ton/core";
+import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { normalizeV3TestnetAddress, validateV3Addresses } from "./verify-v3-testnet.mjs";
 
@@ -72,6 +73,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       escrow: process.env.V3_TESTNET_ESCROW_ADDRESS,
       coordinator: process.env.V3_TESTNET_COORDINATOR_ADDRESS,
     });
+    if (process.env.V3_BINDINGS_EVIDENCE_OUTPUT) {
+      await writeFile(process.env.V3_BINDINGS_EVIDENCE_OUTPUT, JSON.stringify({ ...result, collectedAt: new Date().toISOString(), schemaVersion: 1 }, null, 2) + "\n", { flag: "wx", mode: 0o600 });
+    }
     console.log(JSON.stringify(result, null, 2));
     if (!result.bindingsVerified) process.exitCode = 1;
   } catch (error) {
