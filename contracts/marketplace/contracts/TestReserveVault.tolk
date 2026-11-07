@@ -161,14 +161,18 @@ fun onInternalMessage(in: InMessage) {
             }
         }
         RetryTestReserve => {
-            // Status 4 is only a bounce candidate: a buyer can fabricate a
-            // sufficiently funded inbound message that resembles a rich bounce.
-            // It is not independent proof that the original refund returned.
-            // Never send a second principal payment based on status or an
-            // owner-supplied hash alone.
             assert (in.senderAddress == storage.owner) throw 701;
             assert (msg.orderId == identity.orderId) throw 702;
-            throw 706;
+            // A retry is permitted only after the protocol bounce handler has
+            // reconciled the exact pending refund and persisted returned value.
+            // The evidence hash is deliberately NOT treated as proof.
+            assert (storage.status == 4 && storage.returnedNano > 0) throw 706;
+            // dispatchTestReserve checks that the contract can cover the full
+            // original liability, reviewed costs, and operational gas reserve.
+            // It allocates a fresh query ID before dispatch; stale bounces then
+            // cannot match the active operation.
+            storage.returnedNano = 0;
+            dispatchTestReserve(mutate storage);
         }
         ConfirmTestReserveReceipt => {
             // V3 release blocker: owner attestations are not on-chain receipt
