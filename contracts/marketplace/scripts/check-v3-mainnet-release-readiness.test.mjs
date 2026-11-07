@@ -15,4 +15,9 @@ test("V3 Mainnet release is blocked while production components are absent", () 
   assert.match(result.stderr, /production V3 marketplace/);
   assert.match(result.stderr, /production V3 coordinator/);
   assert.match(result.stderr, /production V3 reserve vault/);
+  assert.match(result.stderr, /TRUSTED_REPRODUCIBLE_PRODUCTION_CODE_HASHES/);
+  assert.match(result.stderr, /INDEPENDENT_SECURITY_REVIEW/);
+  assert.match(result.stderr, /REAL_TESTNET_PURCHASE_DELIVERY_SETTLEMENT/);
+  assert.match(result.stderr, /RESERVE_REFUND_FINALITY_NO_DOUBLE_PAYOUT/);
+  assert.match(result.stderr, /PRODUCTION_DEPLOYMENT_CONFIGURATION_AND_ROLLBACK/);
 });
