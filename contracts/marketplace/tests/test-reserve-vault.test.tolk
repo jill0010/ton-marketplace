@@ -181,7 +181,7 @@ get fun `test experimental vault records zero residual without refund transfer`(
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(0);
 }
 
-get fun `test experimental vault genuine bounced refund enables only exact retry`() {
+get fun `test experimental vault genuine bounced refund remains quarantined`() {
     val owner = testing.treasury("reserveOwner").address;
     val rejectState: ContractState = {
         code: build("Empty"),
@@ -254,7 +254,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(returnedBeforeRetry);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
 }
 
 fun reserveRichBounce(orderId: uint64, queryId: uint64, amount: coins): cell {
