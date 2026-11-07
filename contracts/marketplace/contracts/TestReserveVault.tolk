@@ -161,17 +161,14 @@ fun onInternalMessage(in: InMessage) {
             }
         }
         RetryTestReserve => {
-            // Retry only after the vault itself verified a rich bounce from
-            // the original buyer transfer. An owner-supplied evidence hash
-            // alone cannot unlock a second refund.
+            // Status 4 is only a bounce candidate: a buyer can fabricate a
+            // sufficiently funded inbound message that resembles a rich bounce.
+            // It is not independent proof that the original refund returned.
+            // Never send a second principal payment based on status or an
+            // owner-supplied hash alone.
             assert (in.senderAddress == storage.owner) throw 701;
             assert (msg.orderId == identity.orderId) throw 702;
-            assert (storage.funded && storage.status == 4) throw 703;
-            assert (msg.returnEvidenceHash != 0) throw 702;
-            // Preserve the original review and principal; dispatchTestReserve
-            // assigns a fresh query ID so stale bounces cannot authorize
-            // subsequent retries.
-            dispatchTestReserve(mutate storage);
+            throw 706;
         }
         ConfirmTestReserveReceipt => {
             // V3 release blocker: owner attestations are not on-chain receipt
