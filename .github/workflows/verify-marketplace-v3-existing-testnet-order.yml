@@ -124,6 +124,7 @@ jobs:
             '### Existing Testnet purchase: read-only classification',
             '- Historical Marketplace exit code: ' + (rejected ? '212 (InvalidPurchase)' : 'not confirmed'),
             '- Persisted order: ' + (missingOrder ? 'absent' : match('V3_DIAGNOSTIC_ORDER_ID')),
+            '- Order 1 reserve compensation: user-confirmed manual off-chain 0.2 TON compensation is complete; never issue a duplicate payment.',
             '- Historical inbound bounced flag: ' + (noBounce ? 'false (do not assume funds were refunded)' : 'not confirmed'),
             '- Failed diagnostic checks: ' + (failed.length ? failed.join(', ') : 'none of the recorded basic checks'),
             '- Deployed-code getter compatibility: ' + (match('V3_DIAGNOSTIC_CODE_VERSION_MISMATCH') === 'true' ? 'new V3 read-only getters absent; historical deployment must be assessed separately' : 'not classified'),
