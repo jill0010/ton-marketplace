@@ -1,8 +1,8 @@
 import "@acton/build"
+import "@acton/crypto"
 import "@acton/emulation/network"
 import "@acton/emulation/testing"
 import "@acton/testing/expect"
-import "@acton/crypto"
 import "@contracts/SettlementAttestationVerifierV3"
 
 fun verifierStatement(
@@ -18,14 +18,8 @@ fun verifierStatement(
         .storeUint(17, 64)
         .storeCoins(grams("0.2"))
         .endCell();
-    val operation = beginCell()
-        .storeUint(2, 64)
-        .storeUint(99, 64)
-        .endCell();
-    val dispatch = beginCell()
-        .storeUint(4, 256)
-        .storeUint(5, 256)
-        .endCell();
+    val operation = beginCell().storeUint(2, 64).storeUint(99, 64).endCell();
+    val dispatch = beginCell().storeUint(4, 256).storeUint(5, 256).endCell();
     val result = beginCell()
         .storeUint(1, 8)
         .storeUint(6, 256)
@@ -70,7 +64,10 @@ fun verifierSetup(): (address, address, KeyPair, KeyPair, KeyPair) {
             consumedStatements: [],
         }.toCell(),
     };
-    val destination = AutoDeployAddress { workchain: 0, stateInit: state };
+    val destination = AutoDeployAddress {
+        workchain: 0,
+        stateInit: state,
+    };
     val verifier = destination.calculateAddress();
     expect(
         net.send(
@@ -89,25 +86,42 @@ fun verifierBundle(
 ): cell {
     var signatures: map<uint8, cell> = [];
     if (key0 != null) {
-        signatures.set(0, beginCell().storeSlice(crypto.sign(key0.privateKey, statement)).endCell());
+        signatures.set(
+            0,
+            beginCell().storeSlice(crypto.sign(key0.privateKey, statement)).endCell(),
+        );
     }
     if (key1 != null) {
-        signatures.set(1, beginCell().storeSlice(crypto.sign(key1.privateKey, statement)).endCell());
+        signatures.set(
+            1,
+            beginCell().storeSlice(crypto.sign(key1.privateKey, statement)).endCell(),
+        );
     }
     if (key2 != null) {
-        signatures.set(2, beginCell().storeSlice(crypto.sign(key2.privateKey, statement)).endCell());
+        signatures.set(
+            2,
+            beginCell().storeSlice(crypto.sign(key2.privateKey, statement)).endCell(),
+        );
     }
     return SettlementSignatureBundleV3 { signatures }.toCell();
 }
 
-fun verifierSend(from: address, verifier: address, statement: cell, signatures: cell): SendResultList {
+fun verifierSend(
+    from: address,
+    verifier: address,
+    statement: cell,
+    signatures: cell,
+): SendResultList {
     return net.send(
         from,
         createMessage({
             bounce: BounceMode.RichBounce,
             value: grams("0.1"),
             dest: verifier,
-            body: VerifySettlementAttestationV3 { statement, signatures: signatures as Cell<SettlementSignatureBundleV3> }.toCell(),
+            body: VerifySettlementAttestationV3 {
+                statement,
+                signatures: signatures as Cell<SettlementSignatureBundleV3>,
+            }.toCell(),
         }),
     );
 }
@@ -118,7 +132,9 @@ get fun `test verifier accepts exact two-of-three Ed25519 quorum and blocks repl
     val signatures = verifierBundle(statement, key0, key1);
     val result = verifierSend(vault, verifier, statement, signatures);
     expect(result).toHaveSuccessfulTx({ to: verifier });
-    expect(result).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: verifier, to: vault });
+    expect(
+        result,
+    ).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: verifier, to: vault });
     expect(
         net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [statement.hash()]),
     ).toEqual(1);
@@ -170,12 +186,22 @@ get fun `test verifier rejects malformed signatures and unknown signer indices`(
     malformed.set(0, beginCell().storeUint(1, 8).endCell());
     malformed.set(1, beginCell().storeSlice(crypto.sign(key1.privateKey, statement)).endCell());
     expect(
-        verifierSend(vault, verifier, statement, SettlementSignatureBundleV3 { signatures: malformed }.toCell()),
+        verifierSend(
+            vault,
+            verifier,
+            statement,
+            SettlementSignatureBundleV3 { signatures: malformed }.toCell(),
+        ),
     ).toHaveFailedTx({ to: verifier, exitCode: 757 });
     var unknown: map<uint8, cell> = [];
     unknown.set(3, beginCell().storeSlice(crypto.sign(key0.privateKey, statement)).endCell());
     unknown.set(4, beginCell().storeSlice(crypto.sign(key1.privateKey, statement)).endCell());
     expect(
-        verifierSend(vault, verifier, statement, SettlementSignatureBundleV3 { signatures: unknown }.toCell()),
+        verifierSend(
+            vault,
+            verifier,
+            statement,
+            SettlementSignatureBundleV3 { signatures: unknown }.toCell(),
+        ),
     ).toHaveFailedTx({ to: verifier, exitCode: 759 });
 }
