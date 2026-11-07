@@ -35,13 +35,66 @@ export function createReserveLedger({ orderId, buyer, principalNano }) {
 }
 function mutable(state) {
   invariant(state && typeof state === "object", "Invalid ledger");
+  identity(state.orderId);
+  identity(state.buyer);
   invariant(Array.isArray(state.operations), "Invalid ledger operations");
   for (const field of ["principalNano", "paidNano", "inFlightNano", "availableNano", "feesNano", "nextOperationId"]) {
     invariant(typeof state[field] === "bigint" && state[field] >= 0n, "Invalid ledger amount: " + field);
   }
-  const fundedTopUps = state.operations
-    .filter((op) => op.kind === "topup")
-    .reduce((sum, op) => sum + nano(op.amountNano), 0n);
+  invariant(state.principalNano > 0n && state.nextOperationId > 0n, "Invalid ledger principal or operation sequence");
+
+  let fundedTopUps = 0n;
+  let operationInFlight = 0n;
+  let operationPaid = 0n;
+  let operationFees = 0n;
+  let maxOperationId = 0n;
+  const operationIds = new Set();
+  const fundingHashes = new Set();
+  const evidenceHashes = new Set();
+
+  for (const op of state.operations) {
+    invariant(op && typeof op === "object", "Invalid ledger operation");
+    const amount = nano(op.amountNano);
+    invariant(amount > 0n, "Ledger operation amount must be positive");
+    if (op.kind === "topup") {
+      identity(op.fundingMessageHash);
+      invariant(!fundingHashes.has(op.fundingMessageHash), "Duplicate top-up funding message");
+      fundingHashes.add(op.fundingMessageHash);
+      fundedTopUps += amount;
+      continue;
+    }
+    invariant(op.kind === "refund", "Unknown ledger operation kind");
+    invariant(typeof op.operationId === "bigint" && op.operationId > 0n, "Invalid refund operation ID");
+    invariant(!operationIds.has(op.operationId.toString()), "Duplicate refund operation ID");
+    operationIds.add(op.operationId.toString());
+    if (op.operationId > maxOperationId) maxOperationId = op.operationId;
+    if (op.status === "in-flight") {
+      invariant(op.evidenceHash === undefined && op.returnedNano === undefined && op.creditedNano === undefined,
+        "In-flight refund has settlement evidence");
+      operationInFlight += amount;
+    } else if (op.status === "bounced") {
+      const returned = nano(op.returnedNano);
+      identity(op.evidenceHash);
+      invariant(returned <= amount && op.creditedNano === undefined, "Invalid bounced refund accounting");
+      invariant(!evidenceHashes.has(op.evidenceHash), "Duplicate settlement evidence");
+      evidenceHashes.add(op.evidenceHash);
+      operationFees += amount - returned;
+    } else if (op.status === "credited") {
+      const credited = nano(op.creditedNano);
+      identity(op.evidenceHash);
+      invariant(credited === amount && op.returnedNano === undefined, "Invalid credited refund accounting");
+      invariant(!evidenceHashes.has(op.evidenceHash), "Duplicate settlement evidence");
+      evidenceHashes.add(op.evidenceHash);
+      operationPaid += credited;
+    } else {
+      invariant(false, "Unknown refund operation status");
+    }
+  }
+
+  invariant(state.nextOperationId > maxOperationId, "Stale next refund operation ID");
+  invariant(operationInFlight === state.inFlightNano, "In-flight balance does not match refund operations");
+  invariant(operationPaid === state.paidNano, "Paid balance does not match refund operations");
+  invariant(operationFees === state.feesNano, "Fee balance does not match bounced refund operations");
   const accountedPrincipal = state.principalNano + fundedTopUps;
   invariant(
     state.paidNano + state.inFlightNano + state.availableNano + state.feesNano === accountedPrincipal,
