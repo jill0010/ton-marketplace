@@ -45,24 +45,13 @@ fun main() {
     println("V3_DIAGNOSTIC_REQUIRED_MIN_PAYMENT_QUERY_ID_EXCLUSIVE: {}", refundQueryId);
     println("V3_DIAGNOSTIC_HISTORICAL_QUERY_VALID: {}", historicalQueryId > refundQueryId);
     println("V3_DIAGNOSTIC_PRICE_VALID: {}", product.price == grams("0.01"));
-    // Inspect purchase-specific storage that was not covered by the original checks.
-    // These getters are only present in V3 code compiled after their introduction.
-    // A missing getter is evidence of a deployed-code version mismatch, not a reason
-    // to submit a second purchase.
-    val schemaVersion = net.runGetMethod<uint16>(marketplace.address, "purchaseSchemaVersionV3");
-    val nextOrderId = net.runGetMethod<uint64>(marketplace.address, "nextOrderIdV3");
-    val nextPayoutOperationId = net.runGetMethod<uint64>(marketplace.address, "nextPayoutOperationIdV3");
-    val historicalPaymentQueryUsed = net.runGetMethod<bool>(
-        marketplace.address,
-        "paymentQueryUsedV3",
-        [historicalQueryId],
-    );
-    println("V3_DIAGNOSTIC_PURCHASE_SCHEMA_VERSION: {}", schemaVersion);
-    println("V3_DIAGNOSTIC_PURCHASE_SCHEMA_VALID: {}", schemaVersion == 3);
-    println("V3_DIAGNOSTIC_NEXT_ORDER_ID: {}", nextOrderId);
-    println("V3_DIAGNOSTIC_NEXT_PAYOUT_OPERATION_ID: {}", nextPayoutOperationId);
-    println("V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_USED: {}", historicalPaymentQueryUsed);
-    println("V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_AVAILABLE: {}", !historicalPaymentQueryUsed);
+    // The existing Testnet deployment predates the newly added V3 getters.
+    // Never call those getters here: unknown method errors abort the entire
+    // read-only script and conceal the original preflight diagnostics.
+    println("V3_DIAGNOSTIC_PURCHASE_SCHEMA_STATUS: unavailable_on_existing_deployment");
+    println("V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_STATUS: unavailable_on_existing_deployment");
+    println("V3_DIAGNOSTIC_CODE_VERSION_MISMATCH: true");
+    println("V3_DIAGNOSTIC_NEXT_STEP: compare existing on-chain code hash with historical deployment commit, without any transaction");
 
     println("V3_DIAGNOSTIC_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
     println("V3_DIAGNOSTIC_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
