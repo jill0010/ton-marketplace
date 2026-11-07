@@ -47,6 +47,7 @@ struct SettlementSignatureBundleV3 {
 
 struct SettlementVerifierStorageV3 {
     owner: address
+    marketplace: address
     networkGlobalId: int32
     epoch: uint32
     threshold: uint8
@@ -82,12 +83,14 @@ struct SettlementVerifierCallbackV3 {
     vault: address
 }
 
+type SettlementVerifierMessageV3 = VerifySettlementAttestationV3 | AcknowledgeSettlementAttestationV3
+
 contract SettlementAttestationVerifierV3 {
     author: "TON Market"
     version: "0.1.0"
     description: "Domain-separated Ed25519 quorum verifier for V3 settlement statements"
     storage: SettlementVerifierStorageV3
-    incomingMessages: VerifySettlementAttestationV3 | AcknowledgeSettlementAttestationV3
+    incomingMessages: SettlementVerifierMessageV3
 }
 
 fun SettlementVerifierStorageV3.load(): SettlementVerifierStorageV3 {
@@ -102,7 +105,7 @@ fun onInternalMessage(in: InMessage) {
     if (in.body.isEmpty()) {
         return;
     }
-    val msg = lazy (VerifySettlementAttestationV3 | AcknowledgeSettlementAttestationV3).fromSlice(in.body);
+    val msg = lazy SettlementVerifierMessageV3.fromSlice(in.body);
     var storage = SettlementVerifierStorageV3.load();
     match (msg) {
         AcknowledgeSettlementAttestationV3 => {
@@ -127,9 +130,11 @@ fun onInternalMessage(in: InMessage) {
             val dispatch = root.dispatch.load();
             val result = root.result.load();
 
+            assert (identity.marketplace == storage.marketplace) throw 755;
+            assert (identity.marketplace != identity.vault) throw 753;
             assert (identity.marketplace != contract.getAddress()) throw 753;
-            assert (identity.vault == in.senderAddress) throw 755;
-            assert (identity.buyer != identity.vault) throw 753;
+            assert (identity.vault == in.senderAddress && identity.vault != contract.getAddress()) throw 755;
+            assert (identity.buyer != identity.vault && identity.buyer != identity.marketplace) throw 753;
             assert (identity.orderId > 0 && identity.principal > 0) throw 753;
             assert (operation.operationId > 0 && operation.queryId > 0) throw 753;
             assert (dispatch.transactionHash != 0 && dispatch.messageHash != 0) throw 753;
@@ -148,7 +153,6 @@ fun onInternalMessage(in: InMessage) {
 
             val bundle = msg.signatures.load();
             var validSignatures = 0;
-            var signerMask: uint8 = 0;
             var signerIndex: uint8 = 0;
             while (signerIndex < 3) {
                 val signatureFound = bundle.signatures.get(signerIndex);
@@ -159,10 +163,7 @@ fun onInternalMessage(in: InMessage) {
                     var signatureSlice = signatureCell.beginParse();
                     assert (signatureSlice.remainingBitsCount() == 512) throw 757;
                     assert (signatureSlice.remainingRefsCount() == 0) throw 757;
-                    val bit = (1 as uint8) << signerIndex;
-                    assert ((signerMask & bit) == 0) throw 756;
                     assert (isSignatureValid(statementHash, signatureSlice, keyFound.loadValue())) throw 758;
-                    signerMask |= bit;
                     validSignatures += 1;
                 }
                 signerIndex += 1;
