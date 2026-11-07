@@ -36,6 +36,14 @@ fun main() {
     // Waiting only for the buyer wallet transaction can let the following
     // read-only verifier run before the order has been persisted.
     result.waitForTrace();
+    // A completed trace can contain an aborted Marketplace transaction. Never
+    // claim success until the on-chain product->order index is persisted.
+    val persistedOrderId = marketplace.orderIdForProductV2(productId);
+    println("V3 Testnet post-purchase persisted order ID: {}", persistedOrderId);
+    if (persistedOrderId == null) {
+        println("V3_TESTNET_PURCHASE_REJECTED: Full trace completed but Marketplace did not create an order. Do not pay again; inspect the trace.");
+        throw 916;
+    }
     println("V3 Testnet purchase submitted once. Full trace settled. Product ID: {}; gross: 0.01 TON; reserve: 0.2 TON.", productId);
     println("Buyer: {}", buyer.address);
     println("NFT Item: {}", nftItem!!);
