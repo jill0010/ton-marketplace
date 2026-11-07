@@ -104,6 +104,45 @@ test("partial return cannot be retried until exact order-local principal is rest
   assert.equal(retry.availableNano, 0n);
 });
 
+
+test("ledger rejects balances that disagree with the immutable operation history", () => {
+  const sent = dispatch(start());
+  assert.throws(() => dispatchReserveRefund(
+    { ...sent, inFlightNano: 199_000_000n },
+    { orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 2n },
+  ), /In-flight balance does not match/);
+  const bounced = reconcileRefundResult(sent, { orderId: "order-1", buyer: "buyer-1",
+    operationId: 1n, result: "bounced", returnedNano: 199_000_000n, evidenceHash: H(21) });
+  assert.throws(() => dispatchReserveRefund(
+    { ...bounced, feesNano: 0n },
+    { orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 2n },
+  ), /Fee balance does not match/);
+});
+
+test("ledger rejects duplicate operation IDs, evidence hashes, and funding references", () => {
+  const sent = dispatch(start());
+  const duplicateOperation = { ...sent, operations: [...sent.operations, { ...sent.operations[0] }] };
+  assert.throws(() => dispatchReserveRefund(duplicateOperation, {
+    orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 2n,
+  }), /Duplicate refund operation ID/);
+  const bounced = reconcileRefundResult(sent, { orderId: "order-1", buyer: "buyer-1",
+    operationId: 1n, result: "bounced", returnedNano: 199_000_000n, evidenceHash: H(22) });
+  const duplicateEvidence = { ...bounced, operations: bounced.operations.map((op) =>
+    op.kind === "refund" ? { ...op, evidenceHash: H(23) } : op) };
+  duplicateEvidence.operations.push({ kind: "refund", operationId: 2n, amountNano: 1n,
+    status: "bounced", returnedNano: 0n, evidenceHash: H(23) });
+  assert.throws(() => dispatchReserveRefund(duplicateEvidence, {
+    orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 2n,
+  }), /Duplicate settlement evidence/);
+  const topped = topUpReserve(bounced, { orderId: "order-1", buyer: "buyer-1",
+    amountNano: 1_000_000n, fundingMessageHash: "fund-unique" });
+  const duplicateFunding = { ...topped, operations: [...topped.operations,
+    { kind: "topup", amountNano: 1_000_000n, fundingMessageHash: "fund-unique" }] };
+  assert.throws(() => dispatchReserveRefund(duplicateFunding, {
+    orderId: "order-1", buyer: "buyer-1", amountNano: 200_000_000n, operationId: 2n,
+  }), /Duplicate top-up funding message/);
+});
+
 test("zero, negative, non-integer and missing evidence inputs are rejected", () => {
   assert.throws(() => createReserveLedger({ orderId: "x", buyer: "b", principalNano: 0n }));
   assert.throws(() => createReserveLedger({ orderId: "x", buyer: "b", principalNano: -1n }));
