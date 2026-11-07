@@ -195,7 +195,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export V3_TESTNET_BUY_DEADLINE="$(( $(date +%s) + 900 ))"
+          export V3_TESTNET_BUY_DEADLINE="$(( $(date +%s) + 600 ))"
           acton script scripts/buy-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee v3-production-testnet-purchase.log
           grep -Fq "Do not repeat this payment; run read-only delivery and reserve checks." v3-production-testnet-purchase.log
 
