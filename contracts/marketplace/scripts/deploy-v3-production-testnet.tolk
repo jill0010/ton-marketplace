@@ -185,18 +185,17 @@ fun main() {
         escrow.address,
         { value: grams("0.05") },
     );
-    if (configureEscrow.waitForFirstTransaction() == null) {
-        throw 828;
-    }
+    // Await the full wallet -> Marketplace trace so the escrow binding is
+    // committed before any getter verifies it.
+    configureEscrow.waitForTrace();
 
     val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(
         deployer.address,
         treasuryAddress,
         { value: grams("0.05") },
     );
-    if (configureTreasury.waitForFirstTransaction() == null) {
-        throw 829;
-    }
+    // Treasury configuration is also asynchronous from the external wallet.
+    configureTreasury.waitForTrace();
 
     val configureCoordinator = net.send(
         deployer.address,
@@ -207,9 +206,9 @@ fun main() {
             body: SetReserveCoordinatorV3 { coordinator }.toCell(),
         }),
     );
-    if (configureCoordinator.waitForFirstTransaction() == null) {
-        throw 830;
-    }
+    // Wait for Marketplace to process SetReserveCoordinatorV3, not merely
+    // for the deployer wallet's external message to be accepted.
+    configureCoordinator.waitForTrace();
 
     assert (marketplace.escrowV2() == escrow.address) throw 831;
     assert (marketplace.escrowConfiguredV2()) throw 831;
