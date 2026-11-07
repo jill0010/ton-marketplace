@@ -83,6 +83,7 @@ jobs:
           grep -Fq "V3 testnet candidate coordinator:" v3-testnet-deployment.log
           {
             echo "## Experimental V3 testnet candidate"
+            grep -E "^V3 trusted compiled (marketplace|escrow|coordinator) code hash:" v3-testnet-deployment.log
             grep -E "V3 testnet candidate (marketplace|escrow|coordinator):" v3-testnet-deployment.log
             echo
             echo "These are candidate addresses, NOT verified settlement or mainnet approval."
