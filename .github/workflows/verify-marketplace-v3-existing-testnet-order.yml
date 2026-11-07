@@ -1,0 +1,92 @@
+name: Verify Existing Marketplace V3 Testnet Order (Read Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketplace_address:
+        description: "Existing TESTNET Marketplace V3 address"
+        required: true
+        type: string
+      coordinator_address:
+        description: "Existing TESTNET Reserve Coordinator V3 address"
+        required: true
+        type: string
+      nft_item_address:
+        description: "Existing TESTNET synthetic NFT Item address"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-v3-existing-testnet-readonly
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: ${{ inputs.marketplace_address }}
+      V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: ${{ inputs.coordinator_address }}
+      V3_TESTNET_FIXTURE_NFT_ADDRESS: ${{ inputs.nft_item_address }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Create ephemeral read-only wallet profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+      - name: Build verifier (no deployment)
+        run: acton build
+      - name: Diagnose existing order and reserve (no transfers)
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/diagnose-v3-existing-testnet-order.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-diagnostic.log
+      - name: Verify existing order and reserve (no transfers)
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-readonly.log
+          grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-existing-testnet-readonly.log
+      - name: Upload read-only evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: v3-existing-testnet-readonly-evidence
+          path: |
+            contracts/marketplace/v3-existing-testnet-diagnostic.log
+            contracts/marketplace/v3-existing-testnet-readonly.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove temporary wallet profile
+        if: always()
+        run: rm -f wallets.toml
