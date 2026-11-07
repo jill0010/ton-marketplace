@@ -69,8 +69,10 @@ fun listV3TestnetMockNftFixture(
     // not acknowledged until the explicit TEP-62 transfer below. At this point
     // the product must still be pending (1); after custody, status becomes 2.
     val productStatus = marketplace.productStatusV2(productId)!!;
-    val escrowId = escrow.escrowIdForQueryV2(queryId);
-    assert (productStatus == 1 && escrowId > 0) throw 967;
+    // Escrow's CreateEscrowV2 message is asynchronous. Before the NFT transfer,
+    // the Marketplace must still be pending; the Escrow record may not yet be
+    // visible to a getter, so do not require escrowId until after custody starts.
+    assert (productStatus == 1) throw 967;
 
     val payload = beginCell()
         .storeUint(1, 1)
@@ -96,8 +98,11 @@ fun listV3TestnetMockNftFixture(
     }
     val after = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     assert ((after.get(3) as address) == escrow.address) throw 969;
-    assert (marketplace.productStatusV2(productId)!! == 2) throw 969;
-    assert (marketplace.productEscrowIdV2(productId)!! == escrowId) throw 969;
+    val activeStatus = marketplace.productStatusV2(productId)!!;
+    val escrowId = escrow.escrowIdForQueryV2(queryId);
+    val productEscrowId = marketplace.productEscrowIdV2(productId)!!;
+    println("V3 fixture post-transfer diagnostics: status={}, escrowId={}, productEscrowId={}", activeStatus, escrowId, productEscrowId);
+    assert (activeStatus == 2 && escrowId > 0 && productEscrowId == escrowId) throw 969;
     println("V3 Testnet synthetic TEP-62 fixture listed and NFT custody verified.");
     println("NFT Item: {}", nftItem);
     println("Product ID: {}", productId);
