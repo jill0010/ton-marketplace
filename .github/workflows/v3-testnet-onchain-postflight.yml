@@ -48,6 +48,21 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Test evidence verifier offline
         run: node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs
+      - name: Reject absent or malformed trusted build hashes
+        env:
+          MARKETPLACE_HASH: ${{ inputs.expected_marketplace_code_hash }}
+          ESCROW_HASH: ${{ inputs.expected_escrow_code_hash }}
+          COORDINATOR_HASH: ${{ inputs.expected_coordinator_code_hash }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in MARKETPLACE_HASH ESCROW_HASH COORDINATOR_HASH; do
+            value="${!key}"
+            if [[ ! "$value" =~ ^[[:xdigit:]]{64}$ ]]; then
+              echo "::error::$key must be a 64-character trusted compiled code hash"
+              exit 1
+            fi
+          done
       - name: Collect read-only testnet evidence
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
