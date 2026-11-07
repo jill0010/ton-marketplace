@@ -238,6 +238,20 @@ jobs:
           test "$verified" = true
           grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-production-testnet-purchase-verification.log
 
+      - name: Bind attestation to the verified on-chain order ID
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync,appendFileSync} from "node:fs";
+          const log=readFileSync("contracts/marketplace/v3-production-testnet-purchase-verification.log","utf8");
+          const ids=[...log.matchAll(/^V3_TESTNET_ORDER_ID:\s*(\d+)\s*$/gm)].map(m=>m[1]);
+          if(ids.length!==1 || BigInt(ids[0])<=0n) throw new Error("Expected exactly one positive verified V3 order ID");
+          appendFileSync(process.env.GITHUB_ENV,"V3_TESTNET_ORDER_ID="+ids[0]+"\n");
+          console.log("Attestation bound to verified V3 order ID "+ids[0]);
+          NODE
+
       - name: Install isolated TON SDK for Testnet receipt attestation
         working-directory: .
         run: |
