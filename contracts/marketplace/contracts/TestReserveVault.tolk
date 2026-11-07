@@ -196,7 +196,14 @@ fun onInternalMessage(in: InMessage) {
 fun onBouncedMessage(in: InMessageBounced) {
     var storage = TestReserveVaultStorage.load();
     val identity = storage.identity.load();
-    if (storage.status != 2 || in.senderAddress != identity.buyer) {
+    // Accept a bounce from the initial refund (status 2) or the single
+    // explicitly funded retry (status 1 + retryCount 1). The query ID below
+    // binds the bounce to the currently active transfer, so an older bounce
+    // cannot overwrite the newer retry's accounting state.
+    if (
+        (storage.status != 2 && !(storage.status == 1 && storage.retryCount == 1)) ||
+        in.senderAddress != identity.buyer
+    ) {
         return;
     }
     if (in.bouncedBody.remainingBitsCount() < 32) {
