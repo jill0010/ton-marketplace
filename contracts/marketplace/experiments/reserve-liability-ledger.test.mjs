@@ -18,6 +18,8 @@ test("fee-reduced bounce records actual return and preserves the full buyer liab
   assert.equal(bounced.availableNano, 199_000_000n);
   assert.equal(bounced.outstandingNano, 200_000_000n);
   assert.equal(bounced.shortfallNano, 1_000_000n);
+  assert.equal(bounced.feesNano, 1_000_000n);
+  assert.equal(bounced.paidNano + bounced.inFlightNano + bounced.availableNano + bounced.feesNano, 200_000_000n);
   assert.throws(() => dispatch(bounced), /Insufficient/);
 });
 test("order-scoped top-up covers only the residual shortfall before exact retry", () => {
