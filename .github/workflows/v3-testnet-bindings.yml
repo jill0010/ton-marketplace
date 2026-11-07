@@ -41,6 +41,70 @@ jobs:
         run: node --test contracts/marketplace/scripts/merge-v3-evidence.test.mjs
       - name: Test V3 testnet order inspection (read-only mocks)
         run: node --test contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs
+      - name: Setup Acton for independently reproducible deployment hashes
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Checkout original V3 testnet deployment source (pinned commit)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 0b412afa994b1f9f81ee9a288dce32acc6819041
+          path: pinned-v3-deployment
+          persist-credentials: false
+      - name: Rebuild original V3 code hashes without deploying
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp contracts/marketplace/tests/v3-compiled-hashes.test.tolk pinned-v3-deployment/contracts/marketplace/tests/v3-compiled-hashes.test.tolk
+          (
+            cd pinned-v3-deployment/contracts/marketplace
+            acton build
+            acton test tests/v3-compiled-hashes.test.tolk
+          ) 2>&1 | tee v3-reproduced-build-hashes.log
+      - name: Verify original compiled hashes against existing on-chain code (read only)
+        env:
+          V3_HASH_EVIDENCE_OUTPUT: v3-testnet-reproduced-code-hashes.json
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          import { normalizeV3CodeHash, verifyV3Testnet } from "./contracts/marketplace/scripts/verify-v3-testnet.mjs";
+          const output = await readFile("v3-reproduced-build-hashes.log", "utf8");
+          const expected = {};
+          for (const name of ["marketplace", "escrow", "coordinator"]) {
+            const prefix = "V3 trusted compiled " + name + " code hash:";
+            const lines = output.split(/\r?\n/).filter(line => line.includes(prefix));
+            if (lines.length !== 1) throw new Error("Compiled " + name + " hash not uniquely reported");
+            expected[name] = normalizeV3CodeHash(lines[0].slice(lines[0].indexOf(prefix) + prefix.length).trim());
+          }
+          const addresses = {
+            marketplace: process.env.V3_TESTNET_MARKETPLACE_ADDRESS,
+            escrow: process.env.V3_TESTNET_ESCROW_ADDRESS,
+            coordinator: process.env.V3_TESTNET_COORDINATOR_ADDRESS,
+          };
+          const result = await verifyV3Testnet(addresses, fetch, expected);
+          const evidence = {
+            schemaVersion: 1, network: "testnet",
+            sourceCommit: "0b412afa994b1f9f81ee9a288dce32acc6819041",
+            sourceToolchain: "Acton 1.2.1",
+            expectedCompiledHashes: expected, observed: result,
+            trustedCodeHashesMatch: result.codeHashesVerified,
+            realFundsApproved: false, mainnetApproved: false,
+            noTransactionSent: true, checkedAt: new Date().toISOString(),
+          };
+          await writeFile(process.env.V3_HASH_EVIDENCE_OUTPUT, JSON.stringify(evidence, null, 2) + "\n",
+            { flag: "wx", mode: 0o600 });
+          console.log("Pinned deployment hash comparison: " + (result.codeHashesVerified ? "MATCH" : "BLOCKED"));
+          if (!result.codeHashesVerified) process.exitCode = 1;
+          NODE
+      - name: Upload reproduced V3 compiled code hash evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: v3-testnet-reproduced-code-hashes
+          path: |
+            v3-testnet-reproduced-code-hashes.json
+            v3-reproduced-build-hashes.log
+          if-no-files-found: warn
+          retention-days: 90
       - name: Verify eight deployed contract bindings (read-only)
         run: node contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs
       - name: Audit deployment and bindings in one read-only testnet snapshot
