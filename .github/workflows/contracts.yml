@@ -72,7 +72,7 @@ jobs:
         run: node --test experiments/v3-settlement-attestation.test.mjs
 
       - name: Test V3 read-only on-chain postflight verifier (mock RPC)
-        run: node --test scripts/verify-v3-testnet.test.mjs scripts/verify-v3-production-testnet.test.mjs scripts/verify-v3-production-testnet-bindings.test.mjs scripts/postflight-v3-production-testnet.test.mjs scripts/derive-v3-validator-keys.test.mjs scripts/collect-v3-testnet-evidence.test.mjs scripts/check-v3-deployment-invariants.test.mjs scripts/preflight-v3-testnet-wallets.test.mjs scripts/postflight-v3-candidate.test.mjs
+        run: node --test scripts/verify-v3-testnet.test.mjs scripts/verify-v3-production-testnet.test.mjs scripts/verify-v3-production-testnet-bindings.test.mjs scripts/postflight-v3-production-testnet.test.mjs scripts/derive-v3-validator-keys.test.mjs scripts/preflight-v3-testnet-funding.test.mjs scripts/collect-v3-testnet-evidence.test.mjs scripts/check-v3-deployment-invariants.test.mjs scripts/preflight-v3-testnet-wallets.test.mjs scripts/postflight-v3-candidate.test.mjs
 
       - name: Test production V3 Testnet receipt attestor (isolated TON SDK)
         working-directory: .
