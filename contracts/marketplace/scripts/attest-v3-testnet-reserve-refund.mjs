@@ -150,6 +150,52 @@ async function toncenter(path, params = {}) {
   return data.result;
 }
 
+export function findMarketplacePayoutReceipt(transactions, marketplaceAddress, expectedAmount, expectedOpcode, expectedOrderId = 1) {
+  const marketplace = normalizeAddress(marketplaceAddress);
+  for (const transaction of transactions) {
+    const message = transaction.in_msg;
+    const source = message?.source ?? message?.src;
+    const parsed = parseMessageBody(message);
+    if (
+      source && normalizeAddress(source) === marketplace &&
+      String(message.value) === String(expectedAmount) &&
+      parsed?.opcode === expectedOpcode &&
+      transactionIsSuccessful(transaction, message)
+    ) {
+      const slice = parsed.cell.beginParse();
+      slice.loadUint(32);
+      const orderId = slice.loadUintBig(64);
+      if (orderId === BigInt(expectedOrderId)) {
+        return { transaction, message, body: parsed.cell };
+      }
+    }
+  }
+  return null;
+}
+
+async function findConfirmedPayouts(seller, treasury, marketplace) {
+  for (let attempt = 0; attempt < 18; attempt++) {
+    const [sellerTransactions, treasuryTransactions] = await Promise.all([
+      toncenter("getTransactions", { address: seller, limit: 30, archival: "true" }),
+      toncenter("getTransactions", { address: treasury, limit: 30, archival: "true" }),
+    ]);
+    const sellerPayout = findMarketplacePayoutReceipt(
+      sellerTransactions, marketplace, "9700000", 0x71b00101, 1,
+    );
+    const platformPayout = findMarketplacePayoutReceipt(
+      treasuryTransactions, marketplace, "300000", 0x71b00102, 1,
+    );
+    if (sellerPayout && platformPayout) {
+      return {
+        sellerPayoutHash: sellerPayout.transaction.transaction_id?.hash,
+        platformPayoutHash: platformPayout.transaction.transaction_id?.hash,
+      };
+    }
+    if (attempt < 17) await sleep(5000);
+  }
+  throw new Error("Seller and platform payout receipts were not both confirmed; settlement attestation withheld");
+}
+
 async function findConfirmedRefund(vault, buyer) {
   for (let attempt = 0; attempt < 18; attempt++) {
     const [vaultTransactions, buyerTransactions] = await Promise.all([
@@ -225,6 +271,7 @@ async function main() {
   }
 
   const proof = await findConfirmedRefund(vault.toString(), buyerAddress.toString());
+  const payoutReceipts = await findConfirmedPayouts(owner.toString(), buyerAddress.toString(), marketplace.toString());
   const masterchain = await toncenter("getMasterchainInfo");
   const masterchainSeqno = BigInt(masterchain.last?.seqno ?? 0);
   if (masterchainSeqno <= 0n) throw new Error("Could not obtain a finalized Testnet masterchain sequence number");
@@ -304,6 +351,8 @@ async function main() {
     reservePrincipalNano: principal.toString(),
     dispatchTransactionHash: proof.dispatchHash,
     buyerReceiptTransactionHash: proof.receiptHash,
+    sellerPayoutTransactionHash: payoutReceipts.sellerPayoutHash,
+    platformPayoutTransactionHash: payoutReceipts.platformPayoutHash,
     masterchainSeqno: masterchainSeqno.toString(),
     validatorQuorum: "3/3",
     vaultStatus: Number(finalStatus),
