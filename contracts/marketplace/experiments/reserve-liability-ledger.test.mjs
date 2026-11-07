@@ -31,12 +31,16 @@ test("order-scoped top-up covers only the residual shortfall before exact retry"
   assert.equal(retry.inFlightNano, 200_000_000n);
   assert.equal(retry.operations.filter((op) => op.kind === "refund").length, 2);
 });
-test("top-up cannot be replayed or redirected to another order or buyer", () => {
-  const s = start();
-  const topped = topUpReserve(s, { orderId: "order-1", buyer: "buyer-1", amountNano: 5n, fundingMessageHash: "fund-1" });
-  assert.throws(() => topUpReserve(topped, { orderId: "order-1", buyer: "buyer-1", amountNano: 5n, fundingMessageHash: "fund-1" }), /already consumed/);
-  assert.throws(() => topUpReserve(s, { orderId: "order-2", buyer: "buyer-1", amountNano: 5n, fundingMessageHash: "fund-2" }), /identity mismatch/);
-  assert.throws(() => topUpReserve(s, { orderId: "order-1", buyer: "attacker", amountNano: 5n, fundingMessageHash: "fund-3" }), /identity mismatch/);
+test("top-up cannot be replayed, oversized, premature, or redirected", () => {
+  const bounced = reconcileRefundResult(dispatch(start()), { orderId: "order-1", buyer: "buyer-1",
+    operationId: 1n, result: "bounced", returnedNano: 199_000_000n, evidenceHash: H(10) });
+  const topUp = { orderId: "order-1", buyer: "buyer-1", amountNano: 1_000_000n, fundingMessageHash: "fund-1" };
+  const topped = topUpReserve(bounced, topUp);
+  assert.throws(() => topUpReserve(topped, topUp), /not allowed without an outstanding shortfall/);
+  assert.throws(() => topUpReserve(bounced, { ...topUp, amountNano: 1_000_001n, fundingMessageHash: "fund-2" }), /exact outstanding shortfall/);
+  assert.throws(() => topUpReserve(start(), topUp), /not allowed without an outstanding shortfall/);
+  assert.throws(() => topUpReserve(bounced, { ...topUp, orderId: "order-2", fundingMessageHash: "fund-3" }), /identity mismatch/);
+  assert.throws(() => topUpReserve(bounced, { ...topUp, buyer: "attacker", fundingMessageHash: "fund-4" }), /identity mismatch/);
 });
 test("stale, duplicate, forged and over-returned bounce results fail closed", () => {
   const s = dispatch(start());
