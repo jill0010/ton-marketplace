@@ -27,8 +27,10 @@ struct TestReserveVaultStorage {
     queryId: uint64
     evidenceHash: uint256
     returnedNano: uint64
-    // Explicit order-local top-up reserved for any fee-reduced bounce shortfall.
+    // Exact principal top-up reserved for the fee-reduced bounce shortfall.
     topUpNano: uint64
+    // Separate retry execution headroom; never counted as buyer principal.
+    retryOperationalNano: uint64
     // At most one retry in this experimental protocol.
     retryCount: uint8
 }
@@ -176,8 +178,11 @@ fun onInternalMessage(in: InMessage) {
             // shortfall plus execution headroom. The per-order vault quarantines
             // returned funds and this top-up; no pooled balance can satisfy it.
             assert (in.valueCoins >= (shortfall as coins) + grams("0.03")) throw 706;
-            storage.topUpNano = in.valueCoins as uint64;
-            assert (storage.returnedNano + storage.topUpNano >= outstanding) throw 706;
+            // Separate exact liability restoration from execution headroom.
+            // Excess attached value is operational funding, never buyer principal.
+            storage.topUpNano = shortfall;
+            storage.retryOperationalNano = (in.valueCoins - (shortfall as coins)) as uint64;
+            assert (storage.returnedNano + storage.topUpNano == outstanding) throw 706;
             storage.retryCount = 1;
             storage.status = 1;
             storage.save();
@@ -277,4 +282,8 @@ get fun testReserveTopUp(): coins {
 
 get fun testReserveRetryCount(): uint8 {
     return TestReserveVaultStorage.load().retryCount;
+}
+
+get fun testReserveRetryOperational(): coins {
+    return TestReserveVaultStorage.load().retryOperationalNano as coins;
 }
