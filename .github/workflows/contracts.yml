@@ -53,7 +53,7 @@ jobs:
         run: node scripts/check-mainnet-workflow-safety.mjs
 
       - name: Test reserve refund design model (no signer or network)
-        run: node --test experiments/reserve-refund-model.test.mjs
+        run: node --test experiments/reserve-refund-model.test.mjs experiments/reserve-liability-ledger.test.mjs
 
       - name: Verify V3 production release gate remains closed until production contracts exist
         shell: bash
