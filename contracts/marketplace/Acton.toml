@@ -84,3 +84,8 @@ depends = ["TestReserveVault"]
 display-name = "Experimental V3 reserve-gated marketplace"
 src = "contracts/TestMarketplaceReserveV3.tolk"
 depends = ["TestReserveCoordinator"]
+
+[contracts.SettlementAttestationVerifierV3]
+display-name = "V3 settlement attestation quorum verifier"
+src = "contracts/SettlementAttestationVerifierV3.tolk"
+depends = []
