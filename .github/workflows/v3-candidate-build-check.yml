@@ -35,7 +35,7 @@ jobs:
       - name: Run V3 verifier and evidence regression tests
         working-directory: .
         run: |
-          node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs contracts/marketplace/scripts/prepare-refund-reconciliation.test.mjs contracts/marketplace/scripts/verify-v3-settlement-source.test.mjs
+          node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs contracts/marketplace/scripts/prepare-refund-reconciliation.test.mjs contracts/marketplace/scripts/verify-v3-settlement-source.test.mjs contracts/marketplace/scripts/inspect-historical-testnet-payment.test.mjs
       - name: Test V3 settlement attestation ABI and Ed25519 quorum model (reference only)
         working-directory: .
         run: node --test contracts/marketplace/experiments/v3-settlement-attestation.test.mjs
