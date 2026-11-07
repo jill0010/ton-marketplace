@@ -2,6 +2,11 @@ name: Verify Deployed V3 Testnet Bindings (Read Only)
 
 on:
   workflow_dispatch:
+    inputs:
+      inspect_order_id:
+        description: 'Optional existing V3 testnet order ID to inspect without sending transactions'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -14,6 +19,8 @@ jobs:
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
       V3_BINDINGS_EVIDENCE_OUTPUT: v3-testnet-bindings-evidence.json
       V3_COMBINED_EVIDENCE_OUTPUT: v3-testnet-combined-evidence.json
+      V3_ORDER_EVIDENCE_OUTPUT: v3-testnet-order-evidence.json
+      V3_TESTNET_ORDER_ID: ${{ inputs.inspect_order_id }}
       V3_TESTNET_MARKETPLACE_ADDRESS: kQAa5cnyurZayVXfJE_rkBiWz19w487aklFEAu6Wm9Fm-Sc6
       V3_TESTNET_ESCROW_ADDRESS: kQCD_2amR3idpahAfj0xdgU9m34Z7s933HtXoDx-ka3J4_Rr
       V3_TESTNET_COORDINATOR_ADDRESS: kQCC2k5wZSjitzFvGGUgyx_6KMWIIuSDQViNy_kw2j6OtqXy
@@ -38,6 +45,17 @@ jobs:
         run: node contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs
       - name: Audit deployment and bindings in one read-only testnet snapshot
         run: node contracts/marketplace/scripts/audit-v3-testnet.mjs
+      - name: Inspect an existing V3 order and reserve (optional, read-only)
+        if: ${{ inputs.inspect_order_id != '' }}
+        run: node contracts/marketplace/scripts/inspect-v3-testnet-order.mjs
+      - name: Upload optional V3 order evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: v3-testnet-order-evidence
+          path: v3-testnet-order-evidence.json
+          if-no-files-found: ignore
+          retention-days: 90
       - name: Upload correlated V3 testnet evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
