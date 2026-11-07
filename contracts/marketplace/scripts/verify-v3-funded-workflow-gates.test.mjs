@@ -54,3 +54,10 @@ test("attestation uses verified dynamic order ID instead of defaulting to order 
  assert.match(attest,/0x71b00101, orderId/);
  assert.match(attest,/0x71b00102, orderId/);
 });
+
+test("settlement CI checks the exact verifier output and preserves read-only purchase evidence",()=>{
+ assert.match(workflow,/grep -Fq "PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED; INDEPENDENT TRANSFER FINALITY NOT ATTESTED\." v3-production-testnet-settlement\.log/);
+ assert.match(workflow,/contracts\/marketplace\/v3-production-testnet-purchase-verification\.log/);
+ assert.match(workflow,/contracts\/marketplace\/v3-production-testnet-purchase-verification-attempt-\*\.log/);
+ assert.doesNotMatch(workflow,/grep -Fq "PRODUCTION V3 TESTNET END-TO-END SETTLEMENT VERIFIED\."/);
+});
