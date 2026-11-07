@@ -76,7 +76,7 @@ get fun `test Testnet fixture NFT rejects a transfer from a non-owner`() {
     val code = build("MockNFTItemV3");
     val config = beginCell().storeUint(1002, 256).storeAddress(collection.address).endCell();
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
-    val stateInit: ContractState = { code, data };
+    val stateInit: ContractState = { code: code, data: data };
     val destination = AutoDeployAddress { workchain: 0, stateInit };
     val nftItem = destination.calculateAddress();
     val empty = beginCell().endCell();
