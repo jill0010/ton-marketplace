@@ -205,6 +205,9 @@ fun onInternalMessage(in: InMessage) {
             // Bind the V2 Escrow once. Rotating it after listings exist would strand
             // callbacks and split custody authority across two contract addresses.
             assert (!storage.escrowConfigured) throw ErrorsV2.InvalidRelease;
+            // Reject self/owner as escrow: either would permanently brick custody callbacks.
+            assert (msg.escrow != contract.getAddress()) throw ErrorsV2.InvalidRelease;
+            assert (msg.escrow != storage.owner) throw ErrorsV2.InvalidRelease;
             storage.escrow = msg.escrow;
             storage.escrowConfigured = true;
             storage.save();
