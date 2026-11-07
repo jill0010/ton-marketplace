@@ -22,8 +22,26 @@ export function analyzeFollowupTransactions(transactions) {
     transactionHash:hex(t.hash),transactionLt:String(t.lt),
     destination:m.destination??null,valueNano:String(m.value??""),messageHash:hex(m.hash),
   })));
-  return {state:"UNRESOLVED",reason:"FOLLOWUP_OUTBOUND_CANDIDATES_REQUIRE_RECIPIENT_FINALITY",
+  // Validate every returned transaction before treating the latest one as
+  // evidence. Incomplete/invalid index data must never become a refund claim.
+  const valid=transactions.every(t=>t && typeof t.account==="string" &&
+    normalizeV3TestnetAddress(t.account)===ACCOUNT &&
+    /^(0|[1-9][0-9]*)$/.test(String(t.lt??"")) && hex(t.hash));
+  if(!valid)return {state:"UNRESOLVED",reason:"INVALID_INDEXED_TRANSACTION",
+    refundConfirmed:false,retryAuthorized:false,mainnetApproved:false};
+  const latest=transactions.reduce((best,t)=>BigInt(t.lt)>BigInt(best.lt)?t:best,anchor[0]);
+  const anchorAfter=anchor[0].account_state_after?.balance;
+  const latestAfter=latest.account_state_after?.balance;
+  const balanceValid=[anchorAfter,latestAfter].every(v=>typeof v==="string" && /^(0|[1-9][0-9]*)$/.test(v));
+  const noLater=latest.hash && hex(latest.hash)===RECEIVER_HASH && later.length===0;
+  return {state:"UNRESOLVED",
+    reason:noLater?"NO_LATER_MARKETPLACE_TRANSACTION_IN_INDEX":"FOLLOWUP_OUTBOUND_CANDIDATES_REQUIRE_RECIPIENT_FINALITY",
     anchorHash:RECEIVER_HASH,anchorLt:String(anchorLt),
+    latestIndexedTransactionHash:hex(latest.hash),latestIndexedLt:String(latest.lt),
+    latestIndexedBalanceNano:balanceValid?latestAfter:null,
+    anchorBalanceAfterNano:balanceValid?anchorAfter:null,
+    indexedBalanceChangeSincePaymentNano:balanceValid?String(BigInt(latestAfter)-BigInt(anchorAfter)):null,
+    noLaterMarketplaceTransactionInIndexedHistory:noLater,
     laterTransactions:later.length,outboundMessages:outbounds,
     refundConfirmed:false,retryAuthorized:false,mainnetApproved:false};
 }
@@ -38,6 +56,7 @@ export async function auditHistoricalFollowup(fetcher=fetch) {
   if(!Array.isArray(body.transactions))throw new Error("Invalid follow-up transaction response");
   return {network:"testnet",marketplace:ACCOUNT,readOnly:true,
     inspectedTransactions:body.transactions.length,historyComplete:false,
+    indexedPageBelowLimit:body.transactions.length<100,
     ...analyzeFollowupTransactions(body.transactions)};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
