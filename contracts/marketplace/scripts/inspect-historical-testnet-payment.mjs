@@ -53,10 +53,18 @@ export async function inspectHistoricalTestnetPayment(fetcher = fetch, { maxPage
       url.searchParams.set("hash", cursor.hash);
       url.searchParams.set("to_lt", "0");
     }
-    const response = await fetcher(url.toString(), {
-      method: "GET", redirect: "error",
-      headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
-    });
+    // Historical reads may fail when archival liteservers are overloaded.
+    // Retry a bounded number of transient HTTP responses without changing
+    // the read-only request or authorizing any financial operation.
+    let response;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      response = await fetcher(url.toString(), {
+        method: "GET", redirect: "error",
+        headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
+      });
+      if (response.ok || ![429, 500, 502, 503, 504, 542].includes(response.status)) break;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
+    }
     if (!response.ok) throw new Error("Historical transaction RPC HTTP " + response.status);
     const body = await response.json();
     if (body.ok !== true || !Array.isArray(body.result)) throw new Error("Invalid historical transaction RPC response");
