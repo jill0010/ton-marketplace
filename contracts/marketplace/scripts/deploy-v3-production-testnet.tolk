@@ -225,10 +225,22 @@ fun main() {
         net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3"),
         net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"),
     );
-    assert (marketplace.escrowV2() == escrow.address) throw 831;
-    assert (marketplace.escrowConfiguredV2()) throw 831;
-    assert (marketplace.treasuryV2() == treasuryAddress) throw 832;
-    assert (marketplace.treasuryConfiguredV2()) throw 832;
+    val escrowAddressMatches = marketplace.escrowV2() == escrow.address;
+    val escrowIsConfigured = marketplace.escrowConfiguredV2();
+    val treasuryAddressMatches = marketplace.treasuryV2() == treasuryAddress;
+    val treasuryIsConfigured = marketplace.treasuryConfiguredV2();
+    println(
+        "V3 binding comparison diagnostics: escrowAddressMatches={}, escrowIsConfigured={}, treasuryAddressMatches={}, treasuryIsConfigured={}",
+        escrowAddressMatches,
+        escrowIsConfigured,
+        treasuryAddressMatches,
+        treasuryIsConfigured,
+    );
+    // Keep address mismatch and configuration-flag failures distinguishable.
+    assert (escrowAddressMatches) throw 837;
+    assert (escrowIsConfigured) throw 831;
+    assert (treasuryAddressMatches) throw 838;
+    assert (treasuryIsConfigured) throw 832;
     assert (net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3") == coordinator) throw 836;
     assert (net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")) throw 836;
     assert (escrow.marketplace() == marketplace.address) throw 833;
