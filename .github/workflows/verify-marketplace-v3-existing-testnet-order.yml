@@ -40,10 +40,23 @@ jobs:
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
     steps:
+      - name: Enforce read-only diagnostic branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/feature/reserve-refund-v3-audit" || {
+            echo "::error::Select feature/reserve-refund-v3-audit in Run workflow."
+            exit 1
+          }
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: feature/reserve-refund-v3-audit
           persist-credentials: false
+      - name: Confirm checked-out diagnostic script exists
+        shell: bash
+        run: |
+          test -f scripts/diagnose-v3-existing-testnet-order.tolk
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Create ephemeral read-only wallet profiles
