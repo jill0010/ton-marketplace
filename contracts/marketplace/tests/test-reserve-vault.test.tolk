@@ -235,7 +235,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 702 });
-    val retried = reserveSend(
+    const retried = reserveSend(
         owner,
         vault,
         RetryTestReserve {
@@ -244,11 +244,12 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
         }.toCell(),
         grams("0.05"),
     );
-    expect(retried).toHaveFailedTx({ to: vault, exitCode: 706 });
-    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(retried).toHaveSuccessfulTx({ from: vault, to: rejector });
+    expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(2);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
+    expect(net.runGetMethod<coins>(vault, "testReserveReturned")).toEqual(0);
     expect(net.runGetMethod<coins>(vault, "testReserveRefund")).toEqual(grams("0.194"));
-    // The prior return evidence cannot authorize a third payout.
+    // A second retry is rejected; the fresh query ID makes the old bounce stale.
     expect(
         reserveSend(
             owner,
@@ -260,7 +261,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 706 });
-    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(1);
+    expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
 }
 
 fun reserveRichBounce(orderId: uint64, queryId: uint64, amount: coins): cell {
