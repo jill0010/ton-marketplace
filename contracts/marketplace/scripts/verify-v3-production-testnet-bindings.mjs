@@ -14,7 +14,7 @@ export function decodeV3IntegerGetter(stack) {
   throw new Error("Invalid numeric getter value");
 }
 
-async function runGetter(address, method, fetcher) {
+async function runGetter(address, method, fetcher, stack = []) {
   const response = await fetcher("https://testnet.toncenter.com/api/v2/runGetMethod", {
     method: "POST",
     redirect: "error",
@@ -22,7 +22,7 @@ async function runGetter(address, method, fetcher) {
       "Content-Type": "application/json",
       ...(process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {}),
     },
-    body: JSON.stringify({ address, method, stack: [] }),
+    body: JSON.stringify({ address, method, stack }),
   });
   if (!response.ok) throw new Error("Getter RPC HTTP error for " + method + ": " + response.status);
   const data = await response.json();
@@ -82,7 +82,7 @@ export async function verifyV3ProductionBindings(addresses, expectedVaultCodeHas
   const validatorKeys = [];
   for (let index = 0; index < 3; index++) {
     const value = decodeV3IntegerGetter(
-      await runGetter(normalized.verifier, "verifierValidatorKey", fetcher),
+      await runGetter(normalized.verifier, "verifierValidatorKey", fetcher, [["num", "0x" + index.toString(16)]]),
     );
     validatorKeys.push(value);
   }
