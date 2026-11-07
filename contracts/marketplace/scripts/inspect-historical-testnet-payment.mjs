@@ -35,22 +35,54 @@ export function classifyHistoricalPayment(txs, payment = HISTORICAL_PAYMENT) {
     requiresIndependentBalanceAndRecipientTrace: true,
   };
 }
-export async function inspectHistoricalTestnetPayment(fetcher = fetch) {
+export async function inspectHistoricalTestnetPayment(fetcher = fetch, { maxPages = 10 } = {}) {
+  if (!Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 50) {
+    throw new RangeError("maxPages must be between 1 and 50");
+  }
   const address = normalizeV3TestnetAddress(HISTORICAL_PAYMENT.marketplace);
-  const url = new URL("https://testnet.toncenter.com/api/v2/getTransactions");
-  url.searchParams.set("address", address);
-  url.searchParams.set("limit", "100");
-  url.searchParams.set("archival", "true");
-  const response = await fetcher(url.toString(), {
-    method: "GET", redirect: "error",
-    headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
-  });
-  if (!response.ok) throw new Error("Historical transaction RPC HTTP " + response.status);
-  const body = await response.json();
-  if (body.ok !== true || !Array.isArray(body.result)) throw new Error("Invalid historical transaction RPC response");
-  return { network: "testnet", marketplace: address, ...classifyHistoricalPayment(body.result),
-    inspectedTransactions: body.result.length, readOnly: true };
+  let cursor = null;
+  let inspectedTransactions = 0;
+  const seenCursors = new Set();
+  for (let page = 1; page <= maxPages; page++) {
+    const url = new URL("https://testnet.toncenter.com/api/v2/getTransactions");
+    url.searchParams.set("address", address);
+    url.searchParams.set("limit", "100");
+    url.searchParams.set("archival", "true");
+    if (cursor) {
+      url.searchParams.set("lt", cursor.lt);
+      url.searchParams.set("hash", cursor.hash);
+      url.searchParams.set("to_lt", "0");
+    }
+    const response = await fetcher(url.toString(), {
+      method: "GET", redirect: "error",
+      headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
+    });
+    if (!response.ok) throw new Error("Historical transaction RPC HTTP " + response.status);
+    const body = await response.json();
+    if (body.ok !== true || !Array.isArray(body.result)) throw new Error("Invalid historical transaction RPC response");
+    const transactions = body.result;
+    inspectedTransactions += transactions.length;
+    const result = classifyHistoricalPayment(transactions);
+    if (result.transactionHash) return { network: "testnet", marketplace: address,
+      ...result, inspectedTransactions, pagesInspected: page, readOnly: true };
+    if (transactions.length < 100) break;
+    const oldest = transactions.at(-1)?.transaction_id;
+    if (!oldest || !/^[1-9][0-9]*$/.test(String(oldest.lt ?? "")) ||
+        typeof oldest.hash !== "string" || !hashHex(oldest.hash)) {
+      throw new Error("Missing or invalid historical pagination cursor");
+    }
+    const next = { lt: String(oldest.lt), hash: oldest.hash };
+    const key = next.lt + ":" + hashHex(next.hash);
+    if (seenCursors.has(key)) throw new Error("Repeated historical pagination cursor");
+    seenCursors.add(key);
+    cursor = next;
+  }
+  return { network: "testnet", marketplace: address, state: "UNRESOLVED",
+    reason: "TRANSACTION_NOT_FOUND_IN_BOUNDED_HISTORY", inspectedTransactions,
+    maxPages, readOnly: true, refundConfirmed: false, retryAuthorized: false,
+    mainnetApproved: false };
 }
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const result = await inspectHistoricalTestnetPayment();
