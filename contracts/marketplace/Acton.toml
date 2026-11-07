@@ -50,6 +50,16 @@ display-name = "Mock NFT Item"
 src = "contracts/MockNFTItem.tolk"
 depends = []
 
+[contracts.MockNFTItemV3]
+display-name = "Testnet-only Fragment-compatible synthetic NFT Item"
+src = "contracts/MockNFTItemV3.tolk"
+depends = []
+
+[contracts.NFTEscrowV2Testnet]
+display-name = "NFT Escrow V2 Testnet fixture variant"
+src = "contracts/NFTEscrowV2Testnet.tolk"
+depends = ["MockNFTItemV3"]
+
 [contracts.RejectingNFTItem]
 display-name = "Test-only Rejecting NFT Item"
 src = "contracts/RejectingNFTItem.tolk"
