@@ -442,7 +442,7 @@ fun main() {
             createMessage({
                 bounce: false,
                 value: grams("0.02"),
-                dest: allocation.vault,
+                dest: coordinator,
                 body: RetryReserveAllocationAckV3 { orderId: 1 },
             }),
         ),
