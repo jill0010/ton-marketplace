@@ -123,13 +123,17 @@ test("permanent non-retryable RPC errors fail immediately", async () => {
   assert.equal(calls, 1);
 });
 
-test("trusted V3 code hash accepts Acton hex and base64 encodings", () => {
+test("trusted V3 code hash accepts Acton hex, base64 and decimal uint256 encodings", () => {
   const hex = "ab".repeat(32);
   const base64 = Buffer.from(hex, "hex").toString("base64");
   assert.equal(normalizeV3CodeHash(hex), hex);
   assert.equal(normalizeV3CodeHash("0x" + hex.toUpperCase()), hex);
   assert.equal(normalizeV3CodeHash(base64), hex);
   assert.equal(normalizeV3CodeHash(base64.replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")), hex);
+  const decimal = BigInt("61926907424475815577753202098656250851159031153047799469202817131790467225445").toString();
+  assert.equal(normalizeV3CodeHash(decimal), BigInt(decimal).toString(16).padStart(64, "0"));
+  assert.throws(() => normalizeV3CodeHash((1n << 256n).toString()), /Invalid/);
+  assert.throws(() => normalizeV3CodeHash("-1"), /Invalid/);
   assert.throws(() => normalizeV3CodeHash("not a code hash"), /Invalid/);
   assert.throws(() => normalizeV3CodeHash("aa".repeat(31)), /Invalid/);
 });
