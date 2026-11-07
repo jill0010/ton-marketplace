@@ -1,0 +1,45 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { inspectV3TestnetOrder, parseV3StackInteger } from "./inspect-v3-testnet-order.mjs";
+const marketplace = "0:" + "a".repeat(64);
+test("rejects malformed and negative getter integers", () => {
+  assert.equal(parseV3StackInteger([["num", "0x2a"]]), 42n);
+  assert.equal(parseV3StackInteger([["null", ""]]), null);
+  assert.throws(() => parseV3StackInteger([["num", "-1"]]), /Invalid TVM integer/);
+  assert.throws(() => parseV3StackInteger([["num", "hello"]]), /Invalid TVM integer/);
+});
+test("order inspector uses read-only POST getters and never claims settlement", async () => {
+  const methods = [];
+  const fetcher = async (url, opts) => {
+    assert.equal(url, "https://testnet.toncenter.com/api/v2/runGetMethod");
+    assert.equal(opts.method, "POST");
+    const req = JSON.parse(opts.body);
+    methods.push(req.method);
+    assert.equal(req.address, marketplace);
+    assert.deepEqual(req.stack, [["num", "0x1"]]);
+    return { ok: true, json: async () => ({ ok: true, result: {
+      exit_code: 0, stack: [["cell", { bytes: "mock" }]],
+    } }) };
+  };
+  const report = await inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher);
+  assert.deepEqual(methods, ["orderCellV2", "testPurchaseReserve"]);
+  assert.equal(report.orderExists, true);
+  assert.equal(report.reservePresent, true);
+  assert.equal(report.settlementVerified, false);
+  assert.equal(report.refundFinalityVerified, false);
+  assert.equal(report.mainnetApproved, false);
+});
+test("missing order cannot pass existence check", async () => {
+  const fetcher = async () => ({ ok: true, json: async () =>
+    ({ ok: true, result: { exit_code: 0, stack: [["null", ""]] } }) });
+  const report = await inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher);
+  assert.equal(report.orderExists, false);
+  assert.equal(report.reservePresent, false);
+});
+test("rejects malformed response and invalid order IDs", async () => {
+  await assert.rejects(inspectV3TestnetOrder({ marketplace, orderId: 0 }), /Invalid order ID/);
+  const fetcher = async () => ({ ok: true, json: async () =>
+    ({ ok: true, result: { exit_code: 0, stack: [["num", "0x1"]] } }) });
+  await assert.rejects(inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher),
+    /Unrecognized order getter response/);
+});
