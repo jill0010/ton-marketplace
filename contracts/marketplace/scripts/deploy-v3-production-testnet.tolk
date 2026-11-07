@@ -10,7 +10,7 @@ import "@contracts/ReserveVaultV3"
 import "@contracts/SettlementAttestationVerifierV3"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
-import "@wrappers/NFTEscrowV2.gen"
+import "@wrappers/NFTEscrowV2Testnet.gen"
 
 fun main() {
     assert (env<bool>("V3_PRODUCTION_TESTNET_DEPLOY_APPROVED") ?? false) throw 821;
@@ -74,7 +74,7 @@ fun main() {
         stateInit: marketState,
     };
 
-    val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
+    val escrow = NFTEscrowV2Testnet.fromStorage(NFTEscrowV2Storage {
         owner: deployer.address,
         marketplace: marketplace.address,
         records: [],
