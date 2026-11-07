@@ -126,18 +126,6 @@ fun onInternalMessage(in: InMessage) {
                     }.toCell(),
                     consumedStatements: [],
                 }.toCell(),
-                    principal: grams("0.2"),
-                    available: 0,
-                    inFlight: 0,
-                    paid: 0,
-                    operationalBudget: 0,
-                    operationId: 0,
-                    queryId: 0,
-                    activeStatementHash: 0,
-                    status: 0,
-                    retryCount: 0,
-                    consumedStatements: [],
-                }.toCell(),
             };
             val destination = AutoDeployAddress {
                 workchain: 0,
