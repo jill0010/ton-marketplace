@@ -100,3 +100,33 @@ test("indexed lookup rejects mismatched Marketplace account", async () => {
     /account does not match/,
   );
 });
+
+test("hash identity diagnosis finds sender transaction without claiming refund", async () => {
+  const report = await inspectHistoricalTestnetPayment(async (url) => {
+    if (url.includes("/api/v2/")) return {ok:false,status:542};
+    const parsed = new URL(url);
+    if (parsed.searchParams.has("account")) return {ok:true,json:async()=>({transactions:[]})};
+    if (parsed.pathname === "/api/v3/transactions") return {ok:true,json:async()=>({transactions:[{
+      account:"0:"+"1".repeat(64),hash:HISTORICAL_PAYMENT.hash,
+    }]})};
+    throw new Error("Unexpected endpoint");
+  });
+  assert.equal(report.state,"UNRESOLVED");
+  assert.equal(report.reason,"HASH_NOT_FOUND_FOR_MARKETPLACE");
+  assert.equal(report.hashIdentity.kind,"transaction");
+  assert.equal(report.hashIdentity.accounts.length,1);
+  assert.equal(report.refundConfirmed,false);
+});
+test("hash identity diagnosis also checks message hash when transaction hash is absent", async () => {
+  const report = await inspectHistoricalTestnetPayment(async (url) => {
+    if (url.includes("/api/v2/")) return {ok:false,status:542};
+    const parsed = new URL(url);
+    if (parsed.pathname === "/api/v3/transactionsByMessage") {
+      assert.equal(parsed.searchParams.get("msg_hash"),HISTORICAL_PAYMENT.hash);
+      return {ok:true,json:async()=>({transactions:[{account:"0:"+"2".repeat(64)}]})};
+    }
+    return {ok:true,json:async()=>({transactions:[]})};
+  });
+  assert.equal(report.hashIdentity.kind,"message");
+  assert.equal(report.refundConfirmed,false);
+});
