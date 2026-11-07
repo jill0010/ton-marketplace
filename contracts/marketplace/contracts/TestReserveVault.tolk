@@ -165,18 +165,12 @@ fun onInternalMessage(in: InMessage) {
         RetryTestReserve => {
             assert (in.senderAddress == storage.owner) throw 701;
             assert (msg.orderId == identity.orderId) throw 702;
-            // A retry is permitted only after the protocol bounce handler has
-            // reconciled the exact pending refund and persisted returned value.
-            // The evidence hash is deliberately NOT treated as proof.
-            assert (storage.status == 4 && storage.returnedNano > 0) throw 706;
-            assert (storage.retryCount == 0) throw 706;
-            // dispatchTestReserve checks that the contract can cover the full
-            // original liability, reviewed costs, and operational gas reserve.
-            // It allocates a fresh query ID before dispatch; stale bounces then
-            // cannot match the active operation.
-            storage.returnedNano = 0;
-            storage.retryCount = 1;
-            dispatchTestReserve(mutate storage);
+            // Fail closed: the prototype does not yet model a separate residual
+            // liability or cap a retry to the exact returned principal. A
+            // fee-reduced bounce must never cause a second nominal-value payout.
+            // Keep the returned funds quarantined until the production ledger
+            // can account for returned value, residual debt and retry operation.
+            throw 706;
         }
         ConfirmTestReserveReceipt => {
             // V3 release blocker: owner attestations are not on-chain receipt
