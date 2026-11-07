@@ -137,7 +137,10 @@ fun onInternalMessage(in: InMessage) {
 
 get fun get_nft_data(): (int, uint256, address, address, cell) {
     val storage = MockNFTItemV3Storage.load();
-    val initialized = if (storage.initialized) -1 else 0;
+    var initialized: int = 0;
+    if (storage.initialized) {
+        initialized = -1;
+    }
     return (
         initialized,
         storage.itemIndex,
