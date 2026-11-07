@@ -51,11 +51,44 @@ export async function inspectHistoricalByHashV3(fetcher = fetch) {
   const body = await response.json();
   if (!Array.isArray(body.transactions)) throw new Error("Invalid indexed transaction response");
   const matches = body.transactions.filter(tx => hashHex(tx.hash) === HISTORICAL_PAYMENT.hash);
-  if (matches.length !== 1) return {
-    network: "testnet", marketplace: account, source: "TON Center v3 indexed",
-    state: "UNRESOLVED", reason: matches.length ? "DUPLICATE_TRANSACTION" : "HASH_NOT_FOUND_IN_INDEX",
-    refundConfirmed: false, retryAuthorized: false, mainnetApproved: false, readOnly: true,
-  };
+  if (matches.length !== 1) {
+    let identity = { kind: "unidentified", accounts: [] };
+    if (matches.length === 0) {
+      // A URL copied from a wallet trace can contain a message hash or a
+      // transaction hash belonging to the sender, not the Marketplace.
+      // Check both identities before saying the archival hash is missing.
+      const lookups = [
+        ["transaction", "transactions", "hash"],
+        ["message", "transactionsByMessage", "msg_hash"],
+      ];
+      for (const [kind, endpoint, parameter] of lookups) {
+        const lookup = new URL("https://testnet.toncenter.com/api/v3/" + endpoint);
+        lookup.searchParams.set(parameter, HISTORICAL_PAYMENT.hash);
+        lookup.searchParams.set("limit", "10");
+        const found = await fetcher(lookup.toString(), {
+          method: "GET", redirect: "error",
+          headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
+        });
+        if (!found.ok) {
+          identity = { kind: "lookup_failed", endpoint, httpStatus: found.status, accounts: [] };
+          break;
+        }
+        const data = await found.json();
+        if (!Array.isArray(data.transactions)) throw new Error("Invalid " + kind + " hash lookup response");
+        if (data.transactions.length > 0) {
+          identity = { kind, accounts: [...new Set(data.transactions.map(item => item.account).filter(value => typeof value === "string"))],
+            returnedTransactions: data.transactions.length };
+          break;
+        }
+      }
+    }
+    return {
+      network: "testnet", marketplace: account, source: "TON Center v3 indexed",
+      state: "UNRESOLVED", reason: matches.length ? "DUPLICATE_TRANSACTION" : "HASH_NOT_FOUND_FOR_MARKETPLACE",
+      hashIdentity: identity,
+      refundConfirmed: false, retryAuthorized: false, mainnetApproved: false, readOnly: true,
+    };
+  }
   const tx = matches[0];
   if (typeof tx.account !== "string" || normalizeV3TestnetAddress(tx.account) !== account) {
     throw new Error("Indexed transaction account does not match historical Marketplace");
