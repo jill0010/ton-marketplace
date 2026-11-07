@@ -30,11 +30,24 @@ fun main() {
         println("V3_FRESH_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
         println("V3_FRESH_COORDINATOR_CONFIGURED: {}", net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"));
         val nft = net.runGetMethod<tuple>(nftItem!!, "get_nft_data");
-        println("V3_FRESH_NFT_OWNER: {}", nft.get(3) as address);
+        val nftOwner = nft.get(3) as address;
+        println("V3_FRESH_NFT_OWNER: {}", nftOwner);
+        val escrowOwnerMatches = nftOwner == marketplace.escrowV2();
+        val listingIsReady = status != null && status!! == 2 &&
+            listing!!.nftItem == nftItem!! &&
+            listing!!.price == grams("0.01") &&
+            listing!!.escrowId > 0 &&
+            marketplace.treasuryConfiguredV2() &&
+            marketplace.escrowConfiguredV2() &&
+            net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3") &&
+            escrowOwnerMatches;
+        println("V3_FRESH_ESCROW_OWNS_NFT: {}", escrowOwnerMatches);
+        println("V3_FRESH_LISTING_READY_FOR_CONTROLLED_TEST: {}", listingIsReady);
         val freshOrderId = marketplace.orderIdForProductV2(productId!!);
         println("V3_FRESH_ORDER_ID: {}", freshOrderId);
         if (freshOrderId == null) {
             println("V3_FRESH_RESULT: LISTED_WITHOUT_ORDER. Purchase step did not run; do not replay a payment automatically.");
+            assert (listingIsReady) throw 954;
             return;
         }
         val orderCell = marketplace.orderCellV2(freshOrderId!!);
