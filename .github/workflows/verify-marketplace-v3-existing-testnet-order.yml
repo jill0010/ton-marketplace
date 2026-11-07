@@ -135,7 +135,7 @@ jobs:
             '- Order 1 reserve compensation: user-confirmed manual off-chain 0.2 TON compensation is complete; never issue a duplicate payment.',
             '- Historical inbound bounced flag: ' + (noBounce ? 'false (do not assume funds were refunded)' : 'not confirmed'),
             '- Failed diagnostic checks: ' + (failed.length ? failed.join(', ') : 'none of the recorded basic checks'),
-            '- Historical deadline boundary: ' + (match('V3_DIAGNOSTIC_HISTORICAL_DEADLINE_NEAR_LIMIT') === 'true' ? 'only four seconds remained in the 900-second validity window; prioritize exact inbound timestamp validation' : 'not near the validity boundary'),
+            '- Historical deadline: 896 seconds after recorded inbound timestamp; 4 seconds below the 900-second maximum future horizon (NOT four seconds before expiry). Confirm exact chain timestamp and contract predicate.',
             '- Getter coverage: legacy deployment lacks newer schema/query introspection getters; this is not, by itself, proof of a deployed-code hash mismatch',
             '- Remaining unknowns: exact inbound created_at and historical purchase-schema/query-index state (read-only; no replay)',
             '- **Safety gate: NO second purchase, NO mainnet deployment, NO automated replay.**',
