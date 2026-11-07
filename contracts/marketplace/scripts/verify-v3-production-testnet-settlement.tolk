@@ -12,9 +12,15 @@ fun main() {
     assert (marketplaceAddress != null && coordinatorAddress != null && nftItem != null) throw 931;
     val marketplace = MarketplaceV2 { address: marketplaceAddress! };
     assert (marketplace.ownerV2() == deployer.address) throw 932;
-    val orderId = marketplace.orderIdForProductV2(1);
-    assert (orderId != null && orderId!! == 1) throw 933;
-    val order = MarketplaceV2Order.fromCell(marketplace.orderCellV2(1)!!);
+    // A fresh fixture may be product 2+ after previous deployments.
+    // Bind the settlement check to the exact NFT address, never order 1.
+    val productId = marketplace.assetProductIdV2(nftItem!!);
+    assert (productId != null) throw 933;
+    val orderId = marketplace.orderIdForProductV2(productId!!);
+    assert (orderId != null) throw 933;
+    val orderCell = marketplace.orderCellV2(orderId!!);
+    assert (orderCell != null) throw 933;
+    val order = MarketplaceV2Order.fromCell(orderCell!!);
     val extra = order.extra.load();
     val parties = extra.parties.load();
     val asset = extra.asset.load();
@@ -33,17 +39,17 @@ fun main() {
     val marketplaceReserveStatus = net.runGetMethod<uint8>(
         marketplace.address,
         "marketplaceReserveStatusV3",
-        [1],
+        [orderId!!],
     );
     val coordinatorStatus = net.runGetMethod<uint8>(
         coordinatorAddress!!,
         "reserveCoordinatorStatusV3",
-        [1],
+        [orderId!!],
     );
     val vault = net.runGetMethod<address?>(
         coordinatorAddress!!,
         "reserveCoordinatorVaultV3",
-        [1],
+        [orderId!!],
     )!!;
     assert (marketplaceReserveStatus == 2 && coordinatorStatus == 2) throw 937;
     assert (net.runGetMethod<uint8>(vault, "reserveVaultStatusV3") == 3) throw 938;
@@ -53,6 +59,7 @@ fun main() {
     assert (net.runGetMethod<coins>(vault, "reserveVaultAvailableV3") == 0) throw 938;
 
     println("PRODUCTION V3 TESTNET END-TO-END SETTLEMENT VERIFIED.");
+    println("Verified product ID: {}; order ID: {}", productId!!, orderId!!);
     println("Marketplace V3: {}", marketplace.address);
     println("NFT Escrow V2: {}", marketplace.escrowV2());
     println("Reserve Coordinator V3: {}", coordinatorAddress!!);
