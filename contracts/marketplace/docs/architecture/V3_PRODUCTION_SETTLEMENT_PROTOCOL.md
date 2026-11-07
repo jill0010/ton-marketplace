@@ -49,7 +49,7 @@ Each vault tracks, in integer nanoTON:
 - monotonically increasing `operationId` and active `queryId`;
 - terminal settlement state and consumed proof hashes.
 
-Required invariant: `paid + inFlight + available == principal + topUpPrincipal` after accounting for separately recorded protocol fees; operational funds never increase principal. A top-up is accepted only for the exact uncovered principal shortfall of this order and is bound to a unique funding message. A retry cannot be initiated while the previous operation is unresolved.
+Required invariant: `paid + inFlight + available + fees == principal + topUpPrincipal`; protocol fees are explicitly recorded as consumed principal shortfall, and operational funds never increase principal. A top-up is accepted only for the exact uncovered principal shortfall of this order and is bound to a unique funding message. A retry cannot be initiated while the previous operation is unresolved.
 
 ### Transitions
 
