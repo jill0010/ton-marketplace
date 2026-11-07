@@ -263,7 +263,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const result = await inspectHistoricalTestnetPayment();
     console.log(JSON.stringify(result, null, 2));
-    if (!result.inboundMatches) process.exitCode = 1;
+    // A successfully gathered but unresolved payment is a valid evidence
+    // collection outcome, not proof that a refund succeeded. Keep the
+    // report's authorization flags strictly false.
+    const handoff = result.hashIdentity?.paymentHandoff;
+    const evidenceCollected = result.inboundMatches === true ||
+      (handoff?.reason === "INDEXED_PAYMENT_DELIVERED_REFUND_UNVERIFIED" &&
+       handoff.transferredNano === HISTORICAL_PAYMENT.amountNano &&
+       handoff.receiverAccount === normalizeV3TestnetAddress(HISTORICAL_PAYMENT.marketplace) &&
+       handoff.receiverTransactionHash);
+    if (!evidenceCollected) process.exitCode = 1;
   } catch (error) {
     console.error("HISTORICAL_PAYMENT_UNRESOLVED:", error.message);
     process.exitCode = 1;
