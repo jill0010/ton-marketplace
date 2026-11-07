@@ -8,6 +8,11 @@ on:
         required: true
         type: boolean
         default: false
+      confirm_one_funded_testnet_purchase:
+        description: "I separately approve ONE funded Testnet purchase and settlement in this fresh workflow run."
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -19,7 +24,7 @@ concurrency:
 jobs:
   deploy:
     # A rerun of a partially completed workflow must never send a second payment.
-    if: ${{ inputs.confirm_production_v3_testnet_only == true && github.run_attempt == 1 }}
+    if: ${{ inputs.confirm_production_v3_testnet_only == true && inputs.confirm_one_funded_testnet_purchase == true && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     defaults:
@@ -200,6 +205,7 @@ jobs:
             exit 1
           }
           test "$V3_PRODUCTION_TESTNET_DEPLOY_APPROVED" = "true"
+          test "${{ inputs.confirm_one_funded_testnet_purchase }}" = "true"
           echo "One-time Testnet-only transaction gate passed. Mainnet remains prohibited."
 
       - name: Submit one real Testnet purchase through production Marketplace V3
