@@ -118,6 +118,8 @@ jobs:
             'V3_DIAGNOSTIC_TREASURY_CONFIGURED',
             'V3_DIAGNOSTIC_ESCROW_CONFIGURED',
             'V3_DIAGNOSTIC_COORDINATOR_CONFIGURED',
+            'V3_DIAGNOSTIC_PURCHASE_SCHEMA_VALID',
+            'V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_AVAILABLE',
           ];
           const failed = checks.filter(k => match(k) !== 'true');
           const lines = [
