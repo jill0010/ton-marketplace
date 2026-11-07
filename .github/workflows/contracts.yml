@@ -6,6 +6,7 @@ on:
       - main
       - master
       - architecture/unified-trading-v1
+      - feature/reserve-refund-v3-audit
     paths:
       - "contracts/**"
       - "supabase/functions/publish-nft-product/**"
