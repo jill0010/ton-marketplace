@@ -103,7 +103,9 @@ export async function verifyV3Testnet(addresses, fetcher = fetch, expectedHashes
   const entries = validateV3Addresses(addresses);
   const endpoint = "https://testnet.toncenter.com/api/v2/getAddressInformation";
   const results = {};
-  for (const [name, address] of entries) {
+  for (const [index, [name, address]] of entries.entries()) {
+    // Pace account reads to avoid exhausting TON Center's per-key request budget.
+    if (index > 0) await new Promise(resolve => setTimeout(resolve, 1200));
     const url = new URL(endpoint);
     url.searchParams.set("address", address);
     // Retry only rate limits and transient server failures; never sign or send transactions.
@@ -116,7 +118,8 @@ export async function verifyV3Testnet(addresses, fetcher = fetch, expectedHashes
       if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 4) {
         throw new Error(`RPC HTTP error for ${name}: ${response.status}`);
       }
-      await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** attempt, 8000)));
+      await new Promise((resolve) => setTimeout(resolve,
+        response.status === 429 ? Math.min(3000 * 2 ** attempt, 24000) : Math.min(1000 * 2 ** attempt, 8000)));
     }
     const data = await response.json();
     if (data.ok !== true || !data.result || typeof data.result !== "object") {
