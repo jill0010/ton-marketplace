@@ -14,21 +14,26 @@ fun main() {
     assert (marketplaceAddress != null && nftItem != null) throw 912;
     assert (deadline > 0 && deadline <= 4294967295) throw 912;
     val marketplace = MarketplaceV2 { address: marketplaceAddress! };
-    assert (marketplace.productStatusV2(1)!! == 2) throw 913;
-    assert (marketplace.assetProductIdV2(nftItem!!)!! == 1) throw 913;
-    assert (marketplace.orderIdForProductV2(1) == null) throw 914;
+    // Product IDs are monotonic and may not be 1 after previous failed
+    // fixture runs. Resolve the exact listing by its unique NFT Item address.
+    val productIdResult = marketplace.assetProductIdV2(nftItem!!);
+    assert (productIdResult != null) throw 913;
+    val productId = productIdResult!!;
+    val productStatus = marketplace.productStatusV2(productId);
+    assert (productStatus != null && productStatus!! == 2) throw 913;
+    assert (marketplace.orderIdForProductV2(productId) == null) throw 914;
     val nft = net.runGetMethod<tuple>(nftItem!!, "get_nft_data");
     assert ((nft.get(3) as address) == marketplace.escrowV2()) throw 913;
     val result = marketplace.sendBuyProductV2(
         buyer.address,
-        1,
+        productId,
         grams("0.01"),
         8005,
         deadline as uint32,
         { value: grams("0.21") },
     );
     assert (result.waitForFirstTransaction() != null) throw 915;
-    println("V3 Testnet purchase submitted once. Product ID: 1; gross: 0.01 TON; reserve: 0.2 TON.");
+    println("V3 Testnet purchase submitted once. Product ID: {}; gross: 0.01 TON; reserve: 0.2 TON.", productId);
     println("Buyer: {}", buyer.address);
     println("NFT Item: {}", nftItem!!);
     println("Do not repeat this payment; run read-only delivery and reserve checks.");
