@@ -220,6 +220,8 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/v3-attestor" --ignore-scripts --no-audit --no-fund --save-exact \
             @ton/core@0.63.1 @ton/ton@16.3.0 @ton/crypto@3.3.0
           cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs "$RUNNER_TEMP/v3-attestor/attest.mjs"
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.test.mjs "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
+          node --test "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
 
       - name: Verify actual buyer receipt and submit 3-of-3 settlement attestation on Testnet
         working-directory: .
