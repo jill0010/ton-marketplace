@@ -270,3 +270,11 @@ get fun testReserveQuery(): uint64 {
 get fun testReserveReturned(): coins {
     return TestReserveVaultStorage.load().returnedNano as coins;
 }
+
+get fun testReserveTopUp(): coins {
+    return TestReserveVaultStorage.load().topUpNano as coins;
+}
+
+get fun testReserveRetryCount(): uint8 {
+    return TestReserveVaultStorage.load().retryCount;
+}
