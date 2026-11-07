@@ -167,6 +167,18 @@ V3 uses a fresh storage schema and shares existing purchase/delivery wire messag
 
 The experimental failure path subsidizes processing fees; it is not final scheme-C fee reconciliation.
 
+## V3 settlement attestation verifier (not deployed)
+
+These opcodes belong to the isolated Ed25519 quorum verifier component. The verifier authenticates a domain-separated statement signed by configured validators; it does not independently prove transaction inclusion or masterchain finality. Validator attestations must be based on independently checked finalized TON evidence.
+
+| Opcode | Message | Purpose |
+|---|---|---|
+| `0x72730401` | `VerifySettlementAttestationV3` | Vault submits canonical settlement statement and validator signatures |
+| `0x72730402` | `SettlementAttestationVerifiedV3` | Verifier returns quorum-authenticated settlement fields to the submitting vault |
+| `0x72730403` | `AcknowledgeSettlementAttestationV3` | Owner records callback handling acknowledgement; does not authorize a payout |
+
+The verifier is a separately registered contract and is not yet integrated into a production reserve vault or Marketplace V3. No Mainnet deployment or fund acceptance is authorized.
+
 ## Experimental funding confirmation recovery
 
 | Opcode | Message | Purpose |
