@@ -31,15 +31,19 @@ export async function verifyV3Bindings(addresses, fetcher = fetch) {
   ];
   const results = {};
   for (const [name, contract, method, expected] of checks) {
-    const url = new URL("https://testnet.toncenter.com/api/v2/runGetMethod");
-    url.searchParams.set("address", normalized[contract]);
-    url.searchParams.set("method", method);
-    url.searchParams.set("stack", "[]");
+    // TON Center v2 runGetMethod is a POST endpoint; GET returns HTTP 404.
+    // This POST executes a read-only TVM getter, never broadcasts a transaction.
+    const url = "https://testnet.toncenter.com/api/v2/runGetMethod";
+    const requestBody = JSON.stringify({ address: normalized[contract], method, stack: [] });
     let response;
     for (let attempt = 0; attempt < 5; attempt++) {
-      response = await fetcher(url.toString(), {
-        method: "GET", redirect: "error",
-        ...(process.env.TONCENTER_API_KEY ? { headers: { "X-API-Key": process.env.TONCENTER_API_KEY } } : {}),
+      response = await fetcher(url, {
+        method: "POST", redirect: "error",
+        headers: {
+          "Content-Type": "application/json",
+          ...(process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {}),
+        },
+        body: requestBody,
       });
       if (response.ok) break;
       if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 4) throw new Error(`Getter RPC HTTP error ${name}: ${response.status}`);
