@@ -1,0 +1,47 @@
+name: V3 Candidate Build Check (No Transactions)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/reserve-refund-v3-audit
+    paths:
+      - 'contracts/marketplace/**'
+      - '.github/workflows/v3-candidate-build-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+      - name: Run V3 verifier and evidence regression tests
+        working-directory: .
+        run: |
+          node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Compile V3 candidate and escrow without deploying
+        run: acton build
+      - name: Run complete Marketplace V3 contract emulation suite
+        run: acton test
+      - name: Confirm build result
+        run: |
+          echo "Marketplace V3 candidate compiled on the selected commit." >> "$GITHUB_STEP_SUMMARY"
+          echo "No wallet secret, transaction, or deployment was used." >> "$GITHUB_STEP_SUMMARY"
