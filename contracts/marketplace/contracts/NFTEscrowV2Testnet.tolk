@@ -5,10 +5,10 @@ contract NFTEscrowV2Testnet {
     version: "2.0.0-testnet"
     description: "Testnet-only NFT Escrow V2 fixture variant; accepts the repository synthetic NFT item code"
     storage: NFTEscrowV2Storage
-    incomingMessages: NFTEscrowV2AllowedMessage
+    incomingMessages: NFTEscrowV2TestnetAllowedMessage
 }
 
-type NFTEscrowV2AllowedMessage =
+type NFTEscrowV2TestnetAllowedMessage =
     | CreateEscrowV2
     | SetCollectionStatusV2
     | SetCollectionItemCodeV2
@@ -26,7 +26,7 @@ type NFTEscrowV2AllowedMessage =
     | RetryRefundCallbackV2
 
 fun onInternalMessage(in: InMessage) {
-    val msg = lazy NFTEscrowV2AllowedMessage.fromSlice(in.body);
+    val msg = lazy NFTEscrowV2TestnetAllowedMessage.fromSlice(in.body);
 
     match (msg) {
         SetCollectionStatusV2 => {
