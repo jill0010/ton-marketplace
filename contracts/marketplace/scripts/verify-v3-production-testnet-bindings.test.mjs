@@ -33,7 +33,7 @@ test("production V3 binding verifier checks marketplace, escrow, coordinator and
     owner: addrStack(ownerRaw),
     escrowV2: addrStack(addresses.escrow),
     treasuryV2: addrStack(treasuryRaw),
-    reserveCoordinatorV3: addrStack(addresses.coordinator),
+    marketplaceReserveCoordinatorV3: addrStack(addresses.coordinator),
     marketplace: addrStack(addresses.marketplace),
     reserveCoordinatorMarketplaceV3: addrStack(addresses.marketplace),
     reserveCoordinatorVerifierV3: addrStack(addresses.verifier),
