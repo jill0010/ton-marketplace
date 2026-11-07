@@ -99,6 +99,25 @@ jobs:
             tail -60 v3-existing-testnet-purchase-trace.log
           }
           cat v3-existing-testnet-purchase-trace.log
+      - name: Preserve historical transaction identity and prevent cross-deployment inference
+        if: ${{ !inputs.inspect_fresh_fixture }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The rejected 0.21 TON payment targeted the legacy Marketplace,
+          # NOT the newly deployed V3 production fixture. Never treat the
+          # fresh listing's missing order as proof about that old payment.
+          historical_marketplace="kQDC5qBHrvcwaJamwEzZTbuI4YjKX3fEegQHV2IXgu9Fro8Y"
+          if [ "$V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS" != "$historical_marketplace" ]; then
+            {
+              echo "### Historical 0.21 TON transaction — scope warning"
+              echo "- Historical payment target: $historical_marketplace"
+              echo "- Inspected Marketplace: $V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS"
+              echo "- These are different deployments; a missing order on the inspected deployment does NOT establish the legacy payment's disposition."
+              echo "- Transaction-level balance, inbound/outbound and bounce reconciliation remains mandatory."
+              echo "- No retry, refund, purchase or transfer is authorized."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Diagnose existing order and reserve (no transfers)
         shell: bash
         run: |
