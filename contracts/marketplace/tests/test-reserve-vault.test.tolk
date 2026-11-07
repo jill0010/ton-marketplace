@@ -429,6 +429,7 @@ get fun `test underfunded retry preserves liability and succeeds after operation
             evidenceHash: 456,
             returnedNano: 0,
             topUpNano: 0,
+            retryOperationalNano: 0,
             retryCount: 0,
         }.toCell(),
     };
