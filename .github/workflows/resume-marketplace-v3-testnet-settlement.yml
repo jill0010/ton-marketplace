@@ -1,0 +1,145 @@
+name: Resume Existing Marketplace V3 Testnet Settlement (No Purchase)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_existing_order_only:
+        description: "I approve settlement attestation for the already-purchased Testnet order 1 ONLY; no deployment or purchase."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-v3-testnet-existing-order-1-settlement
+  cancel-in-progress: false
+
+jobs:
+  settle-existing-order:
+    if: ${{ inputs.confirm_existing_order_only == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_"
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQAp5SqhqBj1LK3q9mHpBDsVzUnMyWBiH-nvtTB7q0vdP0mG"
+      V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: "kQAhqpc_v-G6PDX5BavZPT0SsqmOWm9hvBomPZIJ9cOHdQop"
+      V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS: "kQBBvJvEce3gr5OGIuzIaWPd7ylKeKxLw6l9saVjBTccl8Vs"
+      V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQAcb1ncpbbm60x5-SgPZmTXInVQKlxis5soblmYSsfXcYHm"
+      V3_TESTNET_ORDER_ID: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Verify Testnet-only credentials and no-repeat authorization
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          test "${{ inputs.confirm_existing_order_only }}" = "true"
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
+            value="${!name:-}"
+            [[ "$value" =~ ^[0-9a-fA-F]{64}$ ]]
+          done
+          test "$V3_TESTNET_ORDER_ID" = "1"
+          echo "Authorized existing Testnet order 1 settlement only. No deployment, listing, or purchase actions permitted."
+
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+
+      - name: Create ephemeral Testnet read-only wallet profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+
+      - name: Confirm original NFT purchase and 0.2 TON in-flight reserve (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-order-preflight.log
+          grep -Fq "V3_TESTNET_ORDER_ID: 1" v3-existing-order-preflight.log
+          grep -Fq "V3_TESTNET_VAULT_ADDRESS: kQA6JyvTAlizYguQWBlosVv_CCKEy1104p0Kz79NEJLPN-x4" v3-existing-order-preflight.log
+          grep -Fq "Reserve is in-flight pending actual buyer receipt attestation" v3-existing-order-preflight.log
+
+      - name: Install settlement attestor and run isolated unit tests
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v3-attestor"
+          npm install --prefix "$RUNNER_TEMP/v3-attestor" --ignore-scripts --no-audit --no-fund --save-exact \
+            @ton/core@0.63.1 @ton/ton@16.3.0 @ton/crypto@3.3.0
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs "$RUNNER_TEMP/v3-attestor/attest.mjs"
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.test.mjs "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
+          node --test "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
+
+      - name: Verify actual buyer receipt and submit settlement attestation for original order ONLY
+        working-directory: .
+        shell: bash
+        env:
+          BUYER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/v3-attestor/attest.mjs" 2>&1 | tee v3-existing-order-attestation.log
+          grep -Fq '"vaultStatus": 3' v3-existing-order-attestation.log
+          grep -Fq '"orderId": "1"' v3-existing-order-attestation.log
+
+      - name: Read-only verify final on-chain settlement
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-production-testnet-settlement.tolk --net testnet 2>&1 | tee v3-existing-order-settlement.log
+          grep -Fq "PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED; INDEPENDENT TRANSFER FINALITY NOT ATTESTED." v3-existing-order-settlement.log
+
+      - name: Preserve original-order Testnet settlement evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: existing-v3-testnet-order-1-settlement-evidence
+          path: |
+            contracts/marketplace/v3-existing-order-preflight.log
+            v3-existing-order-attestation.log
+            contracts/marketplace/v3-existing-order-settlement.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Remove temporary wallet profile
+        if: always()
+        run: rm -f wallets.toml
