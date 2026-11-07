@@ -32,6 +32,8 @@ jobs:
         run: node --test contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs
       - name: Test correlated V3 deployment and binding evidence
         run: node --test contracts/marketplace/scripts/merge-v3-evidence.test.mjs
+      - name: Test V3 testnet order inspection (read-only mocks)
+        run: node --test contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs
       - name: Verify eight deployed contract bindings (read-only)
         run: node contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs
       - name: Audit deployment and bindings in one read-only testnet snapshot
