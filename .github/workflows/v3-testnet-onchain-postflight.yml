@@ -16,16 +16,16 @@ on:
         required: true
         type: string
       expected_marketplace_code_hash:
-        description: "Expected marketplace code hash (64 hex chars; optional, unverified if absent)"
-        required: false
+        description: "Expected marketplace compiled code hash (64 hex chars)"
+        required: true
         type: string
       expected_escrow_code_hash:
-        description: "Expected escrow code hash (64 hex chars; optional, unverified if absent)"
-        required: false
+        description: "Expected escrow compiled code hash (64 hex chars)"
+        required: true
         type: string
       expected_coordinator_code_hash:
-        description: "Expected coordinator code hash (64 hex chars; optional, unverified if absent)"
-        required: false
+        description: "Expected coordinator compiled code hash (64 hex chars)"
+        required: true
         type: string
 
 permissions:
