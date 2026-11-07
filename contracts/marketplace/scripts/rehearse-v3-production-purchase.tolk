@@ -427,7 +427,7 @@ fun main() {
     }
     expect(binding.status).toEqual(2);
     expect(binding.vault!!).toEqual(allocation.vault);
-    expect(net.runGetMethod<uint8>(allocation.vault, "reserveVaultStatusV3")).toEqual(1);
+    expect(net.runGetMethod<uint8>(allocation.vault, "reserveVaultStatusV3")).toEqual(2);
     verifyTestFixture(marketplace, deployer.address, scripts.wallet("seller").address, nftItem);
     // Retry the genuine vault ACK; V3 must not release or pay a second time.
     expect(
