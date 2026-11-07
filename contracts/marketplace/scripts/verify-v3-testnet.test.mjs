@@ -129,7 +129,7 @@ test("trusted V3 code hash accepts Acton hex and base64 encodings", () => {
   assert.equal(normalizeV3CodeHash(hex), hex);
   assert.equal(normalizeV3CodeHash("0x" + hex.toUpperCase()), hex);
   assert.equal(normalizeV3CodeHash(base64), hex);
-  assert.equal(normalizeV3CodeHash(base64.replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "")), hex);
+  assert.equal(normalizeV3CodeHash(base64.replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")), hex);
   assert.throws(() => normalizeV3CodeHash("not a code hash"), /Invalid/);
   assert.throws(() => normalizeV3CodeHash("aa".repeat(31)), /Invalid/);
 });
