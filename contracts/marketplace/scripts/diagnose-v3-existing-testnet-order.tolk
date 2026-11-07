@@ -18,6 +18,33 @@ fun main() {
 
     val status = marketplace.productStatusV2(productId!!);
     println("V3_DIAGNOSTIC_PRODUCT_STATUS: {}", status);
+    // Compare the exact historical BuyProductV2 fields with persisted state.
+    // This is a getter-only preflight; no new purchase or transfer is sent.
+    val productResult = marketplace.productV2(productId!!);
+    assert (productResult != null) throw 953;
+    val product = productResult!!;
+    val historicalBuyer = env<address>("PLATFORM_TREASURY_ADDRESS");
+    val historicalSeller = env<address>("V3_TESTNET_DEPLOYER_ADDRESS");
+    val historicalQueryId: uint64 = 8005;
+    val nextQueryId = marketplace.nextQueryIdV2();
+    val refundQueryId = nextQueryId + 3;
+    println("V3_DIAGNOSTIC_SELLER: {}", product.seller);
+    println("V3_DIAGNOSTIC_PRICE_NANOTON: {}", product.price);
+    println("V3_DIAGNOSTIC_ESCROW_ID: {}", product.escrowId);
+    println("V3_DIAGNOSTIC_NEXT_QUERY_ID: {}", nextQueryId);
+    println("V3_DIAGNOSTIC_HISTORICAL_QUERY_ID: {}", historicalQueryId);
+    println("V3_DIAGNOSTIC_REQUIRED_MIN_PAYMENT_QUERY_ID_EXCLUSIVE: {}", refundQueryId);
+    println("V3_DIAGNOSTIC_HISTORICAL_QUERY_VALID: {}", historicalQueryId > refundQueryId);
+    println("V3_DIAGNOSTIC_PRICE_VALID: {}", product.price == grams("0.01"));
+    println("V3_DIAGNOSTIC_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
+    println("V3_DIAGNOSTIC_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
+    println("V3_DIAGNOSTIC_COORDINATOR_CONFIGURED: {}", net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"));
+    if (historicalBuyer != null && historicalSeller != null) {
+        println("V3_DIAGNOSTIC_BUYER_EQUALS_SELLER: {}", historicalBuyer!! == product.seller);
+        println("V3_DIAGNOSTIC_EXPECTED_SELLER_MATCHES: {}", historicalSeller!! == product.seller);
+        println("V3_DIAGNOSTIC_BUYER_EQUALS_ESCROW: {}", historicalBuyer!! == marketplace.escrowV2());
+        println("V3_DIAGNOSTIC_BUYER_EQUALS_MARKETPLACE: {}", historicalBuyer!! == marketplace.address);
+    }
     val orderId = marketplace.orderIdForProductV2(productId!!);
     println("V3_DIAGNOSTIC_ORDER_ID: {}", orderId);
     if (orderId == null) {
