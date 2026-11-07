@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Address, beginCell, Cell } from "@ton/core";
+import { WalletContractV5R1 } from "@ton/ton";
 import {
   findReserveRefundDispatch,
   findReserveRefundReceipt,
   sameReserveRefundBody,
+  deriveBip39TonWalletKeys,
   findMarketplacePayoutReceipt,
   buildV3SettlementStatement,
 } from "./attest.mjs";
@@ -115,4 +117,14 @@ test("refuses to pair an unrelated historical refund with the current reserve di
   assert.equal(sameReserveRefundBody({body},{body}),true);
   assert.equal(sameReserveRefundBody({body},{body:other}),false);
   assert.equal(sameReserveRefundBody({body},null),false);
+});
+
+test("Acton BIP39 buyer derivation follows SLIP-0010 m/44'/607'/0' and V5 uses Testnet wallet ID",()=>{
+  const phrase="abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".split(" ");
+  const keys=deriveBip39TonWalletKeys(phrase);
+  assert.equal(keys.publicKey.toString("hex"),"7952e94118f34607c75e23258dd9220d66ccac5a3ee074125c25068e8107bfbf");
+  const testnet=WalletContractV5R1.create({workchain:0,publicKey:keys.publicKey,walletId:{networkGlobalId:-3}});
+  const mainnet=WalletContractV5R1.create({workchain:0,publicKey:keys.publicKey,walletId:{networkGlobalId:-239}});
+  assert.notEqual(testnet.address.toRawString(),mainnet.address.toRawString());
+  assert.throws(()=>deriveBip39TonWalletKeys(["only","two"]),/12 or 24/);
 });
