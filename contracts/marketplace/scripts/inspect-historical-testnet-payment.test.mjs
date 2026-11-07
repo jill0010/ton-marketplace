@@ -53,3 +53,50 @@ test("bounded history without target remains unresolved", async () => {
   assert.equal(report.refundConfirmed,false);
   assert.equal(report.retryAuthorized,false);
 });
+
+test("archival HTTP 542 falls back to read-only hash-indexed inspection", async () => {
+  const expected = HISTORICAL_PAYMENT;
+  let archivalAttempts = 0;
+  let indexedCalls = 0;
+  const report = await inspectHistoricalTestnetPayment(async (url, options) => {
+    assert.equal(options.method, "GET");
+    if (url.includes("/api/v2/getTransactions")) {
+      archivalAttempts++;
+      return {ok:false,status:542};
+    }
+    indexedCalls++;
+    const parsed = new URL(url);
+    assert.equal(parsed.pathname, "/api/v3/transactions");
+    assert.equal(parsed.searchParams.get("hash"), expected.hash);
+    return {ok:true,json:async()=>({transactions:[{
+      hash: expected.hash,
+      account: parsed.searchParams.get("account"),
+      in_msg: {value:"210000000"},
+      out_msgs: [],
+      account_state_before:{balance:"1000000000"},
+      account_state_after:{balance:"1200000000"},
+      total_fees:"10000000",
+      description:{aborted:true,compute_ph:{exit_code:212}},
+    }]})};
+  });
+  assert.equal(archivalAttempts,3);
+  assert.equal(indexedCalls,1);
+  assert.equal(report.source,"TON Center v3 indexed");
+  assert.equal(report.inboundMatches,true);
+  assert.equal(report.balanceDeltaNano,"200000000");
+  assert.equal(report.computeExitCode,212);
+  assert.equal(report.refundConfirmed,false);
+  assert.equal(report.retryAuthorized,false);
+  assert.equal(report.archivalV2FailureStatus,542);
+});
+test("indexed lookup rejects mismatched Marketplace account", async () => {
+  await assert.rejects(
+    () => inspectHistoricalTestnetPayment(async (url) => url.includes("/api/v2/") ?
+      {ok:false,status:542} : {ok:true,json:async()=>({transactions:[{
+        hash:HISTORICAL_PAYMENT.hash,
+        account:"0:"+"0".repeat(64),
+        in_msg:{value:"210000000"},
+      }]})}),
+    /account does not match/,
+  );
+});
