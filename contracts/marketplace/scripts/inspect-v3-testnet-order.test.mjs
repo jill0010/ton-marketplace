@@ -50,3 +50,19 @@ test("malformed BOC cannot masquerade as an existing order or reserve", () => {
   assert.equal(validV3GetterCell([["cell", { bytes: "mock" }]]), false);
   assert.equal(validV3GetterCell([["cell", { bytes: validBoc }]]), true);
 });
+test("TON Center empty tvm.list represents an absent optional order or reserve", async () => {
+  const methods = [];
+  const fetcher = async (_url, options) => {
+    const method = JSON.parse(options.body).method;
+    methods.push(method);
+    return { ok: true, json: async () => ({ ok: true, result: {
+      exit_code: 0, stack: [["list", { "@type": "tvm.list", elements: [] }]],
+    } }) };
+  };
+  const report = await inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher);
+  assert.deepEqual(methods, ["orderCellV2", "testPurchaseReserve"]);
+  assert.equal(report.orderExists, false);
+  assert.equal(report.reservePresent, false);
+  assert.equal(report.noTransactionSent, true);
+});
+
