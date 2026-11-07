@@ -97,6 +97,67 @@ jobs:
         run: |
           set -euo pipefail
           acton script scripts/diagnose-v3-existing-testnet-order.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-diagnostic.log
+      - name: Classify historical rejection and guard against duplicate payments
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from 'node:fs/promises';
+          const trace = await readFile('v3-existing-testnet-purchase-trace.log', 'utf8');
+          const diagnosis = await readFile('v3-existing-testnet-diagnostic.log', 'utf8');
+          const match = (key) => diagnosis.match(new RegExp('^' + key + ':\\\\s*(.+)
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-readonly.log
+          grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-existing-testnet-readonly.log
+      - name: Upload read-only evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: v3-existing-testnet-readonly-evidence
+          path: |
+            contracts/marketplace/v3-existing-testnet-purchase-trace.log
+            contracts/marketplace/v3-existing-testnet-diagnostic.log
+            contracts/marketplace/v3-existing-testnet-readonly.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove temporary wallet profile
+        if: always()
+        run: |
+          if [ -d contracts/marketplace ]; then
+            rm -f contracts/marketplace/wallets.toml
+          fi
+        working-directory: .
+, 'm'))?.[1]?.trim();
+          const rejected = /BuyProductV2[^\\n]*exit_code=212 aborted/.test(trace);
+          const missingOrder = match('V3_DIAGNOSTIC_ORDER_ID') === 'null';
+          const noBounce = /bounced: false/.test(trace);
+          const checks = [
+            'V3_DIAGNOSTIC_HISTORICAL_DEADLINE_VALID',
+            'V3_DIAGNOSTIC_PRODUCT_ID_MATCHES',
+            'V3_DIAGNOSTIC_PRODUCT_NFT_MATCHES_FIXTURE',
+            'V3_DIAGNOSTIC_HISTORICAL_QUERY_VALID',
+            'V3_DIAGNOSTIC_PRICE_VALID',
+            'V3_DIAGNOSTIC_TREASURY_CONFIGURED',
+            'V3_DIAGNOSTIC_ESCROW_CONFIGURED',
+            'V3_DIAGNOSTIC_COORDINATOR_CONFIGURED',
+          ];
+          const failed = checks.filter(k => match(k) !== 'true');
+          const lines = [
+            '### Existing Testnet purchase: read-only classification',
+            '- Historical Marketplace exit code: ' + (rejected ? '212 (InvalidPurchase)' : 'not confirmed'),
+            '- Persisted order: ' + (missingOrder ? 'absent' : match('V3_DIAGNOSTIC_ORDER_ID')),
+            '- Historical inbound bounced flag: ' + (noBounce ? 'false (do not assume funds were refunded)' : 'not confirmed'),
+            '- Failed diagnostic checks: ' + (failed.length ? failed.join(', ') : 'none of the recorded basic checks'),
+            '- Remaining unknowns: deployed code version, purchase schema and internal query/index collisions',
+            '- **Safety gate: NO second purchase, NO mainnet deployment, NO automated replay.**',
+          ];
+          const summary = lines.join('\\n') + '\\n';
+          console.log(summary);
+          if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
+          if (!rejected || !missingOrder || failed.length) process.exitCode = 1;
+          NODE
       - name: Verify existing order and reserve (no transfers)
         shell: bash
         run: |
