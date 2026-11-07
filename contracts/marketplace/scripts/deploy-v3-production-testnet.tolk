@@ -229,11 +229,22 @@ fun main() {
     val escrowAddressMatches = storedEscrowAddress == escrow.address;
     val escrowMatchesDeployer = storedEscrowAddress == deployer.address;
     val escrowMatchesMarketplace = storedEscrowAddress == marketplace.address;
+    val escrowMatchesCoordinator = storedEscrowAddress == coordinator;
+    val escrowMatchesVerifier = storedEscrowAddress == verifier;
+    val escrowMatchesTreasury = storedEscrowAddress == treasuryAddress;
     val escrowContractPointsToMarketplace = escrow.marketplace() == marketplace.address;
     println(
-        "V3 escrow identity diagnostics: storedMatchesDeployer={}, storedMatchesMarketplace={}, escrowPointsToMarketplace={}",
+        "V3 escrow identity diagnostics: storedMatchesDeployer={}, storedMatchesMarketplace={}, storedMatchesCoordinator={}, storedMatchesVerifier={}, storedMatchesTreasury={}",
         escrowMatchesDeployer,
         escrowMatchesMarketplace,
+        escrowMatchesCoordinator,
+        escrowMatchesVerifier,
+        escrowMatchesTreasury,
+    );
+    println(
+        "V3 escrow address values: expected={}, stored={}, escrowContractMarketplace={}",
+        escrow.address,
+        storedEscrowAddress,
         escrowContractPointsToMarketplace,
     );
     val escrowIsConfigured = marketplace.escrowConfiguredV2();
