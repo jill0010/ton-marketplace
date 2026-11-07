@@ -2,6 +2,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { normalizeV3TestnetAddress } from "./verify-v3-testnet.mjs";
+import { V3_TESTNET_OWNER, V3_TESTNET_TREASURY } from "./verify-v3-testnet-bindings.mjs";
 
 export function mergeV3Evidence(deployment, binding) {
   if (deployment?.network !== "testnet" || binding?.network !== "testnet" ||
@@ -40,6 +41,19 @@ export function mergeV3Evidence(deployment, binding) {
   for (const [name, expected] of Object.entries(cross)) {
     if (binding.checks[name].actual !== expected) throw new Error("Cross-deployment mismatch: " + name);
   }
+  // Self-reported matches are insufficient: pin privileged addresses too.
+  const privileged = {
+    marketplaceOwner: normalizeV3TestnetAddress(V3_TESTNET_OWNER),
+    escrowOwner: normalizeV3TestnetAddress(V3_TESTNET_OWNER),
+    coordinatorOwner: normalizeV3TestnetAddress(V3_TESTNET_OWNER),
+    marketplaceTreasury: normalizeV3TestnetAddress(V3_TESTNET_TREASURY),
+  };
+  for (const [name, expected] of Object.entries(privileged)) {
+    if (binding.checks[name].actual !== expected) throw new Error("Privileged binding mismatch: " + name);
+  }
+  if (new Set(Object.values(addr)).size !== 3) throw new Error("Duplicate deployed contract addresses");
+  if (deployment.postflight.allActive !== true || deployment.postflight.allCodePresent !== true ||
+      binding.bindingsVerified !== true) throw new Error("Unverified account or binding evidence");
   if (binding.noTransactionSent !== true || deployment.postflight.noTransactionSent !== true ||
       binding.mainnetApproved !== false || deployment.mainnetApproved !== false) {
     throw new Error("Unsafe or contradictory evidence flags");
