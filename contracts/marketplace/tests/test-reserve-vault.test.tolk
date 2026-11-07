@@ -235,7 +235,7 @@ get fun `test experimental vault genuine bounced refund enables only exact retry
             grams("0.05"),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 702 });
-    const retried = reserveSend(
+    val retried = reserveSend(
         owner,
         vault,
         RetryTestReserve {
