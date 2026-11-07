@@ -2,9 +2,9 @@ import "@acton/env"
 import "@acton/emulation/scripts"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
-import "@wrappers/NFTEscrowV2.gen"
-import "testnet-nft-fixture-deployer"
-import "list-testnet-nft-fixture"
+import "@wrappers/NFTEscrowV2Testnet.gen"
+import "deploy-v3-testnet-mock-nft-fixture"
+import "list-v3-testnet-mock-nft-fixture"
 
 fun main() {
     assert (env<bool>("V3_TESTNET_FIXTURE_ENABLED") ?? false) throw 901;
@@ -15,7 +15,7 @@ fun main() {
     val itemIndex = env<uint256>("V3_TESTNET_FIXTURE_ITEM_INDEX") ?? 1000;
     assert (marketplaceAddress != null && escrowAddress != null) throw 902;
     val marketplace = MarketplaceV2 { address: marketplaceAddress! };
-    val escrow = NFTEscrowV2 { address: escrowAddress! };
+    val escrow = NFTEscrowV2Testnet { address: escrowAddress! };
     assert (marketplace.ownerV2() == deployer.address) throw 903;
     assert (escrow.owner() == deployer.address) throw 903;
     assert (marketplace.escrowConfiguredV2() && marketplace.escrowV2() == escrow.address) throw 903;
@@ -25,8 +25,8 @@ fun main() {
 
     // The buyer/treasury wallet funds a fresh synthetic collection fixture;
     // the deployer wallet owns the Item and is the fixture seller.
-    val nftItem = deployTestnetNftFixture(buyer.address, deployer.address, itemIndex);
-    listTestFixture(
+    val nftItem = deployV3TestnetMockNftFixture(buyer.address, deployer.address, itemIndex);
+    listV3TestnetMockNftFixture(
         marketplace,
         escrow,
         deployer.address,
@@ -38,5 +38,5 @@ fun main() {
     println("V3_TESTNET_FIXTURE_NFT_ADDRESS: {}", nftItem);
     println("V3_TESTNET_FIXTURE_COLLECTION_ADDRESS: {}", buyer.address);
     println("V3_TESTNET_FIXTURE_ITEM_INDEX: {}", itemIndex);
-    println("V3 production Marketplace V3 and NFT Escrow V2 fixture listing/custody verified.");
+    println("V3 production Marketplace V3 and NFT Escrow V2 Testnet fixture listing/custody verified.");
 }
