@@ -14,13 +14,21 @@ export function parseV3StackInteger(stack) {
   return BigInt(value);
 }
 function unwrapOptionalGetterStack(stack) {
-  if (!Array.isArray(stack) || stack.length !== 1) throw new Error("Unexpected optional TVM getter stack");
+  // TON Center's JSON-RPC adapters have emitted both a TVM stack array and
+  // a single tuple for empty optional values. Normalize only known empty forms.
+  if (Array.isArray(stack) && stack.length === 0) return null;
+  if (Array.isArray(stack) && stack.length === 2 &&
+      typeof stack[0] === "string" && stack[0] === "list") {
+    stack = [stack];
+  }
+  if (!Array.isArray(stack) || stack.length !== 1 || !Array.isArray(stack[0]) || stack[0].length !== 2) {
+    throw new Error("Unexpected optional TVM getter stack: " + JSON.stringify(stack));
+  }
   const [type, value] = stack[0];
-  // TON Center v2 serializes Tolk's null optional as an empty tvm.list.
   if (type === "list" && value?.["@type"] === "tvm.list" && Array.isArray(value.elements)) {
     if (value.elements.length === 0) return null;
     if (value.elements.length === 1) return [value.elements[0]];
-    throw new Error("Unexpected optional getter list length");
+    throw new Error("Unexpected optional getter list length: " + JSON.stringify(stack));
   }
   if (type === "null") return null;
   return stack;
