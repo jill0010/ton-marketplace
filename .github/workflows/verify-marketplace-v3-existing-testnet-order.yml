@@ -118,8 +118,6 @@ jobs:
             'V3_DIAGNOSTIC_TREASURY_CONFIGURED',
             'V3_DIAGNOSTIC_ESCROW_CONFIGURED',
             'V3_DIAGNOSTIC_COORDINATOR_CONFIGURED',
-            'V3_DIAGNOSTIC_PURCHASE_SCHEMA_VALID',
-            'V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_AVAILABLE',
           ];
           const failed = checks.filter(k => match(k) !== 'true');
           const lines = [
@@ -128,7 +126,8 @@ jobs:
             '- Persisted order: ' + (missingOrder ? 'absent' : match('V3_DIAGNOSTIC_ORDER_ID')),
             '- Historical inbound bounced flag: ' + (noBounce ? 'false (do not assume funds were refunded)' : 'not confirmed'),
             '- Failed diagnostic checks: ' + (failed.length ? failed.join(', ') : 'none of the recorded basic checks'),
-            '- Remaining unknowns: deployed code version, purchase schema and internal query/index collisions',
+            '- Deployed-code getter compatibility: ' + (match('V3_DIAGNOSTIC_CODE_VERSION_MISMATCH') === 'true' ? 'new V3 read-only getters absent; historical deployment must be assessed separately' : 'not classified'),
+            '- Remaining unknowns: historical deployed code and purchase schema/index collisions (cannot infer from newly added source getters)',
             '- **Safety gate: NO second purchase, NO mainnet deployment, NO automated replay.**',
           ];
           const summary = lines.join(String.fromCharCode(10)) + String.fromCharCode(10);
