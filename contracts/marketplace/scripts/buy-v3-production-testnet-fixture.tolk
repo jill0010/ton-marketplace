@@ -32,8 +32,11 @@ fun main() {
         deadline as uint32,
         { value: grams("0.21") },
     );
-    assert (result.waitForFirstTransaction() != null) throw 915;
-    println("V3 Testnet purchase submitted once. Product ID: {}; gross: 0.01 TON; reserve: 0.2 TON.", productId);
+    // Wait for the complete wallet -> Marketplace -> reserve/escrow trace.
+    // Waiting only for the buyer wallet transaction can let the following
+    // read-only verifier run before the order has been persisted.
+    result.waitForTrace();
+    println("V3 Testnet purchase trace settled once. Product ID: {}; gross: 0.01 TON; reserve: 0.2 TON.", productId);
     println("Buyer: {}", buyer.address);
     println("NFT Item: {}", nftItem!!);
     println("Do not repeat this payment; run read-only delivery and reserve checks.");
