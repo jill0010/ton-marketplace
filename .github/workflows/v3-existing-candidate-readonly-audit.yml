@@ -1,0 +1,69 @@
+name: V3 Existing Testnet Candidate Read-only Audit
+on:
+  workflow_dispatch:
+    inputs:
+      order_id:
+        description: "Optional existing testnet order ID; 0 skips order inspection"
+        required: true
+        default: "0"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214e7c6b0b56e60a8
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: contracts/marketplace/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: contracts/marketplace
+      - name: Read-only audit of existing V3 testnet candidate
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          V3_TESTNET_MARKETPLACE_ADDRESS: "kQAa5cnyurZayVXfJE_rkBiWz19w487aklFEAu6Wm9Fm-Sc6"
+          V3_TESTNET_ESCROW_ADDRESS: "kQCD_2amR3idpahAfj0xdgU9m34Z7s933HtXoDx-ka3J4_Rr"
+          V3_TESTNET_COORDINATOR_ADDRESS: "kQCC2k5wZSjitzFvGGUgyx_6KMWIIuSDQViNy_kw2j6OtqXy"
+          ORDER_ID: ${{ inputs.order_id }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          import { verifyV3Testnet } from "./contracts/marketplace/scripts/verify-v3-testnet.mjs";
+          import { verifyV3Bindings } from "./contracts/marketplace/scripts/verify-v3-testnet-bindings.mjs";
+          import { inspectV3TestnetOrder } from "./contracts/marketplace/scripts/inspect-v3-testnet-order.mjs";
+          const addresses = {
+            marketplace: process.env.V3_TESTNET_MARKETPLACE_ADDRESS,
+            escrow: process.env.V3_TESTNET_ESCROW_ADDRESS,
+            coordinator: process.env.V3_TESTNET_COORDINATOR_ADDRESS,
+          };
+          const accounts = await verifyV3Testnet(addresses);
+          const bindings = await verifyV3Bindings(addresses);
+          const id = process.env.ORDER_ID;
+          if (!/^(0|[1-9][0-9]*)$/.test(id) || !Number.isSafeInteger(Number(id))) throw new Error("Invalid testnet order ID");
+          const order = id === "0" ? null : await inspectV3TestnetOrder({
+            marketplace: addresses.marketplace, orderId: Number(id),
+          });
+          const passed = accounts.allActive && accounts.allCodePresent && bindings.bindingsVerified &&
+            (order === null || (order.orderExists && order.reservePresent));
+          const report = {
+            schemaVersion: 1, network: "testnet", addresses, accounts, bindings, order,
+            readOnlyChecksPassed: passed, codeHashesVerified: false,
+            fundedSettlementVerified: false, refundFinalityVerified: false,
+            mainnetApproved: false, noTransactionSent: true,
+            checkedAt: new Date().toISOString(),
+          };
+          await writeFile("v3-existing-testnet-audit.json", JSON.stringify(report, null, 2) + "\n");
+          console.log("Existing candidate read-only audit:", passed ? "PASS" : "BLOCKED");
+          console.log("Settlement and refund finality remain unverified.");
+          if (!passed) process.exitCode = 1;
+          NODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v3-existing-testnet-audit
+          path: v3-existing-testnet-audit.json
+          if-no-files-found: warn
