@@ -50,7 +50,7 @@ fun MarketplaceReserveStorageV3.save(self) {
 
 contract MarketplaceReserveV3 {
     author: "TON Market"
-    version: "0.1.0"
+    version: "3.0.0"
     description: "Production V3 reserve-gated marketplace integrated with NFT Escrow V2"
     storage: MarketplaceReserveStorageV3
     incomingMessages: MarketplaceReserveMessageV3
