@@ -123,16 +123,15 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFile, writeFile } from "node:fs/promises";
           import { extractV3CandidateAddresses } from "./contracts/marketplace/scripts/postflight-v3-candidate.mjs";
-          import { verifyV3Testnet } from "./contracts/marketplace/scripts/verify-v3-testnet.mjs";
+          import { verifyV3Testnet, normalizeV3CodeHash } from "./contracts/marketplace/scripts/verify-v3-testnet.mjs";
           const log = await readFile("contracts/marketplace/v3-testnet-deployment.log", "utf8");
           const expected = {};
           for (const name of ["marketplace", "escrow", "coordinator"]) {
             const prefix = "V3 trusted compiled " + name + " code hash:";
             const lines = log.split(/\r?\n/).filter(line => line.includes(prefix));
             if (lines.length !== 1) throw new Error("Missing or duplicate trusted build hash: " + name);
-            const hash = lines[0].slice(lines[0].indexOf(prefix) + prefix.length).trim().replace(/^0x/i, "");
-            if (!/^[a-fA-F0-9]{64}$/.test(hash)) throw new Error("Invalid trusted build hash: " + name);
-            expected[name] = hash.toLowerCase();
+            const hash = lines[0].slice(lines[0].indexOf(prefix) + prefix.length).trim();
+            expected[name] = normalizeV3CodeHash(hash);
           }
           const report = await verifyV3Testnet(extractV3CandidateAddresses(log), fetch, expected);
           await writeFile("v3-testnet-code-hashes.json", JSON.stringify({
