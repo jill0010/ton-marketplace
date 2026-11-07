@@ -11,9 +11,15 @@ test("address getter decoding accepts a valid address BOC and rejects malformed 
   assert.throws(() => decodeAddressGetter([["num", "1"]]), /cell\/slice/);
 });
 test("binding checker fails closed for mismatched contracts", async () => {
-  const report = await verifyV3Bindings(addresses, async () => ({
-    ok: true, json: async () => ({ ok: true, result: { exit_code: 0, stack: getterAddress(addresses.marketplace) } }),
-  }));
+  const report = await verifyV3Bindings(addresses, async (url, options) => {
+    assert.equal(url, "https://testnet.toncenter.com/api/v2/runGetMethod");
+    assert.equal(options.method, "POST");
+    assert.equal(options.headers["Content-Type"], "application/json");
+    const payload = JSON.parse(options.body);
+    assert.ok(["ownerV2", "escrowV2", "treasuryV2", "testReserveCoordinator", "marketplace", "owner", "testReserveMarketplace", "testReserveOwner"].includes(payload.method));
+    assert.deepEqual(payload.stack, []);
+    return { ok: true, json: async () => ({ ok: true, result: { exit_code: 0, stack: getterAddress(addresses.marketplace) } }) };
+  });
   assert.equal(report.bindingsVerified, false);
   assert.equal(report.noTransactionSent, true);
   assert.equal(report.mainnetApproved, false);
