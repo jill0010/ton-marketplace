@@ -2,6 +2,7 @@
 import { pathToFileURL } from "node:url";
 import { writeFile } from "node:fs/promises";
 import { normalizeV3TestnetAddress } from "./verify-v3-testnet.mjs";
+import { Cell } from "@ton/core";
 
 export function parseV3StackInteger(stack) {
   if (!Array.isArray(stack) || stack.length !== 1) throw new Error("Unexpected TVM getter stack");
@@ -11,6 +12,15 @@ export function parseV3StackInteger(stack) {
     throw new Error("Invalid TVM integer");
   }
   return BigInt(value);
+}
+export function validV3GetterCell(stack) {
+  if (!Array.isArray(stack) || stack.length !== 1) return false;
+  const [type, value] = stack[0];
+  if (!["cell", "slice"].includes(type) || typeof value?.bytes !== "string") return false;
+  try {
+    const roots = Cell.fromBoc(Buffer.from(value.bytes, "base64"));
+    return roots.length === 1 && (roots[0].bits.length > 0 || roots[0].refs.length > 0);
+  } catch { return false; }
 }
 export function classifyV3OrderReadiness(status, escrowId, reserve) {
   if (status === null || escrowId === null) return { known: false, safeToSettle: false };
@@ -43,16 +53,14 @@ export async function inspectV3TestnetOrder({ marketplace, orderId }, fetcher = 
   const input = [["num", "0x" + BigInt(orderId).toString(16)]];
   // Order cells are intentionally not interpreted as settled without an authenticated trace.
   const orderStack = await getter("orderCellV2", input);
-  const orderExists = Array.isArray(orderStack) && orderStack.length === 1 &&
-    (orderStack[0][0] === "cell" || orderStack[0][0] === "slice");
+  const orderExists = validV3GetterCell(orderStack);
   if (!orderExists) {
     if (!Array.isArray(orderStack) || orderStack.length !== 1 || orderStack[0][0] !== "null") {
       throw new Error("Unrecognized order getter response");
     }
   }
   const reserveStack = await getter("testPurchaseReserve", input);
-  const reservePresent = Array.isArray(reserveStack) && reserveStack.length === 1 &&
-    ["cell", "slice"].includes(reserveStack[0][0]);
+  const reservePresent = validV3GetterCell(reserveStack);
   if (!reservePresent && !(Array.isArray(reserveStack) && reserveStack.length === 1 &&
     reserveStack[0][0] === "null")) throw new Error("Unrecognized reserve getter response");
   return {
