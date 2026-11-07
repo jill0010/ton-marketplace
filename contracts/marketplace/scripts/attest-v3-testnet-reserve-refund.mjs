@@ -160,7 +160,7 @@ async function toncenter(path, params = {}) {
       redirect: "error",
     });
     if (response.ok) break;
-    if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 5) {
+    // TON Center may report transient gateway/shard errors as nonstandard 542.\n    // Retry read-only RPC failures, but never retry transaction submissions.\n    if (![429, 500, 502, 503, 504, 520, 522, 524, 542].includes(response.status) || attempt === 5) {
       throw new Error(path + " RPC HTTP " + response.status);
     }
     await sleep(response.status === 429 ? Math.min(2000 * 2 ** attempt, 20000) : Math.min(1000 * 2 ** attempt, 10000));
