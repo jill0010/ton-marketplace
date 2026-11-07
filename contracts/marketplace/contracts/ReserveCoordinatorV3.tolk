@@ -241,3 +241,11 @@ get fun reserveCoordinatorMarketplaceV3(): address {
 get fun reserveCoordinatorVerifierV3(): address {
     return ReserveCoordinatorStorageV3.load().verifier;
 }
+
+get fun reserveCoordinatorVaultCodeHashV3(): uint256 {
+    return ReserveCoordinatorStorageV3.load().vaultCode.hash();
+}
+
+get fun reserveCoordinatorOwnerV3(): address {
+    return ReserveCoordinatorStorageV3.load().owner;
+}
