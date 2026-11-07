@@ -37,6 +37,73 @@ export function classifyHistoricalPayment(txs, payment = HISTORICAL_PAYMENT) {
 }
 // API v3 indexes transactions by exact hash, avoiding overloaded archival
 // liteservers. Treat indexer output as reported evidence, NOT a verified refund.
+function addressMatches(candidate, rawAddress) {
+  try { return normalizeV3TestnetAddress(candidate) === rawAddress; } catch { return false; }
+}
+
+// Follow an indexed sender transaction through its actual outgoing message.
+// This does not sign or transfer, and does not establish a later refund.
+async function inspectPaymentHandoff(senderTransaction, marketplace, fetcher) {
+  const outgoing = Array.isArray(senderTransaction.out_msgs) ? senderTransaction.out_msgs : [];
+  const matching = outgoing.filter(message =>
+    addressMatches(message.destination, marketplace) &&
+    String(message.value ?? "") === HISTORICAL_PAYMENT.amountNano &&
+    hashHex(message.hash),
+  );
+  if (matching.length !== 1) return {
+    state: "UNRESOLVED", reason: matching.length ? "AMBIGUOUS_PAYMENT_MESSAGES" : "PAYMENT_MESSAGE_NOT_IDENTIFIED",
+    senderTransactionHash: hashHex(senderTransaction.hash),
+    outgoingMessageCount: outgoing.length,
+  };
+  const message = matching[0];
+  const messageHash = hashHex(message.hash);
+  const url = new URL("https://testnet.toncenter.com/api/v3/transactionsByMessage");
+  url.searchParams.set("msg_hash", messageHash);
+  url.searchParams.set("limit", "20");
+  const response = await fetcher(url.toString(), {
+    method: "GET", redirect: "error",
+    headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
+  });
+  if (!response.ok) return {
+    state: "UNRESOLVED", reason: "MESSAGE_LOOKUP_HTTP_ERROR", httpStatus: response.status,
+    senderTransactionHash: hashHex(senderTransaction.hash), messageHash,
+  };
+  const json = await response.json();
+  if (!Array.isArray(json.transactions)) throw new Error("Invalid payment message lookup response");
+  const receiver = json.transactions.filter(tx =>
+    addressMatches(tx.account, marketplace) &&
+    hashHex(tx.in_msg?.hash) === messageHash &&
+    String(tx.in_msg?.value ?? "") === HISTORICAL_PAYMENT.amountNano,
+  );
+  if (receiver.length !== 1) return {
+    state: "UNRESOLVED", reason: receiver.length ? "AMBIGUOUS_RECEIVER_TRANSACTIONS" : "RECEIVER_TRANSACTION_NOT_VERIFIED",
+    senderTransactionHash: hashHex(senderTransaction.hash), messageHash,
+    matchedReceiverTransactions: receiver.length,
+  };
+  const tx = receiver[0];
+  const before = tx.account_state_before?.balance;
+  const after = tx.account_state_after?.balance;
+  const hasBalances = [before, after].every(v => typeof v === "string" && /^(0|[1-9][0-9]*)$/.test(v));
+  return {
+    state: "UNRESOLVED", reason: "INDEXED_PAYMENT_DELIVERED_REFUND_UNVERIFIED",
+    senderTransactionHash: hashHex(senderTransaction.hash),
+    paymentMessageHash: messageHash,
+    receiverTransactionHash: hashHex(tx.hash),
+    receiverAccount: marketplace,
+    transferredNano: HISTORICAL_PAYMENT.amountNano,
+    receiverBalanceBeforeNano: hasBalances ? before : null,
+    receiverBalanceAfterNano: hasBalances ? after : null,
+    receiverBalanceDeltaNano: hasBalances ? String(BigInt(after) - BigInt(before)) : null,
+    receiverTotalFeesNano: String(tx.total_fees ?? ""),
+    receiverAborted: tx.description?.aborted === true,
+    receiverComputeExitCode: Number.isInteger(tx.description?.compute_ph?.exit_code) ? tx.description.compute_ph.exit_code : null,
+    receiverOutboundCount: Array.isArray(tx.out_msgs) ? tx.out_msgs.length : null,
+    // The receiver transaction alone cannot establish subsequent refund
+    // delivery, escrow accounting, or any recovery entitlement.
+    refundConfirmed: false, retryAuthorized: false,
+  };
+}
+
 export async function inspectHistoricalByHashV3(fetcher = fetch) {
   const account = normalizeV3TestnetAddress(HISTORICAL_PAYMENT.marketplace);
   const url = new URL("https://testnet.toncenter.com/api/v3/transactions");
@@ -78,6 +145,12 @@ export async function inspectHistoricalByHashV3(fetcher = fetch) {
         if (data.transactions.length > 0) {
           identity = { kind, accounts: [...new Set(data.transactions.map(item => item.account).filter(value => typeof value === "string"))],
             returnedTransactions: data.transactions.length };
+          if (kind === "transaction" && data.transactions.length === 1) {
+            const transaction = data.transactions[0];
+            if (hashHex(transaction.hash) === HISTORICAL_PAYMENT.hash) {
+              identity.paymentHandoff = await inspectPaymentHandoff(transaction, account, fetcher);
+            }
+          }
           break;
         }
       }
