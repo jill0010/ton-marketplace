@@ -61,3 +61,9 @@ test("settlement CI checks the exact verifier output and preserves read-only pur
  assert.match(workflow,/contracts\/marketplace\/v3-production-testnet-purchase-verification-attempt-\*\.log/);
  assert.doesNotMatch(workflow,/grep -Fq "PRODUCTION V3 TESTNET END-TO-END SETTLEMENT VERIFIED\."/);
 });
+
+test("Testnet receipt attestor retries transient gateway 542 without archival lookup",()=>{
+ const attest=readFileSync(new URL("./attest-v3-testnet-reserve-refund.mjs",import.meta.url),"utf8");
+ assert.match(attest,/500, 502, 503, 504, 520, 522, 524, 542/);
+ assert.doesNotMatch(attest,/archival: "true"/);
+});
