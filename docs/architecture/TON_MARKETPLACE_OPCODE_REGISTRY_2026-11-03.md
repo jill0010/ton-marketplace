@@ -27,6 +27,7 @@ This registry is the canonical opcode allocation record for contract messages in
 | `0x5fcc3d14` | `NftTransfer` | TEP-62 |
 | `0xd53276db` | `NftExcesses` | TEP-62 |
 | `0x05138d91` | `NftOwnershipAssigned` | TEP-62 |
+| `0x299a3e15` | `DeployMockNFTItemV3` | Testnet-only synthetic TEP-62 fixture deployment |
 | `0x7f000001` | `SetRejectReturn` | Test-only RejectingNFTItem fixture |
 | `0x7f000002` | `SetRejectCallbackV2` | Test-only RejectingMarketplaceCallback fixture |
 | `0x7f000003` | `StartTestEscrowV2` | Test-only RejectingMarketplaceCallback fixture |
