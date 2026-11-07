@@ -151,6 +151,18 @@ fun onInternalMessage(in: InMessage) {
                 assert (result.settledAmount < identity.principal) throw 753;
             }
 
+            assert (storage.networkGlobalId == -3 || storage.networkGlobalId == -239) throw 754;
+            assert (storage.threshold >= 2 && storage.threshold <= 3) throw 756;
+            val validator0 = storage.validatorKeys.get(0);
+            val validator1 = storage.validatorKeys.get(1);
+            val validator2 = storage.validatorKeys.get(2);
+            assert (validator0.isFound && validator1.isFound && validator2.isFound) throw 756;
+            assert (
+                validator0.loadValue() != validator1.loadValue() &&
+                validator0.loadValue() != validator2.loadValue() &&
+                validator1.loadValue() != validator2.loadValue()
+            ) throw 756;
+
             val bundle = msg.signatures.load();
             var validSignatures = 0;
             var signerIndex: uint8 = 0;
