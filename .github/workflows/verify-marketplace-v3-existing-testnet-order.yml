@@ -66,6 +66,11 @@ jobs:
           chmod 600 wallets.toml
       - name: Build verifier (no deployment)
         run: acton build
+      - name: Diagnose existing order and reserve (no transfers)
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/diagnose-v3-existing-testnet-order.tolk --net testnet --backtrace full 2>&1 | tee v3-existing-testnet-diagnostic.log
       - name: Verify existing order and reserve (no transfers)
         shell: bash
         run: |
@@ -77,7 +82,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: v3-existing-testnet-readonly-evidence
-          path: contracts/marketplace/v3-existing-testnet-readonly.log
+          path: |
+            contracts/marketplace/v3-existing-testnet-diagnostic.log
+            contracts/marketplace/v3-existing-testnet-readonly.log
           if-no-files-found: ignore
           retention-days: 30
       - name: Remove temporary wallet profile
