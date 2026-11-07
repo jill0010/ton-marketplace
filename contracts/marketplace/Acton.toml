@@ -90,3 +90,8 @@ display-name = "V3 settlement attestation quorum verifier"
 src = "contracts/SettlementAttestationVerifierV3.tolk"
 depends = []
 
+[contracts.ReserveVaultV3]
+display-name = "Production V3 per-order reserve vault"
+src = "contracts/ReserveVaultV3.tolk"
+depends = ["SettlementAttestationVerifierV3"]
+
