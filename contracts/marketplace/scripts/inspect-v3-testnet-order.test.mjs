@@ -66,3 +66,18 @@ test("TON Center empty tvm.list represents an absent optional order or reserve",
   assert.equal(report.noTransactionSent, true);
 });
 
+
+test("normalizes empty optional getter stack variants", async () => {
+  for (const emptyStack of [
+    [],
+    ["list", { "@type": "tvm.list", elements: [] }],
+    [["list", { "@type": "tvm.list", elements: [] }]],
+  ]) {
+    const fetcher = async () => ({ ok: true, json: async () => ({
+      ok: true, result: { exit_code: 0, stack: emptyStack },
+    }) });
+    const report = await inspectV3TestnetOrder({ marketplace, orderId: 1 }, fetcher);
+    assert.equal(report.orderExists, false);
+    assert.equal(report.reservePresent, false);
+  }
+});
