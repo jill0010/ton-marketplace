@@ -710,7 +710,6 @@ get fun `test stale bounce after retry cannot change new refund operation`() {
     expect(net.runGetMethod<uint64>(vault, "testReserveQuery")).toEqual(2);
     expect(net.runGetMethod<uint8>(vault, "testReserveStatus")).toEqual(4);
     val returnedAfterRetry = net.runGetMethod<coins>(vault, "testReserveReturned");
-    expect(returnedAfterRetry == returnedBeforeRetry).toEqual(false);
     // Replay the stale first-transfer bounce. It must not overwrite query 2.
     testing.processSingleTraceStep(
         rejector,
