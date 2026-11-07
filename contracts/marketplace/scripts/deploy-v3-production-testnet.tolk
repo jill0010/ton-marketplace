@@ -225,7 +225,17 @@ fun main() {
         net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3"),
         net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"),
     );
-    val escrowAddressMatches = marketplace.escrowV2() == escrow.address;
+    val storedEscrowAddress = marketplace.escrowV2();
+    val escrowAddressMatches = storedEscrowAddress == escrow.address;
+    val escrowMatchesDeployer = storedEscrowAddress == deployer.address;
+    val escrowMatchesMarketplace = storedEscrowAddress == marketplace.address;
+    val escrowContractPointsToMarketplace = escrow.marketplace() == marketplace.address;
+    println(
+        "V3 escrow identity diagnostics: storedMatchesDeployer={}, storedMatchesMarketplace={}, escrowPointsToMarketplace={}",
+        escrowMatchesDeployer,
+        escrowMatchesMarketplace,
+        escrowContractPointsToMarketplace,
+    );
     val escrowIsConfigured = marketplace.escrowConfiguredV2();
     val treasuryAddressMatches = marketplace.treasuryV2() == treasuryAddress;
     val treasuryIsConfigured = marketplace.treasuryConfiguredV2();
