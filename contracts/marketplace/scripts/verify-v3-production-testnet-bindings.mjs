@@ -15,16 +15,26 @@ export function decodeV3IntegerGetter(stack) {
 }
 
 async function runGetter(address, method, fetcher, stack = []) {
-  const response = await fetcher("https://testnet.toncenter.com/api/v2/runGetMethod", {
-    method: "POST",
-    redirect: "error",
-    headers: {
-      "Content-Type": "application/json",
-      ...(process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {}),
-    },
-    body: JSON.stringify({ address, method, stack }),
-  });
-  if (!response.ok) throw new Error("Getter RPC HTTP error for " + method + ": " + response.status);
+  const requestBody = JSON.stringify({ address, method, stack });
+  let response;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    response = await fetcher("https://testnet.toncenter.com/api/v2/runGetMethod", {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {}),
+      },
+      body: requestBody,
+    });
+    if (response.ok) break;
+    if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 4) {
+      throw new Error("Getter RPC HTTP error for " + method + ": " + response.status);
+    }
+    await new Promise((resolve) => setTimeout(resolve,
+      response.status === 429 ? Math.min(2000 * 2 ** attempt, 16000) : Math.min(1000 * 2 ** attempt, 8000)));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 500));
   const data = await response.json();
   if (data.ok !== true || data.result?.exit_code !== 0) throw new Error("Getter failed: " + method);
   return data.result.stack;
