@@ -73,7 +73,7 @@ jobs:
               return `${name}: ${v.address} active=${v.active} code=${v.codePresent} codeHash=${v.codeHash}`;
             });
             appendFileSync(process.env.GITHUB_STEP_SUMMARY, "\n## Observed testnet contracts\n" + results.join("\n") + "\n\nProduction release remains blocked pending independent proofs.\n");
-            if (!p.allActive || !p.allCodePresent) process.exitCode = 1;
+            if (!p.allActive || !p.allCodePresent || !p.codeHashesVerified) process.exitCode = 1;
           '
       - name: Upload evidence (including inactive-state reports)
         if: always()
