@@ -6,7 +6,7 @@ Status: design gate only. This document does not approve deployment or assert th
 
 The current `TestMarketplaceReserveV3`, `TestReserveCoordinator`, and `TestReserveVault` are simulation prototypes. They must not be deployed as production contracts by renaming files, changing metadata, or relaxing the release gate.
 
-The current vault deliberately rejects `RetryTestReserve` and `ConfirmTestReserveReceipt` (exit 706). This prevents an owner-supplied hash or attestation from becoming proof that the buyer received a refund. It also means the prototype cannot recover a genuine bounced refund. This is an explicit production blocker, not a test to delete.
+The current experimental vault now permits one owner-authorized `RetryTestReserve` after a protocol Rich Bounce is parsed and quarantined, but only when the retry message carries a separate order-local top-up of at least the recorded principal shortfall plus execution headroom. It increments the query ID and permits no second retry. This is prototype behavior only: it is not the production liability ledger, does not establish buyer receipt, and has not been independently audited. `ConfirmTestReserveReceipt` remains rejected (exit 706); an owner-supplied hash is never accepted as proof that the buyer received a refund. The pure JavaScript ledger separately requires an exact shortfall top-up and models outstanding liability, available funds, in-flight funds, and paid funds. These different prototype layers must be unified and proven in a production Tolk contract before release.
 
 ## Required per-order state machine
 
@@ -105,8 +105,9 @@ Consequences for the current prototype:
 
 - `TestReserveVault.onBouncedMessage` already checks the protocol-specific handler, buyer sender, Rich Bounce prefix, original refund opcode/body, order ID, query ID, original value, and a minimum returned-value threshold.
 - The current experimental handler stores `in.valueCoins` in `returnedNano` and changes `status = 4` only after matching the Rich Bounce envelope, buyer sender, original refund opcode, order ID, query ID, original amount, and minimum returned-value threshold.
-- This stored value is quarantine/accounting evidence only. It is not currently reconciled against a durable residual-liability ledger, and the prototype does not cap a future dispatch to the exact returned principal.
-- `RetryTestReserve` therefore remains blocked (exit 706). It must stay blocked until a production state model records the original liability, actual returned amount, fees, residual debt, amount eligible for retry, and operation consumption, then proves the contract balance can fund exactly that amount without using another order's reserve or reviewed costs.
+- The current experimental retry accepts a top-up message value greater than or equal to the measured shortfall plus 0.03 TON execution headroom, stores that value in `topUpNano`, and dispatches the original nominal refund amount. This is deliberately a test prototype; it does not yet expose a complete on-chain residual-debt/fee ledger or prove every balance component against the production reserve identity.
+- The pure JavaScript model enforces an exact top-up equal to the uncovered shortfall, but is not connected to contract execution or chain authentication. It is an accounting specification/test aid, not production enforcement.
+- The production implementation must reconcile returned principal, top-up principal, execution fees, remaining buyer liability, and operation consumption as distinct fields before it can be considered safe. It must prove that no order's funds can satisfy another order's liability or operational fees.
 - The original refund operation must be marked consumed before dispatching a retry. A retry must use a fresh query ID, and a delayed bounce from an earlier operation must not mutate the newer operation.
 
 Official protocol references:
