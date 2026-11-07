@@ -202,7 +202,10 @@ fun onInternalMessage(in: InMessage) {
         }
 
         SetMarketplaceV2Escrow => {
-            var storage = lazy MarketplaceReserveStorageV3.load();
+            // Materialize the complete storage value before mutating the escrow
+            // address. This avoids retaining a lazy storage view across the
+            // address/configuration writes in production deployment.
+            var storage = MarketplaceReserveStorageV3.load();
             assert (in.senderAddress == storage.owner) throw ErrorsV2.NotOwner;
             // Bind the V2 Escrow once. Rotating it after listings exist would strand
             // callbacks and split custody authority across two contract addresses.
