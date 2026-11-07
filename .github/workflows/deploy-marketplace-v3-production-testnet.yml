@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ inputs.confirm_production_v3_testnet_only == true }}
+    # A rerun of a partially completed workflow must never send a second payment.
+    if: ${{ inputs.confirm_production_v3_testnet_only == true && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     defaults:
@@ -188,6 +189,18 @@ jobs:
           const address = line.split("V3_TESTNET_FIXTURE_NFT_ADDRESS:")[1].trim().split(/\s+/)[0];
           await appendFile(process.env.GITHUB_ENV, "V3_TESTNET_FIXTURE_NFT_ADDRESS=" + address + "\n");
           NODE
+
+      - name: Enforce single-attempt Testnet purchase authorization
+        shell: bash
+        working-directory: .
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1" || {
+            echo "::error::Rerun blocked: cannot safely repeat a potentially submitted Testnet purchase."
+            exit 1
+          }
+          test "$V3_PRODUCTION_TESTNET_DEPLOY_APPROVED" = "true"
+          echo "One-time Testnet-only transaction gate passed. Mainnet remains prohibited."
 
       - name: Submit one real Testnet purchase through production Marketplace V3
         env:
