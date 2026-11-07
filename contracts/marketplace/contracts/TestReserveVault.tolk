@@ -27,7 +27,9 @@ struct TestReserveVaultStorage {
     queryId: uint64
     evidenceHash: uint256
     returnedNano: uint64
-    // At most one operator-triggered retry per reserve liability.
+    // Explicit order-local top-up reserved for any fee-reduced bounce shortfall.
+    topUpNano: uint64
+    // At most one retry in this experimental protocol.
     retryCount: uint8
 }
 
@@ -165,12 +167,21 @@ fun onInternalMessage(in: InMessage) {
         RetryTestReserve => {
             assert (in.senderAddress == storage.owner) throw 701;
             assert (msg.orderId == identity.orderId) throw 702;
-            // Fail closed: the prototype does not yet model a separate residual
-            // liability or cap a retry to the exact returned principal. A
-            // fee-reduced bounce must never cause a second nominal-value payout.
-            // Keep the returned funds quarantined until the production ledger
-            // can account for returned value, residual debt and retry operation.
-            throw 706;
+            assert (storage.status == 4 && storage.returnedNano > 0) throw 706;
+            assert (storage.retryCount == 0) throw 706;
+            val outstanding = storage.refundAmount as uint64;
+            assert (storage.returnedNano < outstanding) throw 706;
+            val shortfall = outstanding - storage.returnedNano;
+            // The retry must carry a separate top-up covering the exact principal
+            // shortfall plus execution headroom. The per-order vault quarantines
+            // returned funds and this top-up; no pooled balance can satisfy it.
+            assert (in.valueCoins >= (shortfall as coins) + grams("0.03")) throw 706;
+            storage.topUpNano = in.valueCoins as uint64;
+            assert (storage.returnedNano + storage.topUpNano >= outstanding) throw 706;
+            storage.retryCount = 1;
+            storage.status = 1;
+            storage.save();
+            dispatchTestReserve(mutate storage);
         }
         ConfirmTestReserveReceipt => {
             // V3 release blocker: owner attestations are not on-chain receipt
