@@ -2,6 +2,7 @@
 // Run this test against the same source revision and Acton toolchain used at deployment.
 // This test does not create wallets, send messages, or access a live network.
 import "@acton/build"
+import "@acton/io"
 import "@acton/emulation/testing"
 import "@contracts/TestMarketplaceReserveV3"
 import "@contracts/NFTEscrowV2"
