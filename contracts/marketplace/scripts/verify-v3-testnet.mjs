@@ -66,6 +66,19 @@ export function parseV3ContractCode(code) {
   }
 }
 
+// Acton logs may represent cell hashes as hex or standard/base64url.
+// Normalize exactly 32 bytes before comparing against the on-chain code BOC.
+export function normalizeV3CodeHash(value) {
+  if (typeof value !== "string") throw new Error("Invalid V3 code hash");
+  const input = value.trim();
+  if (/^(?:0x)?[a-fA-F0-9]{64}$/.test(input)) return input.replace(/^0x/i, "").toLowerCase();
+  if (/^[A-Za-z0-9+/_-]{43}=?$/.test(input)) {
+    const bytes = Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    if (bytes.length === 32) return bytes.toString("hex");
+  }
+  throw new Error("Invalid V3 code hash encoding");
+}
+
 export function hasPlausibleContractCode(code) {
   return parseV3ContractCode(code) !== null;
 }
