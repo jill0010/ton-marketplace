@@ -42,6 +42,11 @@ export function topUpReserve(state, { orderId, buyer, amountNano, fundingMessage
   invariant(orderId === next.orderId && buyer === next.buyer, "Top-up identity mismatch");
   const amount = nano(amountNano);
   invariant(amount > 0n, "Top-up must be positive");
+  const outstanding = next.principalNano - next.paidNano;
+  const uncovered = outstanding > next.availableNano + next.inFlightNano
+    ? outstanding - next.availableNano - next.inFlightNano : 0n;
+  invariant(uncovered > 0n, "Top-up is not allowed without an outstanding shortfall");
+  invariant(amount === uncovered, "Top-up must equal the exact outstanding shortfall");
   identity(fundingMessageHash);
   invariant(!next.operations.some((op) => op.fundingMessageHash === fundingMessageHash),
     "Funding message already consumed");
