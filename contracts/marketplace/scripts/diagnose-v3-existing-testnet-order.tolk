@@ -83,6 +83,7 @@ fun main() {
     val historicalDeadline: int = 1794067298;
     val historicalDeadlineMargin = historicalCreatedAt + 900 - historicalDeadline;
     println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_VALID: {}", historicalDeadline >= historicalCreatedAt && historicalDeadline <= historicalCreatedAt + 900);
+    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_SECONDS_AFTER_INBOUND: {}", historicalDeadline - historicalCreatedAt);
     println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_MARGIN_SECONDS: {}", historicalDeadlineMargin);
     println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_NEAR_LIMIT: {}", historicalDeadlineMargin >= 0 && historicalDeadlineMargin <= 30);
     println("V3_DIAGNOSTIC_PRODUCT_ID_MATCHES: {}", product.id == productId!!);
@@ -103,7 +104,7 @@ fun main() {
     println("V3_DIAGNOSTIC_HISTORICAL_PAYMENT_QUERY_STATUS: unavailable_on_existing_deployment");
     println("V3_DIAGNOSTIC_CODE_VERSION_MISMATCH: unverified_by_getter_coverage");
     println("V3_DIAGNOSTIC_GETTER_COVERAGE: legacy deployment does not expose newer schema/query introspection getters; this alone does not prove a code-hash mismatch");
-    println("V3_DIAGNOSTIC_NEXT_STEP: inspect the exact inbound transaction timestamp and query-index state; the four-second deadline margin is a high-priority InvalidPurchase candidate");
+    println("V3_DIAGNOSTIC_NEXT_STEP: inspect the exact inbound transaction timestamp and query-index state; the deadline was 896 seconds after inbound, within the 900-second maximum; four seconds is the upper-bound margin, NOT time remaining until expiry. Inspect query-index and contract state");
 
     println("V3_DIAGNOSTIC_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
     println("V3_DIAGNOSTIC_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
