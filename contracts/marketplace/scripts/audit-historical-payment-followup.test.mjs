@@ -27,3 +27,23 @@ test("follow-up lookup only performs read-only testnet GET",async()=>{
  assert.equal(result.historyComplete,false);
  assert.equal(result.refundConfirmed,false);
 });
+
+test("indexed latest transaction equals failed receiver and balance is unchanged",()=>{
+ const receiver={...anchor,account_state_after:{balance:"3348398024"}};
+ const older={account,hash:"c".repeat(64),lt:"99",out_msgs:[]};
+ const result=analyzeFollowupTransactions([receiver,older]);
+ assert.equal(result.noLaterMarketplaceTransactionInIndexedHistory,true);
+ assert.equal(result.latestIndexedTransactionHash,anchor.hash);
+ assert.equal(result.latestIndexedBalanceNano,"3348398024");
+ assert.equal(result.indexedBalanceChangeSincePaymentNano,"0");
+ assert.equal(result.refundConfirmed,false);
+});
+test("newer transaction changes indexed balance and never confirms refund",()=>{
+ const receiver={...anchor,account_state_after:{balance:"3348398024"}};
+ const newer={account,hash:"d".repeat(64),lt:"102",
+   account_state_after:{balance:"3148398024"},out_msgs:[]};
+ const result=analyzeFollowupTransactions([newer,receiver]);
+ assert.equal(result.noLaterMarketplaceTransactionInIndexedHistory,false);
+ assert.equal(result.indexedBalanceChangeSincePaymentNano,"-200000000");
+ assert.equal(result.refundConfirmed,false);
+});
