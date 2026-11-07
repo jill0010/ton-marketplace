@@ -168,7 +168,36 @@ jobs:
           V3_VALIDATOR_0_PUBLIC_KEY: "1"
           V3_VALIDATOR_1_PUBLIC_KEY: "2"
           V3_VALIDATOR_2_PUBLIC_KEY: "3"
-        run: acton script scripts/deploy-v3-production-testnet.tolk
+        run: |
+          set -euo pipefail
+          acton script scripts/deploy-v3-production-testnet.tolk 2>&1 | tee v3-production-testnet-emulation.log
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const log = await readFile("v3-production-testnet-emulation.log", "utf8");
+          for (const name of ["marketplace", "escrow", "coordinator", "verifier"]) {
+            const label = "V3 testnet candidate " + name + ":";
+            const matches = log.split(/\r?\n/).filter(line => line.includes(label));
+            if (matches.length !== 1) throw new Error("Missing/duplicate emulated address " + name);
+            const address = matches[0].slice(matches[0].indexOf(label) + label.length).trim().split(/\s+/)[0];
+            await appendFile(process.env.GITHUB_ENV, "V3_PRODUCTION_TESTNET_" + name.toUpperCase() + "_ADDRESS=" + address + "\n");
+          }
+          NODE
+
+      - name: Rehearse production V3 fixture deployment and NFT Escrow V2 custody listing
+        env:
+          V3_TESTNET_FIXTURE_ENABLED: "true"
+          V3_TESTNET_FIXTURE_ITEM_INDEX: "1000"
+          FIXTURE_EMULATION: "true"
+        run: acton script scripts/run-v3-production-testnet-fixture.tolk
+
+      - name: Rehearse production V3 Testnet purchase submission
+        env:
+          V3_TESTNET_PURCHASE_ENABLED: "true"
+          V3_TESTNET_BUY_DEADLINE: "4294967295"
+        run: acton script scripts/buy-v3-production-testnet-fixture.tolk
+
+      - name: Verify production V3 fixture purchase and isolated in-flight reserve in emulator
+        run: acton script scripts/verify-v3-production-testnet-purchase.tolk
 
       - name: Linter
         run: acton check --output-format github
