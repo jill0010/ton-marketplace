@@ -32,12 +32,16 @@ fun main() {
         validator1!! != validator2!!
     ) throw 823;
 
+    // A fresh funded validation must never resolve to the historical deterministic address.
+    // A unique GitHub run ID seeds the initial query counter and therefore StateInit.
+    val freshNonce = env<int>("V3_FRESH_DEPLOYMENT_NONCE") ?? 1;
+    assert (freshNonce > 0 && freshNonce < 9223372036854775807) throw 839;
     val initial = MarketplaceReserveStorageV3 {
         owner: deployer.address,
         escrow: deployer.address,
         escrowConfigured: false,
         nextProductId: 1,
-        nextQueryId: 1,
+        nextQueryId: freshNonce,
         products: [],
         assetListings: [],
         queryToProduct: [],
