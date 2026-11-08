@@ -130,6 +130,14 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   if (reserveStatus !== null && reserveStatus > 3n) {
     throw new Error("Unexpected V3 reserve status");
   }
+  // Reserve allocation failure is recorded atomically with the product's
+  // refund transition in MarketplaceReserveV3; it cannot remain purchased.
+  if (reserveStatus === 3n && status !== 6n && status !== 5n) {
+    throw new Error("V3 failed reserve allocation without refund/cancellation state");
+  }
+  if (reserveStatus !== null && reserveStatus !== 0n && existingOrderId === null) {
+    throw new Error("V3 reserve binding exists without a linked order");
+  }
   if (status === 2n && existingOrderId !== null) {
     throw new Error("Listed V3 product already has an order");
   }
