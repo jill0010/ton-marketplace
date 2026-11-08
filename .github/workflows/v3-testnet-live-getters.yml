@@ -1,0 +1,40 @@
+name: V3 Testnet Live Getter Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketplace_address:
+        description: "Deployed Marketplace V3 address (TON Testnet)"
+        required: true
+        type: string
+      product_id:
+        description: "Existing on-chain product ID"
+        required: true
+        type: string
+      nft_item_address:
+        description: "NFT Item address bound to this product"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-getters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - name: Verify real Testnet getter responses
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          V3_TESTNET_MARKETPLACE_ADDRESS: ${{ inputs.marketplace_address }}
+          V3_TESTNET_PRODUCT_ID: ${{ inputs.product_id }}
+          V3_TESTNET_NFT_ITEM_ADDRESS: ${{ inputs.nft_item_address }}
+        run: node scripts/verify-v3-testnet-live-getters.mjs
