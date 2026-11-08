@@ -63,6 +63,21 @@ export function preflightMarketplaceV3TestnetPurchase(
       input.nowSeconds - s.fetchedAtSeconds > 15) {
     throw new Error("V3 chain snapshot is stale or has an invalid timestamp.");
   }
+  // RPC decoding and browser state are untrusted at runtime even when typed
+  // as a snapshot. Reject truthy strings and numeric coercion before quoting.
+  if (typeof s.productId !== "bigint" ||
+      typeof s.priceNano !== "bigint" ||
+      typeof s.escrowId !== "bigint" ||
+      (s.existingOrderId !== null && typeof s.existingOrderId !== "bigint") ||
+      !Number.isSafeInteger(s.productStatus) ||
+      typeof s.coordinatorConfigured !== "boolean" ||
+      typeof s.treasuryConfigured !== "boolean" ||
+      typeof s.escrowConfigured !== "boolean" ||
+      typeof input.expectedProductId !== "bigint" ||
+      typeof input.expectedPriceNano !== "bigint" ||
+      (input.queryId !== undefined && typeof input.queryId !== "bigint")) {
+    throw new Error("V3 chain snapshot contains invalid field types.");
+  }
   // Every participant and NFT contract in this checkout must be on the
   // supported base workchain. Do not accept masterchain or exotic addresses
   // merely because two caller-supplied strings happen to match.
