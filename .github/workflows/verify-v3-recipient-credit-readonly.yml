@@ -1,0 +1,50 @@
+name: Verify V3 Testnet Recipient Credit (Read Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipient:
+        description: Testnet recipient address (public)
+        required: true
+        type: string
+      source:
+        description: Expected sending contract address (public)
+        required: true
+        type: string
+      outbound_message_hash:
+        description: Exact 32-byte outbound message hash (hex)
+        required: true
+        type: string
+      amount_nano:
+        description: Exact transfer amount in nanotons
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      V3_RECIPIENT_ADDRESS: ${{ inputs.recipient }}
+      V3_SOURCE_ADDRESS: ${{ inputs.source }}
+      V3_OUTBOUND_MESSAGE_HASH: ${{ inputs.outbound_message_hash }}
+      V3_AMOUNT_NANO: ${{ inputs.amount_nano }}
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@1b14f4b7dbf4a42f7a0b0e4dfe4a6fcb6b7f73b5 # v4.4.0
+        with:
+          node-version: "24"
+      - name: Run recipient credit verifier regression tests
+        run: node --test scripts/verify-v3-recipient-credit.test.mjs
+      - name: Verify indexed recipient transaction without any wallet secrets
+        run: node scripts/verify-v3-recipient-credit.mjs
