@@ -24,6 +24,10 @@ Status: **NOT APPROVED FOR MAINNET**. This is a testnet-only evidence register, 
 - Record each check's UTC timestamp, network, immutable transaction hashes and source of RPC data.
 - If data are missing, contradictory, or incomplete, report **UNVERIFIED**, not PASS.
 
+## Independent historical transfer audit
+
+The manual workflow `.github/workflows/discover-v3-testnet-transfers-readonly.yml` now invokes `scripts/audit-v3-historical-transfer.mjs` and requires public testnet source, recipient and exact nanotons. It discovers a unique successful outbound message and checks the corresponding recipient inbound transaction using bounded paginated public testnet GET queries. A missing, ambiguous or incomplete history is **UNVERIFIED**. This is a per-transfer check, not proof of all order-1 payouts; each buyer/seller/platform transfer must be audited separately. No wallet secrets, signatures, or new purchases are needed.
+
 ## Current disposition
 
 **Testnet purchase exercised; independent settlement finality unverified; mainnet blocked.**
