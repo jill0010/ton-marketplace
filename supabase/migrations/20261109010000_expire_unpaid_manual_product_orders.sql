@@ -1,3 +1,11 @@
+-- Extend audit action constraint for system-driven expiry.
+ALTER TABLE public.manual_product_order_logs
+  DROP CONSTRAINT IF EXISTS manual_product_order_logs_action_check;
+ALTER TABLE public.manual_product_order_logs
+  ADD CONSTRAINT manual_product_order_logs_action_check
+  CHECK (action IN ('order_created','payment_verified','delivery_started',
+                   'delivery_completed','cancelled','manual_review','order_expired'));
+
 -- Release stale unpaid reservations without touching confirmed payments or delivered orders.
 -- Only the service role may invoke this atomic, product-scoped cleanup.
 CREATE OR REPLACE FUNCTION public.expire_unpaid_manual_product_orders(p_product_id uuid)
