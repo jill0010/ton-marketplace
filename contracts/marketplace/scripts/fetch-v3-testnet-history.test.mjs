@@ -29,3 +29,10 @@ test("duplicate transactions and invalid pagination fail closed", async () => {
     { pageSize: 2 }), /Duplicate/);
   await assert.rejects(fetchTestnetTransactionHistory(account, fetch, { maxPages: 0 }), /Invalid bounded/);
 });
+
+test("rejects malformed transaction hash, LT, and non-testnet account aliases", async () => {
+  const serve = (tx) => async () => ({ ok: true, json: async () => ({ transactions: [tx] }) });
+  await assert.rejects(fetchTestnetTransactionHistory(account, serve({ hash: "bad", lt: "1" })), /Invalid testnet transaction hash/);
+  await assert.rejects(fetchTestnetTransactionHistory(account, serve({ hash: "a".repeat(64), lt: "-1" })), /Duplicate or unidentified/);
+  await assert.rejects(fetchTestnetTransactionHistory("not-an-address", serve({ hash: "a".repeat(64), lt: "1" })), /Invalid TON address/);
+});
