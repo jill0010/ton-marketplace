@@ -40,6 +40,7 @@ jobs:
       SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
       V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
+      V3_FRESH_DEPLOYMENT_NONCE: ${{ github.run_id }}
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
       V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
@@ -51,6 +52,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = "1"
+          test -n "$V3_FRESH_DEPLOYMENT_NONCE"
+          echo "Fresh StateInit nonce: $V3_FRESH_DEPLOYMENT_NONCE"
           echo "Fresh deployment required; no historical contract address or order is reused."
           echo "One new Testnet purchase only; never retry this run after a payment attempt."
       - name: Checkout
