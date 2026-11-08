@@ -6,30 +6,36 @@ const edge = readFileSync("supabase/functions/marketplace-v3-testnet-readonly/in
 const client = readFileSync("src/lib/marketplaceV3TestnetReadonly.ts", "utf8");
 const diagnostics = readFileSync("src/lib/marketplaceV3TestnetDiagnostics.ts", "utf8");
 
-function quotedMembers(source, constant) {
-  const match = source.match(new RegExp("const " + constant + " = (?:new Set(?:<[^>]+>)?\\(\\[|\\[)([\\s\\S]*?)\\](?:\\)|)\\s*(?:as const)?;"));
-  assert.ok(match, `Missing ${constant} declaration`);
-  return new Set([...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]));
+function quotedMembers(source, declaration) {
+  const start = source.indexOf(declaration);
+  assert.ok(start !== -1, `Missing declaration: ${declaration}`);
+  const opening = source.indexOf("[", start + declaration.length);
+  const closing = source.indexOf("]", opening + 1);
+  assert.ok(opening !== -1 && closing > opening, `Invalid declaration: ${declaration}`);
+  return new Set([...source.slice(opening + 1, closing).matchAll(/"([^"]+)"/g)]
+    .map((match) => match[1]));
 }
-const backendGetters = quotedMembers(edge, "GETTERS");
-const backendProduct = quotedMembers(edge, "WITH_PRODUCT_ID");
-const backendOrder = quotedMembers(edge, "WITH_ORDER_ID");
-const frontendGetters = quotedMembers(client, "V3_TESTNET_READONLY_METHODS");
-const frontendProduct = quotedMembers(client, "PRODUCT_METHODS");
+const backendGetters = quotedMembers(edge, "const GETTERS = new Set(");
+const backendProduct = quotedMembers(edge, "const WITH_PRODUCT_ID = new Set(");
+const backendOrder = quotedMembers(edge, "const WITH_ORDER_ID = new Set(");
+const frontendGetters = quotedMembers(client, "export const V3_TESTNET_READONLY_METHODS =");
+const frontendProduct = quotedMembers(client, "const PRODUCT_METHODS = new Set");
 
-test("read-only getter allowlists are identical between client and server", () => {
+test("read-only getter allowlists match between client and server", () => {
   assert.deepEqual([...backendGetters].sort(), [...frontendGetters].sort());
 });
-test("all product getters require an ID on both sides", () => {
+test("product and order getter parameter contracts match", () => {
   assert.deepEqual([...backendProduct].sort(), [...frontendProduct].sort());
   for (const getter of backendProduct) assert.ok(backendGetters.has(getter));
-  for (const getter of backendOrder) assert.ok(backendGetters.has(getter));
-  for (const getter of backendOrder) assert.ok(!backendProduct.has(getter));
+  for (const getter of backendOrder) {
+    assert.ok(backendGetters.has(getter));
+    assert.ok(!backendProduct.has(getter));
+  }
 });
-test("diagnostics call only supported getters", () => {
-  const match = diagnostics.match(/const methods = \\[([\\s\\S]*?)\\] as const;/);
-  assert.ok(match);
-  for (const [, getter] of match[1].matchAll(/"([^"]+)"/g)) {
+test("diagnostics only call supported getters", () => {
+  const methods = quotedMembers(diagnostics, "const methods =");
+  assert.ok(methods.size > 0);
+  for (const getter of methods) {
     assert.ok(backendGetters.has(getter), `Unknown diagnostic getter: ${getter}`);
   }
 });
