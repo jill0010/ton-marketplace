@@ -4,10 +4,11 @@
 import "@acton/build"
 import "@acton/io"
 import "@acton/emulation/testing"
+import "@contracts/MarketplaceReserveV3"
+import "@contracts/MockNFTItemV3"
 import "@contracts/NFTEscrowV2"
 import "@contracts/NFTEscrowV2Testnet"
-import "@contracts/MockNFTItemV3"
-import "@contracts/MarketplaceReserveV3"
+
 import "@contracts/ReserveCoordinatorV3"
 import "@contracts/ReserveVaultV3"
 import "@contracts/SettlementAttestationVerifierV3"
