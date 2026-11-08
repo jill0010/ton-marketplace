@@ -39,10 +39,28 @@ jobs:
         working-directory: .
         run: |
           echo "Fresh testnet deployment only; historical order 1 is not reused."
-      - name: Checkout
+      - name: Checkout V3 production implementation
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: feature/reserve-refund-v3-audit
           persist-credentials: false
+
+      - name: Require V3 feature branch and production source files
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "feature/reserve-refund-v3-audit" || { echo "::error::Wrong V3 source branch"; exit 1; }
+          for path in \
+            contracts/marketplace/contracts/MarketplaceReserveV3.tolk \
+            contracts/marketplace/contracts/ReserveCoordinatorV3.tolk \
+            contracts/marketplace/contracts/ReserveVaultV3.tolk \
+            contracts/marketplace/contracts/SettlementAttestationVerifierV3.tolk \
+            contracts/marketplace/scripts/deploy-v3-production-testnet.tolk \
+            contracts/marketplace/scripts/verify-v3-production-testnet.test.mjs; do
+            test -f "$path" || { echo "::error::Missing V3 source: $path"; exit 1; }
+          done
+          echo "V3 source checkout verified: $(git rev-parse HEAD)"
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
