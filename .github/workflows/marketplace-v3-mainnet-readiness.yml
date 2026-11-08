@@ -23,10 +23,10 @@ jobs:
       run:
         working-directory: contracts/marketplace
     steps:
-      - name: Checkout pinned V3 contract candidate (no wallet credentials)
+      - name: Checkout V3 formatting candidate (no wallet credentials)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: 223cebcd0977d90486c71417645a6fe2cbaa4953
+          ref: release/v3-format-readiness
           persist-credentials: false
 
       - name: Assert candidate commit and required production contracts
@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "223cebcd0977d90486c71417645a6fe2cbaa4953"
+          test "$(git branch --show-current)" = "release/v3-format-readiness"
           for file in \
             contracts/marketplace/contracts/MarketplaceReserveV3.tolk \
             contracts/marketplace/contracts/ReserveCoordinatorV3.tolk \
