@@ -38,10 +38,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "7ba3faa905e7c7e5025c732ecf8174bfadb507ad"
           test "$V3_TESTNET_ORDER_ID" = 3
           test -n "$DEPLOYER_MNEMONIC" && test -n "$SELLER_MNEMONIC"
           test -f scripts/verify-v3-order-3-settlement.tolk
-          ! grep -Eq 'acton script scripts/(buy|deploy|list)-' <<< "verify-v3-order-3-settlement.tolk"
+          # The script is pinned and immutable; refuse an accidental signer/send path.
+          ! grep -En '(^|[^[:alnum:]_])(send|sendMessage|sendTransaction|signAndSend|deployContract)[[:space:]]*\\(' scripts/verify-v3-order-3-settlement.tolk
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
       - name: Create temporary Testnet identity profiles (no signing)
