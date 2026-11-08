@@ -2,6 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const workflow=readFileSync(new URL("../../../.github/workflows/deploy-marketplace-v3-production-testnet.yml",import.meta.url),"utf8");
+test("historical funded deployment is disabled before checkout or transaction steps",()=>{
+ const stop=workflow.indexOf("- name: Block historical funded V3 deployment and duplicate purchase");
+ const checkout=workflow.indexOf("- name: Checkout");
+ const deploy=workflow.indexOf("- name: Deploy Marketplace V3, Reserve Coordinator");
+ const purchase=workflow.indexOf("- name: Submit one real Testnet purchase");
+ assert.ok(stop>0 && stop<checkout && checkout<deploy && deploy<purchase);
+ assert.match(workflow,/Historical V3 funded Testnet deployment is permanently disabled after order 1 settled/);
+ assert.match(workflow,/Use the separate read-only verification workflow/);
+});
+
 test("funded V3 Testnet workflow requires independent deployment and purchase consent",()=>{
  assert.match(workflow,/confirm_production_v3_testnet_only == true && inputs\.confirm_one_funded_testnet_purchase == true && github\.run_attempt == 1/);
  assert.match(workflow,/confirm_one_funded_testnet_purchase:[\s\S]*?default: false/);
