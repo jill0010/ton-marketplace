@@ -342,3 +342,51 @@ get fun `test production reserve vault rejects duplicate dispatch and unauthoriz
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(2);
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(grams("0.2"));
 }
+
+get fun `test production reserve vault rejects replay after settled quorum proof`() {
+    val (vault, verifier, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    productionReserveFund(vault, funder);
+    productionReserveDispatch(vault, marketplace);
+    val buyer = testing.treasury("productionReserveBuyer").address;
+    val hash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
+    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"), hash);
+    val signatures = productionReserveSignatures(statement, key0, key1);
+    expect(productionReserveSubmit(vault, owner, statement, signatures)).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
+    expect(
+        net.send(
+            marketplace,
+            createMessage({
+                bounce: false,
+                value: grams("0.03"),
+                dest: vault,
+                body: DispatchReserveRefundV3 { orderId: 1 }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 761 });
+    expect(
+        productionReserveSubmit(vault, owner, statement, signatures),
+    ).toHaveFailedTx({ to: vault, exitCode: 768 });
+    expect(
+        net.send(
+            verifier,
+            createMessage({
+                bounce: false,
+                value: grams("0.03"),
+                dest: vault,
+                body: SettlementAttestationVerifiedV3 {
+                    statementHash: statement.hash(),
+                    orderId: 1,
+                    operationId: 1,
+                    queryId: 1,
+                    outcome: 1,
+                    settledAmount: grams("0.2"),
+                }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 768 });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
+    expect(net.runGetMethod<coins>(vault, "reserveVaultPaidV3")).toEqual(grams("0.2"));
+    expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(0);
+    expect(net.runGetMethod<coins>(vault, "reserveVaultAvailableV3")).toEqual(0);
+}
