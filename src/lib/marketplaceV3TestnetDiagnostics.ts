@@ -75,7 +75,9 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   const escrowId = oneNumber(results[2].stack, true);
   const existingOrderId = oneNumber(results[3].stack, true);
   if (schemaVersion !== 3n) throw new Error("Unexpected Marketplace V3 schema version");
-  if (status !== null && status > 3n) throw new Error("Unknown V3 product status");
+  if (status !== null && ![1n, 2n, 3n, 5n, 6n].includes(status)) {
+    throw new Error("Unknown V3 product status");
+  }
   if (status === null && (escrowId !== null || existingOrderId !== null)) {
     throw new Error("Missing V3 product has orphaned escrow or order data");
   }
