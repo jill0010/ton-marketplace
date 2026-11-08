@@ -8,6 +8,8 @@ on:
       - "src/lib/marketplaceV3*.ts"
       - "src/pages/ProductPage.tsx"
       - "scripts/test-marketplace-v3-*.mjs"
+      - "scripts/check-v3-release-blockers.mjs"
+      - ".github/workflows/finalize-existing-v3-order-3-testnet.yml"
       - ".github/workflows/v3-release-safety-gate.yml"
 
 permissions:
@@ -55,6 +57,8 @@ jobs:
           if (failures.length) { console.error(failures.join('\n')); process.exit(1); }
           console.log('V3 Testnet-only quote and preflight guards present; no V3 Mainnet checkout approval implied.');
           NODE
+      - name: Verify retired order-3 settlement cannot be replayed
+        run: node scripts/check-v3-release-blockers.mjs
       - name: Build production frontend
         run: npm run build
       - name: Record outstanding Mainnet release blockers
