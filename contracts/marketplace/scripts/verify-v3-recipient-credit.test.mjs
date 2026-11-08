@@ -27,3 +27,12 @@ test("credit lookup never requests wallet secrets or broadcasts", async () => {
   assert.equal(result.verified, true);
   assert.equal(result.readOnly, true);
 });
+
+test("plain wallet inbound credit may skip compute, but missing or failed phases are rejected", () => {
+  assert.equal(assessRecipientCredit([{ ...tx, compute_phase: { skipped: true } }], expected).verified, true);
+  assert.equal(assessRecipientCredit([{ ...tx, compute_phase: { skipped: true }, action_phase: { success: false } }], expected).verified, false);
+  assert.equal(assessRecipientCredit([{ ...tx, compute_phase: { skipped: true, success: false } }], expected).verified, false);
+  assert.equal(assessRecipientCredit([{ ...tx, compute_phase: {} }], expected).verified, false);
+  assert.equal(assessRecipientCredit([{ ...tx, compute_phase: null }], expected).verified, false);
+  assert.equal(assessRecipientCredit([{ ...tx, compute_phase: { skipped: true }, aborted: true }], expected).verified, false);
+});
