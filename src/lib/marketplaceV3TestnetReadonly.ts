@@ -1,3 +1,4 @@
+import { Address } from "@ton/core";
 import { supabase } from "./supabase";
 
 export const V3_TESTNET_READONLY_METHODS = [
@@ -64,6 +65,18 @@ export async function readMarketplaceV3TestnetGetter(
       typeof data.observed_at !== "string" ||
       data.product_id !== (productId === undefined ? null : productId.toString(10))) {
     throw new Error("V3 Testnet RPC returned an invalid response");
+  }
+  let parsedAddress: Address;
+  try {
+    parsedAddress = Address.parse(data.contract_address);
+  } catch {
+    throw new Error("V3 Testnet RPC returned an invalid contract address");
+  }
+  if (parsedAddress.workChain !== 0 || data.stack.length > 8 ||
+      data.stack.some((entry: unknown) =>
+        !entry || typeof entry !== "object" || Array.isArray(entry) ||
+        typeof (entry as { type?: unknown }).type !== "string")) {
+    throw new Error("V3 Testnet RPC returned invalid contract data");
   }
   return {
     network: "testnet",
