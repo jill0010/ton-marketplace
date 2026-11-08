@@ -72,13 +72,13 @@ test("Testnet receipt attestor retries transient gateway 542 without archival lo
 test("final settlement audit compiles with network and IO imports and never sends transactions",()=>{
  const script=readFileSync(new URL("./verify-v3-production-testnet-settlement.tolk",import.meta.url),"utf8");
  const audit=readFileSync(new URL("../../../.github/workflows/verify-existing-v3-testnet-settlement-readonly.yml",import.meta.url),"utf8");
- assert.match(script,/import "@acton\\/io"/);
- assert.match(script,/import "@acton\\/emulation\\/network"/);
+ assert.match(script,/import "@acton\/io"/);
+ assert.match(script,/import "@acton\/emulation\/network"/);
  assert.match(script,/reserveVaultStatusV3/);
  assert.match(script,/reserveVaultPaidV3/);
  assert.match(script,/reserveVaultInFlightV3/);
  assert.match(script,/reserveVaultAvailableV3/);
- assert.doesNotMatch(script,/\\.send[A-Z]|sendMessage|sendTransaction|deploy\\(/);
- assert.match(audit,/acton script scripts\\/verify-v3-production-testnet-settlement\\.tolk --net testnet/);
+ assert.doesNotMatch(script,/\.send[A-Z]|sendMessage|sendTransaction|deploy\(/);
+ assert.match(audit,/acton script scripts\/verify-v3-production-testnet-settlement\.tolk --net testnet/);
  assert.doesNotMatch(audit,/--net mainnet|attest-v3-testnet-reserve-refund|buy-v3-production-testnet-fixture|sendTransaction/);
 });
