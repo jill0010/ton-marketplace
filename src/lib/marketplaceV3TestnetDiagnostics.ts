@@ -1,3 +1,4 @@
+import { Address } from "@ton/core";
 import { readMarketplaceV3TestnetGetter } from "./marketplaceV3TestnetReadonly";
 
 export type V3TestnetDiagnostic = Readonly<{
@@ -57,14 +58,21 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     ),
   ));
   const address = results[0].contract_address;
-  if (results.some((r) => r.contract_address !== address)) {
+  const expectedAddress = Address.parse(address);
+  if (results.some((r) => !Address.parse(r.contract_address).equals(expectedAddress))) {
     throw new Error("V3 Testnet contract changed during inspection");
   }
   const schemaVersion = oneNumber(results[0].stack, false);
   const status = oneNumber(results[1].stack, true);
   const escrowId = oneNumber(results[2].stack, true);
   const existingOrderId = oneNumber(results[3].stack, true);
-  if (schemaVersion === null) throw new Error("Missing V3 schema version");
+  if (schemaVersion === null || schemaVersion === 0n) throw new Error("Missing V3 schema version");
+  const times = results.map((r) => Date.parse(r.observed_at));
+  const now = Date.now();
+  if (times.some((time) => !Number.isFinite(time) || time > now + 5000 || now - time > 15000) ||
+      Math.max(...times) - Math.min(...times) > 5000) {
+    throw new Error("V3 Testnet observations are stale or inconsistent");
+  }
   return {
     marketplaceAddress: address,
     productId,
@@ -75,7 +83,7 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     escrowConfigured: tvmBoolean(results[4].stack),
     treasuryConfigured: tvmBoolean(results[5].stack),
     coordinatorConfigured: tvmBoolean(results[6].stack),
-    observedAt: results.map((r) => r.observed_at).sort()[0],
+    observedAt: new Date(Math.min(...times)).toISOString(),
     purchaseAuthorized: false,
   };
 }
