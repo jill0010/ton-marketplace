@@ -55,7 +55,8 @@ export function prepareMarketplaceV3TestnetPurchase(
   if (input.productId <= 0n || input.productId > 0xffff_ffff_ffff_ffffn) {
     throw new Error("Invalid V3 product ID.");
   }
-  if (input.priceNano <= 0n) {
+  // TON coins are encoded as VarUInteger 16 (at most 120 bits).
+  if (input.priceNano <= 0n || input.priceNano + MARKETPLACE_V3_RESERVE_NANO >= (1n << 120n)) {
     throw new Error("Invalid V3 listing price.");
   }
   const now = input.nowSeconds ?? Math.floor(Date.now() / 1000);
@@ -67,6 +68,9 @@ export function prepareMarketplaceV3TestnetPurchase(
     throw new Error("V3 purchase deadline must be within the next 10 minutes.");
   }
   const queryId = input.queryId ?? createMarketplaceV2PaymentQueryId();
+  if (queryId <= 0n || queryId > 0xffff_ffff_ffff_ffffn) {
+    throw new Error("V3 query ID must be a nonzero uint64.");
+  }
   const totalNano = marketplaceV2PurchaseValue(input.priceNano);
   return Object.freeze({
     network: MARKETPLACE_V3_TESTNET_CHAIN,
