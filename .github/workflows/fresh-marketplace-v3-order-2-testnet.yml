@@ -36,6 +36,7 @@ jobs:
       V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
     steps:
       - name: Confirm isolated order 2 testnet validation
+        working-directory: .
         run: |
           echo "Fresh testnet deployment only; historical order 1 is not reused."
       - name: Checkout
@@ -263,4 +264,5 @@ jobs:
 
       - name: Remove temporary wallet profile
         if: always()
-        run: rm -f wallets.toml
+        working-directory: .
+        run: rm -f contracts/marketplace/wallets.toml
