@@ -37,5 +37,7 @@ jobs:
         run: |
           deno check supabase/functions/create-manual-product-order/index.ts
           deno check supabase/functions/verify-manual-product-payment/index.ts
+      - name: Test wallet proof expiry and TON address validation
+        run: deno test --allow-env supabase/functions/verify-manual-product-payment/auth_test.ts
       - name: Assert fail-closed payment safety
         run: node scripts/check-manual-product-payment-safety.mjs
