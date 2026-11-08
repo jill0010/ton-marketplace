@@ -185,7 +185,9 @@ fun onInternalMessage(in: InMessage) {
             dispatchReserveRefundV3(mutate storage);
         }
         SubmitReserveAttestationV3 => {
-            assert (in.senderAddress == funding.marketplace || in.senderAddress == storage.owner) throw 764;
+            assert (
+                in.senderAddress == funding.marketplace || in.senderAddress == storage.owner
+            ) throw 764;
             assert (operation.status == 2 && balances.inFlight > 0) throw 768;
             val root = SettlementStatementRootV3.fromCell(msg.statement);
             val statementIdentity = root.identity.load();
@@ -237,9 +239,7 @@ fun onInternalMessage(in: InMessage) {
                 operation.status = 3;
             } else {
                 assert (msg.outcome == 2) throw 771;
-                assert (
-                    msg.settledAmount > 0 && msg.settledAmount < balances.inFlight
-                ) throw 771;
+                assert (msg.settledAmount > 0 && msg.settledAmount < balances.inFlight) throw 771;
                 balances.available = msg.settledAmount;
                 balances.inFlight = 0;
                 operation.status = 4;
@@ -251,7 +251,9 @@ fun onInternalMessage(in: InMessage) {
             storage.save();
         }
         TopUpReserveV3 => {
-            assert (in.senderAddress == funding.fundingSource || in.senderAddress == storage.owner) throw 764;
+            assert (
+                in.senderAddress == funding.fundingSource || in.senderAddress == storage.owner
+            ) throw 764;
             assert (operation.status == 4 && balances.inFlight == 0) throw 768;
             assert (msg.orderId == order.orderId && msg.fundingId > 0) throw 765;
             assert (
@@ -267,7 +269,9 @@ fun onInternalMessage(in: InMessage) {
             storage.save();
         }
         RetryReserveRefundV3 => {
-            assert (in.senderAddress == funding.marketplace || in.senderAddress == storage.owner) throw 764;
+            assert (
+                in.senderAddress == funding.marketplace || in.senderAddress == storage.owner
+            ) throw 764;
             assert (msg.orderId == order.orderId && operation.status == 1) throw 765;
             assert (operation.retryCount == 0) throw 774;
             operation.retryCount = 1;
