@@ -6,6 +6,8 @@ export type V3TestnetDiagnostic = Readonly<{
   productId: bigint;
   schemaVersion: bigint;
   nextOrderId: bigint;
+  nextProductId: bigint;
+  productQueryId: bigint | null;
   status: bigint | null;
   escrowId: bigint | null;
   existingOrderId: bigint | null;
@@ -53,8 +55,10 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   const methods = [
     "purchaseSchemaVersionV3",
     "nextOrderIdV3",
+    "nextProductIdV2",
     "productStatusV2",
     "productEscrowIdV2",
+    "productQueryIdV2",
     "orderIdForProductV2",
     "escrowConfiguredV2",
     "treasuryConfiguredV2",
@@ -64,6 +68,7 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     readMarketplaceV3TestnetGetter(
       method,
       method === "productStatusV2" || method === "productEscrowIdV2" ||
+        method === "productQueryIdV2" ||
         method === "orderIdForProductV2" ? productId : undefined,
     ),
   ));
@@ -72,14 +77,34 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   if (results.some((r) => !Address.parse(r.contract_address).equals(expectedAddress))) {
     throw new Error("V3 Testnet contract changed during inspection");
   }
-  const schemaVersion = oneNumber(results[0].stack, false);
-  const nextOrderId = oneNumber(results[1].stack, false);
-  if (nextOrderId === null || nextOrderId < 1n) throw new Error("Invalid next order ID");
-  const status = oneNumber(results[2].stack, true);
-  const escrowId = oneNumber(results[3].stack, true);
-  const existingOrderId = oneNumber(results[4].stack, true);
+  const byMethod = new Map(methods.map((method, index) => [method, results[index]] as const));
+  const numberFor = (method: typeof methods[number], nullable: boolean) => {
+    const response = byMethod.get(method);
+    if (!response) throw new Error("Missing V3 getter result");
+    return oneNumber(response.stack, nullable);
+  };
+  const schemaVersion = numberFor("purchaseSchemaVersionV3", false);
+  const nextOrderId = numberFor("nextOrderIdV3", false);
+  const nextProductId = numberFor("nextProductIdV2", false);
+  const status = numberFor("productStatusV2", true);
+  const escrowId = numberFor("productEscrowIdV2", true);
+  const productQueryId = numberFor("productQueryIdV2", true);
+  const existingOrderId = numberFor("orderIdForProductV2", true);
+  if (nextOrderId === null || nextOrderId < 1n ||
+      nextProductId === null || nextProductId < 1n) {
+    throw new Error("Invalid V3 allocation counters");
+  }
+  if (status !== null && productId >= nextProductId) {
+    throw new Error("V3 product exists outside allocated product range");
+  }
+  if (status !== null && (productQueryId === null || productQueryId === 0n)) {
+    throw new Error("V3 product has no immutable query ID");
+  }
+  if (status === null && productQueryId !== null) {
+    throw new Error("Missing V3 product has an orphaned query ID");
+  }
   if (existingOrderId !== null && (existingOrderId === 0n || existingOrderId >= nextOrderId)) {
-    throw new Error("V3 order reference is outside the allocated order range");
+    throw new Error("V3 order reference is outside allocated order range");
   }
   if (schemaVersion !== 3n) throw new Error("Unexpected Marketplace V3 schema version");
   if (status !== null && ![1n, 2n, 3n, 5n, 6n].includes(status)) {
@@ -115,13 +140,15 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     productId,
     schemaVersion,
     nextOrderId,
+    nextProductId,
+    productQueryId,
     status,
     escrowId,
     existingOrderId,
     reserveStatus,
-    escrowConfigured: tvmBoolean(results[5].stack),
-    treasuryConfigured: tvmBoolean(results[6].stack),
-    coordinatorConfigured: tvmBoolean(results[7].stack),
+    escrowConfigured: tvmBoolean(byMethod.get("escrowConfiguredV2")!.stack),
+    treasuryConfigured: tvmBoolean(byMethod.get("treasuryConfiguredV2")!.stack),
+    coordinatorConfigured: tvmBoolean(byMethod.get("marketplaceReserveCoordinatorConfiguredV3")!.stack),
     observedAt: new Date(Math.min(...times)).toISOString(),
     purchaseAuthorized: false,
   };
