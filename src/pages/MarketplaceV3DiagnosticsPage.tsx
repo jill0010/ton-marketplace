@@ -42,6 +42,12 @@ export function MarketplaceV3DiagnosticsPage() {
         inspectV3TestnetAssetProductBinding(nftAddress.trim(), BigInt(productId)),
         readV3TestnetMarketplaceEscrow(),
       ]);
+      const finalObserved = [finalListing.observedAt, finalAssetBinding.observedAt, finalEscrowBinding.observedAt].map(Date.parse);
+      if (finalObserved.some((time) => !Number.isFinite(time)) ||
+          Math.max(...finalObserved) - Math.min(...finalObserved) > 5000 ||
+          Date.now() - Math.min(...finalObserved) > 15000) {
+        throw new Error("Final Marketplace binding observations are stale or inconsistent");
+      }
       if (finalListing.marketplaceAddress !== listing.marketplaceAddress ||
           finalListing.status !== 2n || finalListing.productQueryId !== listing.productQueryId ||
           finalListing.escrowId !== listing.escrowId ||
