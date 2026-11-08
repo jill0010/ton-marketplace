@@ -159,19 +159,10 @@ Deno.serve(async (req: Request) => {
 
     if (!match) {
       if (orderExpired) {
-        await admin.from("manual_product_orders")
-          .update({ status: "cancelled", updated_at: new Date().toISOString() })
-          .eq("id", order.id)
-          .eq("status", "awaiting_payment");
-        await admin.from("manual_product_order_logs").insert({
-          order_id: order.id,
-          actor_id: wallet.userId,
-          action: "cancelled",
-          old_status: "awaiting_payment",
-          new_status: "cancelled",
-          note: "Payment window expired without a matching on-chain transfer.",
-        });
-        return reply({ success: false, code: "ORDER_EXPIRED", error: "No matching payment was found before the order expired. Create a new order to continue." }, 410, origin);
+        // A bounded transaction scan cannot prove that payment never arrived.
+        // Keep the reservation locked until a trusted reconciliation worker
+        // checks the full relevant chain history and resolves the order.
+        return reply({ success: false, code: "ORDER_EXPIRED_REVIEW_REQUIRED", error: "The payment window has expired. Automatic cancellation is disabled until on-chain reconciliation completes. Contact support with the order number." }, 409, origin);
       }
       return reply({ success: false, code: "PAYMENT_NOT_FOUND", error: "No confirmed TON Mainnet transfer matching this wallet, exact amount and unique order memo was found yet. Wait for confirmation and retry." }, 409, origin);
     }
