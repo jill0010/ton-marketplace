@@ -23,6 +23,7 @@ const GETTERS = new Set([
 const WITH_PRODUCT_ID = new Set([
   "productStatusV2",
   "productEscrowIdV2",
+  "productQueryIdV2",
   "productV2",
   "orderIdForProductV2",
 ]);
