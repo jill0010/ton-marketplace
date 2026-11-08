@@ -6,14 +6,17 @@ on:
       marketplace_address:
         description: "Deployed Marketplace V3 address (TON Testnet)"
         required: true
+        default: "kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_"
         type: string
       product_id:
         description: "Existing on-chain product ID"
         required: true
+        default: "1"
         type: string
       nft_item_address:
         description: "NFT Item address bound to this product"
         required: true
+        default: "kQAcb1ncpbbm60x5-SgPZmTXInVQKlxis5soblmYSsfXcYHm"
         type: string
 
 permissions:
