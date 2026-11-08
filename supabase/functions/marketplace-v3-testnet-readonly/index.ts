@@ -19,6 +19,7 @@ const GETTERS = new Set([
   "productV2",
   "orderIdForProductV2",
   "marketplaceReserveStatusV3",
+  "get_nft_data",
 ]);
 const WITH_PRODUCT_ID = new Set([
   "productStatusV2",
@@ -30,6 +31,7 @@ const WITH_PRODUCT_ID = new Set([
 const WITH_ORDER_ID = new Set(["marketplaceReserveStatusV3"]);
 const MAX_UINT64 = 0xffff_ffff_ffff_ffffn;
 const MAX_BODY_BYTES = 512;
+const NFT_METHOD = "get_nft_data";
 
 function headers(origin: string): HeadersInit {
   return {
@@ -106,7 +108,7 @@ Deno.serve(async (req: Request) => {
     if (typeof input.method !== "string" || !GETTERS.has(input.method)) {
       return reply(origin, 400, { success: false, error: "Unsupported read-only getter" });
     }
-    if (Object.keys(input).some((key) => key !== "method" && key !== "product_id" && key !== "order_id")) {
+    if (Object.keys(input).some((key) => key !== "method" && key !== "product_id" && key !== "order_id" && key !== "nft_item_address")) {
       return reply(origin, 400, { success: false, error: "Unexpected request fields" });
     }
     const needsId = WITH_PRODUCT_ID.has(input.method);
@@ -114,6 +116,20 @@ Deno.serve(async (req: Request) => {
     if (needsOrderId !== Object.hasOwn(input, "order_id") ||
         needsId !== Object.hasOwn(input, "product_id")) {
       return reply(origin, 400, { success: false, error: "Unexpected or missing product ID" });
+    }
+    const needsNft = input.method === NFT_METHOD;
+    if (needsNft !== Object.hasOwn(input, "nft_item_address")) {
+      return reply(origin, 400, { success: false, error: "Unexpected or missing NFT item address" });
+    }
+    let nftItem: Address | null = null;
+    if (needsNft) {
+      if (typeof input.nft_item_address !== "string" || input.nft_item_address.length > 128) {
+        return reply(origin, 400, { success: false, error: "Invalid NFT item address" });
+      }
+      nftItem = Address.parse(input.nft_item_address);
+      if (nftItem.workChain !== 0 || nftItem.equals(marketplace)) {
+        return reply(origin, 400, { success: false, error: "Invalid Testnet NFT item" });
+      }
     }
     let stack: Array<{ type: "num"; value: string }> = [];
     if (needsId || needsOrderId) {
@@ -133,7 +149,7 @@ Deno.serve(async (req: Request) => {
         "X-API-Key": apiKey,
       },
       body: JSON.stringify({
-        address: marketplace.toRawString(),
+        address: (nftItem ?? marketplace).toRawString(),
         method: input.method,
         stack,
       }),
@@ -179,7 +195,8 @@ Deno.serve(async (req: Request) => {
     return reply(origin, 200, {
       success: true,
       network: "testnet",
-      contract_address: marketplace.toRawString(),
+      contract_address: (nftItem ?? marketplace).toRawString(),
+      nft_item_address: nftItem?.toRawString() ?? null,
       method: input.method,
       product_id: needsId ? input.product_id : null,
       order_id: needsOrderId ? input.order_id : null,
