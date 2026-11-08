@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react"
 import { beginCell } from "@ton/core"
+import { readV3TestnetMarketplaceEscrow } from "../lib/marketplaceV3TestnetReadonly"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
@@ -35,6 +36,8 @@ export function ProductPage() {
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [paymentVerified, setPaymentVerified] = useState(false)
+  const [v3ReadBusy, setV3ReadBusy] = useState(false)
+  const [v3ReadMessage, setV3ReadMessage] = useState("")
 
   useEffect(() => {
     let cancelled = false
@@ -178,6 +181,20 @@ export function ProductPage() {
     } catch (cause) {
       setCheckoutMessage(cause instanceof Error ? cause.message : "无法提交付款。")
       setCheckoutBusy(false)
+    }
+  }
+
+  async function readV3TestnetCustodyBinding() {
+    if (v3ReadBusy) return
+    setV3ReadBusy(true)
+    setV3ReadMessage("正在从 TON 测试网读取 Marketplace 的 Escrow 绑定……")
+    try {
+      const binding = await readV3TestnetMarketplaceEscrow()
+      setV3ReadMessage(`测试网 Marketplace：${binding.marketplaceAddress}；Escrow：${binding.escrowAddress}。已读取链上绑定，但尚未验证本商品的 NFT 托管及可购买状态，因此不能付款。`)
+    } catch (cause) {
+      setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败。")
+    } finally {
+      setV3ReadBusy(false)
     }
   }
 
@@ -339,6 +356,10 @@ export function ProductPage() {
             {t("Escrow checkout (Coming Soon)", "链上托管购买（即将开放）")}
           </button>
           <p className="text-xs text-zinc-500">该商品采用链上 NFT 托管交易。主网合约完成部署及验证前，不会请求付款或转移资产。</p>
+          <button type="button" onClick={() => void readV3TestnetCustodyBinding()} disabled={v3ReadBusy} className="w-full rounded-full border border-white/20 px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">
+            {v3ReadBusy ? "正在读取测试网链上状态…" : "读取 V3 测试网托管合约"}
+          </button>
+          {v3ReadMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3ReadMessage}</p>
         </>
       )}
 
