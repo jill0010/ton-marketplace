@@ -63,8 +63,12 @@ fun main() {
     assert (marketplaceReserveStatus == 2 && coordinatorStatus == 2) throw 926;
     assert (marketplaceVault == coordinatorVault) throw 926;
     assert (net.runGetMethod<uint8>(coordinatorVault, "reserveVaultStatusV3") == 2) throw 927;
-    assert (net.runGetMethod<coins>(coordinatorVault, "reserveVaultPrincipalV3") == grams("0.2")) throw 927;
-    assert (net.runGetMethod<coins>(coordinatorVault, "reserveVaultInFlightV3") == grams("0.2")) throw 927;
+    assert (
+        net.runGetMethod<coins>(coordinatorVault, "reserveVaultPrincipalV3") == grams("0.2")
+    ) throw 927;
+    assert (
+        net.runGetMethod<coins>(coordinatorVault, "reserveVaultInFlightV3") == grams("0.2")
+    ) throw 927;
     assert (net.runGetMethod<coins>(coordinatorVault, "reserveVaultAvailableV3") == 0) throw 927;
 
     println("V3_TESTNET_PRODUCT_ID: {}", productId);
