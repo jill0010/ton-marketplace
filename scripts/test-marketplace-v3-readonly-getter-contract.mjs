@@ -39,3 +39,15 @@ test("diagnostics only call supported getters", () => {
     assert.ok(backendGetters.has(getter), `Unknown diagnostic getter: ${getter}`);
   }
 });
+
+test("listed products fail closed on missing contract bindings and escrow", () => {
+  assert.match(diagnostics, /Listed V3 product has incomplete contract bindings/);
+  assert.match(diagnostics, /Listed V3 product has no escrow binding/);
+  assert.match(diagnostics, /Listed V3 product already has an order/);
+  assert.match(diagnostics, /Allocated V3 product has no readable status/);
+});
+test("read-only diagnostics never authorize a purchase", () => {
+  assert.match(diagnostics, /purchaseAuthorized: false/);
+  assert.match(client, /verified_purchase_eligibility: false/);
+  assert.match(edge, /verified_purchase_eligibility: false/);
+});
