@@ -8,6 +8,7 @@ export type V3TestnetDiagnostic = Readonly<{
   status: bigint | null;
   escrowId: bigint | null;
   existingOrderId: bigint | null;
+  reserveStatus: bigint | null;
   escrowConfigured: boolean;
   treasuryConfigured: boolean;
   coordinatorConfigured: boolean;
@@ -78,13 +79,23 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   if (status === null && (escrowId !== null || existingOrderId !== null)) {
     throw new Error("Missing V3 product has orphaned escrow or order data");
   }
+  const reserveResult = existingOrderId !== null
+    ? await readMarketplaceV3TestnetGetter("marketplaceReserveStatusV3", undefined, existingOrderId)
+    : null;
+  if (reserveResult && !Address.parse(reserveResult.contract_address).equals(expectedAddress)) {
+    throw new Error("V3 reserve status contract address mismatch");
+  }
+  const reserveStatus = reserveResult ? oneNumber(reserveResult.stack, false) : null;
+  if (reserveStatus !== null && reserveStatus > 3n) {
+    throw new Error("Unexpected V3 reserve status");
+  }
   if (status === 2n && existingOrderId !== null) {
     throw new Error("Listed V3 product already has an order");
   }
   if (status === 2n && (escrowId === null || escrowId === 0n)) {
     throw new Error("Listed V3 product has no escrow binding");
   }
-  const times = results.map((r) => Date.parse(r.observed_at));
+  const times = [...results, ...(reserveResult ? [reserveResult] : [])].map((r) => Date.parse(r.observed_at));
   const now = Date.now();
   if (times.some((time) => !Number.isFinite(time) || time > now + 5000 || now - time > 15000) ||
       Math.max(...times) - Math.min(...times) > 5000) {
@@ -97,6 +108,7 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     status,
     escrowId,
     existingOrderId,
+    reserveStatus,
     escrowConfigured: tvmBoolean(results[4].stack),
     treasuryConfigured: tvmBoolean(results[5].stack),
     coordinatorConfigured: tvmBoolean(results[6].stack),
