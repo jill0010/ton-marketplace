@@ -154,3 +154,15 @@ rejected("reject masterchain escrow and matching owner", (v) => {
   v.snapshot.escrowAddress = masterchainAddress(4);
   v.snapshot.nftOwnerAddress = masterchainAddress(4);
 });
+
+rejected("reject string product ID from untrusted RPC", (v) => { v.snapshot.productId = "2"; });
+rejected("reject string price from untrusted RPC", (v) => { v.snapshot.priceNano = "10000000"; });
+rejected("reject string escrow ID from untrusted RPC", (v) => { v.snapshot.escrowId = "1"; });
+rejected("reject string existing order ID", (v) => { v.snapshot.existingOrderId = "0"; });
+rejected("reject string product status", (v) => { v.snapshot.productStatus = "2"; });
+rejected("reject truthy string coordinator flag", (v) => { v.snapshot.coordinatorConfigured = "false"; });
+rejected("reject truthy string treasury flag", (v) => { v.snapshot.treasuryConfigured = "false"; });
+rejected("reject truthy string escrow flag", (v) => { v.snapshot.escrowConfigured = "false"; });
+rejected("reject string expected product ID", (v) => { v.expectedProductId = "2"; });
+rejected("reject string expected price", (v) => { v.expectedPriceNano = "10000000"; });
+rejected("reject string query ID", (v) => { v.queryId = "123456"; });
