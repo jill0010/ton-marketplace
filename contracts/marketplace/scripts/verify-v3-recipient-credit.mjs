@@ -2,6 +2,7 @@
 // A matching inbound message is evidence of receipt, not proof of a complete order settlement.
 import { pathToFileURL } from "node:url";
 import { normalizeV3TestnetAddress } from "./verify-v3-testnet.mjs";
+import { fetchTestnetTransactionHistory } from "./fetch-v3-testnet-history.mjs";
 const hex = (v) => {
   if (typeof v !== "string") return null;
   if (/^[0-9a-f]{64}$/i.test(v)) return v.toLowerCase();
@@ -38,15 +39,9 @@ export function assessRecipientCredit(transactions, expected) {
 }
 export async function checkRecipientCredit(expected, fetcher = fetch) {
   const recipient = normalizeV3TestnetAddress(expected.recipient);
-  const url = new URL("https://testnet.toncenter.com/api/v3/transactions");
-  url.searchParams.set("account", recipient);
-  url.searchParams.set("limit", "100");
-  const response = await fetcher(url.toString(), { method: "GET", redirect: "error" });
-  if (!response.ok) throw new Error("Testnet index HTTP " + response.status);
-  const body = await response.json();
-  if (!Array.isArray(body.transactions)) throw new Error("Malformed testnet index");
-  return { readOnly: true, pageComplete: body.transactions.length < 100,
-    ...assessRecipientCredit(body.transactions, expected) };
+  const history = await fetchTestnetTransactionHistory(recipient, fetcher);
+  return { readOnly: true, pageComplete: history.pageComplete, pagesFetched: history.pagesFetched,
+    ...assessRecipientCredit(history.transactions, expected) };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
