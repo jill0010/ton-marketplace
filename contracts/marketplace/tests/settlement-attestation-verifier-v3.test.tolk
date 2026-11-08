@@ -205,3 +205,24 @@ get fun `test verifier rejects malformed signatures and unknown signer indices`(
         ),
     ).toHaveFailedTx({ to: verifier, exitCode: 759 });
 }
+
+get fun `test verifier rejects future expiry beyond attestation window without consuming statement`() {
+    val (verifier, vault, key0, key1, _) = verifierSetup();
+    val future = verifierStatement(vault, -3, 4, 1700001000);
+    expect(
+        verifierSend(vault, verifier, future, verifierBundle(future, key0, key1)),
+    ).toHaveFailedTx({ to: verifier, exitCode: 754 });
+    expect(
+        net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [future.hash()]),
+    ).toEqual(0);
+}
+
+get fun `test verifier accepts three independent signatures for two-of-three threshold`() {
+    val (verifier, vault, key0, key1, key2) = verifierSetup();
+    val statement = verifierStatement(vault);
+    val result = verifierSend(vault, verifier, statement, verifierBundle(statement, key0, key1, key2));
+    expect(result).toHaveSuccessfulTx({ to: verifier });
+    expect(
+        net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [statement.hash()]),
+    ).toEqual(1);
+}
