@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
         return reply(origin, 400, { success: false, error: "Invalid Testnet NFT item" });
       }
     }
-    let stack: Array<{ type: "num"; value: string }> = [];
+    let stack: Array<{ type: "num" | "slice"; value: string }> = [];
     if (needsId || needsOrderId) {
       const identifier = needsOrderId ? input.order_id : input.product_id;
       if (typeof identifier !== "string" ||
@@ -147,7 +147,7 @@ Deno.serve(async (req: Request) => {
     if (input.method === "assetProductIdV2" && nftItem) {
       // TEP-62 address argument encoded as a TVM slice BOC.
       const { beginCell } = await import("npm:@ton/core@0.63.1");
-      stack = [{ type: "slice", value: beginCell().storeAddress(nftItem).endCell().toBoc().toString("base64") }] as typeof stack;
+      stack = [{ type: "slice", value: beginCell().storeAddress(nftItem).endCell().toBoc().toString("base64") }];
     }
     const upstream = await fetch("https://testnet.toncenter.com/api/v3/runGetMethod", {
       method: "POST",
