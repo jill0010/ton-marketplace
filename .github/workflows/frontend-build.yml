@@ -7,6 +7,7 @@ on:
       - "src/**"
       - "scripts/test-marketplace-v3-preflight.mjs"
       - "supabase/functions/marketplace-v3-testnet-readonly/**"
+      - "supabase/functions/_shared/marketplace-v3-testnet-getter.*"
       - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"
       - "scripts/check-marketplace-v2-order-mirror-truthfulness.mjs"
       - "supabase/functions/marketplace-v2-state/**"
@@ -172,6 +173,12 @@ jobs:
 
       - name: Type-check admin Marketplace V2 payment verifier
         run: deno check --config supabase/functions/deno.json supabase/functions/admin-verify-marketplace-v2-payment/index.ts
+
+      - name: Test strict V3 Testnet getter decoding
+        run: deno test --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v3-testnet-getter.test.ts
+
+      - name: Type-check V3 Testnet getter parser
+        run: deno check --config supabase/functions/deno.json supabase/functions/_shared/marketplace-v3-testnet-getter.ts
 
       - name: Type-check V3 Testnet read-only RPC Edge Function
         run: deno check --config supabase/functions/deno.json supabase/functions/marketplace-v3-testnet-readonly/index.ts
