@@ -4,11 +4,13 @@ import { supabase } from "./supabase";
 export const V3_TESTNET_READONLY_METHODS = [
   "purchaseSchemaVersionV3",
   "nextOrderIdV3",
+  "nextProductIdV2",
   "escrowConfiguredV2",
   "treasuryConfiguredV2",
   "marketplaceReserveCoordinatorConfiguredV3",
   "productStatusV2",
   "productEscrowIdV2",
+  "productQueryIdV2",
   "productV2",
   "orderIdForProductV2",
   "marketplaceReserveStatusV3",
@@ -29,6 +31,7 @@ export type V3TestnetReadonlyResult = Readonly<{
 const PRODUCT_METHODS = new Set<V3TestnetReadonlyMethod>([
   "productStatusV2",
   "productEscrowIdV2",
+  "productQueryIdV2",
   "productV2",
   "orderIdForProductV2",
 ]);
