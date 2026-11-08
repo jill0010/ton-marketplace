@@ -132,7 +132,35 @@ Deno.serve(async (req: Request) => {
     if (!upstream.ok) {
       return reply(origin, 502, { success: false, error: `Testnet RPC HTTP ${upstream.status}` });
     }
-    const result: unknown = await upstream.json();
+    const upstreamLength = upstream.headers.get("content-length");
+    if (upstreamLength && (!/^[0-9]+$/.test(upstreamLength) || Number(upstreamLength) > 32768)) {
+      return reply(origin, 502, { success: false, error: "Testnet RPC response too large" });
+    }
+    if (!upstream.body) throw new Error("Missing Testnet RPC response");
+    const upstreamReader = upstream.body.getReader();
+    const upstreamChunks: Uint8Array[] = [];
+    let upstreamBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await upstreamReader.read();
+        if (done) break;
+        upstreamBytes += value.byteLength;
+        if (upstreamBytes > 32768) {
+          await upstreamReader.cancel();
+          return reply(origin, 502, { success: false, error: "Testnet RPC response too large" });
+        }
+        upstreamChunks.push(value);
+      }
+    } finally {
+      upstreamReader.releaseLock();
+    }
+    const upstreamBuffer = new Uint8Array(upstreamBytes);
+    let upstreamOffset = 0;
+    for (const chunk of upstreamChunks) {
+      upstreamBuffer.set(chunk, upstreamOffset);
+      upstreamOffset += chunk.byteLength;
+    }
+    const result: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(upstreamBuffer));
     if (!result || typeof result !== "object" || Array.isArray(result)) {
       throw new Error("Invalid Testnet RPC response");
     }
@@ -149,10 +177,10 @@ Deno.serve(async (req: Request) => {
       verified_purchase_eligibility: false,
       notice: "Read-only RPC result; this is not a purchase authorization or NFT custody attestation.",
     });
-  } catch (error) {
+  } catch {
     return reply(origin, 502, {
       success: false,
-      error: error instanceof Error ? error.message : "Testnet RPC unavailable",
+      error: "Testnet RPC unavailable or returned invalid data",
     });
   }
 });
