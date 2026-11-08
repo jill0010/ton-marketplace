@@ -29,10 +29,14 @@
 1. Independently verify deployed Testnet contract code hashes and bindings against the compiled candidate. Testnet success for a different code hash cannot be reused as proof for Mainnet.
 2. Require an independent security audit, custody/settlement/reserve-refund fault tests, frontend/backend checkout integration, operational sign-off and explicit Mainnet approval.
 
-## Discovered postflight blocker (2026-11-08)
-- The existing `.github/workflows/v3-testnet-onchain-postflight.yml` invokes `contracts/marketplace/scripts/verify-v3-testnet.test.mjs`, `collect-v3-testnet-evidence.test.mjs`, and `collect-v3-testnet-evidence.mjs`, but none of those paths exists on current `main` (verified against the recursive Git tree).
-- Consequently this workflow cannot currently provide deployed Testnet code-hash evidence. Do **not** count it as a passed verification or enable release from its status.
-- Next implementation must provide a functioning **read-only** Testnet account-state/code-hash collector with expected hashes derived from the pinned compiled candidate, strict equality checks and immutable evidence artifacts; no private keys.
+## Deployed Testnet postflight — recorded mismatch and fix (2026-11-08)
+- [Failed postflight run 42503092705](https://github.com/jill0010/ton-marketplace/actions/runs/42503092705): marketplace and coordinator hashes match the pinned candidate; deployed escrow matches the candidate's **Testnet fixture** code hash, NOT the production `NFTEscrowV2` hash. The mismatch was caused by comparing different escrow variants, not by a missing deployment.
+- Marketplace observed/expected: `78359546161773769121804334657237004017492887152734900376191088699783038521579`.
+- Coordinator observed/expected: `66691359611383353754318373230718900986162645101604635612762337495115879334100`.
+- Escrow Testnet fixture observed: `101764511745891446825793649001643455668042447699317077464808806092838979242128`. This value is printed by the pinned candidate's `v3-compiled-hashes.test.tolk` test.
+- Escrow production code hash (DIFFERENT): `81598614757632845067695927561143533301816638303328283688424659201933137039160`. **No conclusion about deployed production NFTEscrowV2 code is permitted from this Testnet fixture.**
+- The read-only verifier has been updated to use the separately labeled Testnet fixture hash. The updated workflow still needs a fresh passing run and must never be treated as proof of production escrow deployment or independent security audit.
+- Earlier missing script references were fixed by replacing them with `scripts/verify-v3-testnet-deployed-code.mjs` on `main`.
 
 ## Current decision
 **BLOCKED** for Mainnet deployment. Read-only CI success proves only the checks it actually ran. No new contract was deployed, no real customer checkout enabled and no funds moved in this evidence update.
