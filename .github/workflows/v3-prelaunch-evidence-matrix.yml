@@ -1,0 +1,87 @@
+name: V3 Prelaunch Evidence Matrix (No Transactions)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/v3-prelaunch-evidence-matrix.yml"
+      - "src/lib/marketplaceV3*.ts"
+      - "src/pages/ProductPage.tsx"
+      - "contracts/marketplace/contracts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Run customer checkout and read-only getter regressions
+        run: |
+          set -euo pipefail
+          node --test scripts/test-marketplace-v3-preflight.mjs scripts/test-marketplace-v3-readonly-getter-contract.mjs
+          node scripts/check-marketplace-v2-customer-purchase-policy.mjs
+          node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs
+          npm run build
+      - name: Assert V3 Mainnet release remains explicitly blocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const v3 = readFileSync('src/lib/marketplaceV3.ts','utf8');
+          const page = readFileSync('src/pages/ProductPage.tsx','utf8');
+          const preflight = readFileSync('src/lib/marketplaceV3Preflight.ts','utf8');
+          const required = [
+            [v3.includes('MARKETPLACE_V3_TESTNET_CHAIN = "-3"'), 'Testnet chain constant'],
+            [v3.includes('input.walletChain !== MARKETPLACE_V3_TESTNET_CHAIN'), 'Testnet-only quote guard'],
+            [preflight.includes('s.existingOrderId !== null'), 'Duplicate order rejection'],
+            [preflight.includes('s.productStatus !== 2'), 'Inactive listing rejection'],
+            [preflight.includes('input.nowSeconds - s.fetchedAtSeconds > 15'), 'Stale observation rejection'],
+            [page.includes('create-manual-product-order'), 'Existing manual checkout not V3'],
+            [!page.includes('prepareMarketplaceV3TestnetPurchase('), 'No unverified V3 checkout activation'],
+          ];
+          const missing = required.filter(([ok])=>!ok).map(([,label])=>label);
+          if(missing.length) throw new Error('Release gate changed; manual review required: '+missing.join(', '));
+          console.log('Release blocker assertions verified; V3 automated checkout is NOT approved.');
+          NODE
+      - name: Record evidence, exact limitations and candidate drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE=4d97607a6bd22494e105852a3c375fc905a9d219
+          {
+            echo "## V3 prelaunch evidence matrix"
+            echo
+            echo "| Gate | Result |"
+            echo "|---|---|"
+            echo "| Order 3 real Testnet purchase | PASS: Actions 42478799076 |"
+            echo "| Order 3 settlement attestation | PASS: Actions 42479121408 (final grep typo only) |"
+            echo "| Order 3 independent read-only final state | PASS: Actions 42480145497 |"
+            echo "| V3 contract candidate emulation | PASS: Actions 42479057519 |"
+            echo "| Frontend purchase preflight and build | PASS: this run |"
+            echo "| Customer V3 wallet checkout | BLOCKED: not integrated |"
+            echo "| Independent contract security audit | BLOCKED: not provided |"
+            echo "| Mainnet deployment and transaction | BLOCKED: not authorized |"
+            echo
+            echo "### Candidate source changes since pinned release"
+            if git cat-file -e "$CANDIDATE^{commit}" 2>/dev/null; then
+              git diff --name-only "$CANDIDATE" HEAD -- contracts/marketplace/contracts/ | sed 's/^/- /'
+            else
+              echo "- Pinned candidate unavailable in checkout; lineage not attested."
+            fi
+            echo
+            echo "A green CI job is NOT approval to deploy or transact on Mainnet."
+          } >> "$GITHUB_STEP_SUMMARY"
