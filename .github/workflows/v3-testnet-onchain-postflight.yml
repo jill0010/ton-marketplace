@@ -4,15 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       marketplace_address:
-        description: "Deployed V3 marketplace address on TON testnet"
+        description: "Production V3 Testnet marketplace (historical product-4 purchase)"
+        default: "kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_"
         required: true
         type: string
       escrow_address:
-        description: "Deployed V2 escrow address on TON testnet"
+        description: "Production V2 Testnet escrow (historical product-4 purchase)"
+        default: "kQAp5SqhqBj1LK3q9mHpBDsVzUnMyWBiH-nvtTB7q0vdP0mG"
         required: true
         type: string
       coordinator_address:
-        description: "Deployed V3 reserve coordinator address on TON testnet"
+        description: "Production V3 Testnet coordinator (historical product-4 purchase)"
+        default: "kQAhqpc_v-G6PDX5BavZPT0SsqmOWm9hvBomPZIJ9cOHdQop"
         required: true
         type: string
 
