@@ -162,3 +162,36 @@ export async function readV3TestnetNftOwner(nftItemAddress: string): Promise<{
     purchaseAuthorized: false,
   };
 }
+
+/**
+ * Independent NFT item ownership observation. The expected escrow MUST come
+ * from verified marketplace state; a caller-provided address alone is not
+ * evidence of an active listing or a safe purchase.
+ */
+export async function inspectV3TestnetNftCustody(
+  nftItemAddress: string,
+  expectedEscrowAddress: string,
+): Promise<{
+  nftItemAddress: string;
+  ownerAddress: string;
+  escrowAddress: string;
+  custodyMatches: boolean;
+  observedAt: string;
+  purchaseAuthorized: false;
+}> {
+  const expected = Address.parse(expectedEscrowAddress);
+  const nft = Address.parse(nftItemAddress);
+  if (expected.workChain !== 0 || expected.equals(nft)) {
+    throw new Error("Invalid expected V3 escrow address");
+  }
+  const observation = await readV3TestnetNftOwner(nftItemAddress);
+  const actual = Address.parse(observation.ownerAddress);
+  return {
+    nftItemAddress: observation.nftItemAddress,
+    ownerAddress: actual.toRawString(),
+    escrowAddress: expected.toRawString(),
+    custodyMatches: actual.equals(expected),
+    observedAt: observation.observedAt,
+    purchaseAuthorized: false,
+  };
+}
