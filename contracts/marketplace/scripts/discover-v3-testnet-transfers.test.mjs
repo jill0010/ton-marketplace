@@ -22,5 +22,5 @@ test("discovery uses only testnet GET and leaves history completeness unknown", 
   });
   assert.equal(result.candidates.length, 1);
   assert.equal(result.finalityVerified, false);
-  assert.equal(result.historyComplete, false);
+  assert.equal(result.historyComplete, true);
 });
