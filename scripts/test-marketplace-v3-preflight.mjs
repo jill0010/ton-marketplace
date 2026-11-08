@@ -135,3 +135,22 @@ rejected("reject mismatched NFT owner even with active listing", (v) => { v.snap
 rejected("reject buyer/marketplace identity collision", (v) => { v.snapshot.buyerAddress = address(1); v.connectedBuyerAddress = address(1); });
 rejected("reject seller/NFT identity collision", (v) => { v.snapshot.sellerAddress = address(3); });
 rejected("reject missing NFT escrow record", (v) => { v.snapshot.escrowId = 0n; });
+
+const masterchainAddress = (n) => "-1:" + n.toString(16).padStart(64, "0");
+rejected("reject masterchain marketplace even when expected matches", (v) => {
+  v.snapshot.marketplaceAddress = masterchainAddress(1);
+  v.expectedMarketplaceAddress = masterchainAddress(1);
+});
+rejected("reject masterchain NFT even when expected matches", (v) => {
+  v.snapshot.nftItemAddress = masterchainAddress(3);
+  v.expectedNftItemAddress = masterchainAddress(3);
+});
+rejected("reject masterchain buyer even when wallet matches", (v) => {
+  v.snapshot.buyerAddress = masterchainAddress(6);
+  v.connectedBuyerAddress = masterchainAddress(6);
+});
+rejected("reject masterchain seller", (v) => { v.snapshot.sellerAddress = masterchainAddress(5); });
+rejected("reject masterchain escrow and matching owner", (v) => {
+  v.snapshot.escrowAddress = masterchainAddress(4);
+  v.snapshot.nftOwnerAddress = masterchainAddress(4);
+});
