@@ -9,6 +9,8 @@ assert.match(verifier, /PAYMENT_HISTORY_INCOMPLETE/);
 assert.match(verifier, /ORDER_EXPIRED_REVIEW_REQUIRED/);
 assert.match(verifier, /scanReachedOrderStart/);
 assert.match(verifier, /scanIntegrityValid/);
+assert.match(verifier, /PAYMENT_STATE_CONFLICT/);
+assert.match(verifier, /current\.payment_tx_hash !== match\.hash/);
 assert.doesNotMatch(verifier, /\.update\(\{\s*status:\s*["']cancelled["']/);
 assert.doesNotMatch(creator, /admin\.rpc\(["']expire_unpaid_manual_product_orders["']/);
 assert.match(migration, /Automatic expiry disabled pending verified on-chain payment reconciliation/);
