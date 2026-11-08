@@ -46,19 +46,9 @@ fun MockNFTItemV3Storage.load(): MockNFTItemV3Storage {
 }
 
 fun MockNFTItemV3Storage.save(self) {
-    val config = beginCell()
-        .storeUint(self.itemIndex, 256)
-        .storeAddress(self.collection)
-        .endCell();
-    val state = beginCell()
-        .storeAddress(self.owner)
-        .storeRef(self.content)
-        .endCell();
-    val data = beginCell()
-        .storeRef(config)
-        .storeUint(1, 1)
-        .storeRef(state)
-        .endCell();
+    val config = beginCell().storeUint(self.itemIndex, 256).storeAddress(self.collection).endCell();
+    val state = beginCell().storeAddress(self.owner).storeRef(self.content).endCell();
+    val data = beginCell().storeRef(config).storeUint(1, 1).storeRef(state).endCell();
     contract.setData(data);
 }
 
@@ -141,13 +131,7 @@ get fun get_nft_data(): (int, uint256, address, address, cell) {
     if (storage.initialized) {
         initialized = -1;
     }
-    return (
-        initialized,
-        storage.itemIndex,
-        storage.collection,
-        storage.owner,
-        storage.content,
-    );
+    return (initialized, storage.itemIndex, storage.collection, storage.owner, storage.content);
 }
 
 get fun owner(): address {
