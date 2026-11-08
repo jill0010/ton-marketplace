@@ -16,6 +16,7 @@ export const V3_TESTNET_READONLY_METHODS = [
   "orderIdForProductV2",
   "marketplaceReserveStatusV3",
   "get_nft_data",
+  "escrowV2",
 ] as const;
 
 export type V3TestnetReadonlyMethod = typeof V3_TESTNET_READONLY_METHODS[number];
@@ -192,6 +193,37 @@ export async function inspectV3TestnetNftCustody(
     escrowAddress: expected.toRawString(),
     custodyMatches: actual.equals(expected),
     observedAt: observation.observedAt,
+    purchaseAuthorized: false,
+  };
+}
+
+/** Reads the escrow binding from the Marketplace itself, never user input. */
+export async function readV3TestnetMarketplaceEscrow(): Promise<{
+  marketplaceAddress: string;
+  escrowAddress: string;
+  observedAt: string;
+  purchaseAuthorized: false;
+}> {
+  const result = await readMarketplaceV3TestnetGetter("escrowV2");
+  if (result.stack.length !== 1) throw new Error("Invalid marketplace escrow getter");
+  const entry = result.stack[0] as Record<string, unknown>;
+  if (!entry || entry.type !== "slice") throw new Error("Marketplace escrow is not an address slice");
+  const encoded = typeof entry.cell === "string" ? entry.cell :
+    typeof entry.value === "string" ? entry.value : null;
+  if (!encoded || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded) || encoded.length > 4096) {
+    throw new Error("Invalid marketplace escrow encoding");
+  }
+  const { Cell } = await import("@ton/core");
+  const slice = Cell.fromBase64(encoded).beginParse();
+  const escrow = slice.loadAddress();
+  if (slice.remainingBits !== 0 || slice.remainingRefs !== 0 ||
+      escrow.workChain !== 0 || escrow.equals(Address.parse(result.contract_address))) {
+    throw new Error("Invalid marketplace escrow binding");
+  }
+  return {
+    marketplaceAddress: result.contract_address,
+    escrowAddress: escrow.toRawString(),
+    observedAt: result.observed_at,
     purchaseAuthorized: false,
   };
 }
