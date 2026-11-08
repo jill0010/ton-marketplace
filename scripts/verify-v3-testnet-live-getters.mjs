@@ -27,7 +27,11 @@ async function getter(address, method, stack = []) {
 function number(entry) {
   assert.equal(entry?.type, "num");
   assert(typeof entry.value === "string");
-  return BigInt(entry.value);
+  const raw = entry.value.trim();
+  // TON Center v3 serializes negative TVM integers as "-0x1"; JavaScript
+  // BigInt does not accept signed hexadecimal strings directly.
+  assert(/^-?(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(raw), "Invalid TVM integer encoding");
+  return raw.startsWith("-0x") ? -BigInt(raw.slice(1)) : BigInt(raw);
 }
 function address(entry) {
   assert.equal(entry?.type, "slice");
