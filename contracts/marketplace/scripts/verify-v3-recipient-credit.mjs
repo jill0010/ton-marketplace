@@ -28,7 +28,13 @@ export function assessRecipientCredit(transactions, expected) {
     return { verified: false, reason: "SOURCE_MISMATCH" };
   if (nano(String(inbound.value ?? "")) !== amount)
     return { verified: false, reason: "AMOUNT_MISMATCH" };
-  if (tx.aborted !== false || tx.compute_phase?.success !== true || tx.action_phase?.success === false)
+  // A plain wallet credit can legitimately skip TVM compute (no contract code).
+  // Accept only an explicitly successful compute or an explicitly skipped compute,
+  // with no failed action phase and no aborted transaction.
+  const compute = tx.compute_phase;
+  const computeOk = compute?.success === true ||
+    (compute?.skipped === true && compute?.success !== false);
+  if (tx.aborted !== false || !computeOk || tx.action_phase?.success === false)
     return { verified: false, reason: "RECIPIENT_EXECUTION_NOT_CONFIRMED" };
   const transactionHash = hex(tx.hash);
   if (!transactionHash || !/^(0|[1-9][0-9]*)$/.test(String(tx.lt ?? "")))
