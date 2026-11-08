@@ -129,3 +129,22 @@ test("production V3 contract source preserves custody, owner, and reserve author
   "operation.retryCount == 0",
  ]) assert.ok(vault.includes(snippet),"Vault missing security gate: "+snippet);
 });
+
+test("all V3 transaction scripts remain explicitly Testnet-gated and legacy workflow remains disabled",()=>{
+ const scripts=[
+  ["deploy-v3-production-testnet.tolk","V3_PRODUCTION_TESTNET_DEPLOY_APPROVED"],
+  ["buy-v3-production-testnet-fixture.tolk","V3_TESTNET_PURCHASE_ENABLED"],
+ ];
+ for(const [filename,flag] of scripts){
+  const source=readFileSync(new URL("./"+filename,import.meta.url),"utf8");
+  assert.ok(source.includes('env<bool>("'+flag+'") ?? false'),filename+" missing fail-closed authorization");
+  assert.ok(source.includes("throw "),filename+" missing authorization failure");
+  assert.doesNotMatch(source,/--net mainnet|networkGlobalId:\\s*-239/);
+ }
+ const deploy=readFileSync(new URL("../../../.github/workflows/deploy-marketplace-v3-production-testnet.yml",import.meta.url),"utf8");
+ const guard=deploy.indexOf("- name: Block historical funded V3 deployment and duplicate purchase");
+ const firstCheckout=deploy.indexOf("- name: Checkout");
+ assert.ok(guard>=0 && guard<firstCheckout);
+ assert.match(deploy.slice(guard,firstCheckout),/exit 1/);
+ assert.doesNotMatch(deploy,/acton (?:script|rpc)[^\\n]*--net mainnet/);
+});
