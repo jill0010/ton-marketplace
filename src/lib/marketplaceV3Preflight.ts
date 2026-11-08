@@ -80,10 +80,16 @@ export function preflightMarketplaceV3TestnetPurchase(
   if (!s.coordinatorConfigured || !s.treasuryConfigured || !s.escrowConfigured) {
     throw new Error("V3 escrow, coordinator or treasury is not configured.");
   }
-  if (s.escrowId <= 0n || !sameAddress(s.nftOwnerAddress, s.escrowAddress)) {
+  if (s.escrowId <= 0n || s.escrowId > 0xffff_ffff_ffff_ffffn ||
+      !sameAddress(s.nftOwnerAddress, s.escrowAddress)) {
     throw new Error("V3 NFT custody has not been verified at the escrow address.");
   }
-  if (sameAddress(s.sellerAddress, s.buyerAddress) ||
+  if (sameAddress(s.marketplaceAddress, s.nftItemAddress) ||
+      sameAddress(s.marketplaceAddress, s.sellerAddress) ||
+      sameAddress(s.marketplaceAddress, s.buyerAddress) ||
+      sameAddress(s.nftItemAddress, s.sellerAddress) ||
+      sameAddress(s.nftItemAddress, s.buyerAddress) ||
+      sameAddress(s.sellerAddress, s.buyerAddress) ||
       sameAddress(s.sellerAddress, s.escrowAddress) ||
       sameAddress(s.buyerAddress, s.escrowAddress) ||
       sameAddress(s.marketplaceAddress, s.escrowAddress) ||
