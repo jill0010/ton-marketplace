@@ -84,7 +84,10 @@ export function preflightMarketplaceV3TestnetPurchase(
     throw new Error("V3 NFT custody has not been verified at the escrow address.");
   }
   if (sameAddress(s.sellerAddress, s.buyerAddress) ||
-      sameAddress(s.sellerAddress, s.escrowAddress)) {
+      sameAddress(s.sellerAddress, s.escrowAddress) ||
+      sameAddress(s.buyerAddress, s.escrowAddress) ||
+      sameAddress(s.marketplaceAddress, s.escrowAddress) ||
+      sameAddress(s.nftItemAddress, s.escrowAddress)) {
     throw new Error("V3 buyer/seller/escrow identities are invalid.");
   }
   return prepareMarketplaceV3TestnetPurchase({
