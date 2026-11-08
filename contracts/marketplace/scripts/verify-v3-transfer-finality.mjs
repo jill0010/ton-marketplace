@@ -5,7 +5,11 @@ import { checkOutboundEvidence } from "./verify-v3-outbound-evidence.mjs";
 import { checkRecipientCredit } from "./verify-v3-recipient-credit.mjs";
 
 export function reconcileTransferEvidence(outbound, inbound) {
-  if (outbound?.pageComplete === false || inbound?.pageComplete === false) return {\n    verified: false, reason: "TRANSFER_HISTORY_WINDOW_INCOMPLETE",\n    outboundVerified: outbound?.verified === true, inboundVerified: inbound?.verified === true,\n  };\n  if (!outbound?.verified || !inbound?.verified) return {
+  if (outbound?.pageComplete === false || inbound?.pageComplete === false) return {
+    verified: false, reason: "TRANSFER_HISTORY_WINDOW_INCOMPLETE",
+    outboundVerified: outbound?.verified === true, inboundVerified: inbound?.verified === true,
+  };
+  if (!outbound?.verified || !inbound?.verified) return {
     verified: false, reason: "INCOMPLETE_TRANSFER_EVIDENCE",
     outboundVerified: outbound?.verified === true, inboundVerified: inbound?.verified === true,
   };
