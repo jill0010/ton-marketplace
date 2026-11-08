@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     const orderId = typeof body?.order_id === "string" ? body.order_id : "";
-    if (!/^[0-9a-f-]{36}$/i.test(orderId)) return reply({ success: false, error: "Invalid order ID" }, 400, origin);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)) return reply({ success: false, error: "Invalid order ID" }, 400, origin);
 
     const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: order, error: orderError } = await admin.from("manual_product_orders")
