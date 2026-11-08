@@ -2,6 +2,7 @@
 // Explicit source, recipient and amount; no wallet secrets or transaction broadcasts.
 import { pathToFileURL } from "node:url";
 import { normalizeV3TestnetAddress } from "./verify-v3-testnet.mjs";
+import { fetchTestnetTransactionHistory } from "./fetch-v3-testnet-history.mjs";
 function hex(v) {
   if (typeof v !== "string") return null;
   if (/^[a-f0-9]{64}$/i.test(v)) return v.toLowerCase();
@@ -30,16 +31,10 @@ export function discoverOutboundCandidates(transactions, expected) {
 }
 export async function discoverTestnetTransfers(expected, fetcher = fetch) {
   const source = normalizeV3TestnetAddress(expected.source);
-  const url = new URL("https://testnet.toncenter.com/api/v3/transactions");
-  url.searchParams.set("account", source);
-  url.searchParams.set("limit", "100");
-  const response = await fetcher(url.toString(), { method: "GET", redirect: "error" });
-  if (!response.ok) throw new Error("Testnet index HTTP " + response.status);
-  const body = await response.json();
-  if (!Array.isArray(body.transactions)) throw new Error("Malformed testnet index");
-  return { network: "testnet", readOnly: true, inspectedTransactions: body.transactions.length,
-    historyComplete: false, candidates: discoverOutboundCandidates(body.transactions, expected),
-    finalityVerified: false };
+  const history = await fetchTestnetTransactionHistory(source, fetcher);
+  return { network: "testnet", readOnly: true, inspectedTransactions: history.transactions.length,
+    historyComplete: history.pageComplete, pagesFetched: history.pagesFetched,
+    candidates: discoverOutboundCandidates(history.transactions, expected), finalityVerified: false };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
