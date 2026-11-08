@@ -15,20 +15,22 @@ export function requireActiveWalletProof(expiresAt: string, now = Date.now()): v
   }
 }
 
-export async function authenticateVerifiedWallet(
-  request: Request,
-): Promise<VerifiedWalletContext> {
+export function requireBearerToken(request: Request): string {
   const authorization = request.headers.get("Authorization");
-
   if (!authorization?.startsWith("Bearer ")) {
     throw new Error("Missing authorization token");
   }
-
   const token = authorization.slice(7).trim();
-
   if (!token) {
     throw new Error("Missing authorization token");
   }
+  return token;
+}
+
+export async function authenticateVerifiedWallet(
+  request: Request,
+): Promise<VerifiedWalletContext> {
+  const token = requireBearerToken(request);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
