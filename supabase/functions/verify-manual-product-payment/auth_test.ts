@@ -59,3 +59,18 @@ Deno.test("transaction must fall inside bounded payment window", () => {
   assertEquals(paymentIsWithinWindow(Date.parse(end) + 1, start, end), false);
   assertEquals(paymentIsWithinWindow(Number.NaN, start, end), false);
 });
+
+import { validHistoryPage } from "./shared/history-integrity.ts";
+
+Deno.test("history pagination rejects out-of-order, repeated and malformed transactions", () => {
+  const hash = "a".repeat(64);
+  const row = (utime: number, lt: string, h = hash) => ({ utime, transaction_id: { lt, hash: h } });
+  const seen = new Set<string>();
+  assertEquals(validHistoryPage([row(200, "20"), row(190, "19")], Infinity, seen).valid, true);
+  assertEquals(validHistoryPage([row(201, "18")], 190, seen).valid, false);
+  assertEquals(validHistoryPage([row(180, "20")], 190, seen).valid, false);
+  assertEquals(validHistoryPage([row(180, "18"), row(181, "17")], 190, seen).valid, false);
+  assertEquals(validHistoryPage([row(180, "18", "bad")], 190, seen).valid, false);
+  assertEquals(validHistoryPage([row(180, "18"), row(179, "18")], 190, seen).valid, false);
+  assertEquals(validHistoryPage([row(180, "18")], 190, seen).valid, true);
+});
