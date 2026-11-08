@@ -28,3 +28,14 @@ Deno.test("authorization gate rejects missing, malformed and empty bearer tokens
     headers: { Authorization: "Bearer example-token" },
   })), "example-token");
 });
+
+import { isOrderOwnedByVerifiedWallet } from "./shared/order-identity.ts";
+
+Deno.test("only exact verified wallet and authenticated user own an order", () => {
+  const wallet = { userId: "buyer-a", walletAddress: "0:" + "a".repeat(64) };
+  const owned = { buyer_user_id: "buyer-a", buyer_wallet_raw: wallet.walletAddress };
+  assertEquals(isOrderOwnedByVerifiedWallet(owned, wallet), true);
+  assertEquals(isOrderOwnedByVerifiedWallet({ ...owned, buyer_user_id: "buyer-b" }, wallet), false);
+  assertEquals(isOrderOwnedByVerifiedWallet({ ...owned, buyer_wallet_raw: "0:" + "b".repeat(64) }, wallet), false);
+  assertEquals(isOrderOwnedByVerifiedWallet({ ...owned, buyer_wallet_raw: null }, wallet), false);
+});
