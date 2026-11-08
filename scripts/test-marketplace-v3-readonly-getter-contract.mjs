@@ -51,3 +51,12 @@ test("read-only diagnostics never authorize a purchase", () => {
   assert.match(client, /verified_purchase_eligibility: false/);
   assert.match(edge, /verified_purchase_eligibility: false/);
 });
+
+test("NFT custody observation stays read-only and requires matching escrow", () => {
+  assert.match(client, /export async function inspectV3TestnetNftCustody/);
+  assert.match(client, /custodyMatches: actual\.equals\(expected\)/);
+  assert.match(client, /purchaseAuthorized: false/);
+  assert.ok(backendGetters.has("get_nft_data"));
+  assert.ok(!backendProduct.has("get_nft_data"));
+  assert.ok(!backendOrder.has("get_nft_data"));
+});
