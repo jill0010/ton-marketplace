@@ -35,10 +35,11 @@ jobs:
       V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
       V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
     steps:
-      - name: Confirm isolated order 2 testnet validation
+      - name: Prevent duplicate funded order 2 purchase
         working-directory: .
         run: |
-          echo "Fresh testnet deployment only; historical order 1 is not reused."
+          echo "::error::Existing Testnet order 2 already purchased in run 42456345992. This funded workflow is disabled. Use finalize-existing-v3-order-2-testnet.yml for read-only checks and one-time settlement."
+          exit 1
       - name: Checkout V3 production implementation
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
