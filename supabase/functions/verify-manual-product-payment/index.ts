@@ -170,8 +170,8 @@ Deno.serve(async (req: Request) => {
 
     // Reject incomplete or inconsistent history even if a candidate payment
     // appeared earlier: confirmation must be based on a trustworthy scan.
-    if (!scanIntegrityValid) {
-      return reply({ success: false, code: "PAYMENT_HISTORY_INCOMPLETE", error: "Transaction history integrity checks failed. Payment confirmation is paused pending reconciliation." }, 503, origin);
+    if (!scanIntegrityValid || !scanReachedOrderStart) {
+      return reply({ success: false, code: "PAYMENT_HISTORY_INCOMPLETE", error: "Transaction history did not safely cover the full order window. Payment confirmation is paused pending reconciliation." }, 503, origin);
     }
 
     let match: { hash: string; timestamp: number } | null = null;
