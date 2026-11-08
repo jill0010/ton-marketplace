@@ -61,10 +61,31 @@ Deno.serve(async (req: Request) => {
         Number(lengthHeader) > MAX_BODY_BYTES)) {
       return reply(origin, 413, { success: false, error: "Request body too large" });
     }
-    const bodyText = await req.text();
-    if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
-      return reply(origin, 413, { success: false, error: "Request body too large" });
+    if (!req.body) return reply(origin, 400, { success: false, error: "Missing request body" });
+    const reader = req.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > MAX_BODY_BYTES) {
+          await reader.cancel();
+          return reply(origin, 413, { success: false, error: "Request body too large" });
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
     }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const bodyText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     let body: unknown;
     try {
       body = JSON.parse(bodyText);
