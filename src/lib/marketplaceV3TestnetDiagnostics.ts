@@ -15,25 +15,32 @@ export type V3TestnetDiagnostic = Readonly<{
   purchaseAuthorized: false;
 }>;
 
+function parseUnsignedTVMNumber(value: unknown): bigint {
+  if (typeof value !== "string" ||
+      !(/^(0|[1-9][0-9]*)$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value))) {
+    throw new Error("Invalid V3 getter number");
+  }
+  const number = BigInt(value);
+  if (number > 0xffff_ffff_ffff_ffffn) throw new Error("V3 getter uint64 overflow");
+  return number;
+}
+
 function oneNumber(stack: unknown[], nullable: boolean): bigint | null {
   if (stack.length !== 1 || !stack[0] || typeof stack[0] !== "object" ||
       Array.isArray(stack[0])) throw new Error("Invalid V3 getter stack");
   const item = stack[0] as Record<string, unknown>;
   if (nullable && item.type === "null") return null;
-  if (item.type !== "num" || typeof item.value !== "string" ||
-      !/^(0|[1-9][0-9]*)$/.test(item.value)) throw new Error("Invalid V3 getter number");
-  const number = BigInt(item.value);
-  if (number > 0xffff_ffff_ffff_ffffn) throw new Error("V3 getter uint64 overflow");
-  return number;
+  if (item.type !== "num") throw new Error("Invalid V3 getter number");
+  return parseUnsignedTVMNumber(item.value);
 }
 function tvmBoolean(stack: unknown[]): boolean {
   if (stack.length !== 1 || !stack[0] || typeof stack[0] !== "object" ||
       Array.isArray(stack[0])) throw new Error("Invalid V3 getter boolean");
   const item = stack[0] as Record<string, unknown>;
-  if (item.type !== "num" || (item.value !== "-1" && item.value !== "0")) {
+  if (item.type !== "num" || !["-1", "-0x1", "0", "0x0"].includes(String(item.value))) {
     throw new Error("Invalid V3 TVM boolean");
   }
-  return item.value === "-1";
+  return item.value === "-1" || item.value === "-0x1";
 }
 
 /**
