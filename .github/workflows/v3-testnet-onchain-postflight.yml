@@ -1,6 +1,12 @@
 name: V3 Testnet On-chain Postflight (Read Only)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/verify-v3-testnet-deployed-code.mjs'
+      - 'scripts/verify-v3-testnet-deployed-code.test.mjs'
+      - '.github/workflows/v3-testnet-onchain-postflight.yml'
   workflow_dispatch:
     inputs:
       marketplace_address:
@@ -23,7 +29,20 @@ permissions:
   contents: read
 
 jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/verify-v3-testnet-deployed-code.test.mjs
   postflight:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
