@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { requireActiveWalletProof } from "./shared/auth.ts";
+import { requireActiveWalletProof, requireBearerToken } from "./shared/auth.ts";
 import { normalizeTonAddress } from "./shared/ton-address.ts";
 
 Deno.test("rejects expired, invalid and missing proof expiration", () => {
@@ -16,4 +16,15 @@ Deno.test("TON wallet address normalization rejects invalid addresses", () => {
   }
   const raw = "0:" + "a".repeat(64);
   assertEquals(normalizeTonAddress(raw), raw);
+});
+
+Deno.test("authorization gate rejects missing, malformed and empty bearer tokens", () => {
+  for (const authorization of [null, "", "Basic abc", "Bearer ", "bearer abc"]) {
+    const headers = new Headers();
+    if (authorization !== null) headers.set("Authorization", authorization);
+    assertThrows(() => requireBearerToken(new Request("https://example.test", { headers })), Error, "Missing authorization token");
+  }
+  assertEquals(requireBearerToken(new Request("https://example.test", {
+    headers: { Authorization: "Bearer example-token" },
+  })), "example-token");
 });
