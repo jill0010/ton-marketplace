@@ -10,7 +10,7 @@ const expected = {
   escrow: "101764511745891446825793649001643455668042447699317077464808806092838979242128",
   coordinator: "66691359611383353754318373230718900986162645101604635612762337495115879334100",
 };
-const output = { escrowCodeVariant: "testnet-fixture (not production NFTEscrowV2)", network: "testnet", baseline: "223cebcd0977d90486c71417645a6fe2cbaa4953", candidate: "4d97607a6bd22494e105852a3c375fc905a9d219", contracts: {}, allMatch: false };
+const output = { escrowCodeVariant: "testnet-fixture (not production NFTEscrowV2)", productionEscrowVerified: false, reserveVaultVerified: false, settlementVerifierVerified: false, bindingsVerified: false, mainnetApproved: false, network: "testnet", baseline: "223cebcd0977d90486c71417645a6fe2cbaa4953", candidate: "4d97607a6bd22494e105852a3c375fc905a9d219", contracts: {}, allMatch: false };
 let ok = true;
 for (const role of roles) {
   const address = process.env["V3_TESTNET_" + role.toUpperCase() + "_ADDRESS"];
