@@ -24,7 +24,10 @@ assert.match(verifier, /if \(!scanIntegrityValid \|\| !scanReachedOrderStart\) \
 assert.match(verifier, /Number\(rows\[0\]\.utime\) > previousPageOldestUtime/);
 assert.match(verifier, /hashHex\(transactionId\?\.hash\)/);
 assert.match(verifier, /Number\.isSafeInteger\(utime\)/);
-assert.match(verifier, /expiresAt <= createdAt/);
+const paymentWindow = readFileSync("supabase/functions/verify-manual-product-payment/shared/payment-window.ts", "utf8");
+assert.match(paymentWindow, /end > start/, "payment expiry must follow creation");
+assert.match(verifier, /validPaymentWindow\(order\.created_at, order\.expires_at\)/, "order payment window must be checked");
+assert.match(verifier, /paymentIsWithinWindow\(timestamp, order\.created_at, order\.expires_at\)/, "on-chain transfer must fall inside order window");
 assert.match(verifier, /confirm_manual_product_payment_verified/);
 assert.doesNotMatch(verifier, /\.update\(\{\s*status:\s*["']cancelled["']/);
 assert.doesNotMatch(creator, /admin\.rpc\(["']expire_unpaid_manual_product_orders["']/);
