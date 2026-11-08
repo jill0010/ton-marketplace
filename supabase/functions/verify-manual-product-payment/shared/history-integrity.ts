@@ -11,7 +11,7 @@ export function validHistoryPage(
     const hash = String(tx.transaction_id?.hash ?? "");
     const id = lt + ":" + hash;
     if (!Number.isSafeInteger(utime) || utime <= 0 || utime > previousUtime ||
-      !/^\\d+$/.test(lt) || !/^[0-9a-f]{64}$/i.test(hash) ||
+      !/^\d+$/.test(lt) || !/^[0-9a-f]{64}$/i.test(hash) ||
       seen.has(id) || pending.includes(id)) {
       return { valid: false, oldestUtime: previousPageOldestUtime };
     }
