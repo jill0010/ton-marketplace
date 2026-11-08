@@ -62,3 +62,13 @@ test("rejects malformed and explicitly failed nested RPC envelopes", () => {
     { success: true, result: { success: false, exit_code: 0, stack: [{ type: "num", value: "2" }] } },
   ]) assert.throws(() => extractV3TestnetGetterStack(response));
 });
+
+test("accepts TON Center hexadecimal stack numbers and signed TVM booleans", () => {
+  assert.equal(parseV3TestnetUint64({ exit_code: 0, stack: [{ type: "num", value: "0x3" }] }), 3n);
+  assert.equal(parseV3TestnetUint64({ exit_code: 0, stack: [{ type: "num", value: "0xFFFFFFFFFFFFFFFF" }] }), 0xffff_ffff_ffff_ffffn);
+  assert.equal(parseV3TestnetBoolean({ exit_code: 0, stack: [{ type: "num", value: "-0x1" }] }), true);
+  assert.equal(parseV3TestnetBoolean({ exit_code: 0, stack: [{ type: "num", value: "0x0" }] }), false);
+  for (const value of ["0x10000000000000000", "-0x1", "0x", "0xGG"]) {
+    assert.throws(() => parseV3TestnetUint64({ exit_code: 0, stack: [{ type: "num", value }] }));
+  }
+});
