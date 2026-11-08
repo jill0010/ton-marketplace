@@ -5,6 +5,7 @@ export const V3_TESTNET_READONLY_METHODS = [
   "purchaseSchemaVersionV3",
   "nextOrderIdV3",
   "nextProductIdV2",
+  "nextQueryIdV2",
   "escrowConfiguredV2",
   "treasuryConfiguredV2",
   "marketplaceReserveCoordinatorConfiguredV3",
