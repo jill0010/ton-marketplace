@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "scripts/test-marketplace-v3-preflight.mjs"
       - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"
       - "scripts/check-marketplace-v2-order-mirror-truthfulness.mjs"
       - "supabase/functions/marketplace-v2-state/**"
@@ -170,6 +171,9 @@ jobs:
 
       - name: Type-check admin Marketplace V2 payment verifier
         run: deno check --config supabase/functions/deno.json supabase/functions/admin-verify-marketplace-v2-payment/index.ts
+
+      - name: Test Marketplace V3 Testnet purchase preflight (no transactions)
+        run: node --test scripts/test-marketplace-v3-preflight.mjs
 
       - name: Build production frontend
         run: npm run build
