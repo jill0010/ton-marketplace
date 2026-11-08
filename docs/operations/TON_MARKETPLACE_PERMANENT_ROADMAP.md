@@ -22,6 +22,7 @@ The stages below and their numeric IDs are permanent. Never remove, reorder or r
 - S01-P001 — Reconcile V2/V3 paths, PR #4/#5/#6 and Issue #3.
 - S04-P001 — Complete fresh-order Testnet settlement, reserve refund and failure-path evidence without replaying settled orders.
 - S05-P001 — Independent security review and failure/adversarial tests.
+- S05-P002 — Pin and verify release candidate bytecode lineage and independent audit: https://github.com/jill0010/ton-marketplace/issues/9 .
 - S06-P001 — Customer-facing V3 checkout and ledger reconciliation, tracked at https://github.com/jill0010/ton-marketplace/issues/8 .
 - S08-P001 — Outstanding Mainnet readiness and approval.
 
@@ -36,3 +37,8 @@ The stages below and their numeric IDs are permanent. Never remove, reorder or r
 
 ## Safety requirements
 No Mainnet contract deployment, signing of real-money purchases, transfers of real NFTs, opening user checkout, or creation of production keys by this document. Mainnet activation requires a documented reviewed release, correct contract bytecode and configuration, independent audit, end-to-end test evidence, operational readiness, and explicit authorized go-live approval. Testnet-only read-only verification and code work should proceed first.
+
+## Progress update — 2026-11-09
+- `0e59b8f`: added ten negative V3 preflight regression cases; frontend build, V3 release safety and read-only mainnet readiness all passed for this commit.
+- Readiness Actions https://github.com/jill0010/ton-marketplace/actions/runs/42499582209: contract and frontend jobs both passed, including pinned candidate formatter; a stale comment about formatter debt was corrected in `72c8485` without changing contract bytecode.
+- S05-P002 remains open for independently verified code-hash lineage and external audit. Green CI is not Mainnet authorization.
