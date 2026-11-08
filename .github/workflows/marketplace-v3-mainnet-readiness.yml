@@ -1,0 +1,115 @@
+name: Marketplace V3 Mainnet Readiness (Read Only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/marketplace-v3-mainnet-readiness.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-v3-mainnet-readiness
+  cancel-in-progress: true
+
+jobs:
+  v3-contracts:
+    name: V3 production contract build and emulator gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout pinned V3 contract candidate (no wallet credentials)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 223cebcd0977d90486c71417645a6fe2cbaa4953
+          persist-credentials: false
+
+      - name: Assert candidate commit and required production contracts
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "223cebcd0977d90486c71417645a6fe2cbaa4953"
+          for file in \
+            contracts/marketplace/contracts/MarketplaceReserveV3.tolk \
+            contracts/marketplace/contracts/ReserveCoordinatorV3.tolk \
+            contracts/marketplace/contracts/ReserveVaultV3.tolk \
+            contracts/marketplace/contracts/SettlementAttestationVerifierV3.tolk; do
+            test -f "$file" || { echo "::error::Missing $file"; exit 1; }
+          done
+          echo "Candidate pinned: $(git rev-parse HEAD)"
+          echo "No private keys or deployment credentials supplied."
+
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+
+      - name: Build V3 candidate without network deployment
+        run: acton build
+
+      - name: Run full emulator regression suite
+        run: acton test --backtrace full
+
+      - name: Lint production contract sources
+        run: acton check --output-format github
+
+      - name: Validate contract formatting
+        run: acton fmt --check
+
+      - name: Record release evidence and restrictions
+        working-directory: .
+        shell: bash
+        run: |
+          {
+            echo "## V3 contract release gate"
+            echo
+            echo "- Source revision: $(git rev-parse HEAD)"
+            echo "- V3 build, emulation, lint and formatting passed."
+            echo "- No Mainnet or Testnet deployment transaction executed."
+            echo "- No wallet mnemonic, validator seed or signing key loaded."
+            echo "- A successful check is NOT a smart-contract security audit."
+            echo "- Production frontend and Supabase still require separate V3 integration verification."
+            echo "- Mainnet deployment remains disabled pending explicit approval."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  frontend:
+    name: Current main frontend build and V2 purchase safety gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check existing public customer purchase gate
+        run: node scripts/check-marketplace-v2-customer-purchase-policy.mjs
+
+      - name: Verify existing order mirror safety
+        run: node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs
+
+      - name: Build current frontend
+        run: npm run build
+
+      - name: Record frontend release limitation
+        run: |
+          {
+            echo "## Frontend readiness"
+            echo
+            echo "- Current main frontend builds and existing V2 purchase policy checks pass."
+            echo "- This does not prove V3 frontend purchase integration exists."
+            echo "- V3 production customer checkout must remain disabled until separately integrated and verified."
+          } >> "$GITHUB_STEP_SUMMARY"
