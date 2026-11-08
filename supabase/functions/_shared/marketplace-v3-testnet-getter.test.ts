@@ -53,3 +53,12 @@ test("supports wrapped TON Center result and rejects upstream failure", () => {
     result: { exit_code: 32, stack: [{ type: "num", value: "2" }] },
   }));
 });
+
+test("rejects malformed and explicitly failed nested RPC envelopes", () => {
+  for (const response of [
+    { result: null, exit_code: 0, stack: [{ type: "num", value: "2" }] },
+    { result: [], exit_code: 0, stack: [{ type: "num", value: "2" }] },
+    { ok: true, result: { ok: false, exit_code: 0, stack: [{ type: "num", value: "2" }] } },
+    { success: true, result: { success: false, exit_code: 0, stack: [{ type: "num", value: "2" }] } },
+  ]) assert.throws(() => extractV3TestnetGetterStack(response));
+});
