@@ -21,6 +21,7 @@ const GETTERS = new Set([
   "marketplaceReserveStatusV3",
   "get_nft_data",
   "escrowV2",
+  "assetProductIdV2",
 ]);
 const WITH_PRODUCT_ID = new Set([
   "productStatusV2",
@@ -33,6 +34,7 @@ const WITH_ORDER_ID = new Set(["marketplaceReserveStatusV3"]);
 const MAX_UINT64 = 0xffff_ffff_ffff_ffffn;
 const MAX_BODY_BYTES = 512;
 const NFT_METHOD = "get_nft_data";
+const NFT_ADDRESS_METHODS = new Set([NFT_METHOD, "assetProductIdV2"]);
 
 function headers(origin: string): HeadersInit {
   return {
@@ -118,7 +120,7 @@ Deno.serve(async (req: Request) => {
         needsId !== Object.hasOwn(input, "product_id")) {
       return reply(origin, 400, { success: false, error: "Unexpected or missing product ID" });
     }
-    const needsNft = input.method === NFT_METHOD;
+    const needsNft = NFT_ADDRESS_METHODS.has(input.method);
     if (needsNft !== Object.hasOwn(input, "nft_item_address")) {
       return reply(origin, 400, { success: false, error: "Unexpected or missing NFT item address" });
     }
@@ -142,6 +144,11 @@ Deno.serve(async (req: Request) => {
       }
       stack = [{ type: "num", value: identifier }];
     }
+    if (input.method === "assetProductIdV2" && nftItem) {
+      // TEP-62 address argument encoded as a TVM slice BOC.
+      const { beginCell } = await import("npm:@ton/core@0.63.1");
+      stack = [{ type: "slice", value: beginCell().storeAddress(nftItem).endCell().toBoc().toString("base64") }] as typeof stack;
+    }
     const upstream = await fetch("https://testnet.toncenter.com/api/v3/runGetMethod", {
       method: "POST",
       headers: {
@@ -150,7 +157,7 @@ Deno.serve(async (req: Request) => {
         "X-API-Key": apiKey,
       },
       body: JSON.stringify({
-        address: (nftItem ?? marketplace).toRawString(),
+        address: (input.method === NFT_METHOD && nftItem ? nftItem : marketplace).toRawString(),
         method: input.method,
         stack,
       }),
@@ -196,7 +203,7 @@ Deno.serve(async (req: Request) => {
     return reply(origin, 200, {
       success: true,
       network: "testnet",
-      contract_address: (nftItem ?? marketplace).toRawString(),
+      contract_address: (input.method === NFT_METHOD && nftItem ? nftItem : marketplace).toRawString(),
       nft_item_address: nftItem?.toRawString() ?? null,
       method: input.method,
       product_id: needsId ? input.product_id : null,
