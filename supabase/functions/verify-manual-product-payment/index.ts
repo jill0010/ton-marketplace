@@ -3,6 +3,7 @@ import { Address, Cell } from "npm:@ton/core";
 import { Buffer } from "node:buffer";
 import { authenticateVerifiedWallet } from "./shared/auth.ts";
 import { isOrderOwnedByVerifiedWallet } from "./shared/order-identity.ts";
+import { validPaymentWindow, paymentIsWithinWindow } from "./shared/payment-window.ts";
 
 const ALLOWED_ORIGINS = new Set(["https://ton-marketplace-cvj.pages.dev", "http://localhost:5173"]);
 const TONCENTER_URL = "https://toncenter.com/api/v2/getTransactions";
@@ -96,7 +97,7 @@ Deno.serve(async (req: Request) => {
 
     const createdAt = Date.parse(order.created_at);
     const expiresAt = Date.parse(order.expires_at);
-    if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt) || expiresAt <= createdAt || createdAt > Date.now() + 120000) {
+    if (!validPaymentWindow(order.created_at, order.expires_at)) {
       return reply({ success: false, code: "INVALID_PAYMENT_WINDOW", error: "Order payment timestamps are inconsistent. Contact support for manual reconciliation." }, 409, origin);
     }
     const orderExpired = Date.now() > expiresAt;
@@ -192,7 +193,7 @@ Deno.serve(async (req: Request) => {
       const memo = typeof msgData?.body === "string" ? decodeComment(msgData.body) : null;
       if (memo !== order.order_no) continue;
       const timestamp = Number(tx.utime) * 1000;
-      if (!Number.isFinite(timestamp) || timestamp < createdAt - 120000 || timestamp > expiresAt) continue;
+      if (!paymentIsWithinWindow(timestamp, order.created_at, order.expires_at)) continue;
       const description = tx.description as Record<string, unknown> | null;
       const compute = description?.compute_ph as Record<string, unknown> | null;
       const action = description?.action as Record<string, unknown> | null;
