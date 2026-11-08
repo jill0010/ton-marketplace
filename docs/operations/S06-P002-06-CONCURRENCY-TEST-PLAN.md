@@ -44,3 +44,15 @@ All four cases pass in the disposable staging database; capture query results an
 ## Production deployment gate
 
 The currently deployed Edge Function must be checked independently for full-history coverage `!scanIntegrityValid || !scanReachedOrderStart` and strict UUID validation. Do not remove the mainnet launch blocker until deployed code, staging concurrency evidence, and safety review all pass.
+
+## Execution record — 2026-11-08 (S06-P002-09)
+
+Staging Supabase project: `nhxiijsuskfkhfsioduq` (not production).
+
+- Sequential first confirmation: `CONFIRMED` (passed).
+- Sequential repeat of same order and hash: `ALREADY_CONFIRMED`, one audit row (passed).
+- Sequential cross-order claim of one hash: `PAYMENT_ALREADY_CLAIMED`, losing order unchanged (passed).
+- Audit failure rollback: within a `BEGIN`/`ROLLBACK` transaction, added a temporary `CHECK (action <> 'payment_verified')` constraint, invoked RPC and caught `check_violation`; verified the order remained `awaiting_payment` with no payment hash or audit row (passed).
+- Post-test inspection: 0 orders, 0 logs, 0 temporary constraints (passed).
+- **Real overlapping two-connection transaction test: NOT RUN.** Current SQL execution interface does not preserve two open PostgreSQL sessions across calls. Do not misreport sequential testing as simultaneous concurrency testing.
+- Production Edge Function full-history and strict UUID deployment: **NOT VERIFIED**; launch blocker remains.
