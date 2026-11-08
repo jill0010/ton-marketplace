@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 
 export const V3_TESTNET_READONLY_METHODS = [
   "purchaseSchemaVersionV3",
+  "nextOrderIdV3",
   "escrowConfiguredV2",
   "treasuryConfiguredV2",
   "marketplaceReserveCoordinatorConfiguredV3",
