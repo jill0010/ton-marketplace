@@ -8,7 +8,6 @@ const { outputFiles } = await build({
   write: false,
   platform: "node",
   format: "esm",
-  packages: "external",
   logLevel: "silent",
 });
 const { preflightMarketplaceV3TestnetPurchase } = await import(
