@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          acton script scripts/verify-v3-production-testnet-fixture.tolk --net testnet > v3-product4-preflight.log 2>&1 || {
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet > v3-product4-preflight.log 2>&1 || {
             cat v3-product4-preflight.log
             exit 1
           }
