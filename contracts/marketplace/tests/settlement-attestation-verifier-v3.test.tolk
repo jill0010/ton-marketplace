@@ -226,3 +226,21 @@ get fun `test verifier accepts three independent signatures for two-of-three thr
         net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [statement.hash()]),
     ).toEqual(1);
 }
+
+get fun `test verifier rejects valid signatures reused on different settlement statement`() {
+    val (verifier, vault, key0, key1, _) = verifierSetup();
+    val original = verifierStatement(vault);
+    val changed = verifierStatement(vault, -3, 4, 1700000601);
+    expect(
+        verifierSend(vault, verifier, changed, verifierBundle(original, key0, key1)),
+    ).toHaveFailedTx({ to: verifier, exitCode: 758 });
+    expect(
+        net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [changed.hash()]),
+    ).toEqual(0);
+    expect(
+        verifierSend(vault, verifier, original, verifierBundle(original, key0, key1)),
+    ).toHaveSuccessfulTx({ to: verifier });
+    expect(
+        net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [original.hash()]),
+    ).toEqual(1);
+}
