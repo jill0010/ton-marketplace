@@ -54,7 +54,7 @@ jobs:
             data = (root / (revision + ".log")).read_text()
             values = {}
             for label in labels:
-              matches = re.findall(re.escape(label) + r":\\s*([^\\r\\n]+)", data)
+              matches = re.findall(re.escape(label) + r":\s*([^\r\n]+)", data)
               if len(matches) != 1 or not matches[0].strip():
                 sys.exit(f"Missing or ambiguous compiled hash for {revision}: {label}")
               values[label] = matches[0].strip()
@@ -63,7 +63,7 @@ jobs:
           for label in labels:
             left, right = found[0][label], found[1][label]
             lines.append(f"| {label} | `{left}` | `{right}` | {'MATCH' if left == right else 'MISMATCH'} |")
-          report = "\\n".join(lines) + "\\n"
+          report = "\n".join(lines) + "\n"
           (root / "comparison.md").write_text(report)
           with open(__import__('os').environ["GITHUB_STEP_SUMMARY"], "a") as summary:
             summary.write(report)
