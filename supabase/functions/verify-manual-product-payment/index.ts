@@ -101,6 +101,7 @@ Deno.serve(async (req: Request) => {
     const transactions: Record<string, unknown>[] = [];
     let cursorLt = "";
     let cursorHash = "";
+    let scanReachedOrderStart = false;
 
     for (let page = 0; page < 5; page += 1) {
       const params = new URLSearchParams({ address: order.payment_address, limit: "100" });
@@ -116,11 +117,12 @@ Deno.serve(async (req: Request) => {
       const result = await response.json();
       if (result?.ok !== true || !Array.isArray(result?.result)) return reply({ success: false, error: "TON Mainnet returned an invalid transaction response." }, 502, origin);
       const rows = result.result as Record<string, unknown>[];
-      if (!rows.length) break;
+      if (!rows.length) { scanReachedOrderStart = true; break; }
       transactions.push(...rows);
       const oldest = rows[rows.length - 1];
       const timestamp = Number(oldest.utime) * 1000;
-      if (!Number.isFinite(timestamp) || timestamp < createdAt - 120000) break;
+      if (!Number.isFinite(timestamp)) break;
+      if (timestamp < createdAt - 120000) { scanReachedOrderStart = true; break; }
       const id = oldest.transaction_id as Record<string, unknown> | null;
       const nextLt = String(id?.lt ?? "");
       const nextHash = String(id?.hash ?? "");
@@ -158,6 +160,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!match) {
+      if (!scanReachedOrderStart) {
+        return reply({ success: false, code: "PAYMENT_HISTORY_INCOMPLETE", error: "The payment history scan did not cover the full order window. The reservation remains locked pending further verification." }, 503, origin);
+      }
       if (orderExpired) {
         // A bounded transaction scan cannot prove that payment never arrived.
         // Keep the reservation locked until a trusted reconciliation worker
