@@ -38,6 +38,7 @@ export function MarketplaceV3DiagnosticsPage() {
           ["Contract", result.marketplaceAddress],
           ["Product ID", result.productId.toString()],
           ["Schema version", result.schemaVersion.toString()],
+          ["Next order ID (on-chain)", result.nextOrderId.toString()],
           ["Product status", result.status?.toString() ?? "null"],
           ["State classification", result.status === 2n ? "Listed" : result.status === 3n ? "Purchase recorded (settlement unverified)" : result.status === 5n || result.status === 6n ? "Refund / cancellation state" : result.status === 1n ? "Pending listing" : "Unavailable"],
           ["Escrow ID", result.escrowId?.toString() ?? "null"],
