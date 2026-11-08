@@ -21,6 +21,7 @@ export function MarketplaceV3DiagnosticsPage() {
         throw new Error("Enter a valid positive uint64 product ID.");
       }
       const listing = await inspectMarketplaceV3TestnetProduct(BigInt(productId));
+      setResult(listing);
       if (listing.status !== 2n || !listing.escrowConfigured || !listing.treasuryConfigured || !listing.coordinatorConfigured || listing.existingOrderId !== null) {
         throw new Error("Marketplace product is not an eligible listed item");
       }
@@ -58,7 +59,10 @@ export function MarketplaceV3DiagnosticsPage() {
         throw new Error("Marketplace listing changed during custody inspection");
       }
       setCustodyResult(custody);
+      setResult(finalListing);
     } catch (cause) {
+      setCustodyResult(null);
+      setListingBinding(null);
       setCustodyError(cause instanceof Error ? cause.message : "NFT custody read failed");
     } finally {
       setCustodyBusy(false);
