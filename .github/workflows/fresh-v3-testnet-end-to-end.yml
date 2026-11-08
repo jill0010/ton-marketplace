@@ -1,0 +1,312 @@
+name: Fresh Marketplace V3 Testnet End-to-End Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_fresh_independent_testnet_run:
+        description: "I approve a NEW independent Testnet deployment and ONE new funded purchase; never reuse the historical order 1 contracts."
+        required: true
+        type: boolean
+        default: false
+      confirm_production_v3_testnet_only:
+        description: "I approve deploying the production V3 contracts to TON TESTNET only. No Mainnet transactions."
+        required: true
+        type: boolean
+        default: false
+      confirm_one_funded_testnet_purchase:
+        description: "I separately approve ONE funded Testnet purchase and settlement in this fresh workflow run."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-v3-fresh-testnet
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # A rerun of a partially completed workflow must never send a second payment.
+    if: ${{ inputs.confirm_fresh_independent_testnet_run == true && inputs.confirm_production_v3_testnet_only == true && inputs.confirm_one_funded_testnet_purchase == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
+    steps:
+      - name: Confirm fresh Testnet-only isolated deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          echo "Fresh deployment required; no historical contract address or order is reused."
+          echo "One new Testnet purchase only; never retry this run after a payment attempt."
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Install locked verifier dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+
+      - name: Run production V3 contract and postflight regression tests
+        working-directory: .
+        run: |
+          node --test \
+            contracts/marketplace/scripts/verify-v3-testnet.test.mjs \
+            contracts/marketplace/scripts/verify-v3-production-testnet.test.mjs \
+            contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs \
+            contracts/marketplace/scripts/postflight-v3-production-testnet.test.mjs \
+            contracts/marketplace/scripts/derive-v3-validator-keys.test.mjs \
+            contracts/marketplace/scripts/preflight-v3-testnet-funding.test.mjs
+
+      - name: Validate required Testnet-only secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC" || { echo "::error::TESTNET_DEPLOYER_MNEMONIC is missing"; exit 1; }
+          test -n "$TONCENTER_API_KEY" || { echo "::error::TONCENTER_TESTNET_API_KEY is missing"; exit 1; }
+          test -n "$SELLER_MNEMONIC" || { echo "::error::TESTNET_SELLER_MNEMONIC is missing"; exit 1; }
+          for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
+            value="${!name:-}"
+            test -n "$value" || { echo "::error::$name is missing"; exit 1; }
+            [[ "$value" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "::error::$name must be a 32-byte Ed25519 seed encoded as 64 hex characters"; exit 1; }
+          done
+
+      - name: Derive verifier public keys without printing private seeds
+        working-directory: .
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/v3-validator-public-keys.env"
+          cat "$RUNNER_TEMP/v3-validator-public-keys.env" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/v3-validator-public-keys.env"
+
+      - name: Check Testnet balances before any deployment transaction
+        run: node scripts/preflight-v3-testnet-funding.mjs
+
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+
+      - name: Create ephemeral Testnet deployer wallet profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+
+      - name: Build production V3 contracts
+        run: acton build
+
+      - name: Gate deployment on full production V3 emulation suite
+        run: acton test --backtrace full
+
+      - name: Deploy Marketplace V3, Reserve Coordinator, Vault code and Settlement Verifier to Testnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/deploy-v3-production-testnet.tolk --net testnet > v3-production-testnet-deployment.log 2>&1 || {
+            sed -E 's/([A-Za-z0-9_-]{48})/[TON_ADDRESS]/g' v3-production-testnet-deployment.log | tail -80
+            exit 1
+          }
+          for name in marketplace escrow coordinator verifier; do
+            grep -Fq "V3 testnet candidate $name:" v3-production-testnet-deployment.log
+            grep -Fq "V3 trusted compiled $name code hash:" v3-production-testnet-deployment.log
+          done
+          grep -Fq "V3 trusted compiled vault code hash:" v3-production-testnet-deployment.log
+
+      - name: Export deployed V3 Testnet addresses for the funded integration steps
+        working-directory: .
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const log = await readFile("contracts/marketplace/v3-production-testnet-deployment.log", "utf8");
+          for (const name of ["marketplace", "escrow", "coordinator", "verifier"]) {
+            const label = "V3 testnet candidate " + name + ":";
+            const matches = log.split(/\r?\n/).filter(line => line.includes(label));
+            if (matches.length !== 1) throw new Error("Missing/duplicate deployed address: " + name);
+            const address = matches[0].slice(matches[0].indexOf(label) + label.length).trim().split(/\s+/)[0];
+            if (!address) throw new Error("Empty deployed address: " + name);
+            await appendFile(process.env.GITHUB_ENV, "V3_PRODUCTION_TESTNET_" + name.toUpperCase() + "_ADDRESS=" + address + "\n");
+          }
+          NODE
+
+      - name: Read-only postflight — four contract code hashes and immutable bindings
+        working-directory: .
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/postflight-v3-production-testnet.mjs \
+            contracts/marketplace/v3-production-testnet-deployment.log \
+            v3-production-testnet-postflight.json
+          node -e '
+            const fs = require("node:fs");
+            const report = JSON.parse(fs.readFileSync("v3-production-testnet-postflight.json", "utf8"));
+            if (!report.candidateAccountsActive || !report.codeHashesVerified || !report.bindingsVerified) {
+              throw new Error("Production V3 Testnet postflight did not fully verify");
+            }
+            const lines = ["", "## Production V3 Testnet deployment postflight", ""];
+            for (const name of ["marketplace", "escrow", "coordinator", "verifier"]) {
+              const contract = report.code.contracts[name];
+              lines.push("- " + name + ": " + contract.address + " (active=" + contract.active + ", code hash verified)");
+            }
+            lines.push("- Reserve Vault V3 code hash: verified in coordinator storage");
+            lines.push("- Verifier epoch / threshold / network: verified");
+            lines.push("- Validator public keys: three distinct keys verified");
+            lines.push("", "This confirms deployment and bindings only. A funded NFT purchase, buyer delivery, refund and settlement proof still require a separate Testnet transaction trace.");
+            lines.push("Mainnet remains blocked.");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
+
+      - name: Deploy a fresh synthetic NFT and list it through production Marketplace V3 / NFT Escrow V2
+        env:
+          V3_TESTNET_FIXTURE_ENABLED: "true"
+          V3_TESTNET_FIXTURE_ITEM_INDEX: ${{ github.run_number }}
+          FIXTURE_EMULATION: "false"
+        run: |
+          set -euo pipefail
+          acton script scripts/run-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee v3-production-testnet-fixture.log
+          grep -Fq "V3_TESTNET_FIXTURE_NFT_ADDRESS:" v3-production-testnet-fixture.log
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from "node:fs/promises";
+          const log = await readFile("v3-production-testnet-fixture.log", "utf8");
+          const line = log.split(/\r?\n/).find(value => value.includes("V3_TESTNET_FIXTURE_NFT_ADDRESS:"));
+          if (!line) throw new Error("Missing deployed Testnet fixture NFT address");
+          const address = line.split("V3_TESTNET_FIXTURE_NFT_ADDRESS:")[1].trim().split(/\s+/)[0];
+          await appendFile(process.env.GITHUB_ENV, "V3_TESTNET_FIXTURE_NFT_ADDRESS=" + address + "\n");
+          NODE
+
+      - name: Enforce single-attempt Testnet purchase authorization
+        shell: bash
+        working-directory: .
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1" || {
+            echo "::error::Rerun blocked: cannot safely repeat a potentially submitted Testnet purchase."
+            exit 1
+          }
+          test "$V3_PRODUCTION_TESTNET_DEPLOY_APPROVED" = "true"
+          test "${{ inputs.confirm_one_funded_testnet_purchase }}" = "true"
+          echo "One-time Testnet-only transaction gate passed. Mainnet remains prohibited."
+
+      - name: Submit one real Testnet purchase through production Marketplace V3
+        env:
+          V3_TESTNET_PURCHASE_ENABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          export V3_TESTNET_BUY_DEADLINE="$(( $(date +%s) + 600 ))"
+          acton script scripts/buy-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee v3-production-testnet-purchase.log
+          grep -Fq "Do not repeat this payment; run read-only delivery and reserve checks." v3-production-testnet-purchase.log
+
+      - name: Verify real Testnet NFT delivery and in-flight reserve before attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet --backtrace full > "v3-production-testnet-purchase-verification-attempt-${attempt}.log" 2>&1; then
+              cp "v3-production-testnet-purchase-verification-attempt-${attempt}.log" v3-production-testnet-purchase-verification.log
+              verified=true
+              break
+            fi
+            cp "v3-production-testnet-purchase-verification-attempt-${attempt}.log" v3-production-testnet-purchase-verification.log
+            echo "Read-only purchase/reserve verification attempt $attempt is not complete."
+            tail -30 "v3-production-testnet-purchase-verification-attempt-${attempt}.log"
+            if [ "$attempt" -lt 12 ]; then sleep 10; fi
+          done
+          cat v3-production-testnet-purchase-verification.log
+          test "$verified" = true
+          grep -Fq "V3_TESTNET_VAULT_ADDRESS:" v3-production-testnet-purchase-verification.log
+
+      - name: Bind attestation to the verified on-chain order ID
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync,appendFileSync} from "node:fs";
+          const log=readFileSync("contracts/marketplace/v3-production-testnet-purchase-verification.log","utf8");
+          const ids=[...log.matchAll(/^V3_TESTNET_ORDER_ID:\s*(\d+)\s*$/gm)].map(m=>m[1]);
+          if(ids.length!==1 || BigInt(ids[0])<=0n) throw new Error("Expected exactly one positive verified V3 order ID");
+          appendFileSync(process.env.GITHUB_ENV,"V3_TESTNET_ORDER_ID="+ids[0]+"\n");
+          console.log("Attestation bound to verified V3 order ID "+ids[0]);
+          NODE
+
+      - name: Install isolated TON SDK for Testnet receipt attestation
+        working-directory: .
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v3-attestor"
+          npm install --prefix "$RUNNER_TEMP/v3-attestor" --ignore-scripts --no-audit --no-fund --save-exact \
+            @ton/core@0.63.1 @ton/ton@16.3.0 @ton/crypto@3.3.0
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs "$RUNNER_TEMP/v3-attestor/attest.mjs"
+          cp contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.test.mjs "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
+          node --test "$RUNNER_TEMP/v3-attestor/attest.test.mjs"
+
+      - name: Verify actual buyer receipt and submit 3-of-3 settlement attestation on Testnet
+        working-directory: .
+        env:
+          BUYER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/v3-attestor/attest.mjs" 2>&1 | tee v3-production-testnet-attestation.log
+          grep -Fq '"vaultStatus": 3' v3-production-testnet-attestation.log
+
+      - name: Verify final production V3 Testnet settlement state
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-production-testnet-settlement.tolk --net testnet 2>&1 | tee v3-production-testnet-settlement.log
+          grep -Fq "PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED; INDEPENDENT TRANSFER FINALITY NOT ATTESTED." v3-production-testnet-settlement.log
+
+      - name: Upload production V3 Testnet evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: production-v3-testnet-deployment-evidence
+          path: |
+            contracts/marketplace/v3-production-testnet-deployment.log
+            v3-production-testnet-postflight.json
+            contracts/marketplace/v3-production-testnet-fixture.log
+            contracts/marketplace/v3-production-testnet-purchase.log
+            contracts/marketplace/v3-production-testnet-purchase-verification.log
+            contracts/marketplace/v3-production-testnet-purchase-verification-attempt-*.log
+            v3-production-testnet-attestation.log
+            contracts/marketplace/v3-production-testnet-settlement.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Remove temporary wallet profile
+        if: always()
+        run: rm -f wallets.toml
