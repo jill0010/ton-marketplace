@@ -5,6 +5,7 @@ export type V3TestnetDiagnostic = Readonly<{
   marketplaceAddress: string;
   productId: bigint;
   schemaVersion: bigint;
+  nextOrderId: bigint;
   status: bigint | null;
   escrowId: bigint | null;
   existingOrderId: bigint | null;
@@ -51,6 +52,7 @@ function tvmBoolean(stack: unknown[]): boolean {
 export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Promise<V3TestnetDiagnostic> {
   const methods = [
     "purchaseSchemaVersionV3",
+    "nextOrderIdV3",
     "productStatusV2",
     "productEscrowIdV2",
     "orderIdForProductV2",
@@ -71,9 +73,14 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     throw new Error("V3 Testnet contract changed during inspection");
   }
   const schemaVersion = oneNumber(results[0].stack, false);
-  const status = oneNumber(results[1].stack, true);
-  const escrowId = oneNumber(results[2].stack, true);
-  const existingOrderId = oneNumber(results[3].stack, true);
+  const nextOrderId = oneNumber(results[1].stack, false);
+  if (nextOrderId === null || nextOrderId < 1n) throw new Error("Invalid next order ID");
+  const status = oneNumber(results[2].stack, true);
+  const escrowId = oneNumber(results[3].stack, true);
+  const existingOrderId = oneNumber(results[4].stack, true);
+  if (existingOrderId !== null && (existingOrderId === 0n || existingOrderId >= nextOrderId)) {
+    throw new Error("V3 order reference is outside the allocated order range");
+  }
   if (schemaVersion !== 3n) throw new Error("Unexpected Marketplace V3 schema version");
   if (status !== null && ![1n, 2n, 3n, 5n, 6n].includes(status)) {
     throw new Error("Unknown V3 product status");
@@ -107,13 +114,14 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     marketplaceAddress: address,
     productId,
     schemaVersion,
+    nextOrderId,
     status,
     escrowId,
     existingOrderId,
     reserveStatus,
-    escrowConfigured: tvmBoolean(results[4].stack),
-    treasuryConfigured: tvmBoolean(results[5].stack),
-    coordinatorConfigured: tvmBoolean(results[6].stack),
+    escrowConfigured: tvmBoolean(results[5].stack),
+    treasuryConfigured: tvmBoolean(results[6].stack),
+    coordinatorConfigured: tvmBoolean(results[7].stack),
     observedAt: new Date(Math.min(...times)).toISOString(),
     purchaseAuthorized: false,
   };
