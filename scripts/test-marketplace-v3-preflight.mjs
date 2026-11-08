@@ -1,17 +1,39 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { build } from "vite";
 
-const { outputFiles } = await build({
-  entryPoints: ["src/lib/marketplaceV3Preflight.ts"],
-  bundle: true,
-  write: false,
-  platform: "node",
-  format: "esm",
+const virtualEntry = "virtual:v3-preflight-test";
+const virtualResolved = "\0" + virtualEntry;
+let bundled = "";
+
+await build({
+  configFile: false,
   logLevel: "silent",
+  plugins: [{
+    name: "v3-preflight-test-entry",
+    resolveId(id) { return id === virtualEntry ? virtualResolved : null; },
+    load(id) {
+      return id === virtualResolved
+        ? 'export { preflightMarketplaceV3TestnetPurchase } from "./src/lib/marketplaceV3Preflight.ts";'
+        : null;
+    },
+  }],
+  build: {
+    write: false,
+    minify: false,
+    rollupOptions: {
+      input: virtualEntry,
+      output: { format: "es", entryFileNames: "v3-test.js" },
+    },
+  },
+}).then((result) => {
+  const outputs = Array.isArray(result) ? result.flatMap((r) => r.output ?? []) : result.output;
+  const chunk = outputs.find((item) => item.type === "chunk");
+  if (!chunk) throw new Error("V3 test bundle was not generated");
+  bundled = chunk.code;
 });
 const { preflightMarketplaceV3TestnetPurchase } = await import(
-  "data:text/javascript;base64," + Buffer.from(outputFiles[0].contents).toString("base64")
+  "data:text/javascript;base64," + Buffer.from(bundled).toString("base64")
 );
 
 const address = (n) => "0:" + n.toString(16).padStart(64, "0");
