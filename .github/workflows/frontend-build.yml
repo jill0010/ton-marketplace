@@ -6,6 +6,7 @@ on:
     paths:
       - "src/**"
       - "scripts/test-marketplace-v3-preflight.mjs"
+      - "scripts/test-marketplace-v3-readonly-getter-contract.mjs"
       - "supabase/functions/marketplace-v3-testnet-readonly/**"
       - "supabase/functions/_shared/marketplace-v3-testnet-getter.*"
       - "scripts/check-marketplace-v2-customer-purchase-policy.mjs"
@@ -196,6 +197,9 @@ jobs:
 
       - name: Type-check V3 Testnet read-only RPC Edge Function
         run: deno check --config supabase/functions/deno.json supabase/functions/marketplace-v3-testnet-readonly/index.ts
+
+      - name: Test Marketplace V3 read-only getter API consistency
+        run: node --test scripts/test-marketplace-v3-readonly-getter-contract.mjs
 
       - name: Test Marketplace V3 Testnet purchase preflight (no transactions)
         run: node --test scripts/test-marketplace-v3-preflight.mjs
