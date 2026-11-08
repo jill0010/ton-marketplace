@@ -1,4 +1,5 @@
 import { Address } from "npm:@ton/core@0.63.1";
+import { extractV3TestnetGetterStack } from "../_shared/marketplace-v3-testnet-getter.ts";
 
 const ALLOWED_ORIGINS = new Set([
   "https://ton-marketplace-cvj.pages.dev",
@@ -97,16 +98,14 @@ Deno.serve(async (req: Request) => {
       throw new Error("Invalid Testnet RPC response");
     }
     const payload = result as Record<string, unknown>;
-    if (payload.exit_code !== 0 || !Array.isArray(payload.stack)) {
-      throw new Error("Testnet getter did not complete successfully");
-    }
+    const stackResult = extractV3TestnetGetterStack(payload);
     return reply(origin, 200, {
       success: true,
       network: "testnet",
       contract_address: marketplace.toRawString(),
       method: input.method,
       product_id: needsId ? input.product_id : null,
-      stack: payload.stack,
+      stack: stackResult,
       observed_at: new Date().toISOString(),
       verified_purchase_eligibility: false,
       notice: "Read-only RPC result; this is not a purchase authorization or NFT custody attestation.",
