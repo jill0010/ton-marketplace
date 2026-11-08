@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { resolve } from "node:path";
 import { build } from "vite";
 
 const virtualEntry = "virtual:v3-preflight-test";
@@ -14,7 +15,7 @@ await build({
     resolveId(id) { return id === virtualEntry ? virtualResolved : null; },
     load(id) {
       return id === virtualResolved
-        ? 'export { preflightMarketplaceV3TestnetPurchase } from "./src/lib/marketplaceV3Preflight.ts";'
+        ? 'export { preflightMarketplaceV3TestnetPurchase } from ' + JSON.stringify(resolve("src/lib/marketplaceV3Preflight.ts")) + ';'
         : null;
     },
   }],
