@@ -48,6 +48,9 @@ jobs:
       - name: Test V3 settlement attestation ABI and Ed25519 quorum model (reference only)
         working-directory: .
         run: node --test contracts/marketplace/experiments/v3-settlement-attestation.test.mjs
+      - name: Run read-only Mainnet environment preflight unit tests
+        working-directory: .
+        run: node --test contracts/marketplace/scripts/preflight-v3-mainnet-environment.test.mjs
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Compile V3 candidate and escrow without deploying
