@@ -1,0 +1,71 @@
+name: Marketplace V3 Release Safety Gate (No Transactions)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/marketplaceV3*.ts"
+      - "src/pages/ProductPage.tsx"
+      - "scripts/test-marketplace-v3-*.mjs"
+      - ".github/workflows/v3-release-safety-gate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  release-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked frontend dependencies
+        run: npm ci --ignore-scripts
+      - name: Check V3 transaction preparation safety and Testnet preflight
+        run: |
+          set -euo pipefail
+          node --test scripts/test-marketplace-v3-preflight.mjs scripts/test-marketplace-v3-readonly-getter-contract.mjs
+          node scripts/check-marketplace-v2-customer-purchase-policy.mjs
+          node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs
+      - name: Fail closed if V3 Mainnet checkout is activated
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const quote = fs.readFileSync('src/lib/marketplaceV3.ts', 'utf8');
+          const preflight = fs.readFileSync('src/lib/marketplaceV3Preflight.ts', 'utf8');
+          const product = fs.readFileSync('src/pages/ProductPage.tsx', 'utf8');
+          const failures = [];
+          if (!quote.includes('MARKETPLACE_V3_TESTNET_CHAIN = "-3"') ||
+              !quote.includes('input.walletChain !== MARKETPLACE_V3_TESTNET_CHAIN')) failures.push('V3 Testnet chain guard missing');
+          if (!preflight.includes('input.connectedWalletChain !== MARKETPLACE_V3_TESTNET_CHAIN') ||
+              !preflight.includes('s.chain !== MARKETPLACE_V3_TESTNET_CHAIN')) failures.push('V3 preflight chain guard missing');
+          if (!preflight.includes('s.existingOrderId !== null') ||
+              !preflight.includes('s.productStatus !== 2')) failures.push('V3 duplicate order/listing guard missing');
+          if (!preflight.includes('input.nowSeconds - s.fetchedAtSeconds > 15')) failures.push('V3 fresh-chain-snapshot guard missing');
+          if (product.includes('prepareMarketplaceV3TestnetPurchase(') &&
+              product.includes('network: "-239"')) failures.push('V3 purchase preparation coexists with Mainnet payment on product page; manual audit required');
+          if (failures.length) { console.error(failures.join('\n')); process.exit(1); }
+          console.log('V3 Testnet-only quote and preflight guards present; no V3 Mainnet checkout approval implied.');
+          NODE
+      - name: Build production frontend
+        run: npm run build
+      - name: Record outstanding Mainnet release blockers
+        run: |
+          {
+            echo "## Marketplace V3 release status: BLOCKED"
+            echo
+            echo "- Testnet order 3 final-state verification succeeded in Actions run 42480145497."
+            echo "- This job validates code gates and frontend build, NOT an independent contract audit."
+            echo "- Current ProductPage checkout is a separate manual Mainnet order flow; V3 customer purchase is NOT integrated."
+            echo "- Mainnet V3 signing, contract deployment, and automated checkout are NOT authorized."
+            echo "- Outstanding: independent security review, source/bytecode lineage, customer checkout integration, and fresh Testnet end-to-end UI validation."
+            echo "- This workflow performs no wallet signing and no blockchain transaction."
+          } >> "$GITHUB_STEP_SUMMARY"
