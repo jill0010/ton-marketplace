@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 type EscrowOrder = {
@@ -134,6 +135,7 @@ export function MarketplaceEscrowAdminPage() {
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+      <div className="flex justify-end"><Link to="/admin/marketplace-v3-testnet" className="rounded border border-sky-500/50 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">V3 测试网链上诊断（只读）</Link></div>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-widest text-zinc-500">TON MARKETPLACE · ADMIN</p>
