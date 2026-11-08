@@ -50,4 +50,20 @@ assert.match(concurrencyPlan, /23505/);
 assert.match(concurrencyPlan, /ALREADY_CONFIRMED/);
 assert.match(concurrencyPlan, /audit insert failure/);
 
-console.log("Manual payment fail-closed and atomic audit source invariants passed.");
+
+// Wallet-to-order binding and proof-expiry invariants.
+const walletAuth = readFileSync("supabase/functions/verify-manual-product-payment/shared/auth.ts", "utf8");
+assert.match(walletAuth, /user\.is_anonymous !== true/, "require authenticated anonymous wallet session");
+assert.match(walletAuth, /get_current_ton_wallet_identity/, "canonical wallet identity must be resolved");
+assert.match(walletAuth, /proofExpiresAt <= Date\.now\(\)/, "expired TON proof must be rejected");
+assert.match(walletAuth, /identity\.network !== "-239"/, "canonical identity must be mainnet bound");
+assert.match(walletAuth, /\.eq\("user_id", user\.id\)/, "legacy wallet must bind to authenticated user");
+assert.match(walletAuth, /\.eq\("network", "-239"\)/, "legacy wallet must be mainnet bound");
+assert.match(verifier, /\.eq\("buyer_user_id", wallet\.userId\)/, "order lookup must bind buyer identity");
+assert.match(verifier, /\.eq\("buyer_wallet_raw", wallet\.walletAddress\)/, "order lookup must bind wallet address");
+assert.match(verifier, /\.eq\("id", orderId\)/, "order lookup must bind exact order ID");
+assert.match(verifier, /source !== senderRaw/, "on-chain transfer sender must match wallet");
+assert.match(verifier, /destination !== receiverRaw/, "on-chain transfer receiver must match order snapshot");
+assert.match(verifier, /memo !== order\.order_no/, "on-chain memo must match unique order number");
+
+console.log("Manual payment fail-closed, wallet binding and atomic audit source invariants passed.");
