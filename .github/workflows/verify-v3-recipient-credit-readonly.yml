@@ -41,7 +41,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Node
-        uses: actions/setup-node@1b14f4b7dbf4a42f7a0b0e4dfe4a6fcb6b7f73b5 # v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
       - name: Run recipient credit verifier regression tests
