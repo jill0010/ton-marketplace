@@ -98,4 +98,20 @@ SELECT (SELECT count(*) FROM public.manual_product_orders WHERE payment_tx_hash=
 SQL
 grep -Fxq '1:1:awaiting_payment' "$tmpdir/race-counts"
 echo "PASS: cross-order simultaneous hash claim has one winner, one audit and unchanged loser."
+# Dynamic negative cases: wrong buyer, missing order, and wrong payment state.
+psql -v ON_ERROR_STOP=1 -At <<'SQL' > "$tmpdir/negative"
+SELECT public.confirm_manual_product_payment_verified('00000000-0000-4000-8000-000000000102','00000000-0000-4000-8000-000000000399',repeat('c',64),now());
+SELECT public.confirm_manual_product_payment_verified('00000000-0000-4000-8000-000000000199','00000000-0000-4000-8000-000000000301',repeat('c',64),now());
+UPDATE public.manual_product_orders SET status='cancelled' WHERE order_no='CONCURRENCY-2';
+SELECT public.confirm_manual_product_payment_verified('00000000-0000-4000-8000-000000000102','00000000-0000-4000-8000-000000000301',repeat('c',64),now());
+SQL
+grep -Fxq 'ORDER_NOT_FOUND' "$tmpdir/negative"
+grep -Fxq 'PAYMENT_STATE_CONFLICT' "$tmpdir/negative"
+psql -v ON_ERROR_STOP=1 -At <<'SQL' > "$tmpdir/negative-count"
+SELECT (SELECT count(*) FROM public.manual_product_orders WHERE payment_tx_hash=repeat('c',64))::text || ':' ||
+       (SELECT count(*) FROM public.manual_product_order_logs WHERE metadata->>'transaction_hash'=repeat('c',64))::text;
+SQL
+grep -Fxq '0:0' "$tmpdir/negative-count"
+echo "PASS: wrong buyer, unknown order and wrong state fail without payment or audit mutation."
+
 
