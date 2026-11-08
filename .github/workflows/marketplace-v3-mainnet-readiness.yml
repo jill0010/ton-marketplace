@@ -23,10 +23,10 @@ jobs:
       run:
         working-directory: contracts/marketplace
     steps:
-      - name: Checkout V3 formatting candidate (no wallet credentials)
+      - name: Checkout immutable V3 release candidate (no wallet credentials)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: release/v3-format-readiness
+          ref: 4d97607a6bd22494e105852a3c375fc905a9d219
           persist-credentials: false
 
       - name: Assert candidate commit and required production contracts
@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git branch --show-current)" = "release/v3-format-readiness"
+          test "$(git rev-parse HEAD)" = "4d97607a6bd22494e105852a3c375fc905a9d219"
           for file in \
             contracts/marketplace/contracts/MarketplaceReserveV3.tolk \
             contracts/marketplace/contracts/ReserveCoordinatorV3.tolk \
