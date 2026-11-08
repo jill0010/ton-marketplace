@@ -41,6 +41,10 @@ jobs:
       V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
       V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
     steps:
+      - name: Block historical funded V3 deployment and duplicate purchase
+        run: |
+          echo "::error::Historical V3 funded Testnet deployment is permanently disabled after order 1 settled. Use the separate read-only verification workflow."
+          exit 1
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
