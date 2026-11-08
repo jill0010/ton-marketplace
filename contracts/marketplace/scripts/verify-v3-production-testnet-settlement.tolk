@@ -20,6 +20,8 @@ fun main() {
     assert (productId != null) throw 933;
     val orderId = marketplace.orderIdForProductV2(productId!!);
     assert (orderId != null) throw 933;
+    // This read-only audit is exclusively for the already-settled Testnet order 1.
+    assert (orderId!! == 1) throw 939;
     val orderCell = marketplace.orderCellV2(orderId!!);
     assert (orderCell != null) throw 933;
     val order = MarketplaceV2Order.fromCell(orderCell!!);
