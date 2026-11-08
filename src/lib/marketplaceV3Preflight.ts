@@ -63,6 +63,18 @@ export function preflightMarketplaceV3TestnetPurchase(
       input.nowSeconds - s.fetchedAtSeconds > 15) {
     throw new Error("V3 chain snapshot is stale or has an invalid timestamp.");
   }
+  // Every participant and NFT contract in this checkout must be on the
+  // supported base workchain. Do not accept masterchain or exotic addresses
+  // merely because two caller-supplied strings happen to match.
+  const participants = [
+    s.marketplaceAddress, s.nftItemAddress, s.escrowAddress,
+    s.sellerAddress, s.buyerAddress, s.nftOwnerAddress,
+    input.expectedMarketplaceAddress, input.expectedNftItemAddress,
+    input.connectedBuyerAddress,
+  ];
+  if (participants.some((value) => Address.parse(value).workChain !== 0)) {
+    throw new Error("V3 checkout requires workchain-0 contract and wallet addresses.");
+  }
   if (!sameAddress(s.marketplaceAddress, input.expectedMarketplaceAddress) ||
       !sameAddress(s.nftItemAddress, input.expectedNftItemAddress) ||
       !sameAddress(s.buyerAddress, input.connectedBuyerAddress)) {
