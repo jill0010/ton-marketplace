@@ -15,18 +15,6 @@ on:
         description: "Deployed V3 reserve coordinator address on TON testnet"
         required: true
         type: string
-      expected_marketplace_code_hash:
-        description: "Expected marketplace code hash (64 hex chars; optional, unverified if absent)"
-        required: false
-        type: string
-      expected_escrow_code_hash:
-        description: "Expected escrow code hash (64 hex chars; optional, unverified if absent)"
-        required: false
-        type: string
-      expected_coordinator_code_hash:
-        description: "Expected coordinator code hash (64 hex chars; optional, unverified if absent)"
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -46,35 +34,14 @@ jobs:
           node-version: '22'
       - name: Install locked TON verification dependencies
         run: npm ci --ignore-scripts
-      - name: Test evidence verifier offline
-        run: node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs
-      - name: Collect read-only testnet evidence
+      - name: Collect and compare deployed Testnet code hashes (read only)
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
           V3_TESTNET_MARKETPLACE_ADDRESS: ${{ inputs.marketplace_address }}
           V3_TESTNET_ESCROW_ADDRESS: ${{ inputs.escrow_address }}
           V3_TESTNET_COORDINATOR_ADDRESS: ${{ inputs.coordinator_address }}
-          V3_EXPECTED_MARKETPLACE_CODE_HASH: ${{ inputs.expected_marketplace_code_hash }}
-          V3_EXPECTED_ESCROW_CODE_HASH: ${{ inputs.expected_escrow_code_hash }}
-          V3_EXPECTED_COORDINATOR_CODE_HASH: ${{ inputs.expected_coordinator_code_hash }}
           V3_EVIDENCE_OUTPUT: v3-testnet-evidence.json
-        run: node contracts/marketplace/scripts/collect-v3-testnet-evidence.mjs
-      - name: Confirm observed testnet contracts are active and carry code
-        if: ${{ always() && hashFiles('v3-testnet-evidence.json') != '' }}
-        env:
-          V3_EVIDENCE_FILE: v3-testnet-evidence.json
-        run: |
-          node --input-type=module -e '
-            import { readFileSync, appendFileSync } from "node:fs";
-            const evidence = JSON.parse(readFileSync(process.env.V3_EVIDENCE_FILE, "utf8"));
-            const p = evidence.postflight;
-            const results = ["marketplace", "escrow", "coordinator"].map((name) => {
-              const v = p.contracts[name];
-              return `${name}: ${v.address} active=${v.active} code=${v.codePresent} codeHash=${v.codeHash}`;
-            });
-            appendFileSync(process.env.GITHUB_STEP_SUMMARY, "\n## Observed testnet contracts\n" + results.join("\n") + "\n\nProduction release remains blocked pending independent proofs.\n");
-            if (!p.allActive || !p.allCodePresent) process.exitCode = 1;
-          '
+        run: node scripts/verify-v3-testnet-deployed-code.mjs
       - name: Upload evidence (including inactive-state reports)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
