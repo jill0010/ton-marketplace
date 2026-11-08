@@ -46,7 +46,7 @@ export function MarketplaceV3DiagnosticsPage() {
           ["Escrow ID", result.escrowId?.toString() ?? "null"],
           ["Existing order", result.existingOrderId?.toString() ?? "null"],
           ["Reserve status (on-chain)", result.reserveStatus?.toString() ?? "not bound"],
-          ["Reserve interpretation", result.reserveStatus === 0n ? "No reserve binding found" : result.reserveStatus === 1n ? "Pending vault binding" : result.reserveStatus === 2n ? "Vault bound; settlement not proven" : result.reserveStatus === 3n ? "Reserve finalized; independently verify Vault" : "No linked order"],
+          ["Reserve interpretation", result.reserveStatus === 0n ? "No reserve binding found" : result.reserveStatus === 1n ? "Awaiting reserve allocation" : result.reserveStatus === 2n ? "Vault allocated; settlement not proven" : result.reserveStatus === 3n ? "Reserve allocation failed; refund path initiated" : "No linked order"],
           ["Escrow configured", String(result.escrowConfigured)],
           ["Treasury configured", String(result.treasuryConfigured)],
           ["Coordinator configured", String(result.coordinatorConfigured)],
