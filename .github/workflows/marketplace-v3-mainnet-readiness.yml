@@ -57,18 +57,28 @@ jobs:
       - name: Lint production contract sources
         run: acton check --output-format github
 
-      - name: Validate production contract formatting only
+      - name: Validate production contract formatting and record legacy violations
         shell: bash
         run: |
           set -euo pipefail
-          # The pinned V3 snapshot also contains legacy test fixtures that are
-          # unformatted. Check the deployable V3 production sources explicitly,
-          # without silently disabling or bypassing formatting validation.
-          acton fmt --check \
-            contracts/MarketplaceReserveV3.tolk \
-            contracts/ReserveCoordinatorV3.tolk \
-            contracts/ReserveVaultV3.tolk \
-            contracts/SettlementAttestationVerifierV3.tolk
+          # Two deployable V3 contracts in the pinned source are not yet
+          # formatter-clean. The formatting gate must remain fail-closed:
+          # do not report a production release as approved while this persists.
+          if acton fmt --check > v3-formatting-audit.log 2>&1; then
+            echo "Formatting gate: PASS" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::Pinned V3 sources require formatting; release remains blocked."
+            grep '^Diff in ' v3-formatting-audit.log || true
+            {
+              echo "## Production V3 formatting debt"
+              echo
+              echo "The pinned candidate is not formatter-clean. Fix and revalidate"
+              echo "all deployable contracts without silently changing their code hashes."
+              echo
+              grep '^Diff in ' v3-formatting-audit.log || true
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Record release evidence and restrictions
         working-directory: .
