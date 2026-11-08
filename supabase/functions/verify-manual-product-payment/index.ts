@@ -102,6 +102,7 @@ Deno.serve(async (req: Request) => {
     let cursorLt = "";
     let cursorHash = "";
     let scanReachedOrderStart = false;
+    let scanIntegrityValid = true;
 
     for (let page = 0; page < 5; page += 1) {
       const params = new URLSearchParams({ address: order.payment_address, limit: "100" });
@@ -121,12 +122,12 @@ Deno.serve(async (req: Request) => {
       transactions.push(...rows);
       const oldest = rows[rows.length - 1];
       const timestamp = Number(oldest.utime) * 1000;
-      if (!Number.isFinite(timestamp)) break;
+      if (!Number.isFinite(timestamp)) { scanIntegrityValid = false; break; }
       if (timestamp < createdAt - 120000) { scanReachedOrderStart = true; break; }
       const id = oldest.transaction_id as Record<string, unknown> | null;
       const nextLt = String(id?.lt ?? "");
       const nextHash = String(id?.hash ?? "");
-      if (!nextLt || !nextHash || (nextLt === cursorLt && nextHash === cursorHash)) break;
+      if (!nextLt || !nextHash || (nextLt === cursorLt && nextHash === cursorHash)) { scanIntegrityValid = false; break; }
       cursorLt = nextLt;
       cursorHash = nextHash;
     }
@@ -160,7 +161,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!match) {
-      if (!scanReachedOrderStart) {
+      if (!scanReachedOrderStart || !scanIntegrityValid) {
         return reply({ success: false, code: "PAYMENT_HISTORY_INCOMPLETE", error: "The payment history scan did not cover the full order window. The reservation remains locked pending further verification." }, 503, origin);
       }
       if (orderExpired) {
