@@ -4,6 +4,7 @@ import { Buffer } from "node:buffer";
 import { authenticateVerifiedWallet } from "./shared/auth.ts";
 import { isOrderOwnedByVerifiedWallet } from "./shared/order-identity.ts";
 import { validPaymentWindow, paymentIsWithinWindow } from "./shared/payment-window.ts";
+import { validHistoryPage } from "./shared/history-integrity.ts";
 
 const ALLOWED_ORIGINS = new Set(["https://ton-marketplace-cvj.pages.dev", "http://localhost:5173"]);
 const TONCENTER_URL = "https://toncenter.com/api/v2/getTransactions";
@@ -128,35 +129,18 @@ Deno.serve(async (req: Request) => {
       if (result?.ok !== true || !Array.isArray(result?.result)) return reply({ success: false, error: "TON Mainnet returned an invalid transaction response." }, 502, origin);
       const rows = result.result as Record<string, unknown>[];
       if (!rows.length) { scanReachedOrderStart = true; break; }
-      // Toncenter pages must be newest-first. A malformed or out-of-order page
-      // must not be treated as complete evidence of payment history.
-      let previousUtime = Number.POSITIVE_INFINITY;
-      for (const tx of rows) {
-        const utime = Number(tx.utime);
-        if (!Number.isSafeInteger(utime) || utime <= 0 || utime > previousUtime) {
-          scanIntegrityValid = false;
-          break;
-        }
-        previousUtime = utime;
-        const transactionId = tx.transaction_id as Record<string, unknown> | null;
-        const lt = String(transactionId?.lt ?? "");
-        const hash = hashHex(transactionId?.hash);
-        if (!/^\\d+$/.test(lt) || !hash) {
-          scanIntegrityValid = false;
-          break;
-        }
-        const uniqueId = lt + ":" + hash;
-        if (seenTransactionIds.has(uniqueId)) {
-          scanIntegrityValid = false;
-          break;
-        }
-        seenTransactionIds.add(uniqueId);
-      }
-      if (!scanIntegrityValid || Number(rows[0].utime) > previousPageOldestUtime) {
+      // Normalize Toncenter base64 or hex transaction hashes before checking
+      // pagination integrity. Reject malformed pages without mutating seen IDs.
+      const normalizedRows = rows.map((tx) => {
+        const id = tx.transaction_id as Record<string, unknown> | null;
+        return { utime: tx.utime, transaction_id: { lt: id?.lt, hash: hashHex(id?.hash) } };
+      });
+      const integrity = validHistoryPage(normalizedRows, previousPageOldestUtime, seenTransactionIds);
+      if (!integrity.valid) {
         scanIntegrityValid = false;
         break;
       }
-      previousPageOldestUtime = Number(rows[rows.length - 1].utime);
+      previousPageOldestUtime = integrity.oldestUtime;
       transactions.push(...rows);
       const oldest = rows[rows.length - 1];
       const timestamp = Number(oldest.utime) * 1000;
