@@ -2,6 +2,10 @@ name: V3 Candidate Bytecode Lineage (Read Only)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v3-bytecode-lineage.yml'
 
 permissions:
   contents: read
@@ -25,7 +29,7 @@ jobs:
           BASE=223cebcd0977d90486c71417645a6fe2cbaa4953
           CANDIDATE=4d97607a6bd22494e105852a3c375fc905a9d219
           mkdir -p evidence
-          acton --version | tee evidence/acton-version.txt
+          acton --version 2>&1 | tee evidence/acton-version.txt
           for revision in "$BASE" "$CANDIDATE"; do
             git worktree add --detach "$RUNNER_TEMP/v3-$revision" "$revision"
             (
