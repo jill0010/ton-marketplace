@@ -52,6 +52,20 @@ jobs:
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Compile V3 candidate and escrow without deploying
         run: acton build
+      - name: Assert mainnet deploy script uses mainnet network and explicit wallet approval
+        working-directory: .
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const source = readFileSync('contracts/marketplace/scripts/deploy-v3-mainnet.tolk','utf8');
+          assert.match(source, /V3_MAINNET_DEPLOY_APPROVED/);
+          assert.match(source, /V3_MAINNET_DEPLOYER_ADDRESS/);
+          assert.match(source, /networkGlobalId: -239/);
+          assert.match(source, /PLATFORM_TREASURY_ADDRESS/);
+          assert.doesNotMatch(source, /V3_PRODUCTION_TESTNET_DEPLOY_APPROVED|networkGlobalId: -3[,\\s]/);
+          console.log('Mainnet deployment source guards passed. This is NOT a transaction or deployment verification.');
+          NODE
       - name: Run complete Marketplace V3 contract emulation suite
         run: acton test
       - name: Confirm build result
