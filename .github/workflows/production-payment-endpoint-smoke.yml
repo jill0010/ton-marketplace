@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/production-payment-endpoint-smoke.yml"
+      - "supabase/functions/verify-manual-product-payment/**"
 permissions:
   contents: read
 jobs:
