@@ -85,6 +85,9 @@ Deno.serve(async (req: Request) => {
     if (orderError || !order) return reply({ success: false, error: "Order not found for this verified wallet" }, 404, origin);
 
     if (order.status === "payment_confirmed" || order.status === "delivery_pending" || order.status === "delivered") {
+      if (typeof order.payment_tx_hash !== "string" || !/^[0-9a-f]{64}$/i.test(order.payment_tx_hash)) {
+        return reply({ success: false, code: "PAYMENT_EVIDENCE_MISSING", error: "This order is marked paid but has no valid on-chain transaction hash. Contact support for manual reconciliation." }, 409, origin);
+      }
       return reply({ success: true, paymentVerified: true, orderNo: order.order_no, txHash: order.payment_tx_hash, alreadyVerified: true }, 200, origin);
     }
     if (order.status !== "awaiting_payment") return reply({ success: false, error: "This order is not awaiting payment" }, 409, origin);
