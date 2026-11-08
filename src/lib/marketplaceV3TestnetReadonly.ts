@@ -80,7 +80,7 @@ export async function readMarketplaceV3TestnetGetter(
   }
   return {
     network: "testnet",
-    contract_address: data.contract_address,
+    contract_address: parsedAddress.toRawString(),
     method,
     product_id: data.product_id,
     stack: data.stack,
