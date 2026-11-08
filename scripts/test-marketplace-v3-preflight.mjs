@@ -107,6 +107,9 @@ rejected("reject unallocated escrow", (v) => { v.snapshot.escrowId = 0n; });
 rejected("reject NFT not held by escrow", (v) => { v.snapshot.nftOwnerAddress = address(8); });
 rejected("reject self purchase", (v) => { v.snapshot.sellerAddress = address(6); });
 rejected("reject seller as escrow", (v) => { v.snapshot.sellerAddress = address(4); });
+rejected("reject buyer as escrow", (v) => { v.snapshot.escrowAddress = address(6); v.snapshot.nftOwnerAddress = address(6); });
+rejected("reject marketplace as escrow", (v) => { v.snapshot.escrowAddress = address(1); v.snapshot.nftOwnerAddress = address(1); });
+rejected("reject NFT item as escrow", (v) => { v.snapshot.escrowAddress = address(3); v.snapshot.nftOwnerAddress = address(3); });
 rejected("reject zero price", (v) => { v.snapshot.priceNano = 0n; v.expectedPriceNano = 0n; });
 
 rejected("reject zero payment query ID", (v) => { v.queryId = 0n; });
