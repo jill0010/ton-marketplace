@@ -74,6 +74,7 @@ test("final settlement audit compiles with network and IO imports and never send
  const audit=readFileSync(new URL("../../../.github/workflows/verify-existing-v3-testnet-settlement-readonly.yml",import.meta.url),"utf8");
  assert.match(script,/import "@acton\/io"/);
  assert.match(script,/import "@acton\/emulation\/network"/);
+ assert.match(script,/assert \(orderId!! == 1\) throw 939/);
  assert.match(script,/reserveVaultStatusV3/);
  assert.match(script,/reserveVaultPaidV3/);
  assert.match(script,/reserveVaultInFlightV3/);
