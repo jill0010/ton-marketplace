@@ -10,7 +10,7 @@ import "@contracts/ReserveVaultV3"
 import "@contracts/SettlementAttestationVerifierV3"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
-import "@wrappers/NFTEscrowV2Testnet.gen"
+import "@wrappers/NFTEscrowV2.gen"
 
 fun main() {
     assert (env<bool>("V3_MAINNET_DEPLOY_APPROVED") ?? false) throw 821;
@@ -81,7 +81,7 @@ fun main() {
         stateInit: marketState,
     };
 
-    val escrow = NFTEscrowV2Testnet.fromStorage(NFTEscrowV2Storage {
+    val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
         owner: deployer.address,
         marketplace: marketplace.address,
         records: [],
@@ -145,7 +145,7 @@ fun main() {
     val coordinator = coordinatorDestination.calculateAddress();
 
     println("V3 trusted compiled marketplace code hash: {}", marketCode.hash());
-    println("V3 trusted compiled escrow code hash: {}", build("NFTEscrowV2Testnet").hash());
+    println("V3 trusted compiled escrow code hash: {}", build("NFTEscrowV2").hash());
     println("V3 trusted compiled vault code hash: {}", build("ReserveVaultV3").hash());
     println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
     println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
