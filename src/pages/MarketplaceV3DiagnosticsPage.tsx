@@ -30,7 +30,20 @@ export function MarketplaceV3DiagnosticsPage() {
       const binding = await readV3TestnetMarketplaceEscrow();
       if (binding.marketplaceAddress !== listing.marketplaceAddress) throw new Error("Marketplace contract binding mismatch");
       setEscrowAddress(binding.escrowAddress);
-      setCustodyResult(await inspectV3TestnetNftCustody(nftAddress.trim(), binding.escrowAddress));
+      const custody = await inspectV3TestnetNftCustody(nftAddress.trim(), binding.escrowAddress);
+      const observed = [listing.observedAt, assetBinding.observedAt, binding.observedAt, custody.observedAt].map(Date.parse);
+      if (observed.some((time) => !Number.isFinite(time)) ||
+          Math.max(...observed) - Math.min(...observed) > 5000) {
+        throw new Error("Marketplace, asset and NFT observations are not time-consistent");
+      }
+      const finalListing = await inspectMarketplaceV3TestnetProduct(BigInt(productId));
+      if (finalListing.marketplaceAddress !== listing.marketplaceAddress ||
+          finalListing.status !== 2n || finalListing.productQueryId !== listing.productQueryId ||
+          finalListing.escrowId !== listing.escrowId ||
+          finalListing.existingOrderId !== null) {
+        throw new Error("Marketplace listing changed during custody inspection");
+      }
+      setCustodyResult(custody);
     } catch (cause) {
       setCustodyError(cause instanceof Error ? cause.message : "NFT custody read failed");
     } finally {
