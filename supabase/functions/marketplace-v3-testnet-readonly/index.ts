@@ -20,6 +20,7 @@ const GETTERS = new Set([
   "orderIdForProductV2",
   "marketplaceReserveStatusV3",
   "get_nft_data",
+  "escrowV2",
 ]);
 const WITH_PRODUCT_ID = new Set([
   "productStatusV2",
