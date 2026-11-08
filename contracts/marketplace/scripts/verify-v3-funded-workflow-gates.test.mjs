@@ -225,3 +225,17 @@ test("seller and platform payout retries require matching rich bounce and curren
  assert.ok(retry.includes("if (payout.kind == 3)"));
  assert.ok(retry.includes("throw ErrorsV2.InvalidPayout;"));
 });
+
+test("public transfer audit workflows never load signing secrets or broadcast",()=>{
+ for (const name of ["discover-v3-testnet-transfers-readonly.yml","verify-v3-recipient-credit-readonly.yml"]) {
+   const content=readFileSync(new URL("../../../.github/workflows/"+name,import.meta.url),"utf8");
+   assert.match(content,/permissions:\s*\n\s*contents: read/);
+   assert.match(content,/persist-credentials: false/);
+   assert.doesNotMatch(content,/secrets\.|MNEMONIC|PRIVATE_KEY|--net mainnet|acton script .*buy|acton script .*deploy/i);
+ }
+ const transfer=readFileSync(new URL("./verify-v3-transfer-finality.mjs",import.meta.url),"utf8");
+ assert.match(transfer,/checkOutboundEvidence\(expected, fetcher\)/);
+ assert.match(transfer,/checkRecipientCredit\(expected, fetcher\)/);
+ assert.match(transfer,/INCOMPLETE_TRANSFER_EVIDENCE/);
+ assert.match(transfer,/TRANSFER_EVIDENCE_MISMATCH/);
+});
