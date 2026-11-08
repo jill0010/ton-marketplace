@@ -45,6 +45,27 @@ jobs:
           echo "Candidate pinned: $(git rev-parse HEAD)"
           echo "No private keys or deployment credentials supplied."
 
+      - name: Verify candidate lineage against independently settled Testnet order 2
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          TESTNET_ORDER_2_BASE="223cebcd0977d90486c71417645a6fe2cbaa4953"
+          git fetch --no-tags --depth=100 origin "$TESTNET_ORDER_2_BASE"
+          git merge-base --is-ancestor "$TESTNET_ORDER_2_BASE" HEAD || {
+            echo "::error::Production candidate is not descended from the independently settled order-2 Testnet revision."
+            exit 1
+          }
+          {
+            echo "## Verified Testnet order 2 lineage"
+            echo
+            echo "- Independently settled Testnet source: \`$TESTNET_ORDER_2_BASE\`"
+            echo "- Release candidate: \`$(git rev-parse HEAD)\`"
+            echo "- Source changes since verified Testnet run:"
+            git diff --name-only "$TESTNET_ORDER_2_BASE" HEAD -- contracts/marketplace/contracts/ | sed 's/^/- /'
+            echo "- The order-2 receipt evidence is **not** a settlement attestation for changed contract bytecode."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
