@@ -6,6 +6,10 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/marketplace-v3-mainnet-readiness.yml"
+      - "src/lib/marketplaceV3*.ts"
+      - "scripts/test-marketplace-v3-*.mjs"
+      - "scripts/check-marketplace-v2-*.mjs"
+      - "src/pages/ProductPage.tsx"
 
 permissions:
   contents: read
