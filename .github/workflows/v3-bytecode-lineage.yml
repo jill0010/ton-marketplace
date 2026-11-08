@@ -62,7 +62,7 @@ jobs:
           lines = ["# V3 independently compiled code hash comparison", "", f"Baseline: {revisions[0]}", f"Candidate: {revisions[1]}", "", "| Contract | Baseline | Candidate | Result |", "|---|---|---|---|"]
           for label in labels:
             left, right = found[0][label], found[1][label]
-            lines.append(f"| {label} | \`{left}\` | \`{right}\` | {'MATCH' if left == right else 'MISMATCH'} |")
+            lines.append(f"| {label} | `{left}` | `{right}` | {'MATCH' if left == right else 'MISMATCH'} |")
           report = "\\n".join(lines) + "\\n"
           (root / "comparison.md").write_text(report)
           with open(__import__('os').environ["GITHUB_STEP_SUMMARY"], "a") as summary:
