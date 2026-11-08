@@ -98,6 +98,9 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
       nextQueryId === null || nextQueryId < 1n) {
     throw new Error("Invalid V3 allocation counters");
   }
+  if (status === null && productId < nextProductId) {
+    throw new Error("Allocated V3 product has no readable status");
+  }
   if (status !== null && productId >= nextProductId) {
     throw new Error("V3 product exists outside allocated product range");
   }
@@ -137,6 +140,11 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   }
   if (reserveStatus !== null && reserveStatus !== 0n && existingOrderId === null) {
     throw new Error("V3 reserve binding exists without a linked order");
+  }
+  if (status === 2n && (!tvmBoolean(byMethod.get("escrowConfiguredV2")!.stack) ||
+      !tvmBoolean(byMethod.get("treasuryConfiguredV2")!.stack) ||
+      !tvmBoolean(byMethod.get("marketplaceReserveCoordinatorConfiguredV3")!.stack))) {
+    throw new Error("Listed V3 product has incomplete contract bindings");
   }
   if (status === 2n && existingOrderId !== null) {
     throw new Error("Listed V3 product already has an order");
