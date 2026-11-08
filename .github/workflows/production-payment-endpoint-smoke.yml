@@ -1,0 +1,29 @@
+name: Production Payment Endpoint Security Smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/production-payment-endpoint-smoke.yml"
+permissions:
+  contents: read
+jobs:
+  public-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify public endpoint denies unauthenticated calls
+        env:
+          ENDPOINT: https://qmvvlkierfiogituccbo.supabase.co/functions/v1/verify-manual-product-payment
+        run: |
+          set -euo pipefail
+          for method in GET POST; do
+            status=$(curl --silent --show-error --output /tmp/payment-smoke-body --write-out '%{http_code}' --max-time 20 -X "$method" -H 'Origin: https://ton-marketplace-cvj.pages.dev' -H 'Content-Type: application/json' --data '{}' "$ENDPOINT")
+            echo "$method unauthenticated HTTP status: $status"
+            if [[ "$status" != 401 && "$status" != 403 ]]; then
+              echo "FAIL: unauthenticated payment verification endpoint did not reject the request"
+              cat /tmp/payment-smoke-body
+              exit 1
+            fi
+          done
+          echo "PASS: production payment verification endpoint denies unauthenticated requests."
