@@ -21,11 +21,18 @@ for (const role of roles) {
   endpoint.searchParams.set("address", parsed.toRawString());
   const headers = {};
   if (process.env.TONCENTER_API_KEY) headers["X-API-Key"] = process.env.TONCENTER_API_KEY;
-  const response = await fetch(endpoint, { headers, signal: AbortSignal.timeout(15000) });
-  assert(response.ok, role + ": HTTP " + response.status);
-  const json = await response.json();
-  assert(json.ok === true && json.result, role + ": invalid RPC response");
-  const result = json.result;
+  let result;
+  try {
+    const response = await fetch(endpoint, { headers, signal: AbortSignal.timeout(15000) });
+    assert(response.ok, role + ": HTTP " + response.status);
+    const json = await response.json();
+    assert(json.ok === true && json.result, role + ": invalid RPC response");
+    result = json.result;
+  } catch (error) {
+    output.contracts[role] = { address: parsed.toRawString(), match: false, error: String(error?.message || error) };
+    ok = false;
+    continue;
+  }
   const active = result.state === "active";
   const code = typeof result.code === "string" && result.code.length > 0 ? result.code : null;
   const observed = code ? BigInt("0x" + Cell.fromBase64(code).hash().toString("hex")).toString() : null;
