@@ -42,6 +42,7 @@ test("read-only verifier records RPC failures and exits nonzero", () => {
     assert.notEqual(run.status, 0);
     const evidence = JSON.parse(readFileSync(join(dir, "evidence.json"), "utf8"));
     assert.equal(evidence.allMatch, false);
+    for (const gate of ["productionEscrowVerified", "reserveVaultVerified", "settlementVerifierVerified", "bindingsVerified", "mainnetApproved"]) assert.equal(evidence[gate], false);
     for (const role of ["marketplace", "escrow", "coordinator"]) {
       assert.equal(evidence.contracts[role].match, false);
       assert.match(evidence.contracts[role].error, /HTTP 503/);
