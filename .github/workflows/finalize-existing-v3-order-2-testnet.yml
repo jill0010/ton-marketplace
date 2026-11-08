@@ -41,6 +41,12 @@ jobs:
       V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS: "kQBBvJvEce3gr5OGIuzIaWPd7ylKeKxLw6l9saVjBTccl8Vs"
       V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQCFIvfUBsScOo7mfRaplQ2szE7e0AdqIXyFDEY0zGYQ8UqO"
     steps:
+      - name: Block duplicate settlement for already-paid order 2
+        working-directory: .
+        run: |
+          echo "::error::Testnet order 2 has already settled successfully in run 42457035224. Do not replay the validator attestation. Refer to the archived evidence from that run."
+          exit 1
+
       - name: Checkout pinned V3 code with order 2 read-only final verifier
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
