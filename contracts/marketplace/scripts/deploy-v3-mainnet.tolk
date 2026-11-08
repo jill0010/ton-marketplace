@@ -282,7 +282,7 @@ fun main() {
     assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorMarketplaceV3") == marketplace.address) throw 834;
     assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorVerifierV3") == verifier) throw 834;
     assert (net.runGetMethod<uint32>(verifier, "verifierEpoch") == 1) throw 835;
-    assert (net.runGetMethod<int32>(verifier, "verifierNetwork") == -3) throw 835;
+    assert (net.runGetMethod<int32>(verifier, "verifierNetwork") == -239) throw 835;
     assert (net.runGetMethod<uint8>(verifier, "verifierThreshold") == 2) throw 835;
 
     println("PRODUCTION V3 MAINNET deployment and immutable bindings verified.");
