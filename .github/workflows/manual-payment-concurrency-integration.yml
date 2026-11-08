@@ -1,0 +1,45 @@
+name: Manual Payment Concurrency Integration
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/test-manual-payment-concurrency.sh"
+      - "supabase/migrations/20261109020000_confirm_manual_product_payment_atomically.sql"
+      - ".github/workflows/manual-payment-concurrency-integration.yml"
+  pull_request:
+    paths:
+      - "scripts/test-manual-payment-concurrency.sh"
+      - "supabase/migrations/20261109020000_confirm_manual_product_payment_atomically.sql"
+      - ".github/workflows/manual-payment-concurrency-integration.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  concurrent-confirmation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Exercise concurrent payment confirmations
+        run: bash scripts/test-manual-payment-concurrency.sh
