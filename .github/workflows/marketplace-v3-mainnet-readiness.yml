@@ -118,7 +118,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend:
-    name: Current main frontend build and V2 purchase safety gate
+    name: Current frontend build and V2/V3 purchase safety gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -142,6 +142,12 @@ jobs:
       - name: Verify existing order mirror safety
         run: node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs
 
+      - name: Verify V3 Testnet transaction preflight and fail-closed purchase rules
+        run: node --test scripts/test-marketplace-v3-preflight.mjs
+
+      - name: Verify V3 read-only getter integration contract
+        run: node --test scripts/test-marketplace-v3-readonly-getter-contract.mjs
+
       - name: Build current frontend
         run: npm run build
 
@@ -150,7 +156,7 @@ jobs:
           {
             echo "## Frontend readiness"
             echo
-            echo "- Current main frontend builds and existing V2 purchase policy checks pass."
-            echo "- This does not prove V3 frontend purchase integration exists."
+            echo "- Current main frontend builds and V2 purchase policy plus V3 Testnet preflight checks pass."
+            echo "- V3 read-only getters and Testnet quote preparation are checked; this does not prove V3 customer checkout is integrated."
             echo "- V3 production customer checkout must remain disabled until separately integrated and verified."
           } >> "$GITHUB_STEP_SUMMARY"
