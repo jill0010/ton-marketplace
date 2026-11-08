@@ -29,5 +29,10 @@
 1. Independently verify deployed Testnet contract code hashes and bindings against the compiled candidate. Testnet success for a different code hash cannot be reused as proof for Mainnet.
 2. Require an independent security audit, custody/settlement/reserve-refund fault tests, frontend/backend checkout integration, operational sign-off and explicit Mainnet approval.
 
+## Discovered postflight blocker (2026-11-08)
+- The existing `.github/workflows/v3-testnet-onchain-postflight.yml` invokes `contracts/marketplace/scripts/verify-v3-testnet.test.mjs`, `collect-v3-testnet-evidence.test.mjs`, and `collect-v3-testnet-evidence.mjs`, but none of those paths exists on current `main` (verified against the recursive Git tree).
+- Consequently this workflow cannot currently provide deployed Testnet code-hash evidence. Do **not** count it as a passed verification or enable release from its status.
+- Next implementation must provide a functioning **read-only** Testnet account-state/code-hash collector with expected hashes derived from the pinned compiled candidate, strict equality checks and immutable evidence artifacts; no private keys.
+
 ## Current decision
 **BLOCKED** for Mainnet deployment. Read-only CI success proves only the checks it actually ran. No new contract was deployed, no real customer checkout enabled and no funds moved in this evidence update.
