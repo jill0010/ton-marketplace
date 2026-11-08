@@ -53,6 +53,11 @@ export async function readMarketplaceV3TestnetGetter(
     { body: { method, ...(productId !== undefined ? { product_id: productId.toString(10) } : {}) } },
   );
   if (error) throw new Error("V3 Testnet RPC is unavailable");
+  const now = Date.now();
+  const observed = Date.parse(data?.observed_at);
+  if (!Number.isFinite(observed) || observed > now + 5000 || now - observed > 15000) {
+    throw new Error("V3 Testnet RPC returned stale or invalid observation time");
+  }
   if (!data || data.success !== true || data.network !== "testnet" ||
       data.method !== method || data.verified_purchase_eligibility !== false ||
       typeof data.contract_address !== "string" || !Array.isArray(data.stack) ||
