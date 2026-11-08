@@ -124,3 +124,14 @@ rejected("reject TON coin amount exceeding VarUInteger 16", (v) => {
   v.snapshot.priceNano = (1n << 120n) - 1n;
   v.expectedPriceNano = v.snapshot.priceNano;
 });
+
+rejected("reject negative snapshot timestamp", (v) => { v.snapshot.fetchedAtSeconds = -1; });
+rejected("reject unsafe snapshot timestamp", (v) => { v.snapshot.fetchedAtSeconds = Number.MAX_SAFE_INTEGER + 1; });
+rejected("reject invalid current timestamp", (v) => { v.nowSeconds = Number.NaN; });
+rejected("reject snapshot too far in the future", (v) => { v.snapshot.fetchedAtSeconds = now + 100; });
+rejected("reject malformed connected buyer address", (v) => { v.connectedBuyerAddress = "not-a-ton-address"; });
+rejected("reject malformed escrow owner address", (v) => { v.snapshot.nftOwnerAddress = "not-a-ton-address"; });
+rejected("reject mismatched NFT owner even with active listing", (v) => { v.snapshot.nftOwnerAddress = address(9); });
+rejected("reject buyer/marketplace identity collision", (v) => { v.snapshot.buyerAddress = address(1); v.connectedBuyerAddress = address(1); });
+rejected("reject seller/NFT identity collision", (v) => { v.snapshot.sellerAddress = address(3); });
+rejected("reject missing NFT escrow record", (v) => { v.snapshot.escrowId = 0n; });
