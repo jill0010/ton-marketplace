@@ -10,7 +10,10 @@ export function extractV3TestnetGetterStack(response: unknown): Array<Record<str
   // TON Center responses can be returned directly or wrapped in "result".
   const data = root.result && typeof root.result === "object" &&
     !Array.isArray(root.result) ? root.result as Record<string, unknown> : root;
-  if (root.ok === false || root.success === false) {
+  if (root.ok === false || root.success === false ||
+      data.ok === false || data.success === false ||
+      (Object.hasOwn(root, "result") &&
+        (!root.result || typeof root.result !== "object" || Array.isArray(root.result)))) {
     throw new Error("Testnet RPC reported failure");
   }
   if (data.exit_code !== 0 || !Array.isArray(data.stack) ||
