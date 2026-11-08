@@ -34,7 +34,9 @@ function number(entry) {
   return raw.startsWith("-0x") ? -BigInt(raw.slice(1)) : BigInt(raw);
 }
 function address(entry) {
-  assert.equal(entry?.type, "slice");
+  // TON Center v3 serializes address slices as either a TVM slice or a
+  // BOC cell depending on the getter and API representation.
+  assert(entry?.type === "slice" || entry?.type === "cell", "Expected TVM address slice/cell");
   const boc = entry.cell ?? entry.value;
   assert(typeof boc === "string");
   const slice = Cell.fromBase64(boc).beginParse();
