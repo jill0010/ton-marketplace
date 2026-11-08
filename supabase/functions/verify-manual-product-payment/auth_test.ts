@@ -39,3 +39,23 @@ Deno.test("only exact verified wallet and authenticated user own an order", () =
   assertEquals(isOrderOwnedByVerifiedWallet({ ...owned, buyer_wallet_raw: "0:" + "b".repeat(64) }, wallet), false);
   assertEquals(isOrderOwnedByVerifiedWallet({ ...owned, buyer_wallet_raw: null }, wallet), false);
 });
+
+import { validPaymentWindow, paymentIsWithinWindow } from "./shared/payment-window.ts";
+
+Deno.test("payment windows reject inconsistent and future-dated orders", () => {
+  const now = Date.parse("2026-11-09T00:00:00Z");
+  assertEquals(validPaymentWindow("2026-11-08T23:00:00Z", "2026-11-09T01:00:00Z", now), true);
+  assertEquals(validPaymentWindow("bad", "2026-11-09T01:00:00Z", now), false);
+  assertEquals(validPaymentWindow("2026-11-09T01:00:00Z", "2026-11-09T00:00:00Z", now), false);
+  assertEquals(validPaymentWindow("2026-11-09T00:02:01Z", "2026-11-09T01:00:00Z", now), false);
+});
+
+Deno.test("transaction must fall inside bounded payment window", () => {
+  const start = "2026-11-09T00:00:00Z";
+  const end = "2026-11-09T00:10:00Z";
+  const timestamp = Date.parse(start);
+  assertEquals(paymentIsWithinWindow(timestamp, start, end), true);
+  assertEquals(paymentIsWithinWindow(timestamp - 120_001, start, end), false);
+  assertEquals(paymentIsWithinWindow(Date.parse(end) + 1, start, end), false);
+  assertEquals(paymentIsWithinWindow(Number.NaN, start, end), false);
+});
