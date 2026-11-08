@@ -41,4 +41,4 @@ jobs:
             echo "FAIL: unapproved origin was not rejected"
             exit 1
           fi
-          echo "PASS: production endpoint rejects missing authorization, malformed tokens and unapproved origins."
+          echo "PASS: production v16 endpoint rejects missing authorization, malformed tokens and unapproved origins."
