@@ -15,6 +15,7 @@ export const V3_TESTNET_READONLY_METHODS = [
   "productV2",
   "orderIdForProductV2",
   "marketplaceReserveStatusV3",
+  "get_nft_data",
 ] as const;
 
 export type V3TestnetReadonlyMethod = typeof V3_TESTNET_READONLY_METHODS[number];
@@ -24,6 +25,7 @@ export type V3TestnetReadonlyResult = Readonly<{
   method: V3TestnetReadonlyMethod;
   product_id: string | null;
   order_id: string | null;
+  nft_item_address: string | null;
   stack: unknown[];
   observed_at: string;
   verified_purchase_eligibility: false;
@@ -46,11 +48,17 @@ export async function readMarketplaceV3TestnetGetter(
   method: V3TestnetReadonlyMethod,
   productId?: bigint,
   orderId?: bigint,
+  nftItemAddress?: string,
 ): Promise<V3TestnetReadonlyResult> {
   if (!V3_TESTNET_READONLY_METHODS.includes(method)) {
     throw new Error("Unsupported V3 Testnet getter");
   }
   const requiresProduct = PRODUCT_METHODS.has(method);
+  if ((method === "get_nft_data") !== (nftItemAddress !== undefined)) {
+    throw new Error("Unexpected or missing V3 NFT item address");
+  }
+  const nftItem = nftItemAddress === undefined ? null : Address.parse(nftItemAddress);
+  if (nftItem && nftItem.workChain !== 0) throw new Error("Invalid Testnet NFT item address");
   if (requiresProduct !== (productId !== undefined)) {
     throw new Error("Unexpected or missing V3 Testnet product ID");
   }
@@ -65,7 +73,7 @@ export async function readMarketplaceV3TestnetGetter(
   }
   const { data, error } = await supabase.functions.invoke(
     "marketplace-v3-testnet-readonly",
-    { body: { method, ...(productId !== undefined ? { product_id: productId.toString(10) } : {}), ...(orderId !== undefined ? { order_id: orderId.toString(10) } : {}) } },
+    { body: { method, ...(productId !== undefined ? { product_id: productId.toString(10) } : {}), ...(orderId !== undefined ? { order_id: orderId.toString(10) } : {}), ...(nftItem ? { nft_item_address: nftItem.toRawString() } : {}) } },
   );
   if (error) throw new Error("V3 Testnet RPC is unavailable");
   const now = Date.now();
@@ -78,7 +86,8 @@ export async function readMarketplaceV3TestnetGetter(
       typeof data.contract_address !== "string" || !Array.isArray(data.stack) ||
       typeof data.observed_at !== "string" ||
       data.product_id !== (productId === undefined ? null : productId.toString(10)) ||
-      data.order_id !== (orderId === undefined ? null : orderId.toString(10))) {
+      data.order_id !== (orderId === undefined ? null : orderId.toString(10)) ||
+      data.nft_item_address !== (nftItem ? nftItem.toRawString() : null)) {
     throw new Error("V3 Testnet RPC returned an invalid response");
   }
   let parsedAddress: Address;
@@ -87,7 +96,8 @@ export async function readMarketplaceV3TestnetGetter(
   } catch {
     throw new Error("V3 Testnet RPC returned an invalid contract address");
   }
-  if (parsedAddress.workChain !== 0 || data.stack.length > 8 ||
+  if (parsedAddress.workChain !== 0 ||
+      (nftItem && !parsedAddress.equals(nftItem)) || data.stack.length > 8 ||
       data.stack.some((entry: unknown) =>
         !entry || typeof entry !== "object" || Array.isArray(entry) ||
         typeof (entry as { type?: unknown }).type !== "string")) {
@@ -99,6 +109,7 @@ export async function readMarketplaceV3TestnetGetter(
     method,
     product_id: data.product_id,
     order_id: data.order_id,
+    nft_item_address: data.nft_item_address,
     stack: data.stack,
     observed_at: data.observed_at,
     verified_purchase_eligibility: false,
