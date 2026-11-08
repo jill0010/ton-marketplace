@@ -1,4 +1,4 @@
-name: Verify V3 Testnet Recipient Credit (Read Only)
+name: Verify V3 Testnet Transfer Finality (Read Only)
 
 on:
   workflow_dispatch:
@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
-      - name: Run recipient credit verifier regression tests
-        run: node --test scripts/verify-v3-recipient-credit.test.mjs
-      - name: Verify indexed recipient transaction without any wallet secrets
-        run: node scripts/verify-v3-recipient-credit.mjs
+      - name: Test two-sided transfer evidence matching
+        run: node --test scripts/verify-v3-recipient-credit.test.mjs scripts/verify-v3-outbound-evidence.test.mjs scripts/verify-v3-transfer-finality.test.mjs
+      - name: Verify source outbound and recipient inbound transactions without wallet secrets
+        run: node scripts/verify-v3-transfer-finality.mjs
