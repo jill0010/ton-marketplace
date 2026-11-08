@@ -108,3 +108,10 @@ rejected("reject NFT not held by escrow", (v) => { v.snapshot.nftOwnerAddress = 
 rejected("reject self purchase", (v) => { v.snapshot.sellerAddress = address(6); });
 rejected("reject seller as escrow", (v) => { v.snapshot.sellerAddress = address(4); });
 rejected("reject zero price", (v) => { v.snapshot.priceNano = 0n; v.expectedPriceNano = 0n; });
+
+rejected("reject zero payment query ID", (v) => { v.queryId = 0n; });
+rejected("reject overflowing payment query ID", (v) => { v.queryId = 1n << 64n; });
+rejected("reject TON coin amount exceeding VarUInteger 16", (v) => {
+  v.snapshot.priceNano = (1n << 120n) - 1n;
+  v.expectedPriceNano = v.snapshot.priceNano;
+});
