@@ -1,0 +1,92 @@
+name: V3 Order 3 Settlement Evidence (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v3-order-3-readonly
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_"
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQAp5SqhqBj1LK3q9mHpBDsVzUnMyWBiH-nvtTB7q0vdP0mG"
+      V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: "kQAhqpc_v-G6PDX5BavZPT0SsqmOWm9hvBomPZIJ9cOHdQop"
+      V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQDVca8ctk0ERCrZylHa2yQ63_zFG-RmGz6NySymJynzvNNA"
+      V3_TESTNET_ORDER_ID: "3"
+    steps:
+      - name: Checkout immutable settlement verifier
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 7ba3faa905e7c7e5025c732ecf8174bfadb507ad
+          persist-credentials: false
+      - name: Verify immutable order and Testnet-only wallet configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$V3_TESTNET_ORDER_ID" = 3
+          test -n "$DEPLOYER_MNEMONIC" && test -n "$SELLER_MNEMONIC"
+          test -f scripts/verify-v3-order-3-settlement.tolk
+          ! grep -Eq 'acton script scripts/(buy|deploy|list)-' <<< "verify-v3-order-3-settlement.tolk"
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Create temporary Testnet identity profiles (no signing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+      - name: Read-only verify order 3 final settlement from live TON Testnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/verify-v3-order-3-settlement.tolk --net testnet 2>&1 | tee v3-order-3-readonly.log
+          grep -Fq "ORDER 3 PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED;" v3-order-3-readonly.log
+          grep -Fq "Verified product ID: 4; order ID: 3" v3-order-3-readonly.log
+          grep -Fq "Vault status: paid; in-flight: 0; available: 0" v3-order-3-readonly.log
+          {
+            echo "## Marketplace V3 order 3: live Testnet final-state evidence"
+            echo
+            echo "Product 4 / Order 3 verified against TON Testnet."
+            echo "NFT owner is buyer; Marketplace delivery and payout states verified."
+            echo "Per-order Vault Paid = 0.2 TON; in-flight = 0; available = 0."
+            echo "Independent receipt/attestation evidence: Actions run 42479121408."
+            echo "This workflow performs NO funded transaction, NO attestation, NO deployment."
+            echo "Mainnet remains blocked pending security review."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload read-only evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v3-order3-readonly-${{ github.run_id }}
+          path: contracts/marketplace/v3-order-3-readonly.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Delete wallet profiles
+        if: always()
+        run: rm -f wallets.toml
