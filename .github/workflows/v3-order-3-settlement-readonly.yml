@@ -75,7 +75,7 @@ jobs:
             echo "Product 4 / Order 3 verified against TON Testnet."
             echo "NFT owner is buyer; Marketplace delivery and payout states verified."
             echo "Per-order Vault Paid = 0.2 TON; in-flight = 0; available = 0."
-            echo "Independent receipt/attestation evidence: Actions run 42479121408."
+            echo "Historical attestation attempt: Actions run 42479121408 concluded failure; not a passing gate."
             echo "This workflow performs NO funded transaction, NO attestation, NO deployment."
             echo "Mainnet remains blocked pending security review."
           } >> "$GITHUB_STEP_SUMMARY"
