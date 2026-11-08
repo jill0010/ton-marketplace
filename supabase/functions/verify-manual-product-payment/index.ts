@@ -124,6 +124,18 @@ Deno.serve(async (req: Request) => {
       if (result?.ok !== true || !Array.isArray(result?.result)) return reply({ success: false, error: "TON Mainnet returned an invalid transaction response." }, 502, origin);
       const rows = result.result as Record<string, unknown>[];
       if (!rows.length) { scanReachedOrderStart = true; break; }
+      // Toncenter pages must be newest-first. A malformed or out-of-order page
+      // must not be treated as complete evidence of payment history.
+      let previousUtime = Number.POSITIVE_INFINITY;
+      for (const tx of rows) {
+        const utime = Number(tx.utime);
+        if (!Number.isSafeInteger(utime) || utime <= 0 || utime > previousUtime) {
+          scanIntegrityValid = false;
+          break;
+        }
+        previousUtime = utime;
+      }
+      if (!scanIntegrityValid) break;
       transactions.push(...rows);
       const oldest = rows[rows.length - 1];
       const timestamp = Number(oldest.utime) * 1000;
