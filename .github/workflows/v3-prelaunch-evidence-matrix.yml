@@ -35,6 +35,27 @@ jobs:
           node scripts/check-marketplace-v2-customer-purchase-policy.mjs
           node scripts/check-marketplace-v2-order-mirror-truthfulness.mjs
           npm run build
+      - name: Verify historical evidence references are not silently upgraded
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync('.github/workflows/v3-prelaunch-evidence-matrix.yml', 'utf8');
+          const required = [
+            'Historical Testnet product-4 purchase',
+            'Historical order-3 settlement workflow | FAILED',
+            'Historical order-3 read-only final state',
+            'NOT rerun here',
+            'Customer V3 wallet checkout | BLOCKED',
+            'Independent contract security audit | BLOCKED',
+            'Mainnet deployment and transaction | BLOCKED',
+          ];
+          for (const marker of required) {
+            if (!source.includes(marker)) throw new Error('Missing evidence disclaimer: ' + marker);
+          }
+          console.log('Historical evidence and launch-blocker labels preserved.');
+          NODE
       - name: Assert V3 Mainnet release remains explicitly blocked
         shell: bash
         run: |
