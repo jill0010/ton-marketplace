@@ -38,3 +38,18 @@ test("rejects uint64 overflow, negatives, leading zeros and non-numbers", () => 
     { type: "cell", value: "AAAA" },
   ]) assert.throws(() => parseV3TestnetUint64({ exit_code: 0, stack: [entry] }));
 });
+
+test("supports wrapped TON Center result and rejects upstream failure", () => {
+  assert.equal(parseV3TestnetUint64({
+    ok: true,
+    result: { exit_code: 0, stack: [{ type: "num", value: "2" }] },
+  }), 2n);
+  assert.throws(() => parseV3TestnetUint64({
+    ok: false,
+    result: { exit_code: 0, stack: [{ type: "num", value: "2" }] },
+  }));
+  assert.throws(() => parseV3TestnetUint64({
+    ok: true,
+    result: { exit_code: 32, stack: [{ type: "num", value: "2" }] },
+  }));
+});
