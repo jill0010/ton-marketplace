@@ -3,7 +3,7 @@ import { inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding, readV3
 import { inspectMarketplaceV3TestnetProduct, type V3TestnetDiagnostic } from "../lib/marketplaceV3TestnetDiagnostics";
 
 export function MarketplaceV3DiagnosticsPage() {
-  const [productId, setProductId] = useState("2");
+  const [productId, setProductId] = useState("4");
   const [busy, setBusy] = useState(false);
   const [nftAddress, setNftAddress] = useState("");
   const [escrowAddress, setEscrowAddress] = useState("");
@@ -12,8 +12,10 @@ export function MarketplaceV3DiagnosticsPage() {
   const [custodyError, setCustodyError] = useState("");
   const [listingBinding, setListingBinding] = useState<boolean | null>(null);
   async function inspectCustody() {
+    if (custodyBusy) return;
     setCustodyBusy(true);
     setCustodyError("");
+    setEscrowAddress("");
     setCustodyResult(null);
     setListingBinding(null);
     try {
@@ -71,8 +73,12 @@ export function MarketplaceV3DiagnosticsPage() {
   const [result, setResult] = useState<V3TestnetDiagnostic | null>(null);
   const [error, setError] = useState("");
   async function inspect() {
+    if (busy) return;
     setBusy(true);
     setError("");
+    setCustodyResult(null);
+    setListingBinding(null);
+    setEscrowAddress("");
     setResult(null);
     try {
       if (!/^[1-9][0-9]{0,19}$/.test(productId) || BigInt(productId) > 0xffff_ffff_ffff_ffffn) {
@@ -87,6 +93,7 @@ export function MarketplaceV3DiagnosticsPage() {
   }
   return <main className="mx-auto max-w-3xl px-4 py-10 text-zinc-100">
     <h1 className="text-2xl font-semibold">Marketplace V3 — Testnet diagnostics</h1>
+    <p className="mt-3 text-sm text-sky-300">Product 4 / order 3 is already settled on Testnet. It must not be purchased or settled again. Historical proof: GitHub Actions #42480145497.</p>
     <p className="mt-3 text-sm text-amber-300">Read-only checks only. This page cannot authorize purchases or move funds. Getter responses are not an atomic chain snapshot or proof of NFT custody.</p>
     <form className="mt-6 flex flex-wrap gap-3" onSubmit={(event) => { event.preventDefault(); void inspect(); }}>
       <label className="flex flex-col gap-1 text-sm">On-chain product ID
@@ -99,7 +106,7 @@ export function MarketplaceV3DiagnosticsPage() {
       <p className="mt-2 text-sm text-amber-300">Enter the NFT Item address and on-chain product ID above. The check requires an active listing and verifies the NFT-to-product binding, then reads the expected Escrow from the Marketplace contract. Results are read-only and not purchase authorization.</p>
       <form className="mt-4 flex flex-wrap gap-3" onSubmit={(event) => { event.preventDefault(); void inspectCustody(); }}>
         <label className="flex flex-col gap-1 text-sm">NFT Item address
-          <input className="rounded border border-zinc-600 bg-zinc-900 p-2" value={nftAddress} onChange={(event) => { setNftAddress(event.target.value); setCustodyResult(null); setListingBinding(null); setCustodyError(""); }} />
+          <input className="rounded border border-zinc-600 bg-zinc-900 p-2" value={nftAddress} onChange={(event) => { setNftAddress(event.target.value); setCustodyResult(null); setListingBinding(null); setEscrowAddress(""); setResult(null); setCustodyError(""); }} />
         </label>
         <span className="self-end text-xs text-zinc-400">Marketplace escrow: {escrowAddress || "Fetched on check"}</span>
         <button type="submit" disabled={custodyBusy || !nftAddress.trim()} className="self-end rounded bg-blue-600 px-4 py-2 disabled:opacity-50">{custodyBusy ? "Reading NFT…" : "Check NFT owner"}</button>
