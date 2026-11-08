@@ -203,3 +203,25 @@ test("V3 payout and reserve settlement keep delivery, refund and retry paths mut
  assert.ok(refund.includes("reserve.status == 2 && reserve.vault != null"));
  assert.ok(refund.includes("reserve.status == 3 && reserve.vault != null"));
 });
+
+test("seller and platform payout retries require matching rich bounce and current operation identity",()=>{
+ const market=readFileSync(new URL("../contracts/MarketplaceReserveV3.tolk",import.meta.url),"utf8");
+ const bounce=market.slice(market.indexOf("fun onBouncedMessage("));
+ const retry=market.slice(market.indexOf("RetryPayoutV2 => {"),market.indexOf("PublishProductV2 => {"));
+ for(const gate of [
+  "in.bouncedBody.preloadUint(32) != 0xfffffffe",
+  "RichBounceBody.fromSlice(in.bouncedBody)",
+  "SellerPayoutV2.fromCell(originalBody)",
+  "PlatformPayoutV2.fromCell(originalBody)",
+  "payout.beneficiary != in.senderAddress",
+  "payout.queryId != bounced.queryId",
+  "payout.status != 2",
+  "order.deliveryStatus != 2",
+  "payout.status = 3",
+ ]) assert.ok(bounce.includes(gate),"payout bounce correlation missing: "+gate);
+ assert.ok(retry.includes("assert (payout.status == 3)"));
+ assert.ok(retry.includes("payout.queryId = newQueryId"));
+ assert.ok(retry.includes("payout.status = 2"));
+ assert.ok(retry.includes("if (payout.kind == 3)"));
+ assert.ok(retry.includes("throw ErrorsV2.InvalidPayout;"));
+});
