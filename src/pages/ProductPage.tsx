@@ -35,6 +35,7 @@ export function ProductPage() {
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [paymentVerified, setPaymentVerified] = useState(false)
+  const [v3Message, setV3Message] = useState("")
 
   useEffect(() => {
     let cancelled = false
@@ -179,6 +180,17 @@ export function ProductPage() {
       setCheckoutMessage(cause instanceof Error ? cause.message : "无法提交付款。")
       setCheckoutBusy(false)
     }
+  }
+
+  function inspectV3TestnetCheckout() {
+    // Read-only preparation only: no trusted chain snapshot or purchase submission.
+    // A product database row is not proof of NFT escrow custody.
+    const wallet = tonConnectUI.wallet
+    if (!wallet || wallet.account.chain !== "-3") {
+      setV3Message("请连接 TON 测试网钱包。主网钱包不能用于 V3 测试交易。")
+      return
+    }
+    setV3Message("V3 测试网购买尚需实时链上托管状态验证；当前不请求钱包付款。")
   }
 
   if (loading) {
@@ -335,10 +347,11 @@ export function ProductPage() {
         </section>
       ) : (
         <>
-          <button type="button" disabled className="w-full rounded-full bg-white/20 px-4 py-3 text-sm text-zinc-400">
-            {t("Escrow checkout (Coming Soon)", "链上托管购买（即将开放）")}
+          <button type="button" onClick={inspectV3TestnetCheckout} className="w-full rounded-full bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-500">
+            {t("Check V3 Testnet checkout", "检查 V3 测试网购买")}
           </button>
-          <p className="text-xs text-zinc-500">该商品采用链上 NFT 托管交易。主网合约完成部署及验证前，不会请求付款或转移资产。</p>
+          {v3Message && <p role="status" className="rounded-xl bg-white/[0.05] p-3 text-xs text-zinc-300">{v3Message}</p>}
+          <p className="text-xs text-zinc-500">V3 仅限测试网。链上托管与实时商品状态核验完成前不会请求付款；主网交易保持禁用。</p>
         </>
       )}
 
