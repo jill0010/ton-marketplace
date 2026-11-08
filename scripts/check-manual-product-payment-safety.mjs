@@ -5,6 +5,9 @@ const verifier = readFileSync("supabase/functions/verify-manual-product-payment/
 const creator = readFileSync("supabase/functions/create-manual-product-order/index.ts", "utf8");
 const migration = readFileSync("supabase/migrations/20261109010000_expire_unpaid_manual_product_orders.sql", "utf8");
 
+assert.ok(verifier.includes("if (!scanIntegrityValid || !scanReachedOrderStart)"), "complete history coverage must gate confirmation");
+assert.ok(verifier.includes('code: "PAYMENT_EVIDENCE_MISSING"'), "missing evidence must block paid response");
+assert.ok(verifier.includes("[1-8][0-9a-f]{3}"), "order IDs must use strict UUID validation");
 assert.match(verifier, /PAYMENT_HISTORY_INCOMPLETE/);
 assert.match(verifier, /ORDER_EXPIRED_REVIEW_REQUIRED/);
 assert.match(verifier, /scanReachedOrderStart/);
