@@ -57,3 +57,45 @@ SELECT (SELECT count(*) FROM public.manual_product_orders WHERE payment_tx_hash=
 SQL
 grep -Fxq '1:1' "$tmpdir/counts"
 echo "PASS: two independent sessions, row lock, idempotency, duplicate claim and single audit."
+# Two different orders race for one hash. The unique index must admit one winner.
+psql -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO public.manual_product_orders(id,order_no,product_id,buyer_wallet_raw,amount,currency,buyer_user_id)
+VALUES ('00000000-0000-4000-8000-000000000103','RACE-A','00000000-0000-4000-8000-000000000203','0:0000000000000000000000000000000000000000000000000000000000000000',1,'TON','00000000-0000-4000-8000-000000000301'),
+('00000000-0000-4000-8000-000000000104','RACE-B','00000000-0000-4000-8000-000000000204','0:0000000000000000000000000000000000000000000000000000000000000000',1,'TON','00000000-0000-4000-8000-000000000301');
+SQL
+psql -v ON_ERROR_STOP=1 -At <<'SQL' > "$tmpdir/race-a" &
+BEGIN;
+SELECT public.confirm_manual_product_payment_verified('00000000-0000-4000-8000-000000000103','00000000-0000-4000-8000-000000000301',repeat('b',64),now());
+SELECT pg_sleep(3);
+COMMIT;
+SQL
+race_a_pid=$!
+sleep 1
+# The losing transaction may fail with unique_violation; catch and normalize it.
+psql -v ON_ERROR_STOP=1 -At <<'SQL' > "$tmpdir/race-b" &
+BEGIN;
+SET LOCAL lock_timeout = '8s';
+DO $do$
+DECLARE result text;
+BEGIN
+  BEGIN
+    result := public.confirm_manual_product_payment_verified('00000000-0000-4000-8000-000000000104','00000000-0000-4000-8000-000000000301',repeat('b',64),now());
+    IF result <> 'PAYMENT_ALREADY_CLAIMED' THEN RAISE EXCEPTION 'unexpected race result %',result; END IF;
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+END
+$do$;
+COMMIT;
+SQL
+race_b_pid=$!
+wait "$race_a_pid"
+wait "$race_b_pid"
+grep -Fxq 'CONFIRMED' "$tmpdir/race-a"
+psql -v ON_ERROR_STOP=1 -At <<'SQL' > "$tmpdir/race-counts"
+SELECT (SELECT count(*) FROM public.manual_product_orders WHERE payment_tx_hash=repeat('b',64))::text || ':' ||
+       (SELECT count(*) FROM public.manual_product_order_logs WHERE metadata->>'transaction_hash'=repeat('b',64))::text || ':' ||
+       (SELECT status FROM public.manual_product_orders WHERE order_no='RACE-B');
+SQL
+grep -Fxq '1:1:awaiting_payment' "$tmpdir/race-counts"
+echo "PASS: cross-order simultaneous hash claim has one winner, one audit and unchanged loser."
+
