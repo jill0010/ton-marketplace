@@ -26,4 +26,11 @@ jobs:
               exit 1
             fi
           done
-          echo "PASS: production payment verification endpoint denies unauthenticated requests."
+          # Invalid credentials must not bypass the JWT gateway.
+          status=$(curl --silent --show-error --output /tmp/payment-smoke-body --write-out '%{http_code}' --max-time 20 -X POST -H 'Origin: https://ton-marketplace-cvj.pages.dev' -H 'Authorization: Bearer definitely-not-a-valid-jwt' -H 'Content-Type: application/json' --data '{"order_id":"00000000-0000-4000-8000-000000000001"}' "$ENDPOINT")
+          echo "POST malformed bearer HTTP status: $status"
+          if [[ "$status" != 401 && "$status" != 403 ]]; then
+            echo "FAIL: malformed bearer token was accepted"
+            exit 1
+          fi
+          echo "PASS: production endpoint rejects missing and malformed authorization."
