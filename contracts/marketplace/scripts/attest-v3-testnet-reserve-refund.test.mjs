@@ -112,6 +112,34 @@ test("builds domain-separated Testnet settlement statement with immutable operat
   assert.equal(root.remainingRefs, 4);
 });
 
+test("accepts canonical TON Center Base64 transaction hashes and rejects malformed digests", () => {
+  const hex = "ab".repeat(32);
+  const base64 = Buffer.from(hex, "hex").toString("base64");
+  const values = (hash) => ({
+    marketplace: "0:" + "03".repeat(32),
+    vault: vault.toRawString(),
+    buyer: buyer.toRawString(),
+    orderId: 1,
+    principal: 200000000n,
+    operationId: 1,
+    queryId: 1,
+    dispatchTransactionHash: hash,
+    dispatchMessageHash: 4n,
+    receiptTransactionHash: hash,
+    receiptMessageHash: "55".repeat(32),
+    masterchainSeqno: 123,
+    expiresAt: 1900000000,
+    epoch: 1,
+  });
+  assert.equal(
+    buildV3SettlementStatement(values(hex)).hash().toString("hex"),
+    buildV3SettlementStatement(values(base64)).hash().toString("hex"),
+  );
+  for (const bad of ["abc", "00", base64.slice(0, -1), base64.replace(/=$/, "A"), " ".concat(base64)]) {
+    assert.throws(() => buildV3SettlementStatement(values(bad)), /Invalid uint256 hash/);
+  }
+});
+
 test("refuses to pair an unrelated historical refund with the current reserve dispatch",()=>{
   const other=beginCell().storeUint(opcode,32).storeUint(2,64).endCell();
   assert.equal(sameReserveRefundBody({body},{body}),true);
