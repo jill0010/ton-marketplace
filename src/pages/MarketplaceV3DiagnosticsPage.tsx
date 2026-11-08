@@ -31,16 +31,24 @@ export function MarketplaceV3DiagnosticsPage() {
       if (binding.marketplaceAddress !== listing.marketplaceAddress) throw new Error("Marketplace contract binding mismatch");
       setEscrowAddress(binding.escrowAddress);
       const custody = await inspectV3TestnetNftCustody(nftAddress.trim(), binding.escrowAddress);
+      if (!custody.custodyMatches) throw new Error("NFT is not owned by the Marketplace Escrow");
       const observed = [listing.observedAt, assetBinding.observedAt, binding.observedAt, custody.observedAt].map(Date.parse);
       if (observed.some((time) => !Number.isFinite(time)) ||
           Math.max(...observed) - Math.min(...observed) > 5000) {
         throw new Error("Marketplace, asset and NFT observations are not time-consistent");
       }
-      const finalListing = await inspectMarketplaceV3TestnetProduct(BigInt(productId));
+      const [finalListing, finalAssetBinding, finalEscrowBinding] = await Promise.all([
+        inspectMarketplaceV3TestnetProduct(BigInt(productId)),
+        inspectV3TestnetAssetProductBinding(nftAddress.trim(), BigInt(productId)),
+        readV3TestnetMarketplaceEscrow(),
+      ]);
       if (finalListing.marketplaceAddress !== listing.marketplaceAddress ||
           finalListing.status !== 2n || finalListing.productQueryId !== listing.productQueryId ||
           finalListing.escrowId !== listing.escrowId ||
-          finalListing.existingOrderId !== null) {
+          finalListing.existingOrderId !== null ||
+          !finalAssetBinding.bindingMatches ||
+          finalEscrowBinding.marketplaceAddress !== listing.marketplaceAddress ||
+          finalEscrowBinding.escrowAddress !== binding.escrowAddress) {
         throw new Error("Marketplace listing changed during custody inspection");
       }
       setCustodyResult(custody);
