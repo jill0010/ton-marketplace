@@ -33,7 +33,7 @@ jobs:
       - name: Checkout audited read-only verifier
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: 9424b14b18d8097bc5bed3bbc8aac85b07dcc6aa
+          ref: be081edcaa7dc81e8901d6d89629e693c9f19421
           persist-credentials: false
 
       - name: Setup Acton
