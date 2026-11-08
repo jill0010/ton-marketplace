@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { Address, Cell } from "npm:@ton/core";
 import { Buffer } from "node:buffer";
 import { authenticateVerifiedWallet } from "./shared/auth.ts";
+import { isOrderOwnedByVerifiedWallet } from "./shared/order-identity.ts";
 
 const ALLOWED_ORIGINS = new Set(["https://ton-marketplace-cvj.pages.dev", "http://localhost:5173"]);
 const TONCENTER_URL = "https://toncenter.com/api/v2/getTransactions";
@@ -82,7 +83,7 @@ Deno.serve(async (req: Request) => {
       .eq("buyer_user_id", wallet.userId)
       .eq("buyer_wallet_raw", wallet.walletAddress)
       .maybeSingle();
-    if (orderError || !order) return reply({ success: false, error: "Order not found for this verified wallet" }, 404, origin);
+    if (orderError || !order || !isOrderOwnedByVerifiedWallet(order, wallet)) return reply({ success: false, error: "Order not found for this verified wallet" }, 404, origin);
 
     if (order.status === "payment_confirmed" || order.status === "delivery_pending" || order.status === "delivered") {
       if (typeof order.payment_tx_hash !== "string" || !/^[0-9a-f]{64}$/i.test(order.payment_tx_hash)) {
