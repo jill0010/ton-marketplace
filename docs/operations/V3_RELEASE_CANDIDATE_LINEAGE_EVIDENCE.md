@@ -38,5 +38,11 @@
 - The read-only verifier has been updated to use the separately labeled Testnet fixture hash. The updated workflow still needs a fresh passing run and must never be treated as proof of production escrow deployment or independent security audit.
 - Earlier missing script references were fixed by replacing them with `scripts/verify-v3-testnet-deployed-code.mjs` on `main`.
 
+## Successful on-chain Testnet hash comparison (2026-11-08)
+- [Run 42503318692](https://github.com/jill0010/ton-marketplace/actions/runs/42503318692) passed on `main` (commit `77f4c60ba1b11c78a8dc60857d055f95202f236f`).
+- [Evidence artifact 13626043691](https://github.com/jill0010/ton-marketplace/actions/runs/42503318692/artifacts/13626043691), archive SHA256 `998b3e2d4afe2ac6d27af90421ff594d027ab9374f5aeb4489b570275a9d0567`.
+- Live TON Testnet account-state code hashes matched the pinned compiled candidate for **MarketplaceReserveV3**, **ReserveCoordinatorV3**, and the historical **escrow Testnet fixture** (all active and code present).
+- The production `NFTEscrowV2`, `ReserveVaultV3` and `SettlementAttestationVerifierV3` deployed-code verification is **NOT** established by this three-address check. Binding, custody, settlement, refunds and independent audit remain separate blockers.
+
 ## Current decision
 **BLOCKED** for Mainnet deployment. Read-only CI success proves only the checks it actually ran. No new contract was deployed, no real customer checkout enabled and no funds moved in this evidence update.
