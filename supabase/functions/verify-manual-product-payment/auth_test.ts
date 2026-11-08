@@ -74,3 +74,38 @@ Deno.test("history pagination rejects out-of-order, repeated and malformed trans
   assertEquals(validHistoryPage([row(180, "18"), row(179, "18")], 190, seen).valid, false);
   assertEquals(validHistoryPage([row(180, "18")], 190, seen).valid, true);
 });
+
+Deno.test("history boundary: equal-time rows and empty terminal page remain valid", () => {
+  const row = (utime: number, lt: string, hash: string) => ({ utime, transaction_id: { lt, hash } });
+  const seen = new Set<string>();
+  const first = validHistoryPage([row(300, "300", "a".repeat(64)), row(300, "299", "b".repeat(64))], Infinity, seen);
+  assertEquals(first.valid, true);
+  assertEquals(first.oldestUtime, 300);
+  const second = validHistoryPage([row(300, "298", "c".repeat(64)), row(299, "297", "d".repeat(64))], 300, seen);
+  assertEquals(second.valid, true);
+  assertEquals(second.oldestUtime, 299);
+  assertEquals(validHistoryPage([], 299, seen).valid, true);
+});
+
+Deno.test("history boundary: invalid page does not poison seen transaction IDs", () => {
+  const row = (utime: number, lt: string, hash: string) => ({ utime, transaction_id: { lt, hash } });
+  const seen = new Set<string>();
+  const tx = row(200, "200", "a".repeat(64));
+  assertEquals(validHistoryPage([tx, row(201, "199", "b".repeat(64))], Infinity, seen).valid, false);
+  assertEquals(seen.size, 0);
+  assertEquals(validHistoryPage([tx], Infinity, seen).valid, true);
+  assertEquals(seen.size, 1);
+  assertEquals(validHistoryPage([tx], Infinity, seen).valid, false);
+});
+
+Deno.test("history boundary: malformed times and IDs fail closed", () => {
+  const seen = new Set<string>();
+  const row = (utime: unknown, lt: unknown, hash: unknown) => ({ utime, transaction_id: { lt, hash } });
+  for (const invalid of [NaN, Infinity, -1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assertEquals(validHistoryPage([row(invalid, "1", "a".repeat(64))], Infinity, seen).valid, false);
+  }
+  for (const invalid of ["", "-1", "1.2", "abc"]) {
+    assertEquals(validHistoryPage([row(200, invalid, "a".repeat(64))], Infinity, seen).valid, false);
+  }
+  assertEquals(validHistoryPage([row(200, "1", "z".repeat(64))], Infinity, seen).valid, false);
+});
