@@ -33,3 +33,8 @@ test("combined verification queries only public testnet transactions", async () 
   assert.equal(result.readOnly, true);
   assert.equal(result.assessment.verified, true);
 });
+
+test("full finality cannot be claimed from truncated transaction windows", () => {
+  assert.equal(reconcileTransferEvidence({ ...outbound, pageComplete: false }, inbound).reason, "TRANSFER_HISTORY_WINDOW_INCOMPLETE");
+  assert.equal(reconcileTransferEvidence(outbound, { ...inbound, pageComplete: false }).verified, false);
+});
