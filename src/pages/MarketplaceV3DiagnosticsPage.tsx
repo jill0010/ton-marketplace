@@ -90,7 +90,7 @@ export function MarketplaceV3DiagnosticsPage() {
     <p className="mt-3 text-sm text-amber-300">Read-only checks only. This page cannot authorize purchases or move funds. Getter responses are not an atomic chain snapshot or proof of NFT custody.</p>
     <form className="mt-6 flex flex-wrap gap-3" onSubmit={(event) => { event.preventDefault(); void inspect(); }}>
       <label className="flex flex-col gap-1 text-sm">On-chain product ID
-        <input className="rounded border border-zinc-600 bg-zinc-900 p-2" value={productId} onChange={(event) => setProductId(event.target.value)} />
+        <input className="rounded border border-zinc-600 bg-zinc-900 p-2" value={productId} onChange={(event) => { setProductId(event.target.value); setResult(null); setCustodyResult(null); setListingBinding(null); setEscrowAddress(""); setCustodyError(""); }} />
       </label>
       <button type="submit" disabled={busy} className="self-end rounded bg-blue-600 px-4 py-2 disabled:opacity-50">{busy ? "Reading Testnet…" : "Inspect Testnet"}</button>
     </form>
@@ -99,7 +99,7 @@ export function MarketplaceV3DiagnosticsPage() {
       <p className="mt-2 text-sm text-amber-300">Enter the NFT Item address and on-chain product ID above. The check requires an active listing and verifies the NFT-to-product binding, then reads the expected Escrow from the Marketplace contract. Results are read-only and not purchase authorization.</p>
       <form className="mt-4 flex flex-wrap gap-3" onSubmit={(event) => { event.preventDefault(); void inspectCustody(); }}>
         <label className="flex flex-col gap-1 text-sm">NFT Item address
-          <input className="rounded border border-zinc-600 bg-zinc-900 p-2" value={nftAddress} onChange={(event) => setNftAddress(event.target.value)} />
+          <input className="rounded border border-zinc-600 bg-zinc-900 p-2" value={nftAddress} onChange={(event) => { setNftAddress(event.target.value); setCustodyResult(null); setListingBinding(null); setCustodyError(""); }} />
         </label>
         <span className="self-end text-xs text-zinc-400">Marketplace escrow: {escrowAddress || "Fetched on check"}</span>
         <button type="submit" disabled={custodyBusy || !nftAddress.trim()} className="self-end rounded bg-blue-600 px-4 py-2 disabled:opacity-50">{custodyBusy ? "Reading NFT…" : "Check NFT owner"}</button>
