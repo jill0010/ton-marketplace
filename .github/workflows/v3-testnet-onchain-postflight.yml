@@ -37,6 +37,8 @@ jobs:
           node-version: '22'
       - name: Install locked TON verification dependencies
         run: npm ci --ignore-scripts
+      - name: Verify fail-closed address validation offline
+        run: node --test scripts/verify-v3-testnet-deployed-code.test.mjs
       - name: Collect and compare deployed Testnet code hashes (read only)
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
