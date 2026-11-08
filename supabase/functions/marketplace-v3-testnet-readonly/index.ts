@@ -7,6 +7,7 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 const GETTERS = new Set([
   "purchaseSchemaVersionV3",
+  "nextOrderIdV3",
   "escrowConfiguredV2",
   "treasuryConfiguredV2",
   "marketplaceReserveCoordinatorConfiguredV3",
