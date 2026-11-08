@@ -40,9 +40,18 @@ function normalizeAddress(value) {
 }
 
 function uint256FromHex(value) {
-  const normalized = String(value).replace(/^0x/i, "").toLowerCase();
-  if (!/^[0-9a-f]{1,64}$/.test(normalized)) throw new Error("Invalid uint256 hash");
-  return BigInt("0x" + normalized);
+  if (typeof value !== "string" || value.trim() !== value) throw new Error("Invalid uint256 hash");
+  const normalized = value.replace(/^0x/i, "").toLowerCase();
+  if (/^[0-9a-f]{64}$/.test(normalized)) return BigInt("0x" + normalized);
+  // TON Center v2 returns transaction_id.hash in RFC 4648 Base64.
+  // Accept only a canonical 32-byte digest, never an arbitrary decoded payload.
+  if (/^[A-Za-z0-9+/]{43}=$/.test(value)) {
+    const bytes = Buffer.from(value, "base64");
+    if (bytes.length === 32 && bytes.toString("base64") === value) {
+      return BigInt("0x" + bytes.toString("hex"));
+    }
+  }
+  throw new Error("Invalid uint256 hash");
 }
 
 function transactionIsSuccessful(transaction, message) {
