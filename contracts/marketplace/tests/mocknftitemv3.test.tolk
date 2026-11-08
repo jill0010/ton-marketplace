@@ -14,13 +14,23 @@ get fun `test Testnet fixture NFT deploys with Fragment-compatible StateInit and
     val config = beginCell().storeUint(itemIndex, 256).storeAddress(collection.address).endCell();
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
     val stateInit: ContractState = { code: code, data: data };
-    val destination = AutoDeployAddress { workchain: 0, stateInit };
+    val destination = AutoDeployAddress {
+        workchain: 0,
+        stateInit,
+    };
     val nftItem = destination.calculateAddress();
 
     val tokenInfo = beginCell().storeUint(1, 8).storeUint(65, 8).endCell();
     val content = beginCell().storeUint(1, 8).storeUint(120, 8).endCell();
-    val auctionConfig = beginCell().storeAddress(collection.address).storeCoins(grams("1")).endCell();
-    val royaltyParams = beginCell().storeUint(0, 16).storeUint(100, 16).storeAddress(collection.address).endCell();
+    val auctionConfig = beginCell()
+        .storeAddress(collection.address)
+        .storeCoins(grams("1"))
+        .endCell();
+    val royaltyParams = beginCell()
+        .storeUint(0, 16)
+        .storeUint(100, 16)
+        .storeAddress(collection.address)
+        .endCell();
     val deploy = net.send(
         collection.address,
         createMessage({
@@ -45,7 +55,10 @@ get fun `test Testnet fixture NFT deploys with Fragment-compatible StateInit and
     expect(before.get(2) as address).toEqual(collection.address);
     expect(before.get(3) as address).toEqual(seller.address);
 
-    val forwardPayload = beginCell().storeUint(1, 1).storeRef(beginCell().storeUint(0x53564950, 32).endCell()).endCell();
+    val forwardPayload = beginCell()
+        .storeUint(1, 1)
+        .storeRef(beginCell().storeUint(0x53564950, 32).endCell())
+        .endCell();
     val transfer = net.send(
         seller.address,
         createMessage({
@@ -78,7 +91,10 @@ get fun `test Testnet fixture NFT rejects a transfer from a non-owner`() {
     val config = beginCell().storeUint(1002, 256).storeAddress(collection.address).endCell();
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
     val stateInit: ContractState = { code: code, data: data };
-    val destination = AutoDeployAddress { workchain: 0, stateInit };
+    val destination = AutoDeployAddress {
+        workchain: 0,
+        stateInit,
+    };
     val nftItem = destination.calculateAddress();
     val empty = beginCell().endCell();
     val deploy = net.send(
