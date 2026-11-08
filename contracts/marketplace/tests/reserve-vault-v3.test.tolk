@@ -301,3 +301,44 @@ get fun `test production reserve vault rejects forged verifier callbacks and una
     ).toHaveFailedTx({ to: vault, exitCode: 764 });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(1);
 }
+
+get fun `test production reserve vault rejects duplicate dispatch and unauthorized order messages`() {
+    val (vault, _, owner, marketplace, funder, _, _) = productionReserveSetup();
+    expect(
+        net.send(
+            owner,
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.03"),
+                dest: vault,
+                body: DispatchReserveRefundV3 { orderId: 1 }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 764 });
+    productionReserveFund(vault, funder);
+    expect(
+        net.send(
+            marketplace,
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.03"),
+                dest: vault,
+                body: DispatchReserveRefundV3 { orderId: 2 }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 765 });
+    productionReserveDispatch(vault, marketplace);
+    expect(
+        net.send(
+            marketplace,
+            createMessage({
+                bounce: BounceMode.RichBounce,
+                value: grams("0.03"),
+                dest: vault,
+                body: DispatchReserveRefundV3 { orderId: 1 }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 761 });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(2);
+    expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(grams("0.2"));
+}
