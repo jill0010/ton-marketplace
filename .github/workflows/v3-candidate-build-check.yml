@@ -63,7 +63,7 @@ jobs:
           assert.match(source, /V3_MAINNET_DEPLOYER_ADDRESS/);
           assert.match(source, /networkGlobalId: -239/);
           assert.match(source, /PLATFORM_TREASURY_ADDRESS/);
-          assert.match(source, /verifierNetwork\") == -239/);
+          assert.ok(source.includes('"verifierNetwork") == -239'));
           assert.match(source, /@wrappers\/NFTEscrowV2\.gen/);
           assert.doesNotMatch(source, /NFTEscrowV2Testnet/);
           assert.doesNotMatch(source, /V3_PRODUCTION_TESTNET_DEPLOY_APPROVED|networkGlobalId: -3[,\\s]/);
