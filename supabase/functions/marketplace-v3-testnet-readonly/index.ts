@@ -9,6 +9,7 @@ const GETTERS = new Set([
   "purchaseSchemaVersionV3",
   "nextOrderIdV3",
   "nextProductIdV2",
+  "nextQueryIdV2",
   "escrowConfiguredV2",
   "treasuryConfiguredV2",
   "marketplaceReserveCoordinatorConfiguredV3",
