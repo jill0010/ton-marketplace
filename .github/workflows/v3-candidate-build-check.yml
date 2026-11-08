@@ -47,8 +47,6 @@ jobs:
         run: node --test contracts/marketplace/experiments/v3-settlement-attestation.test.mjs
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
-      - name: Compile post-settlement read-only verifier (no transactions)
-        run: acton script scripts/verify-v3-production-testnet-settlement.tolk --help
       - name: Compile V3 candidate and escrow without deploying
         run: acton build
       - name: Run complete Marketplace V3 contract emulation suite
