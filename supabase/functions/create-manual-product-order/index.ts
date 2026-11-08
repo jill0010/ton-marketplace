@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (existing?.status === "awaiting_payment" && existing.payment_address && existing.expires_at) {
+        if (existing?.status === "awaiting_payment" && existing.payment_address && existing.expires_at && Date.parse(existing.expires_at) > Date.now()) {
           return reply({
             success: true,
             orderId: existing.id,
