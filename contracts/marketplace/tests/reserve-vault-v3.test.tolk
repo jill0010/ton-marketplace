@@ -390,3 +390,73 @@ get fun `test production reserve vault rejects replay after settled quorum proof
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(0);
     expect(net.runGetMethod<coins>(vault, "reserveVaultAvailableV3")).toEqual(0);
 }
+
+get fun `test production reserve retry cannot bypass exact topup or retry twice`() {
+    val (vault, _, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    productionReserveFund(vault, funder);
+    productionReserveDispatch(vault, marketplace);
+    val buyer = testing.treasury("productionReserveBuyer").address;
+    val hash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
+    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 2, grams("0.19"), hash);
+    val signatures = productionReserveSignatures(statement, key0, key1);
+    expect(productionReserveSubmit(vault, owner, statement, signatures)).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(4);
+    expect(
+        net.send(
+            marketplace,
+            createMessage({
+                bounce: false,
+                value: grams("0.03"),
+                dest: vault,
+                body: RetryReserveRefundV3 { orderId: 1 }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 765 });
+    expect(
+        net.send(
+            owner,
+            createMessage({
+                bounce: false,
+                value: grams("0.04"),
+                dest: vault,
+                body: TopUpReserveV3 { orderId: 1, fundingId: 88, principalTopUp: grams("0.02") }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 772 });
+    expect(net.runGetMethod<coins>(vault, "reserveVaultAvailableV3")).toEqual(grams("0.19"));
+    expect(
+        net.send(
+            owner,
+            createMessage({
+                bounce: false,
+                value: grams("0.04"),
+                dest: vault,
+                body: TopUpReserveV3 { orderId: 1, fundingId: 89, principalTopUp: grams("0.01") }.toCell(),
+            }),
+        ),
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(
+        net.send(
+            marketplace,
+            createMessage({
+                bounce: false,
+                value: grams("0.03"),
+                dest: vault,
+                body: RetryReserveRefundV3 { orderId: 1 }.toCell(),
+            }),
+        ),
+    ).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(2);
+    expect(
+        net.send(
+            marketplace,
+            createMessage({
+                bounce: false,
+                value: grams("0.03"),
+                dest: vault,
+                body: RetryReserveRefundV3 { orderId: 1 }.toCell(),
+            }),
+        ),
+    ).toHaveFailedTx({ to: vault, exitCode: 765 });
+    expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(grams("0.2"));
+}
