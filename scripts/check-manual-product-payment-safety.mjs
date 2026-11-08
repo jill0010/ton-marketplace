@@ -17,6 +17,7 @@ assert.match(verifier, /INVALID_PAYMENT_WINDOW/);
 assert.match(verifier, /utime > previousUtime/);
 assert.match(verifier, /seenTransactionIds\.has\(uniqueId\)/);
 assert.match(verifier, /previousPageOldestUtime/);
+assert.match(verifier, /if \(!scanIntegrityValid\) \{/);
 assert.match(verifier, /Number\(rows\[0\]\.utime\) > previousPageOldestUtime/);
 assert.match(verifier, /hashHex\(transactionId\?\.hash\)/);
 assert.match(verifier, /Number\.isSafeInteger\(utime\)/);
