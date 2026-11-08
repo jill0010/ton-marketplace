@@ -4,7 +4,23 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
 export const EXPECTED_MAINNET_GLOBAL_ID = -239;
-const ADDRESS = /^(?:UQ|EQ)[A-Za-z0-9_-]{46}$/;
+export function parseTonAccount(input) {
+  if (typeof input !== "string" || !/^[A-Za-z0-9_-]{48}$/.test(input)) return null;
+  const bytes = Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  if (bytes.length !== 36) return null;
+  let crc = 0;
+  for (const byte of bytes.subarray(0, 34)) {
+    crc ^= byte << 8;
+    for (let bit = 0; bit < 8; bit++)
+      crc = ((crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1) & 0xffff;
+  }
+  if (bytes[34] !== (crc >> 8) || bytes[35] !== (crc & 255)) return null;
+  const tag = bytes[0] & 0x7f;
+  if (tag !== 0x11 && tag !== 0x51) return null;
+  const workchain = bytes[1] === 255 ? -1 : bytes[1];
+  if (workchain !== 0 && workchain !== -1) return null;
+  return workchain + ":" + bytes.subarray(2, 34).toString("hex");
+}
 const UINT256_MAX = (1n << 256n) - 1n;
 
 export function inspectV3MainnetEnvironment(env = process.env) {
@@ -14,12 +30,12 @@ export function inspectV3MainnetEnvironment(env = process.env) {
   const treasury = (env.PLATFORM_TREASURY_ADDRESS ?? "").trim();
   const signer = (env.V3_CONNECTED_DEPLOYER_ADDRESS ?? "").trim();
   if (!approved) problems.push("V3_MAINNET_DEPLOY_APPROVED must be exactly true; no signing is authorized.");
-  if (!ADDRESS.test(deployer)) problems.push("V3_MAINNET_DEPLOYER_ADDRESS is missing or not a standard user-friendly TON address.");
-  if (!ADDRESS.test(treasury)) problems.push("PLATFORM_TREASURY_ADDRESS is missing or not a standard user-friendly TON address.");
-  if (deployer && treasury && deployer === treasury) problems.push("Deployer and treasury must be distinct.");
-  if (signer && !ADDRESS.test(signer)) problems.push("V3_CONNECTED_DEPLOYER_ADDRESS is not a standard user-friendly TON address.");
-  if (signer && deployer && signer !== deployer) {
-    problems.push("Connected signer address differs from V3_MAINNET_DEPLOYER_ADDRESS (compare normalized on-chain addresses if formats differ).");
+  if (!Boolean(parseTonAccount(deployer))) problems.push("V3_MAINNET_DEPLOYER_ADDRESS is missing or not a standard user-friendly TON address.");
+  if (!Boolean(parseTonAccount(treasury))) problems.push("PLATFORM_TREASURY_ADDRESS is missing or not a standard user-friendly TON address.");
+  if (deployer && treasury && parseTonAccount(deployer) && parseTonAccount(deployer) === parseTonAccount(treasury)) problems.push("Deployer and treasury must be distinct.");
+  if (signer && !Boolean(parseTonAccount(signer))) problems.push("V3_CONNECTED_DEPLOYER_ADDRESS is not a standard user-friendly TON address.");
+  if (signer && deployer && parseTonAccount(signer) && parseTonAccount(deployer) && parseTonAccount(signer) !== parseTonAccount(deployer)) {
+    problems.push("Connected signer address differs from V3_MAINNET_DEPLOYER_ADDRESS.");
   }
   const keys = [];
   for (let i = 0; i < 3; i++) {
@@ -46,7 +62,7 @@ export function inspectV3MainnetEnvironment(env = process.env) {
     signerVerified: false,
     contractReleaseApproved: false,
     safeToBroadcast: false,
-    checks: { approvalFlag: approved, deployerPresent: ADDRESS.test(deployer), treasuryPresent: ADDRESS.test(treasury), keysPresent: keys.length === 3, nonceValid: /^[0-9]+$/.test(nonce) },
+    checks: { approvalFlag: approved, deployerPresent: Boolean(parseTonAccount(deployer)), treasuryPresent: Boolean(parseTonAccount(treasury)), keysPresent: keys.length === 3, nonceValid: /^[0-9]+$/.test(nonce) },
     problems,
     next: "Confirm the selected TonConnect wallet with Acton and complete independent release checks. This preflight never authorizes Mainnet deployment."
   };
