@@ -41,6 +41,12 @@ jobs:
       V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS: "kQBBvJvEce3gr5OGIuzIaWPd7ylKeKxLw6l9saVjBTccl8Vs"
       V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQDVca8ctk0ERCrZylHa2yQ63_zFG-RmGz6NySymJynzvNNA"
     steps:
+      - name: Block replay of already-settled order 3
+        working-directory: .
+        shell: bash
+        run: |
+          echo "::error::Testnet order 3 is already paid and independently verified (Actions 42479121408 and 42480145497). Do not resubmit validator attestation."
+          exit 1
       - name: Checkout V3 code with order 3 read-only final verifier
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
