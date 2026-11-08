@@ -93,6 +93,12 @@ Deno.serve(async (req: Request) => {
     const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
 
     const orderNo = createOrderNo();
+    const { error: expiryError } = await admin.rpc("expire_unpaid_manual_product_orders", { p_product_id: product.id });
+    if (expiryError) {
+      console.error("Manual checkout expiry cleanup failed", expiryError.message);
+      return reply({ success: false, code: "CHECKOUT_EXPIRY_UNAVAILABLE", error: "Unable to release expired reservations right now." }, 503, origin);
+    }
+
     const { data: order, error: insertError } = await admin.from("manual_product_orders").insert({
       order_no: orderNo,
       product_id: product.id,
