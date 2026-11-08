@@ -21,7 +21,7 @@ async function getter(address, method, stack = []) {
   const data = await response.json();
   assert.equal(data.exit_code ?? data.result?.exit_code, 0, `${method}: TVM execution failed`);
   const result = data.stack ?? data.result?.stack;
-  assert(Array.isArray(result), `${method}: missing stack`);
+  assert(Array.isArray(result) && result.length <= 8, `${method}: invalid stack`);
   return result;
 }
 function number(entry) {
@@ -48,6 +48,9 @@ const [status, bound, escrow, nftData, escrowConfigured] = await Promise.all([
   getter(nft, "get_nft_data"),
   getter(marketplace, "escrowConfiguredV2"),
 ]);
+assert.equal(status.length, 1);
+assert.equal(bound.length, 1);
+assert.equal(escrow.length, 1);
 assert.equal(number(status[0]), 2n, "Product is not listed");
 assert.equal(number(bound[0]), BigInt(productId), "NFT is not bound to product");
 assert.equal(escrowConfigured.length, 1);
@@ -58,6 +61,7 @@ const escrowAddress = address(escrow[0]);
 const ownerAddress = address(nftData[3]);
 assert(ownerAddress.equals(escrowAddress), "NFT owner is not the Marketplace escrow");
 const statusAfter = await getter(marketplace, "productStatusV2", idArg);
+assert.equal(statusAfter.length, 1);
 assert.equal(number(statusAfter[0]), 2n, "Listing changed during verification");
 const summary = [
   "## V3 Testnet live getter verification",
