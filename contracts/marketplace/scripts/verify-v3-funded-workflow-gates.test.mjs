@@ -148,3 +148,32 @@ test("all V3 transaction scripts remain explicitly Testnet-gated and legacy work
  assert.match(deploy.slice(guard,firstCheckout),/exit 1/);
  assert.doesNotMatch(deploy,/acton (?:script|rpc)[^\\n]*--net mainnet/);
 });
+
+test("settlement quorum verifier enforces domain, network, expiry, signatures and one-time statements",()=>{
+ const verifier=readFileSync(new URL("../contracts/SettlementAttestationVerifierV3.tolk",import.meta.url),"utf8");
+ for(const gate of [
+  "root.domain == SETTLEMENT_DOMAIN_V3",
+  "root.schemaVersion == SETTLEMENT_SCHEMA_V3",
+  "root.networkGlobalId == storage.networkGlobalId",
+  "identity.marketplace == storage.marketplace",
+  "identity.vault == in.senderAddress",
+  "result.epoch == storage.epoch",
+  "result.expiresAt >= blockchain.now()",
+  "result.expiresAt <= blockchain.now() + 900",
+  "storage.threshold >= 2 && storage.threshold <= 3",
+  "validator0.loadValue() != validator1.loadValue()",
+  "validator0.loadValue() != validator2.loadValue()",
+  "validator1.loadValue() != validator2.loadValue()",
+  "signatureSlice.remainingBitsCount() == 512",
+  "signatureSlice.remainingRefsCount() == 0",
+  "isSignatureValid(statementHash, signatureSlice, keyFound.loadValue())",
+  "validSignatures >= storage.threshold",
+  "!storage.consumedStatements.get(statementHash).isFound",
+  "storage.consumedStatements.set(statementHash, 1)",
+  "in.senderAddress == storage.owner",
+ ]) assert.ok(verifier.includes(gate),"Settlement verifier missing protection: "+gate);
+ const vault=readFileSync(new URL("../contracts/ReserveVaultV3.tolk",import.meta.url),"utf8");
+ assert.ok(vault.includes("in.senderAddress == parties.verifier"));
+ assert.ok(vault.includes("msg.statementHash == operation.activeStatementHash"));
+ assert.ok(vault.includes("storage.consumedStatements.set(msg.statementHash, true)"));
+});
