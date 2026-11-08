@@ -41,6 +41,7 @@ export function MarketplaceV3DiagnosticsPage() {
           ["Product status", result.status?.toString() ?? "null"],
           ["Escrow ID", result.escrowId?.toString() ?? "null"],
           ["Existing order", result.existingOrderId?.toString() ?? "null"],
+          ["Reserve status (on-chain)", result.reserveStatus?.toString() ?? "not bound"],
           ["Escrow configured", String(result.escrowConfigured)],
           ["Treasury configured", String(result.treasuryConfigured)],
           ["Coordinator configured", String(result.coordinatorConfigured)],
