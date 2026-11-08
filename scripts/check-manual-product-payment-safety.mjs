@@ -10,6 +10,8 @@ assert.match(verifier, /ORDER_EXPIRED_REVIEW_REQUIRED/);
 assert.match(verifier, /scanReachedOrderStart/);
 assert.match(verifier, /scanIntegrityValid/);
 assert.match(verifier, /PAYMENT_STATE_CONFLICT/);
+assert.match(verifier, /updateError\?\.code === "23505"/);
+assert.match(verifier, /PAYMENT_ALREADY_CLAIMED/);
 assert.match(verifier, /current\.payment_tx_hash !== match\.hash/);
 assert.doesNotMatch(verifier, /\.update\(\{\s*status:\s*["']cancelled["']/);
 assert.doesNotMatch(creator, /admin\.rpc\(["']expire_unpaid_manual_product_orders["']/);
