@@ -109,6 +109,7 @@ Deno.serve(async (req: Request) => {
     let scanReachedOrderStart = false;
     let scanIntegrityValid = true;
     const seenTransactionIds = new Set<string>();
+    let previousPageOldestUtime = Number.POSITIVE_INFINITY;
 
     for (let page = 0; page < 5; page += 1) {
       const params = new URLSearchParams({ address: order.payment_address, limit: "100" });
@@ -149,7 +150,11 @@ Deno.serve(async (req: Request) => {
         }
         seenTransactionIds.add(uniqueId);
       }
-      if (!scanIntegrityValid) break;
+      if (!scanIntegrityValid || Number(rows[0].utime) > previousPageOldestUtime) {
+        scanIntegrityValid = false;
+        break;
+      }
+      previousPageOldestUtime = Number(rows[rows.length - 1].utime);
       transactions.push(...rows);
       const oldest = rows[rows.length - 1];
       const timestamp = Number(oldest.utime) * 1000;
