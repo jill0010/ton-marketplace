@@ -29,3 +29,22 @@ test("deployed hash verifier rejects malformed address without RPC request", () 
     assert.notEqual(run.status, 0);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("read-only verifier records RPC failures and exits nonzero", () => {
+  const dir = mkdtempSync(join(tmpdir(), "v3-postflight-"));
+  try {
+    const env = { ...process.env, ...addresses, V3_EVIDENCE_OUTPUT: join(dir, "evidence.json") };
+    const runner = `
+      globalThis.fetch = async () => ({ ok: false, status: 503 });
+      await import(${JSON.stringify(new URL("./verify-v3-testnet-deployed-code.mjs", import.meta.url).href)});
+    `;
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", runner], { env, encoding: "utf8", timeout: 15000 });
+    assert.notEqual(run.status, 0);
+    const evidence = JSON.parse(readFileSync(join(dir, "evidence.json"), "utf8"));
+    assert.equal(evidence.allMatch, false);
+    for (const role of ["marketplace", "escrow", "coordinator"]) {
+      assert.equal(evidence.contracts[role].match, false);
+      assert.match(evidence.contracts[role].error, /HTTP 503/);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
