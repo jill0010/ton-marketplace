@@ -31,6 +31,15 @@ assert.doesNotMatch(creator, /admin\.rpc\(["']expire_unpaid_manual_product_order
 assert.match(migration, /Automatic expiry disabled pending verified on-chain payment reconciliation/);
 assert.doesNotMatch(migration, /UPDATE\s+public\.manual_product_orders\s+AS\s+o/i);
 const atomic = readFileSync("supabase/migrations/20261109020000_confirm_manual_product_payment_atomically.sql", "utf8");
+assert.match(atomic, /SECURITY INVOKER/);
+assert.match(atomic, /WHERE id = p_order_id AND buyer_user_id = p_buyer_user_id/);
+assert.match(atomic, /RETURN 'ALREADY_CONFIRMED'/);
+assert.match(atomic, /RETURN 'PAYMENT_STATE_CONFLICT'/);
+assert.match(atomic, /RETURN 'PAYMENT_ALREADY_CLAIMED'/);
+assert.match(atomic, /UPDATE public\\.manual_product_orders/);
+assert.match(atomic, /INSERT INTO public\\.manual_product_order_logs/);
+assert.match(atomic, /GRANT EXECUTE ON FUNCTION[\\s\\S]*TO service_role/);
+assert.match(atomic, /REVOKE ALL ON FUNCTION[\\s\\S]*FROM PUBLIC, anon, authenticated/);
 assert.match(atomic, /FOR UPDATE/);
 assert.match(atomic, /INSERT INTO public\.manual_product_order_logs/);
 assert.match(atomic, /REVOKE ALL ON FUNCTION/);
