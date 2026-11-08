@@ -123,7 +123,7 @@ jobs:
           set -euo pipefail
           acton script scripts/verify-v3-order-3-settlement.tolk --net testnet 2>&1 | tee v3-order-3-final-settlement.log
           grep -Fq "ORDER 3 PRODUCTION V3 TESTNET ON-CHAIN STATE CHECK PASSED;" v3-order-3-final-settlement.log
-          grep -Fq "order ID: 2" v3-order-3-final-settlement.log
+          grep -Fq "Verified product ID: 4; order ID: 3" v3-order-3-final-settlement.log
 
       - name: Upload order 3 evidence
         if: always()
