@@ -220,7 +220,12 @@ get fun `test verifier rejects future expiry beyond attestation window without c
 get fun `test verifier accepts three independent signatures for two-of-three threshold`() {
     val (verifier, vault, key0, key1, key2) = verifierSetup();
     val statement = verifierStatement(vault);
-    val result = verifierSend(vault, verifier, statement, verifierBundle(statement, key0, key1, key2));
+    val result = verifierSend(
+        vault,
+        verifier,
+        statement,
+        verifierBundle(statement, key0, key1, key2),
+    );
     expect(result).toHaveSuccessfulTx({ to: verifier });
     expect(
         net.runGetMethod<uint8>(verifier, "isSettlementStatementConsumed", [statement.hash()]),
