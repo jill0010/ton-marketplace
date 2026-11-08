@@ -166,3 +166,22 @@ rejected("reject truthy string escrow flag", (v) => { v.snapshot.escrowConfigure
 rejected("reject string expected product ID", (v) => { v.expectedProductId = "2"; });
 rejected("reject string expected price", (v) => { v.expectedPriceNano = "10000000"; });
 rejected("reject string query ID", (v) => { v.queryId = "123456"; });
+
+rejected("reject negative current time even with matching snapshot", (v) => {
+  v.nowSeconds = -1;
+  v.snapshot.fetchedAtSeconds = -1;
+});
+rejected("reject unsafe future current time", (v) => {
+  v.nowSeconds = Number.MAX_SAFE_INTEGER;
+  v.snapshot.fetchedAtSeconds = Number.MAX_SAFE_INTEGER;
+});
+rejected("reject negative escrow ID", (v) => { v.snapshot.escrowId = -1n; });
+rejected("reject uint64 overflow product ID even if snapshot matches", (v) => {
+  v.snapshot.productId = 1n << 64n;
+  v.expectedProductId = 1n << 64n;
+});
+rejected("reject uint64 overflow price plus execution reserve", (v) => {
+  v.snapshot.priceNano = (1n << 120n) - 200_000_000n;
+  v.expectedPriceNano = v.snapshot.priceNano;
+});
+rejected("reject zero query ID after successful listing checks", (v) => { v.queryId = 0n; });
