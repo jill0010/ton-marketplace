@@ -177,3 +177,29 @@ test("settlement quorum verifier enforces domain, network, expiry, signatures an
  assert.ok(vault.includes("msg.statementHash == operation.activeStatementHash"));
  assert.ok(vault.includes("storage.consumedStatements.set(msg.statementHash, true)"));
 });
+
+test("V3 payout and reserve settlement keep delivery, refund and retry paths mutually gated",()=>{
+ const market=readFileSync(new URL("../contracts/MarketplaceReserveV3.tolk",import.meta.url),"utf8");
+ const section=(start,end)=>{const a=market.indexOf(start);const b=market.indexOf(end,a+start.length);assert.ok(a>=0&&b>a,"missing handler boundary "+start);return market.slice(a,b)};
+ const delivery=section("EscrowReleasedV2 => {","RetryPayoutV2 => {");
+ for(const guard of [
+  "reserve.status == 2 && reserve.vault != null",
+  "in.senderAddress == storage.escrow",
+  "order.status == 2 && order.deliveryStatus == 1",
+  "sellerPayout.status == 1 && platformPayout.status == 1",
+  "operations.releaseQueryId == msg.queryId",
+  "storage.save()",
+  "DispatchReserveRefundV3 { orderId: order.id }",
+ ]) assert.ok(delivery.includes(guard),"delivery protection missing: "+guard);
+ assert.ok(delivery.indexOf("storage.save()")<delivery.indexOf("sellerTransfer.send("));
+ const retry=section("RetryPayoutV2 => {","PublishProductV2 => {");
+ assert.ok(retry.includes("assert (payout.status == 3)"));
+ assert.ok(retry.includes("if (payout.kind == 3)"));
+ assert.ok(retry.includes("throw ErrorsV2.InvalidPayout;"));
+ assert.ok(retry.includes("order.deliveryStatus == 2"));
+ const refund=section("EscrowRefundedV2 => {","get fun ");
+ assert.ok(refund.includes("in.senderAddress == storage.escrow"));
+ assert.ok(refund.includes("if (refundPayout.status == 0)"));
+ assert.ok(refund.includes("reserve.status == 2 && reserve.vault != null"));
+ assert.ok(refund.includes("reserve.status == 3 && reserve.vault != null"));
+});
