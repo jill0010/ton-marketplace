@@ -20,6 +20,7 @@ await build({
     },
   }],
   build: {
+    lib: { entry: virtualEntry, formats: ["es"] },
     write: false,
     minify: false,
     rollupOptions: {
@@ -36,6 +37,7 @@ await build({
 const { preflightMarketplaceV3TestnetPurchase } = await import(
   "data:text/javascript;base64," + Buffer.from(bundled).toString("base64")
 );
+assert.equal(typeof preflightMarketplaceV3TestnetPurchase, "function", "V3 test entry must export the real preflight function");
 
 const address = (n) => "0:" + n.toString(16).padStart(64, "0");
 const now = 1_800_000_000;
