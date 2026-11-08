@@ -191,7 +191,9 @@ Deno.serve(async (req: Request) => {
     if (updateError) throw updateError;
     if (!updated) {
       const { data: current } = await admin.from("manual_product_orders").select("status, payment_tx_hash").eq("id", order.id).maybeSingle();
-      if (current?.status !== "payment_confirmed") return reply({ success: false, error: "Payment was found but the order status could not be updated. Contact support with the order number." }, 500, origin);
+      if (!current || !["payment_confirmed", "delivery_pending", "delivered"].includes(current.status) || current.payment_tx_hash !== match.hash) {
+        return reply({ success: false, code: "PAYMENT_STATE_CONFLICT", error: "Payment was found but the order changed concurrently. Contact support with the order number." }, 409, origin);
+      }
     } else {
       const { error: logError } = await admin.from("manual_product_order_logs").insert({
         order_id: order.id,
