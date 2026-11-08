@@ -6,7 +6,13 @@ export function extractV3TestnetGetterStack(response: unknown): Array<Record<str
   if (!response || typeof response !== "object" || Array.isArray(response)) {
     throw new Error("Invalid Testnet getter response");
   }
-  const data = response as Record<string, unknown>;
+  const root = response as Record<string, unknown>;
+  // TON Center responses can be returned directly or wrapped in "result".
+  const data = root.result && typeof root.result === "object" &&
+    !Array.isArray(root.result) ? root.result as Record<string, unknown> : root;
+  if (root.ok === false || root.success === false) {
+    throw new Error("Testnet RPC reported failure");
+  }
   if (data.exit_code !== 0 || !Array.isArray(data.stack) ||
       data.stack.length > 8) {
     throw new Error("Testnet getter failed or returned an invalid stack");
