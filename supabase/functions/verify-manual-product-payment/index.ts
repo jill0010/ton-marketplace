@@ -95,7 +95,9 @@ Deno.serve(async (req: Request) => {
 
     const createdAt = Date.parse(order.created_at);
     const expiresAt = Date.parse(order.expires_at);
-    if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt)) return reply({ success: false, error: "Order payment timestamps are invalid" }, 409, origin);
+    if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt) || expiresAt <= createdAt || createdAt > Date.now() + 120000) {
+      return reply({ success: false, code: "INVALID_PAYMENT_WINDOW", error: "Order payment timestamps are inconsistent. Contact support for manual reconciliation." }, 409, origin);
+    }
     const orderExpired = Date.now() > expiresAt;
 
     const receiverRaw = Address.parse(order.payment_address).toRawString();
