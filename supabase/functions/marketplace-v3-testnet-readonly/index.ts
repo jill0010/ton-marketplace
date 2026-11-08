@@ -14,6 +14,7 @@ const GETTERS = new Set([
   "productEscrowIdV2",
   "productV2",
   "orderIdForProductV2",
+  "marketplaceReserveStatusV3",
 ]);
 const WITH_PRODUCT_ID = new Set([
   "productStatusV2",
@@ -21,6 +22,7 @@ const WITH_PRODUCT_ID = new Set([
   "productV2",
   "orderIdForProductV2",
 ]);
+const WITH_ORDER_ID = new Set(["marketplaceReserveStatusV3"]);
 const MAX_UINT64 = 0xffff_ffff_ffff_ffffn;
 const MAX_BODY_BYTES = 512;
 
@@ -99,21 +101,24 @@ Deno.serve(async (req: Request) => {
     if (typeof input.method !== "string" || !GETTERS.has(input.method)) {
       return reply(origin, 400, { success: false, error: "Unsupported read-only getter" });
     }
-    if (Object.keys(input).some((key) => key !== "method" && key !== "product_id")) {
+    if (Object.keys(input).some((key) => key !== "method" && key !== "product_id" && key !== "order_id")) {
       return reply(origin, 400, { success: false, error: "Unexpected request fields" });
     }
     const needsId = WITH_PRODUCT_ID.has(input.method);
-    if (needsId !== Object.hasOwn(input, "product_id")) {
+    const needsOrderId = WITH_ORDER_ID.has(input.method);
+    if (needsOrderId !== Object.hasOwn(input, "order_id") ||
+        needsId !== Object.hasOwn(input, "product_id")) {
       return reply(origin, 400, { success: false, error: "Unexpected or missing product ID" });
     }
     let stack: Array<{ type: "num"; value: string }> = [];
-    if (needsId) {
-      if (typeof input.product_id !== "string" ||
-          !/^[1-9][0-9]{0,19}$/.test(input.product_id) ||
-          BigInt(input.product_id) > MAX_UINT64) {
+    if (needsId || needsOrderId) {
+      const identifier = needsOrderId ? input.order_id : input.product_id;
+      if (typeof identifier !== "string" ||
+          !/^[1-9][0-9]{0,19}$/.test(identifier) ||
+          BigInt(identifier) > MAX_UINT64) {
         return reply(origin, 400, { success: false, error: "Invalid uint64 product ID" });
       }
-      stack = [{ type: "num", value: input.product_id }];
+      stack = [{ type: "num", value: identifier }];
     }
     const upstream = await fetch("https://testnet.toncenter.com/api/v3/runGetMethod", {
       method: "POST",
@@ -172,6 +177,7 @@ Deno.serve(async (req: Request) => {
       contract_address: marketplace.toRawString(),
       method: input.method,
       product_id: needsId ? input.product_id : null,
+      order_id: needsOrderId ? input.order_id : null,
       stack: stackResult,
       observed_at: new Date().toISOString(),
       verified_purchase_eligibility: false,
