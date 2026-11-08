@@ -8,6 +8,13 @@ export type VerifiedWalletContext = {
   network: "-239";
 };
 
+export function requireActiveWalletProof(expiresAt: string, now = Date.now()): void {
+  const timestamp = Date.parse(expiresAt);
+  if (!Number.isFinite(timestamp) || timestamp <= now) {
+    throw new Error("TON wallet proof expired; reconnect and verify the wallet");
+  }
+}
+
 export async function authenticateVerifiedWallet(
   request: Request,
 ): Promise<VerifiedWalletContext> {
@@ -71,10 +78,7 @@ export async function authenticateVerifiedWallet(
       throw new Error("Canonical wallet identity mismatch");
     }
 
-    const proofExpiresAt = Date.parse(identity.proof_expires_at);
-    if (!Number.isFinite(proofExpiresAt) || proofExpiresAt <= Date.now()) {
-      throw new Error("TON wallet proof expired; reconnect and verify the wallet");
-    }
+    requireActiveWalletProof(identity.proof_expires_at);
 
     return {
       userId: user.id,
