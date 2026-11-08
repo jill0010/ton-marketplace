@@ -17,6 +17,7 @@ export const V3_TESTNET_READONLY_METHODS = [
   "marketplaceReserveStatusV3",
   "get_nft_data",
   "escrowV2",
+  "assetProductIdV2",
 ] as const;
 
 export type V3TestnetReadonlyMethod = typeof V3_TESTNET_READONLY_METHODS[number];
@@ -55,7 +56,7 @@ export async function readMarketplaceV3TestnetGetter(
     throw new Error("Unsupported V3 Testnet getter");
   }
   const requiresProduct = PRODUCT_METHODS.has(method);
-  if ((method === "get_nft_data") !== (nftItemAddress !== undefined)) {
+  if ((method === "get_nft_data" || method === "assetProductIdV2") !== (nftItemAddress !== undefined)) {
     throw new Error("Unexpected or missing V3 NFT item address");
   }
   const nftItem = nftItemAddress === undefined ? null : Address.parse(nftItemAddress);
@@ -98,7 +99,7 @@ export async function readMarketplaceV3TestnetGetter(
     throw new Error("V3 Testnet RPC returned an invalid contract address");
   }
   if (parsedAddress.workChain !== 0 ||
-      (nftItem && !parsedAddress.equals(nftItem)) || data.stack.length > 8 ||
+      (nftItem && method === "get_nft_data" && !parsedAddress.equals(nftItem)) || data.stack.length > 8 ||
       data.stack.some((entry: unknown) =>
         !entry || typeof entry !== "object" || Array.isArray(entry) ||
         typeof (entry as { type?: unknown }).type !== "string")) {
@@ -223,6 +224,41 @@ export async function readV3TestnetMarketplaceEscrow(): Promise<{
   return {
     marketplaceAddress: result.contract_address,
     escrowAddress: escrow.toRawString(),
+    observedAt: result.observed_at,
+    purchaseAuthorized: false,
+  };
+}
+
+/** Confirm that an NFT Item is bound to the requested Marketplace product. */
+export async function inspectV3TestnetAssetProductBinding(
+  nftItemAddress: string,
+  productId: bigint,
+): Promise<{
+  nftItemAddress: string;
+  productId: string;
+  bindingMatches: boolean;
+  observedAt: string;
+  purchaseAuthorized: false;
+}> {
+  if (productId <= 0n || productId > 0xffff_ffff_ffff_ffffn) {
+    throw new Error("Invalid Marketplace product ID");
+  }
+  const result = await readMarketplaceV3TestnetGetter(
+    "assetProductIdV2", undefined, undefined, nftItemAddress,
+  );
+  if (result.stack.length !== 1) throw new Error("Invalid asset listing getter");
+  const item = result.stack[0] as Record<string, unknown>;
+  let bound: bigint | null = null;
+  if (item?.type === "num" && typeof item.value === "string" &&
+      (/^(0|[1-9][0-9]*)$/.test(item.value) || /^0x[0-9a-fA-F]+$/.test(item.value))) {
+    bound = BigInt(item.value);
+  } else if (item?.type !== "null") {
+    throw new Error("Unsupported asset listing result");
+  }
+  return {
+    nftItemAddress: Address.parse(nftItemAddress).toRawString(),
+    productId: productId.toString(),
+    bindingMatches: bound === productId,
     observedAt: result.observed_at,
     purchaseAuthorized: false,
   };
