@@ -108,6 +108,7 @@ Deno.serve(async (req: Request) => {
     let cursorHash = "";
     let scanReachedOrderStart = false;
     let scanIntegrityValid = true;
+    const seenTransactionIds = new Set<string>();
 
     for (let page = 0; page < 5; page += 1) {
       const params = new URLSearchParams({ address: order.payment_address, limit: "100" });
@@ -134,6 +135,19 @@ Deno.serve(async (req: Request) => {
           break;
         }
         previousUtime = utime;
+        const transactionId = tx.transaction_id as Record<string, unknown> | null;
+        const lt = String(transactionId?.lt ?? "");
+        const hash = hashHex(transactionId?.hash);
+        if (!/^\\d+$/.test(lt) || !hash) {
+          scanIntegrityValid = false;
+          break;
+        }
+        const uniqueId = lt + ":" + hash;
+        if (seenTransactionIds.has(uniqueId)) {
+          scanIntegrityValid = false;
+          break;
+        }
+        seenTransactionIds.add(uniqueId);
       }
       if (!scanIntegrityValid) break;
       transactions.push(...rows);
