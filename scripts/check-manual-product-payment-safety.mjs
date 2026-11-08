@@ -13,6 +13,8 @@ assert.match(verifier, /PAYMENT_STATE_CONFLICT/);
 assert.match(verifier, /confirmationError\?\.code === "23505"/);
 assert.match(verifier, /PAYMENT_ALREADY_CLAIMED/);
 assert.match(verifier, /PAYMENT_EVIDENCE_MISSING/);
+assert.match(verifier, /INVALID_PAYMENT_WINDOW/);
+assert.match(verifier, /expiresAt <= createdAt/);
 assert.match(verifier, /confirm_manual_product_payment_verified/);
 assert.doesNotMatch(verifier, /\.update\(\{\s*status:\s*["']cancelled["']/);
 assert.doesNotMatch(creator, /admin\.rpc\(["']expire_unpaid_manual_product_orders["']/);
