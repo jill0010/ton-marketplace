@@ -22,6 +22,7 @@ const WITH_PRODUCT_ID = new Set([
   "orderIdForProductV2",
 ]);
 const MAX_UINT64 = 0xffff_ffff_ffff_ffffn;
+const MAX_BODY_BYTES = 512;
 
 function headers(origin: string): HeadersInit {
   return {
@@ -55,13 +56,30 @@ Deno.serve(async (req: Request) => {
     }
     const marketplace = Address.parse(configured);
     if (marketplace.workChain !== 0) throw new Error("Invalid configured Testnet contract");
-    const body: unknown = await req.json();
+    const lengthHeader = req.headers.get("content-length");
+    if (lengthHeader && (!/^[0-9]+$/.test(lengthHeader) ||
+        Number(lengthHeader) > MAX_BODY_BYTES)) {
+      return reply(origin, 413, { success: false, error: "Request body too large" });
+    }
+    const bodyText = await req.text();
+    if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
+      return reply(origin, 413, { success: false, error: "Request body too large" });
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      return reply(origin, 400, { success: false, error: "Invalid JSON body" });
+    }
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return reply(origin, 400, { success: false, error: "Invalid JSON body" });
     }
     const input = body as Record<string, unknown>;
     if (typeof input.method !== "string" || !GETTERS.has(input.method)) {
       return reply(origin, 400, { success: false, error: "Unsupported read-only getter" });
+    }
+    if (Object.keys(input).some((key) => key !== "method" && key !== "product_id")) {
+      return reply(origin, 400, { success: false, error: "Unexpected request fields" });
     }
     const needsId = WITH_PRODUCT_ID.has(input.method);
     if (needsId !== Object.hasOwn(input, "product_id")) {
