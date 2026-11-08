@@ -11,12 +11,10 @@ on:
       product_id:
         description: "Existing on-chain product ID"
         required: true
-        default: "1"
         type: string
       nft_item_address:
         description: "NFT Item address bound to this product"
         required: true
-        default: "kQAcb1ncpbbm60x5-SgPZmTXInVQKlxis5soblmYSsfXcYHm"
         type: string
 
 permissions:
