@@ -15,7 +15,6 @@ export type MarketplaceV3ChainSnapshot = Readonly<{
   productId: bigint;
   nftItemAddress: string;
   escrowAddress: string;
-  ownerAddress: string;
   sellerAddress: string;
   buyerAddress: string;
   priceNano: bigint;
@@ -25,6 +24,7 @@ export type MarketplaceV3ChainSnapshot = Readonly<{
   treasuryConfigured: boolean;
   escrowConfigured: boolean;
   nftOwnerAddress: string;
+  escrowId: bigint;
   fetchedAtSeconds: number;
 }>;
 
@@ -80,7 +80,7 @@ export function preflightMarketplaceV3TestnetPurchase(
   if (!s.coordinatorConfigured || !s.treasuryConfigured || !s.escrowConfigured) {
     throw new Error("V3 escrow, coordinator or treasury is not configured.");
   }
-  if (!sameAddress(s.nftOwnerAddress, s.escrowAddress)) {
+  if (s.escrowId <= 0n || !sameAddress(s.nftOwnerAddress, s.escrowAddress)) {
     throw new Error("V3 NFT custody has not been verified at the escrow address.");
   }
   if (sameAddress(s.sellerAddress, s.buyerAddress) ||
