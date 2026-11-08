@@ -188,6 +188,9 @@ Deno.serve(async (req: Request) => {
       .eq("status", "awaiting_payment")
       .select("id, order_no, status")
       .maybeSingle();
+    if (updateError?.code === "23505") {
+      return reply({ success: false, code: "PAYMENT_ALREADY_CLAIMED", error: "This on-chain transaction has already been claimed by another order. Contact support with the order number." }, 409, origin);
+    }
     if (updateError) throw updateError;
     if (!updated) {
       const { data: current } = await admin.from("manual_product_orders").select("status, payment_tx_hash").eq("id", order.id).maybeSingle();
