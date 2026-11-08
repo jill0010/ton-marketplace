@@ -1,0 +1,37 @@
+name: Manual Product Payment Safety
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/create-manual-product-order/**"
+      - "supabase/functions/verify-manual-product-payment/**"
+      - "supabase/migrations/20261109010000_expire_unpaid_manual_product_orders.sql"
+      - "scripts/check-manual-product-payment-safety.mjs"
+      - ".github/workflows/manual-product-payment-safety.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/create-manual-product-order/**"
+      - "supabase/functions/verify-manual-product-payment/**"
+      - "supabase/migrations/20261109010000_expire_unpaid_manual_product_orders.sql"
+      - "scripts/check-manual-product-payment-safety.mjs"
+      - ".github/workflows/manual-product-payment-safety.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  safety-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check manual payment functions
+        run: |
+          deno check supabase/functions/create-manual-product-order/index.ts
+          deno check supabase/functions/verify-manual-product-payment/index.ts
+      - name: Assert fail-closed payment safety
+        run: node scripts/check-manual-product-payment-safety.mjs
