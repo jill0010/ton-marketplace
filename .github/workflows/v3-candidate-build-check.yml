@@ -38,7 +38,7 @@ jobs:
           node --test contracts/marketplace/scripts/verify-v3-testnet.test.mjs contracts/marketplace/scripts/collect-v3-testnet-evidence.test.mjs contracts/marketplace/scripts/verify-v3-testnet-bindings.test.mjs contracts/marketplace/scripts/inspect-v3-testnet-order.test.mjs contracts/marketplace/scripts/prepare-refund-reconciliation.test.mjs contracts/marketplace/scripts/verify-v3-settlement-source.test.mjs contracts/marketplace/scripts/inspect-historical-testnet-payment.test.mjs contracts/marketplace/scripts/audit-historical-payment-followup.test.mjs
       - name: Test secret-free recipient credit finality checks
         working-directory: .
-        run: node --test contracts/marketplace/scripts/verify-v3-recipient-credit.test.mjs
+        run: node --test contracts/marketplace/scripts/verify-v3-recipient-credit.test.mjs contracts/marketplace/scripts/verify-v3-outbound-evidence.test.mjs contracts/marketplace/scripts/verify-v3-transfer-finality.test.mjs
       - name: Syntax-check the production Testnet settlement attestor before any workflow release
         working-directory: .
         run: node --check contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs
