@@ -7,6 +7,7 @@ export type V3TestnetDiagnostic = Readonly<{
   schemaVersion: bigint;
   nextOrderId: bigint;
   nextProductId: bigint;
+  nextQueryId: bigint;
   productQueryId: bigint | null;
   status: bigint | null;
   escrowId: bigint | null;
@@ -56,6 +57,7 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     "purchaseSchemaVersionV3",
     "nextOrderIdV3",
     "nextProductIdV2",
+    "nextQueryIdV2",
     "productStatusV2",
     "productEscrowIdV2",
     "productQueryIdV2",
@@ -86,12 +88,14 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   const schemaVersion = numberFor("purchaseSchemaVersionV3", false);
   const nextOrderId = numberFor("nextOrderIdV3", false);
   const nextProductId = numberFor("nextProductIdV2", false);
+  const nextQueryId = numberFor("nextQueryIdV2", false);
   const status = numberFor("productStatusV2", true);
   const escrowId = numberFor("productEscrowIdV2", true);
   const productQueryId = numberFor("productQueryIdV2", true);
   const existingOrderId = numberFor("orderIdForProductV2", true);
   if (nextOrderId === null || nextOrderId < 1n ||
-      nextProductId === null || nextProductId < 1n) {
+      nextProductId === null || nextProductId < 1n ||
+      nextQueryId === null || nextQueryId < 1n) {
     throw new Error("Invalid V3 allocation counters");
   }
   if (status !== null && productId >= nextProductId) {
@@ -99,6 +103,9 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
   }
   if (status !== null && (productQueryId === null || productQueryId === 0n)) {
     throw new Error("V3 product has no immutable query ID");
+  }
+  if (productQueryId !== null && productQueryId >= nextQueryId) {
+    throw new Error("V3 product query ID exceeds allocated query range");
   }
   if (status === null && productQueryId !== null) {
     throw new Error("Missing V3 product has an orphaned query ID");
@@ -141,6 +148,7 @@ export async function inspectMarketplaceV3TestnetProduct(productId: bigint): Pro
     schemaVersion,
     nextOrderId,
     nextProductId,
+    nextQueryId,
     productQueryId,
     status,
     escrowId,
