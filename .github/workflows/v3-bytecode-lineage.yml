@@ -1,0 +1,80 @@
+name: V3 Candidate Bytecode Lineage (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-code-hashes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository for pinned historical revisions
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup one Acton toolchain for both revisions
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Compile both revisions and capture production hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=223cebcd0977d90486c71417645a6fe2cbaa4953
+          CANDIDATE=4d97607a6bd22494e105852a3c375fc905a9d219
+          mkdir -p evidence
+          acton --version | tee evidence/acton-version.txt
+          for revision in "$BASE" "$CANDIDATE"; do
+            git worktree add --detach "$RUNNER_TEMP/v3-$revision" "$revision"
+            (
+              cd "$RUNNER_TEMP/v3-$revision/contracts/marketplace"
+              acton build
+              acton test --backtrace full 2>&1 | tee "$GITHUB_WORKSPACE/evidence/$revision.log"
+            )
+          done
+      - name: Fail closed on missing or differing production hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+          root = pathlib.Path("evidence")
+          revisions = ["223cebcd0977d90486c71417645a6fe2cbaa4953", "4d97607a6bd22494e105852a3c375fc905a9d219"]
+          labels = [
+            "V3 production trusted compiled marketplace code hash",
+            "V3 trusted compiled escrow code hash",
+            "V3 production trusted compiled coordinator code hash",
+            "V3 production trusted compiled reserve vault code hash",
+            "V3 production trusted compiled settlement verifier code hash",
+          ]
+          found = []
+          for revision in revisions:
+            data = (root / (revision + ".log")).read_text()
+            values = {}
+            for label in labels:
+              matches = re.findall(re.escape(label) + r":\\s*([^\\r\\n]+)", data)
+              if len(matches) != 1 or not matches[0].strip():
+                sys.exit(f"Missing or ambiguous compiled hash for {revision}: {label}")
+              values[label] = matches[0].strip()
+            found.append(values)
+          lines = ["# V3 independently compiled code hash comparison", "", f"Baseline: {revisions[0]}", f"Candidate: {revisions[1]}", "", "| Contract | Baseline | Candidate | Result |", "|---|---|---|---|"]
+          for label in labels:
+            left, right = found[0][label], found[1][label]
+            lines.append(f"| {label} | \`{left}\` | \`{right}\` | {'MATCH' if left == right else 'MISMATCH'} |")
+          report = "\\n".join(lines) + "\\n"
+          (root / "comparison.md").write_text(report)
+          with open(__import__('os').environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+            summary.write(report)
+          if found[0] != found[1]:
+            sys.exit("Production bytecode hashes differ: candidate needs fresh review and Testnet validation.")
+          PY
+      - name: Preserve full build and comparison evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v3-code-hash-lineage-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 90
