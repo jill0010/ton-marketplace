@@ -41,4 +41,13 @@ assert.ok(atomic.includes("INSERT INTO public.manual_product_order_logs"), "atom
 assert.match(atomic, /GRANT EXECUTE ON FUNCTION[\s\S]*TO service_role/);
 assert.match(atomic, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated/);
 assert.match(atomic, /FOR UPDATE/);
+// The unique index is the final cross-order concurrency guard; a preflight
+// check is also required before running the staging-only concurrency protocol.
+const concurrencyPlan = readFileSync("docs/operations/S06-P002-06-CONCURRENCY-TEST-PLAN.md", "utf8");
+assert.match(concurrencyPlan, /disposable Supabase staging project/);
+assert.match(concurrencyPlan, /UNIQUE constraint\/index/);
+assert.match(concurrencyPlan, /23505/);
+assert.match(concurrencyPlan, /ALREADY_CONFIRMED/);
+assert.match(concurrencyPlan, /audit insert failure/);
+
 console.log("Manual payment fail-closed and atomic audit source invariants passed.");
