@@ -173,41 +173,28 @@ Deno.serve(async (req: Request) => {
       return reply({ success: false, code: "PAYMENT_NOT_FOUND", error: "No confirmed TON Mainnet transfer matching this wallet, exact amount and unique order memo was found yet. Wait for confirmation and retry." }, 409, origin);
     }
 
-    const { data: duplicate, error: duplicateError } = await admin.from("manual_product_orders")
-      .select("id")
-      .eq("payment_tx_hash", match.hash)
-      .maybeSingle();
-    if (duplicateError) throw duplicateError;
-    if (duplicate && duplicate.id !== order.id) return reply({ success: false, error: "This transaction has already been used for another order." }, 409, origin);
-
     const paidAt = new Date(match.timestamp).toISOString();
-    const { data: updated, error: updateError } = await admin.from("manual_product_orders")
-      .update({ status: "payment_confirmed", payment_tx_hash: match.hash, paid_at: paidAt, updated_at: new Date().toISOString() })
-      .eq("id", order.id)
-      .eq("buyer_user_id", wallet.userId)
-      .eq("status", "awaiting_payment")
-      .select("id, order_no, status")
-      .maybeSingle();
-    if (updateError?.code === "23505") {
+    const { data: confirmation, error: confirmationError } = await admin.rpc(
+      "confirm_manual_product_payment_verified",
+      {
+        p_order_id: order.id,
+        p_buyer_user_id: wallet.userId,
+        p_transaction_hash: match.hash,
+        p_paid_at: paidAt,
+      },
+    );
+    if (confirmationError?.code === "23505") {
       return reply({ success: false, code: "PAYMENT_ALREADY_CLAIMED", error: "This on-chain transaction has already been claimed by another order. Contact support with the order number." }, 409, origin);
     }
-    if (updateError) throw updateError;
-    if (!updated) {
-      const { data: current } = await admin.from("manual_product_orders").select("status, payment_tx_hash").eq("id", order.id).maybeSingle();
-      if (!current || !["payment_confirmed", "delivery_pending", "delivered"].includes(current.status) || current.payment_tx_hash !== match.hash) {
-        return reply({ success: false, code: "PAYMENT_STATE_CONFLICT", error: "Payment was found but the order changed concurrently. Contact support with the order number." }, 409, origin);
-      }
-    } else {
-      const { error: logError } = await admin.from("manual_product_order_logs").insert({
-        order_id: order.id,
-        actor_id: wallet.userId,
-        action: "payment_verified",
-        old_status: "awaiting_payment",
-        new_status: "payment_confirmed",
-        note: "TON Mainnet payment automatically verified.",
-        metadata: { transaction_hash: match.hash, chain_timestamp: paidAt },
-      });
-      if (logError) console.error("Manual product payment audit insert failed", logError.message);
+    if (confirmationError) throw confirmationError;
+    if (confirmation === "PAYMENT_ALREADY_CLAIMED" || confirmation === "PAYMENT_STATE_CONFLICT" || confirmation === "ORDER_NOT_FOUND") {
+      return reply({ success: false, code: confirmation, error: "Payment verification requires manual review due to an order state conflict." }, 409, origin);
+    }
+    if (confirmation !== "CONFIRMED" && confirmation !== "ALREADY_CONFIRMED") {
+      throw new Error("Unexpected atomic payment confirmation result");
+    }
+    if (confirmation === "ALREADY_CONFIRMED") {
+      return reply({ success: true, paymentVerified: true, orderNo: order.order_no, txHash: match.hash, alreadyVerified: true }, 200, origin);
     }
 
     const { data: productInfo } = await admin.from("products").select("name").eq("id", order.product_id).maybeSingle();
