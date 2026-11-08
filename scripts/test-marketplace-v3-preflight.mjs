@@ -110,6 +110,12 @@ rejected("reject seller as escrow", (v) => { v.snapshot.sellerAddress = address(
 rejected("reject buyer as escrow", (v) => { v.snapshot.escrowAddress = address(6); v.snapshot.nftOwnerAddress = address(6); });
 rejected("reject marketplace as escrow", (v) => { v.snapshot.escrowAddress = address(1); v.snapshot.nftOwnerAddress = address(1); });
 rejected("reject NFT item as escrow", (v) => { v.snapshot.escrowAddress = address(3); v.snapshot.nftOwnerAddress = address(3); });
+rejected("reject marketplace as NFT item", (v) => { v.snapshot.nftItemAddress = address(1); v.expectedNftItemAddress = address(1); });
+rejected("reject marketplace as seller", (v) => { v.snapshot.sellerAddress = address(1); });
+rejected("reject marketplace as buyer", (v) => { v.snapshot.buyerAddress = address(1); v.connectedBuyerAddress = address(1); });
+rejected("reject NFT item as seller", (v) => { v.snapshot.sellerAddress = address(3); });
+rejected("reject NFT item as buyer", (v) => { v.snapshot.buyerAddress = address(3); v.connectedBuyerAddress = address(3); });
+rejected("reject escrow ID above uint64", (v) => { v.snapshot.escrowId = 1n << 64n; });
 rejected("reject zero price", (v) => { v.snapshot.priceNano = 0n; v.expectedPriceNano = 0n; });
 
 rejected("reject zero payment query ID", (v) => { v.queryId = 0n; });
