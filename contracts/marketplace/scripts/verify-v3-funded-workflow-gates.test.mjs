@@ -93,3 +93,39 @@ test("final settlement audit compiles with network and IO imports and never send
  assert.match(audit,/acton script scripts\/verify-v3-production-testnet-settlement\.tolk --net testnet/);
  assert.doesNotMatch(audit,/--net mainnet|attest-v3-testnet-reserve-refund|buy-v3-production-testnet-fixture|sendTransaction/);
 });
+
+test("production V3 contract source preserves custody, owner, and reserve authorization gates",()=>{
+ const root=new URL("../contracts/",import.meta.url);
+ const market=readFileSync(new URL("MarketplaceReserveV3.tolk",root),"utf8");
+ const coordinator=readFileSync(new URL("ReserveCoordinatorV3.tolk",root),"utf8");
+ const vault=readFileSync(new URL("ReserveVaultV3.tolk",root),"utf8");
+ for(const snippet of [
+  "in.senderAddress == storage.owner",
+  "!purchase.coordinatorConfigured && purchase.nextOrderId == 1",
+  "!storage.escrowConfigured",
+  "!purchase.treasuryConfigured",
+  "purchase.nextOrderId == 1",
+  "purchase.schemaVersion == 3",
+  "in.valueCoins == product.price + grams(\"0.2\")",
+  "!orderStorage.productToOrder.get(msg.productId).isFound",
+  "!orderStorage.paymentQueryToOrder.get(msg.queryId).isFound",
+ ]) assert.ok(market.includes(snippet),"Marketplace missing security gate: "+snippet);
+ for(const snippet of [
+  "in.senderAddress == storage.marketplace",
+  "!storage.bindings.get(msg.orderId).isFound",
+  "in.valueCoins == grams(\"0.28\")",
+  "in.senderAddress == binding.vault",
+  "in.senderAddress == storage.owner",
+ ]) assert.ok(coordinator.includes(snippet),"Coordinator missing security gate: "+snippet);
+ for(const snippet of [
+  "in.senderAddress == funding.fundingSource",
+  "in.senderAddress == funding.marketplace",
+  "in.senderAddress == funding.marketplace || in.senderAddress == storage.owner",
+  "in.senderAddress == parties.verifier",
+  "root.networkGlobalId == -3",
+  "!storage.consumedStatements.get(msg.statement.hash()).isFound",
+  "msg.statementHash == operation.activeStatementHash",
+  "msg.settledAmount == balances.inFlight",
+  "operation.retryCount == 0",
+ ]) assert.ok(vault.includes(snippet),"Vault missing security gate: "+snippet);
+});
