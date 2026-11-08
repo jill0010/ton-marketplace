@@ -115,3 +115,50 @@ export async function readMarketplaceV3TestnetGetter(
     verified_purchase_eligibility: false,
   };
 }
+
+/**
+ * Standard TEP-62 get_nft_data stack:
+ * [init?, index, collection_address, owner_address, individual_content].
+ * Only a fully initialized NFT with a decodable owner is accepted.
+ * This is a read-only ownership observation, not a purchase authorization.
+ */
+export async function readV3TestnetNftOwner(nftItemAddress: string): Promise<{
+  nftItemAddress: string;
+  ownerAddress: string;
+  observedAt: string;
+  purchaseAuthorized: false;
+}> {
+  const result = await readMarketplaceV3TestnetGetter(
+    "get_nft_data", undefined, undefined, nftItemAddress,
+  );
+  const stack = result.stack;
+  if (stack.length !== 5) throw new Error("Invalid Testnet NFT data stack");
+  const init = stack[0] as Record<string, unknown>;
+  if (init?.type !== "num" || !["-1", "-0x1"].includes(String(init.value))) {
+    throw new Error("Testnet NFT item is not initialized");
+  }
+  const owner = stack[3] as Record<string, unknown>;
+  if (!owner || owner.type !== "slice") {
+    throw new Error("Testnet NFT owner is not a slice");
+  }
+  // TON Center v3 represents TVM slices as a base64-encoded cell.
+  // Reject unknown representations instead of guessing an owner.
+  const encoded = typeof owner.cell === "string" ? owner.cell :
+    typeof owner.value === "string" ? owner.value : null;
+  if (!encoded || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded) || encoded.length > 4096) {
+    throw new Error("Unsupported Testnet NFT owner encoding");
+  }
+  const { Cell } = await import("@ton/core");
+  const cells = Cell.fromBase64(encoded);
+  const slice = cells.beginParse();
+  const address = slice.loadAddress();
+  if (slice.remainingBits !== 0 || slice.remainingRefs !== 0 || address.workChain !== 0) {
+    throw new Error("Invalid Testnet NFT owner address");
+  }
+  return {
+    nftItemAddress: Address.parse(nftItemAddress).toRawString(),
+    ownerAddress: address.toRawString(),
+    observedAt: result.observed_at,
+    purchaseAuthorized: false,
+  };
+}
