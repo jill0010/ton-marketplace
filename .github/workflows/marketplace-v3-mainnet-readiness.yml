@@ -86,9 +86,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Two deployable V3 contracts in the pinned source are not yet
-          # formatter-clean. The formatting gate must remain fail-closed:
-          # do not report a production release as approved while this persists.
+          # Keep this formatter check fail-closed on the pinned candidate.
+          # A successful formatting check is not bytecode lineage verification,
+          # an independent security audit, or Mainnet deployment approval.
           if acton fmt --check > v3-formatting-audit.log 2>&1; then
             echo "Formatting gate: PASS" >> "$GITHUB_STEP_SUMMARY"
           else
