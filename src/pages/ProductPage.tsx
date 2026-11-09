@@ -495,7 +495,7 @@ export function ProductPage() {
           quote.totalNano <= quote.priceNano + quote.reserveNano) {
         throw new Error("V3 交易报价与链上验证结果不一致，禁止付款。")
       }
-      setV3PreflightMessage(`V3 测试网购买参数校验通过：商品 #${quote.productId.toString()}，售价 ${product.priceTon} TON，预留金 0.2 TON，报价总发送金额 ${(Number(quote.totalNano) / 1e9).toFixed(4)} TON（含交易执行费用）。当前仅模拟预检，不签名、不发送；RPC 读取非原子快照，不能据此付款。`)
+      setV3PreflightMessage(`V3 测试网购买参数校验通过：商品 #${quote.productId.toString()}，售价 ${product.priceTon} TON，预留金 0.2 TON，报价总发送金额 ${(quote.totalNano / 1_000_000_000n).toString()}.${(quote.totalNano % 1_000_000_000n).toString().padStart(9, "0").replace(/0+$/, "") || "0"} TON（含交易执行费用）。当前仅模拟预检，不签名、不发送；RPC 读取非原子快照，不能据此付款。`)
     } catch (cause) {
       setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
     } finally {
