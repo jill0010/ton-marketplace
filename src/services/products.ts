@@ -29,7 +29,7 @@ function toProduct(item: DatabaseProduct): Product | null {
   if (item.delivery_mode !== "manual" && item.delivery_mode !== "escrow") return null
 
   const priceTonExact = String(item.price)
-  if (!/^(0|[1-9][0-9]*)(\\.[0-9]{1,9})?$/.test(priceTonExact)) return null
+  if (!/^(0|[1-9][0-9]*)(\.[0-9]{1,9})?$/.test(priceTonExact)) return null
   const priceTon = Number(priceTonExact)
   if (!Number.isFinite(priceTon) || priceTon < 0) return null
 
