@@ -1,0 +1,41 @@
+name: S04-P001 First Refund Testnet
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s04-p001-first-refund
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    if: ${{ inputs.confirm && github.ref == 'refs/heads/feature/reserve-refund-v3-audit' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      S04_P001_DISPATCH_APPROVED: "true"
+      S04_P001_OWNER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      S04_P001_VAULT_ADDRESS: "kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u"
+      S04_P001_RECIPIENT_ADDRESS: "kQDCFOYiVkLV4H-UqNxPO2XEnm5lJpEEnYnU7fjH1iXqKXvy"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: First refund
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          umask 077
+          printf '[wallets.deployer]\nkind = "v5r1"\nworkchain = 0\nkeys = { mnemonic-env = "DEPLOYER_MNEMONIC" }\n' > wallets.toml
+          trap 'rm -f wallets.toml' EXIT
+          acton script scripts/dispatch-s04-p001-first-refund.tolk --net testnet
