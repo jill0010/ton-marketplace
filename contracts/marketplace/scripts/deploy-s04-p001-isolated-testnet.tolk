@@ -19,6 +19,10 @@ fun main() {
     assert (verifier != null && expectedOwner != null) throw 853;
     val owner = scripts.wallet("deployer").address;
     assert (owner == expectedOwner!! && verifier!! != owner) throw 854;
+    // The settlement verifier enforces a fixed marketplace identity. This
+    // isolated Vault uses the owner as its authorized marketplace sender.
+    assert (net.runGetMethod<address>(verifier!!, "verifierMarketplace") == owner) throw 861;
+    assert (net.runGetMethod<int32>(verifier!!, "verifierNetwork") == -3) throw 862;
 
     // Fresh recipient is independent of Vault address; owner binds Vault once
     // after both contracts have been deployed.
