@@ -10,7 +10,7 @@ The stages below and their numeric IDs are permanent. Never remove, reorder or r
 | S01 | Repository and contract architecture reconciliation | In progress |
 | S02 | Frontend catalog, localization, TON Connect and portfolio | Partial |
 | S03 | Supabase backend, NFT provenance, orders, access control | Partial |
-| S04 | Full V3 Testnet custody, purchase, delivery, settlement and reserve refund | In progress |
+| S04 | Full V3 Testnet custody, purchase, delivery, settlement and reserve refund | In progress (normal live Testnet transaction path: PASSED) |
 | S05 | Security and financial safety audit, fault injection | Blocked |
 | S06 | Customer wallet checkout, automatic lifecycle and observability | Blocked |
 | S07 | Deployment configuration, monitoring, secrets and runbooks | Pending |
@@ -42,3 +42,9 @@ No Mainnet contract deployment, signing of real-money purchases, transfers of re
 - `0e59b8f`: added ten negative V3 preflight regression cases; frontend build, V3 release safety and read-only mainnet readiness all passed for this commit.
 - Readiness Actions https://github.com/jill0010/ton-marketplace/actions/runs/42499582209: contract and frontend jobs both passed, including pinned candidate formatter; a stale comment about formatter debt was corrected in `72c8485` without changing contract bytecode.
 - S05-P002 remains open for independently verified code-hash lineage and external audit. Green CI is not Mainnet authorization.
+
+## S04 normal Testnet transaction path acceptance — 2026-11-09
+- **Status: PASSED** for the normal real-Testnet purchase → NFT delivery → seller/platform payout receipts → reserve refund → final settlement path. This is a sub-scope acceptance; overall S04 remains **In progress** pending failure-path and actual-cost deduction evidence under S04-P001.
+- Product 5 / Order 4, price 0.01 TON, reserve 0.2 TON. One-time funded purchase and read-only ownership/payout/reserve verification: https://github.com/jill0010/ton-marketplace/actions/runs/42581684675 (success; 16-transaction trace; Vault `kQDrxaB01_yBZoQK63K3yRxJpBmI92ylQn4qSy8bGCnlQFOU`).
+- Existing Order 4 final settlement attestation: https://github.com/jill0010/ton-marketplace/actions/runs/42585212607 (success; buyer/seller/platform transaction receipt checks; `vaultStatus=3`, `paidNano=200000000`).
+- **Never replay** Product 5 funded purchase or Order 4 settlement. The normal-path proof does not establish an actual-cost-deducted partial refund or all failure/recovery branches; preserve S04-P001 for those remaining checks. No Mainnet authorization implied.
