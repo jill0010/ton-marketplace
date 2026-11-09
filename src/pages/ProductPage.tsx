@@ -389,6 +389,22 @@ export function ProductPage() {
       const listedNft = nftSlice.loadAddress()
       if (nftSlice.remainingBits !== 0 || nftSlice.remainingRefs !== 0 ||
           !listedNft.equals(Address.parse(nft))) throw new Error("链上 NFT 与商品绑定不一致。")
+      // A seller address must come from the verified chain tuple, not
+      // the browser product row or a caller-provided field.
+      const sellerEntry = fields[1] as { type?: unknown; cell?: unknown; value?: unknown } | null
+      const sellerBoc = typeof sellerEntry?.cell === "string" ? sellerEntry.cell :
+        typeof sellerEntry?.value === "string" ? sellerEntry.value : null
+      if (sellerEntry?.type !== "slice" || !sellerBoc ||
+          !/^[A-Za-z0-9+/]+={0,2}$/.test(sellerBoc) || sellerBoc.length > 4096) {
+        throw new Error("链上卖家钱包地址编码不受支持。")
+      }
+      const sellerSlice = Cell.fromBase64(sellerBoc).beginParse()
+      const seller = sellerSlice.loadAddress()
+      if (sellerSlice.remainingBits !== 0 || sellerSlice.remainingRefs !== 0 ||
+          seller.workChain !== 0 || seller.equals(Address.parse(wallet.account.address)) ||
+          seller.equals(Address.parse(binding.escrowAddress))) {
+        throw new Error("链上卖家地址无效，或买家不能购买自己的商品。")
+      }
       const chainPrice = numberAt(3)
       if (numberAt(0) !== chainId || numberAt(4) !== listing.escrowId ||
           numberAt(5) !== listing.productQueryId || numberAt(7) !== listing.status ||
