@@ -10,7 +10,8 @@ struct S04P001RecipientStorage {
     acceptedCount: uint32
 }
 struct (0x50400101) S04P001EnableReceipt {}
-type S04P001RecipientMessage = S04P001EnableReceipt | ReserveRefundDispatchedV3
+struct (0x50400102) S04P001BindVault { vault: address }
+type S04P001RecipientMessage = S04P001EnableReceipt | S04P001BindVault | ReserveRefundDispatchedV3
 
 contract S04P001RejectOnceRecipient {
     author: "TON Market"
@@ -24,9 +25,17 @@ fun onInternalMessage(in: InMessage) {
     var storage = S04P001RecipientStorage.fromCell(contract.getData());
     val msg = lazy S04P001RecipientMessage.fromSlice(in.body);
     match (msg) {
+        S04P001BindVault => {
+            assert (in.senderAddress == storage.owner) throw 819;
+            assert (storage.vault == storage.owner) throw 820;
+            assert (msg.vault != storage.owner && msg.vault != contract.getAddress()) throw 821;
+            assert (!storage.enabled && storage.acceptedCount == 0) throw 822;
+            storage.vault = msg.vault;
+            contract.setData(storage.toCell());
+        }
         S04P001EnableReceipt => {
             assert (in.senderAddress == storage.owner) throw 811;
-            assert (!storage.enabled && storage.acceptedCount == 0) throw 812;
+            assert (!storage.enabled && storage.acceptedCount == 0 && storage.vault != storage.owner) throw 812;
             storage.enabled = true;
             contract.setData(storage.toCell());
         }
