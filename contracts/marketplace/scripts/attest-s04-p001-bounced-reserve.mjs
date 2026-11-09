@@ -68,22 +68,27 @@ async function main(){
     bounce.decodedBounce.format!=="rich"||bounce.decodedBounce.bodyHashHex!==body.bodyHashHex||
     BigInt(bounce.returnedNano)!==RETURNED||BigInt(dispatch.valueNano)!==PRINCIPAL||
     bounce.dispatchTransaction.hash!==dispatch.transaction.hash)throw Error("exact 0.2 TON bounce linkage mismatch");
-  const [status,inFlight,principal,paid,available,operation,query,retries,dispatchHash,accepted,enabled,recipientVault,epoch,network,threshold,verifierMarketplace]=await (async () => {
-    const results = [];
-    for (const task of [
-    getNumber(client,VAULT,"reserveVaultStatusV3"),getNumber(client,VAULT,"reserveVaultInFlightV3"),
-    getNumber(client,VAULT,"reserveVaultPrincipalV3"),getNumber(client,VAULT,"reserveVaultPaidV3"),
-    getNumber(client,VAULT,"reserveVaultAvailableV3"),getNumber(client,VAULT,"reserveVaultOperationV3"),
-    getNumber(client,VAULT,"reserveVaultQueryV3"),getNumber(client,VAULT,"reserveVaultRetryCountV3"),
-    getNumber(client,VAULT,"reserveVaultDispatchMessageHashV3"),
-    getNumber(client,RECIPIENT,"s04P001RecipientAcceptedCount"),getBoolean(client,RECIPIENT,"s04P001RecipientEnabled"),
-    getAddress(client,RECIPIENT,"s04P001RecipientVault"),
-    getNumber(client,VERIFIER,"verifierEpoch"),getNumber(client,VERIFIER,"verifierNetwork"),
-    getNumber(client,VERIFIER,"verifierThreshold"),
-    getAddress(client,VERIFIER,"verifierMarketplace"),
-    ]) { results.push(await task); await delay(350); }
-    return results;
-  })();
+  const getters=[
+    ["status",()=>getNumber(client,VAULT,"reserveVaultStatusV3")],
+    ["inFlight",()=>getNumber(client,VAULT,"reserveVaultInFlightV3")],
+    ["principal",()=>getNumber(client,VAULT,"reserveVaultPrincipalV3")],
+    ["paid",()=>getNumber(client,VAULT,"reserveVaultPaidV3")],
+    ["available",()=>getNumber(client,VAULT,"reserveVaultAvailableV3")],
+    ["operation",()=>getNumber(client,VAULT,"reserveVaultOperationV3")],
+    ["query",()=>getNumber(client,VAULT,"reserveVaultQueryV3")],
+    ["retries",()=>getNumber(client,VAULT,"reserveVaultRetryCountV3")],
+    ["dispatchHash",()=>getNumber(client,VAULT,"reserveVaultDispatchMessageHashV3")],
+    ["accepted",()=>getNumber(client,RECIPIENT,"s04P001RecipientAcceptedCount")],
+    ["enabled",()=>getBoolean(client,RECIPIENT,"s04P001RecipientEnabled")],
+    ["recipientVault",()=>getAddress(client,RECIPIENT,"s04P001RecipientVault")],
+    ["epoch",()=>getNumber(client,VERIFIER,"verifierEpoch")],
+    ["network",()=>getNumber(client,VERIFIER,"verifierNetwork")],
+    ["threshold",()=>getNumber(client,VERIFIER,"verifierThreshold")],
+    ["verifierMarketplace",()=>getAddress(client,VERIFIER,"verifierMarketplace")],
+  ];
+  const values={};
+  for(const [key,read] of getters){ values[key]=await read(); await delay(350); }
+  const {status,inFlight,principal,paid,available,operation,query,retries,dispatchHash,accepted,enabled,recipientVault,epoch,network,threshold,verifierMarketplace}=values;
   if(status!==2n||inFlight!==PRINCIPAL||principal!==PRINCIPAL||paid!==0n||available!==0n||
     operation!==1n||query!==1n||retries!==0n||dispatchHash===0n||accepted!==0n||
     enabled!==false||!recipientVault.equals(VAULT)||epoch!==1n||network!==-3n||
