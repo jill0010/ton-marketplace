@@ -1,7 +1,7 @@
 // S04-P001 exact bounced-amount attestation; Testnet ONLY.
 // Re-check on-chain RichBounce linkage and Vault state before any signing or broadcast.
-import { createPrivateKey, createPublicKey, sign } from "node:crypto";
-import { Address, beginCell, Dictionary, Cell, toNano } from "@ton/core";
+import { sign } from "node:crypto";
+import { Address, beginCell, Dictionary, toNano } from "@ton/core";
 import { mnemonicToPrivateKey } from "@ton/crypto";
 import { TonClient, WalletContractV5R1, internal } from "@ton/ton";
 import { inspectFailedRefund } from "./collect-s04-p001-failed-refund-evidence.mjs";
@@ -27,7 +27,7 @@ async function rpc(method, params={}) {
     await delay(1000*(i+1));
   }
 }
-const uint256=(hash)=>{const s=String(hash||"");const b=/^[0-9a-f]{64}$/i.test(s)?Buffer.from(s,"hex"):Buffer.from(s,"base64");if(b.length!==32)throw Error("invalid 256-bit transaction hash");return BigInt("0x"+b.toString("hex"));};
+const uint256=(hash)=>{const s=String(hash||"");if(!/^[0-9a-f]{64}$/i.test(s)&&!/^[A-Za-z0-9+/]{43}=$/.test(s))throw Error("invalid 256-bit hash encoding");const b=/^[0-9a-f]{64}$/i.test(s)?Buffer.from(s,"hex"):Buffer.from(s,"base64");if(b.length!==32)throw Error("invalid 256-bit transaction hash");return BigInt("0x"+b.toString("hex"));};
 async function getNumber(client,address,name){return (await client.runMethod(address,name)).stack.readBigNumber();}
 async function main(){
   if(process.env.GITHUB_REF!=="refs/heads/feature/reserve-refund-v3-audit")throw Error("wrong branch");
