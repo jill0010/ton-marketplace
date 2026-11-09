@@ -26,6 +26,7 @@ fun main() {
         code: build("S04P001RejectOnceRecipient"),
         data: S04P001RecipientStorage {
             owner,
+            uniqueNonce: uniqueNonce as uint64,
             vault: owner,
             enabled: false,
             received: 0,
