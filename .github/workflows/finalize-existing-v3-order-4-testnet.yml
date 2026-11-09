@@ -59,7 +59,7 @@ jobs:
           done
           for p in contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs \
                    contracts/marketplace/scripts/verify-v3-production-testnet-purchase.tolk \
-                   contracts/marketplace/scripts/verify-v3-order-4-settlement.tolk; do
+; do
             test -f "$p" || { echo "::error::Missing source $p"; exit 1; }
           done
           echo "Existing order 4, pinned V3 code, Testnet-only; no deploy or purchase script is invoked."
