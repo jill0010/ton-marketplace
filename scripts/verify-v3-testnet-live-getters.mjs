@@ -84,7 +84,17 @@ assert.equal(number(productFields[0]), BigInt(productId), "Product ID mismatch")
 assert(address(productFields[2]).equals(nft), "Product NFT mismatch");
 const priceNano = number(productFields[3]);
 assert(priceNano > 0n, "Product has invalid price");
-assert.equal(number(productFields[7]), 2n, "Product is not listed");
+// Compare independently reported listing status with the struct field.
+const productStatus = number(productFields[7]);
+const getterStatus = number(status[0]);
+if (productStatus !== getterStatus) {
+  console.log("productV2 numeric field diagnostics:", JSON.stringify(productData.map((entry, index) => ({
+    index,
+    value: entry?.type === "num" ? String(entry.value) : null,
+  }))));
+}
+assert.equal(productStatus, getterStatus, "productV2 status differs from productStatusV2");
+assert.equal(productStatus, 2n, "Product is not listed");
 const escrowAddress = address(escrow[0]);
 const ownerAddress = address(nftData[3]);
 assert(ownerAddress.equals(escrowAddress), "NFT owner is not the Marketplace escrow");
