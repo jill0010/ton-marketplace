@@ -486,7 +486,16 @@ export function ProductPage() {
         expectedPriceNano: toNano(product.priceTon.toString()),
         nowSeconds,
       })
-      setV3PreflightMessage(`V3 测试网购买参数校验通过：商品 #${quote.productId.toString()}，售价 ${product.priceTon} TON，预留金 0.2 TON。当前为不签名、不发送的模拟预检；RPC 读取非原子快照，不能据此付款。`)
+      // The final quote must not be reused after a wallet or listing change.
+      // Do not persist the payload or offer a send button from this dry run.
+      if (quote.network !== "-3" || quote.productId !== chainId ||
+          quote.priceNano !== chainPrice || quote.reserveNano !== toNano("0.2") ||
+          !Address.parse(quote.address).equals(Address.parse(listing.marketplaceAddress)) ||
+          quote.deadline <= Math.floor(Date.now() / 1000) ||
+          quote.totalNano <= quote.priceNano + quote.reserveNano) {
+        throw new Error("V3 交易报价与链上验证结果不一致，禁止付款。")
+      }
+      setV3PreflightMessage(`V3 测试网购买参数校验通过：商品 #${quote.productId.toString()}，售价 ${product.priceTon} TON，预留金 0.2 TON，报价总发送金额 ${(Number(quote.totalNano) / 1e9).toFixed(4)} TON（含交易执行费用）。当前仅模拟预检，不签名、不发送；RPC 读取非原子快照，不能据此付款。`)
     } catch (cause) {
       setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
     } finally {
