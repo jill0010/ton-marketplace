@@ -1,0 +1,67 @@
+name: S04-P001 Fund Isolated Testnet Reserve
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_funding:
+        description: "Approve one-time Testnet funding of 0.2 TON principal plus 0.09 TON operational budget; no refund dispatch"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s04-p001-fund-666969981
+  cancel-in-progress: false
+
+jobs:
+  fund:
+    if: ${{ inputs.confirm_funding == true && github.run_attempt == 1 && github.ref == 'refs/heads/feature/reserve-refund-v3-audit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      S04_P001_FUND_APPROVED: "true"
+      S04_P001_ORDER_ID: "666969981"
+      S04_P001_PAYMENT_HASH_INT: "7912618532932533493439666336126466002494278495439477928199452097422210185916"
+      S04_P001_VAULT_ADDRESS: "kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u"
+      S04_P001_OWNER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+    steps:
+      - name: Checkout approved branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Configure temporary Testnet wallet
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+      - name: Fund reserve once and verify on-chain state
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f wallets.toml' EXIT
+          acton script scripts/fund-s04-p001-isolated-testnet.tolk --net testnet 2>&1 | tee s04-p001-funding.log
+          grep -Fq "S04-P001 TESTNET available principal: 0.2 TON" s04-p001-funding.log
+      - name: Preserve funding receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s04-p001-funding
+          path: contracts/marketplace/s04-p001-funding.log
+          if-no-files-found: ignore
+          retention-days: 30
