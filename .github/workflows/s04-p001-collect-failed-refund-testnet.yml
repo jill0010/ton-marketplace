@@ -1,0 +1,54 @@
+name: S04-P001 Collect Failed Refund Testnet Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_order_id:
+        description: "Fresh Testnet order ID; never reuse settled orders"
+        required: true
+        type: string
+      new_vault_raw:
+        description: "New Testnet vault raw address (0:64hex)"
+        required: true
+        type: string
+      buyer_raw:
+        description: "Buyer/rejector Testnet raw address (0:64hex)"
+        required: true
+        type: string
+      confirm_read_only:
+        description: "Collect read-only Testnet evidence only, no signing or transactions"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    if: ${{ inputs.confirm_read_only == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      S04_P001_READ_ONLY: "true"
+      S04_P001_NEW_ORDER_ID: ${{ inputs.new_order_id }}
+      S04_P001_NEW_VAULT_RAW: ${{ inputs.new_vault_raw }}
+      S04_P001_BUYER_RAW: ${{ inputs.buyer_raw }}
+      TONCENTER_TESTNET_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Collect read-only failed-refund candidates
+        run: node contracts/marketplace/scripts/collect-s04-p001-failed-refund-evidence.mjs
+      - name: Preserve evidence even if bounce not observed
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s04-p001-failed-refund-testnet-evidence
+          path: s04-p001-failed-refund-evidence.json
+          if-no-files-found: ignore
+          retention-days: 30
