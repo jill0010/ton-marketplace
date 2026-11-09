@@ -55,13 +55,48 @@ function rawBody(message) {
     return cells[0];
   } catch { return null; }
 }
+function parseRefundBody(cell) {
+  if (!cell) return null;
+  try {
+    const slice = cell.beginParse();
+    if (slice.remainingBits < 32 + 64 * 3) return null;
+    const opcode = slice.loadUint(32);
+    if (opcode !== 0x72730506) return null;
+    const orderId = slice.loadUintBig(64).toString();
+    const operationId = slice.loadUintBig(64).toString();
+    const queryId = slice.loadUintBig(64).toString();
+    const amount = slice.loadCoins().toString();
+    return { opcode, orderId, operationId, queryId, amount, bodyHashHex: cell.hash().toString("hex") };
+  } catch { return null; }
+}
 function bouncedBody(message) {
   const body = rawBody(message);
   if (!body) return null;
-  const slice = body.beginParse();
-  if (slice.remainingBits < 64) return null;
-  if (slice.loadUint(32) !== 0xffffffff) return null;
-  return { originalOpcode: slice.loadUint(32), hash: body.hash().toString("hex") };
+  try {
+    const slice = body.beginParse();
+    if (slice.remainingBits < 32) return null;
+    const marker = slice.loadUint(32);
+    if (marker === 0xfffffffe) {
+      if (slice.remainingRefs < 2 || slice.remainingBits < 8 + 32) return null;
+      const original = parseRefundBody(slice.loadRef());
+      slice.loadRef(); // RichBounce original_info (not used as proof of value).
+      const phase = slice.loadUint(8);
+      const exitCode = slice.loadInt(32);
+      if (!original) return null;
+      return { format: "rich", marker, ...original, phase, exitCode, bounceBodyHashHex: body.hash().toString("hex") };
+    }
+    if (marker === 0xffffffff) {
+      if (slice.remainingBits < 32 + 64 * 3) return null;
+      const opcode = slice.loadUint(32);
+      if (opcode !== 0x72730506) return null;
+      const orderId = slice.loadUintBig(64).toString();
+      const operationId = slice.loadUintBig(64).toString();
+      const queryId = slice.loadUintBig(64).toString();
+      const amount = slice.loadCoins().toString();
+      return { format: "legacy", marker, opcode, orderId, operationId, queryId, amount };
+    }
+  } catch { return null; }
+  return null;
 }
 function txStatus(tx) {
   const d = tx.description ?? {};
@@ -98,15 +133,26 @@ export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTran
       outbound.push({
         transaction: txId(tx), valueNano: String(msg.value ?? ""),
         messageHash: msg.hash ?? null, createdLt: String(msg.created_lt ?? ""),
+        body: parseRefundBody(rawBody(msg)),
       });
     }
     const msg = inbound(tx);
     const decodedBounce = bouncedBody(msg);
-    if (normalizeAddress(msg.source ?? msg.src) === buyer && decodedBounce?.originalOpcode === 0x72730506) {
+    const matchingDispatch = decodedBounce && outbound.find((item) =>
+      item.body?.bodyHashHex === decodedBounce.bodyHashHex &&
+      item.body?.orderId === expectedOrderId &&
+      item.body?.operationId === decodedBounce.operationId &&
+      item.body?.queryId === decodedBounce.queryId &&
+      item.body?.amount === decodedBounce.amount
+    );
+    if (normalizeAddress(msg.source ?? msg.src) === buyer && decodedBounce?.format === "rich" &&
+        decodedBounce.phase === 1 && decodedBounce.exitCode === 814 && matchingDispatch &&
+        String(msg.value) !== "" && BigInt(msg.value) > 0n && BigInt(msg.value) < BigInt(matchingDispatch.valueNano)) {
       failedReceipts.push({
         transaction: txId(tx), source: msg.source ?? msg.src ?? null,
         returnedNano: String(msg.value ?? ""), messageHash: msg.hash ?? null,
         bounced: msg.bounced ?? null, decodedBounce,
+        dispatchTransaction: matchingDispatch.transaction,
         matchingBuyerOutbound: buyerTransactions.some((buyerTx) =>
           messageArray(buyerTx.out_msgs).some((out) =>
             normalizeAddress(out.destination ?? out.dest) === vault &&
@@ -160,6 +206,10 @@ async function main() {
   }, null, 2) + "\n", { flag: "wx" });
   console.log("Read-only evidence written: " + output);
   console.log("Dispatches=" + evidence.outbound.length + " buyerInbound=" + evidence.buyerInbound.length + " bounceCandidates=" + evidence.failedReceipts.length);
+  for (const tx of evidence.vaultInbound) if (tx.source === buyer)
+    console.log("Vault return candidate " + tx.transaction.lt + " value=" + tx.valueNano);
+  for (const tx of evidence.failedReceipts)
+    console.log("Verified rich bounce " + tx.transaction.lt + " exit=" + tx.decodedBounce.exitCode + " returnedNano=" + tx.returnedNano + " linked=" + tx.matchingBuyerOutbound);
   for (const tx of evidence.buyerInbound) console.log("Buyer tx " + tx.transaction.lt + " failed=" + tx.failed + " aborted=" + tx.status.aborted + " computeExit=" + tx.status.computeExitCode + " outgoing=" + tx.status.outgoing.length);
   if (evidence.outbound.length !== 1 || evidence.failedReceipts.length !== 1 || !evidence.failedReceipts[0].matchingBuyerOutbound)
     throw new Error("Refund bounce message/body or exact outgoing->incoming link NOT verified; no top-up or retry authorized");
