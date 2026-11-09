@@ -1,0 +1,63 @@
+name: S04-P001 Failed Reserve Refund — Safe Testnet Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_read_only_preflight:
+        description: "Run S04-P001 read-only checks and local fault-injection tests only; NO Testnet transactions"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s04-p001-failed-refund-preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: ${{ inputs.confirm_read_only_preflight == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout fixed V3 implementation
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Assert production V3 vault and test fixture are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f contracts/ReserveVaultV3.tolk
+          test -f contracts/SettlementAttestationVerifierV3.tolk
+          test -f tests/test-reserve-vault.test.tolk
+          grep -Fq 'onBouncedMessage' contracts/ReserveVaultV3.tolk
+          grep -Fq 'RetryReserveRefundV3' contracts/ReserveVaultV3.tolk
+          echo 'Read-only preflight: no signer, wallet mnemonic, or Testnet transfer configured.'
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Compile production V3 and test-only refund fixtures
+        run: acton build
+      - name: Execute local fault-injection tests (NOT real Testnet proof)
+        run: |
+          set -euo pipefail
+          acton test --backtrace full 2>&1 | tee s04-p001-local-fault-injection.log
+      - name: Preserve evidence and explicitly report real-Testnet gap
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s04-p001-local-fault-injection-evidence
+          path: contracts/marketplace/s04-p001-local-fault-injection.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Report acceptance status
+        if: success()
+        run: |
+          echo '## S04-P001: local fault injection only' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This workflow executes no on-chain transactions. A fresh Testnet failure, verified bounce, exact return, top-up, retry, buyer receipt and independent on-chain proof remain required. DO NOT close S04.' >> "$GITHUB_STEP_SUMMARY"
