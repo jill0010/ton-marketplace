@@ -47,12 +47,13 @@ function address(entry) {
 }
 const idArg = [{ type: "num", value: productId }];
 const nftArg = [{ type: "slice", value: beginCell().storeAddress(nft).endCell().toBoc().toString("base64") }];
-const [status, bound, escrow, nftData, escrowConfigured] = await Promise.all([
+const [status, bound, escrow, nftData, escrowConfigured, productData] = await Promise.all([
   getter(marketplace, "productStatusV2", idArg),
   getter(marketplace, "assetProductIdV2", nftArg),
   getter(marketplace, "escrowV2"),
   getter(nft, "get_nft_data"),
   getter(marketplace, "escrowConfiguredV2"),
+  getter(marketplace, "productV2", idArg),
 ]);
 assert.equal(status.length, 1);
 assert.equal(bound.length, 1);
@@ -63,6 +64,16 @@ assert.equal(escrowConfigured.length, 1);
 assert.equal(number(escrowConfigured[0]), -1n, "Escrow is not configured");
 assert.equal(nftData.length, 5);
 assert.equal(number(nftData[0]), -1n, "NFT is not initialized");
+assert.equal(productData.length, 1, "Expected one productV2 result");
+const productTuple = productData[0];
+assert.equal(productTuple?.type, "tuple", "Unexpected productV2 result encoding");
+assert(Array.isArray(productTuple.items) && productTuple.items.length === 10,
+  "Unexpected productV2 tuple layout");
+assert.equal(number(productTuple.items[0]), BigInt(productId), "Product tuple ID mismatch");
+assert(address(productTuple.items[2]).equals(nft), "Product tuple NFT mismatch");
+const priceNano = number(productTuple.items[3]);
+assert(priceNano > 0n, "Product has invalid price");
+assert.equal(number(productTuple.items[7]), 2n, "Product tuple is not listed");
 const escrowAddress = address(escrow[0]);
 const ownerAddress = address(nftData[3]);
 assert(ownerAddress.equals(escrowAddress), "NFT owner is not the Marketplace escrow");
@@ -74,6 +85,7 @@ const summary = [
   `Marketplace: ${marketplace.toRawString()}`,
   `Product ID: ${productId}`,
   `NFT Item: ${nft.toRawString()}`,
+  `On-chain price: ${priceNano.toString()} nanotons`,
   `Escrow and NFT owner: ${escrowAddress.toRawString()}`,
   "Result: NFT custody and listing binding verified by live Testnet RPC.",
   "Read-only evidence only; no purchase authorization, signature or transfer.",
