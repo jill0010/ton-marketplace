@@ -359,7 +359,44 @@ export function ProductPage() {
           !listing.escrowConfigured || !listing.treasuryConfigured || !listing.coordinatorConfigured) {
         throw new Error("NFT 托管、链上绑定或商品可售状态不符合购买条件。")
       }
-      const observations = [binding.observedAt, custody.observedAt, asset.observedAt, listing.observedAt]
+      // The displayed Supabase price is not payment authority. Require a
+      // fresh on-chain product tuple and an exact NFT/price match before
+      // even reporting that purchase prerequisites are satisfied.
+      const productGetter = await readMarketplaceV3TestnetGetter("productV2", chainId)
+      if (!Address.parse(productGetter.contract_address).equals(Address.parse(listing.marketplaceAddress))) {
+        throw new Error("链上商品详情来自不同的 Marketplace 合约。")
+      }
+      const stack = productGetter.stack
+      const nested = stack.length === 1 ? stack[0] as { type?: unknown; items?: unknown } : null
+      const fields = stack.length === 11 && (stack[10] as { type?: unknown } | undefined)?.type === "num" ? stack.slice(0, 10) :
+        stack.length === 10 ? stack :
+        nested?.type === "tuple" && Array.isArray(nested.items) ? nested.items : null
+      if (!fields || fields.length !== 10) throw new Error("链上商品详情结构无法可信解码。")
+      const numberAt = (index: number): bigint | null => {
+        const entry = fields[index] as { type?: unknown; value?: unknown } | null
+        if (entry?.type !== "num" || typeof entry.value !== "string" ||
+            !(/^(0|[1-9][0-9]*)$/.test(entry.value) || /^0x[0-9a-fA-F]+$/.test(entry.value))) return null
+        return BigInt(entry.value)
+      }
+      const nftEntry = fields[2] as { type?: unknown; cell?: unknown; value?: unknown } | null
+      const encoded = typeof nftEntry?.cell === "string" ? nftEntry.cell :
+        typeof nftEntry?.value === "string" ? nftEntry.value : null
+      if (nftEntry?.type !== "slice" || !encoded ||
+          !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded) || encoded.length > 4096) {
+        throw new Error("链上 NFT 地址编码不受支持。")
+      }
+      const nftSlice = Cell.fromBase64(encoded).beginParse()
+      const listedNft = nftSlice.loadAddress()
+      if (nftSlice.remainingBits !== 0 || nftSlice.remainingRefs !== 0 ||
+          !listedNft.equals(Address.parse(nft))) throw new Error("链上 NFT 与商品绑定不一致。")
+      const chainPrice = numberAt(3)
+      if (numberAt(0) !== chainId || numberAt(4) !== listing.escrowId ||
+          numberAt(5) !== listing.productQueryId || numberAt(7) !== listing.status ||
+          chainPrice === null || chainPrice <= 0n ||
+          chainPrice !== toNano(product.priceTon.toString())) {
+        throw new Error("链上商品编号、价格、Escrow 或上架状态与页面不一致。")
+      }
+      const observations = [binding.observedAt, custody.observedAt, asset.observedAt, listing.observedAt, productGetter.observed_at]
         .map((value) => Date.parse(value))
       const observedNow = Date.now()
       if (observations.some((value) => !Number.isFinite(value) ||
