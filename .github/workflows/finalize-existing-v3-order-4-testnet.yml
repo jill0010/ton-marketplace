@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   settle-existing-order-4:
-    if: ${{ inputs.confirm_existing_order_2_settlement_testnet_only == true }}
+    if: ${{ inputs.confirm_existing_order_4_settlement_testnet_only == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
