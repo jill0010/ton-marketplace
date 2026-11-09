@@ -1,0 +1,96 @@
+name: S04-P001 Deploy Isolated Testnet Vault and Recipient
+
+on:
+  workflow_dispatch:
+    inputs:
+      order_id:
+        description: "New S04-P001 order ID greater than 4, never reused"
+        required: true
+        type: string
+      payment_hash_int:
+        description: "Fresh positive decimal payment commitment (must be unique)"
+        required: true
+        type: string
+      unique_nonce:
+        description: "Fresh positive run-specific nonce, incorporated in payment commitment"
+        required: true
+        type: string
+      verifier_address:
+        description: "Existing TESTNET V3 verifier address; must be active and trusted"
+        required: true
+        type: string
+      confirm_testnet_deployment:
+        description: "Approve ONLY new S04-P001 Testnet contract deployment and one-time binding; no refund yet"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s04-p001-deploy-testnet
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_testnet_deployment == true && github.run_attempt == 1 && github.ref == 'refs/heads/feature/reserve-refund-v3-audit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      S04_P001_DEPLOY_APPROVED: "true"
+      S04_P001_ORDER_ID: ${{ inputs.order_id }}
+      S04_P001_PAYMENT_HASH_INT: ${{ inputs.payment_hash_int }}
+      S04_P001_UNIQUE_NONCE: ${{ inputs.unique_nonce }}
+      S04_P001_OWNER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      S04_P001_VERIFIER_ADDRESS: ${{ inputs.verifier_address }}
+    steps:
+      - name: Checkout approved branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Validate fresh Testnet parameters before wallet access
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$S04_P001_ORDER_ID" =~ ^[0-9]+$ ]] && [ "$S04_P001_ORDER_ID" -gt 4 ]
+          [[ "$S04_P001_PAYMENT_HASH_INT" =~ ^[0-9]+$ ]] && [ "$S04_P001_PAYMENT_HASH_INT" -gt 0 ]
+          [[ "$S04_P001_UNIQUE_NONCE" =~ ^[0-9]+$ ]] && [ "$S04_P001_UNIQUE_NONCE" -gt 0 ]
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$S04_P001_VERIFIER_ADDRESS"
+          test "$S04_P001_VERIFIER_ADDRESS" != "$S04_P001_OWNER_ADDRESS"
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Create ephemeral Testnet wallet profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+      - name: Compile S04-P001 contracts
+        run: acton build
+      - name: Deploy isolated Vault and recipient and bind once (Testnet only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f wallets.toml' EXIT
+          acton script scripts/deploy-s04-p001-isolated-testnet.tolk --net testnet 2>&1 | tee s04-p001-deploy-testnet.log
+          grep -Fq "S04-P001 isolated Vault:" s04-p001-deploy-testnet.log
+          grep -Fq "S04-P001 isolated recipient:" s04-p001-deploy-testnet.log
+      - name: Preserve deployment receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s04-p001-isolated-testnet-deployment
+          path: contracts/marketplace/s04-p001-deploy-testnet.log
+          if-no-files-found: ignore
+          retention-days: 30
