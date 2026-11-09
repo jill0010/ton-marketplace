@@ -1,7 +1,7 @@
 // S04-P001: read-only evidence collector for ONE fresh Testnet failed reserve refund.
 // No mnemonic, signatures, transaction submission, or reuse of settled orders.
 import { writeFile } from "node:fs/promises";
-import { Address } from "@ton/core";
+import { Address, Cell } from "@ton/core";
 
 const API = "https://testnet.toncenter.com/api/v2";
 const required = (key) => {
@@ -46,6 +46,23 @@ function txId(tx) {
 function inbound(tx) {
   return tx.in_msg ?? {};
 }
+function rawBody(message) {
+  const body = message?.msg_data?.body ?? message?.message_content?.body;
+  if (typeof body !== "string" || !body) return null;
+  try {
+    const cells = Cell.fromBoc(Buffer.from(body, "base64"));
+    if (cells.length !== 1) return null;
+    return cells[0];
+  } catch { return null; }
+}
+function bouncedBody(message) {
+  const body = rawBody(message);
+  if (!body) return null;
+  const slice = body.beginParse();
+  if (slice.remainingBits < 64) return null;
+  if (slice.loadUint(32) !== 0xffffffff) return null;
+  return { originalOpcode: slice.loadUint(32), hash: body.hash().toString("hex") };
+}
 function txStatus(tx) {
   const d = tx.description ?? {};
   const compute = d.compute_ph ?? tx.compute_ph ?? tx.compute_phase ?? {};
@@ -84,15 +101,30 @@ export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTran
       });
     }
     const msg = inbound(tx);
-    if (msg.bounced === true && normalizeAddress(msg.source ?? msg.src) === buyer) failedReceipts.push({
-      transaction: txId(tx), source: msg.source ?? msg.src ?? null,
-      returnedNano: String(msg.value ?? ""), messageHash: msg.hash ?? null,
-    });
+    const decodedBounce = bouncedBody(msg);
+    if (normalizeAddress(msg.source ?? msg.src) === buyer && decodedBounce?.originalOpcode === 0x72730506) {
+      failedReceipts.push({
+        transaction: txId(tx), source: msg.source ?? msg.src ?? null,
+        returnedNano: String(msg.value ?? ""), messageHash: msg.hash ?? null,
+        bounced: msg.bounced ?? null, decodedBounce,
+        matchingBuyerOutbound: buyerTransactions.some((buyerTx) =>
+          messageArray(buyerTx.out_msgs).some((out) =>
+            normalizeAddress(out.destination ?? out.dest) === vault &&
+            out.hash === msg.hash &&
+            String(out.value) === String(msg.value)
+          )
+        ),
+      });
+    }
   }
   const buyerInbound = buyerTransactions.filter((tx) =>
     normalizeAddress(inbound(tx).source ?? inbound(tx).src) === vault).map((tx) => ({
       transaction: txId(tx), valueNano: String(inbound(tx).value ?? ""),
       failed: txFailed(tx), bounced: inbound(tx).bounced === true,
+      returnedMessageCandidates: messageArray(tx.out_msgs).filter((out) => normalizeAddress(out.destination ?? out.dest) === vault).map((out) => ({
+        valueNano: String(out.value ?? ""), messageHash: out.hash ?? null,
+        bounced: out.bounced ?? null, decodedBounce: bouncedBody(out),
+      })),
       status: txStatus(tx),
     }));
   return {
@@ -129,8 +161,10 @@ async function main() {
   console.log("Read-only evidence written: " + output);
   console.log("Dispatches=" + evidence.outbound.length + " buyerInbound=" + evidence.buyerInbound.length + " bounceCandidates=" + evidence.failedReceipts.length);
   for (const tx of evidence.buyerInbound) console.log("Buyer tx " + tx.transaction.lt + " failed=" + tx.failed + " aborted=" + tx.status.aborted + " computeExit=" + tx.status.computeExitCode + " outgoing=" + tx.status.outgoing.length);
-  if (evidence.outbound.length === 0 || evidence.failedReceipts.length === 0)
-    throw new Error("No outbound and genuine bounce candidates found; on-chain failure NOT verified");
+  if (evidence.outbound.length !== 1 || evidence.failedReceipts.length !== 1 || !evidence.failedReceipts[0].matchingBuyerOutbound)
+    throw new Error("Refund bounce message/body or exact outgoing->incoming link NOT verified; no top-up or retry authorized");
+  console.log("S04-P001 decoded refund bounce verified; returnedNano=" + evidence.failedReceipts[0].returnedNano);
+  console.log("S04-P001 evidence remains read-only; 3/3 signatures and finality not yet complete");
   console.log("Candidates collected; S04-P001 remains OPEN pending exact decoded linkage and safe retry");
 }
 if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href)
