@@ -267,7 +267,24 @@ export function ProductPage() {
         setV3ReadMessage("链上售价与商城展示价格不一致，禁止付款。")
         return
       }
-      setV3ReadMessage("测试网 NFT 托管、商品绑定、上架、订单状态及售价检查通过。仍需同一区块一致性验证，当前不允许付款。")
+      // Re-read mutable state after the price observation. This detects
+      // intervening sales or cancellations, but is NOT an atomic snapshot.
+      const [statusAfter, orderAfter] = await Promise.all([
+        readMarketplaceV3TestnetGetter("productStatusV2", productId),
+        readMarketplaceV3TestnetGetter("orderIdForProductV2", productId),
+      ])
+      const isListed = statusAfter.stack.length === 1 &&
+        (statusAfter.stack[0] as { type?: unknown; value?: unknown })?.type === "num" &&
+        ["2", "0x2"].includes(String((statusAfter.stack[0] as { value?: unknown }).value))
+      const orderEntry = orderAfter.stack[0] as { type?: unknown } | undefined
+      const noOrder = orderAfter.stack.length === 1 && orderEntry?.type === "null"
+      if (!Address.parse(statusAfter.contract_address).equals(Address.parse(listing.marketplaceAddress)) ||
+          !Address.parse(orderAfter.contract_address).equals(Address.parse(listing.marketplaceAddress)) ||
+          !isListed || !noOrder) {
+        setV3ReadMessage("价格读取后商品状态或订单占用已发生变化，禁止付款。")
+        return
+      }
+      setV3ReadMessage("测试网托管、商品绑定、售价及二次订单状态检查通过。RPC 读取不是同一区块原子快照，仍禁止付款。")
     } catch (cause) {
       setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败，禁止付款。")
     } finally {
