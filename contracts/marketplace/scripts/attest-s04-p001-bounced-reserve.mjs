@@ -83,7 +83,7 @@ async function main(){
   const sigs=Dictionary.empty(Dictionary.Keys.Uint(8),Dictionary.Values.Cell());
   keys.forEach((k,i)=>sigs.set(i,beginCell().storeBuffer(sign(null,statement.hash(),k.privateKey)).endCell()));
   const sigBundle=beginCell().storeDict(sigs).endCell();
-  const words=required("DEPLOYER_MNEMONIC").split(/\\s+/);
+  const words=required("DEPLOYER_MNEMONIC").split(/\s+/);
   const pair=await mnemonicToPrivateKey(words);
   const wallet=WalletContractV5R1.create({workchain:0,publicKey:pair.publicKey,walletId:{networkGlobalId:-3}});
   if(!wallet.address.equals(OWNER))throw Error("deployer wallet mismatch");
