@@ -451,6 +451,13 @@ export function ProductPage() {
       // Prepare and validate the canonical V3 wire quote without signing or
       // submitting it. The RPC observations are not atomic; this is a
       // diagnostic dry run, never a payment authorization.
+      // The wallet can disconnect or switch networks while multiple RPC
+      // requests are in flight. Recheck it immediately before quoting.
+      const activeWallet = tonConnectUI.wallet
+      if (!activeWallet || activeWallet.account.chain !== "-3" ||
+          !Address.parse(activeWallet.account.address).equals(Address.parse(wallet.account.address))) {
+        throw new Error("钱包连接已改变，请重新执行购买预检。")
+      }
       const nowSeconds = Math.floor(Date.now() / 1000)
       const quote = preflightMarketplaceV3TestnetPurchase({
         snapshot: {
@@ -471,8 +478,8 @@ export function ProductPage() {
           escrowId: listing.escrowId,
           fetchedAtSeconds: Math.floor(Math.min(...observations, ...latestTimes) / 1000),
         },
-        connectedWalletChain: wallet.account.chain,
-        connectedBuyerAddress: wallet.account.address,
+        connectedWalletChain: activeWallet.account.chain,
+        connectedBuyerAddress: activeWallet.account.address,
         expectedMarketplaceAddress: listing.marketplaceAddress,
         expectedProductId: chainId,
         expectedNftItemAddress: nft,
