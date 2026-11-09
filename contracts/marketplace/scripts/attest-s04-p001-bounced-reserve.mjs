@@ -1,7 +1,7 @@
 // S04-P001 exact bounced-amount attestation; Testnet ONLY.
 // Re-check on-chain RichBounce linkage and Vault state before any signing or broadcast.
 import { sign } from "node:crypto";
-import { Address, beginCell, Dictionary, toNano } from "@ton/core";
+import { Address, beginCell, Dictionary, Cell, toNano } from "@ton/core";
 import { mnemonicToPrivateKey } from "@ton/crypto";
 import { TonClient, WalletContractV5R1, internal } from "@ton/ton";
 import { inspectFailedRefund } from "./collect-s04-p001-failed-refund-evidence.mjs";
@@ -28,7 +28,35 @@ async function rpc(method, params={}) {
   }
 }
 const uint256=(hash)=>{const s=String(hash||"");if(!/^[0-9a-f]{64}$/i.test(s)&&!/^[A-Za-z0-9+/]{43}=$/.test(s))throw Error("invalid 256-bit hash encoding");const b=/^[0-9a-f]{64}$/i.test(s)?Buffer.from(s,"hex"):Buffer.from(s,"base64");if(b.length!==32)throw Error("invalid 256-bit transaction hash");return BigInt("0x"+b.toString("hex"));};
-async function getNumber(client,address,name){return (await client.runMethod(address,name)).stack.readBigNumber();}
+async function readMethod(address,name,args=[]) {
+  // Use the same retried Testnet TON Center endpoint as the already proven
+  // RichBounce collector; do not issue parallel unbounded JSON-RPC bursts.
+  const p={address:address.toRawString(),method:name,stack:JSON.stringify(args)};
+  for(let attempt=0;attempt<6;attempt++){
+    try {
+      const result=await rpc("runGetMethod",p);
+      if(result?.exit_code!==0) throw Error("get-method "+name+" exit_code="+result?.exit_code);
+      return result;
+    }catch(error){
+      if(!/429|HTTP 5(?:00|02|03|04|42)/.test(String(error))||attempt===5)throw error;
+      await delay(1200*(attempt+1));
+    }
+  }
+}
+function readIntResult(result,name){
+  const first=result?.stack?.[0];
+  const value=first?.[1];
+  if(first?.[0]!=="num")throw Error("non-numeric stack for "+name);
+  return BigInt(value);
+}
+async function getNumber(_client,address,name,args=[]){return readIntResult(await readMethod(address,name,args),name);}
+async function getAddress(address,name){
+  const r=await readMethod(address,name);
+  const first=r?.stack?.[0];
+  if(first?.[0]!=="cell"||typeof first?.[1]?.bytes!=="string")throw Error("unsupported address stack for "+name);
+  const root=Cell.fromBoc(Buffer.from(first[1].bytes,"base64"))[0];
+  return root.beginParse().loadAddress();
+}
 async function main(){
   if(process.env.GITHUB_REF!=="refs/heads/feature/reserve-refund-v3-audit")throw Error("wrong branch");
   if(required("S04_P001_ATTEST_APPROVED")!=="true")throw Error("explicit testnet attestation not enabled");
@@ -52,15 +80,15 @@ async function main(){
     getNumber(client,VAULT,"reserveVaultAvailableV3"),getNumber(client,VAULT,"reserveVaultOperationV3"),
     getNumber(client,VAULT,"reserveVaultQueryV3"),getNumber(client,VAULT,"reserveVaultRetryCountV3"),
     getNumber(client,VAULT,"reserveVaultDispatchMessageHashV3"),
-    getNumber(client,RECIPIENT,"s04P001RecipientAcceptedCount"),(await client.runMethod(RECIPIENT,"s04P001RecipientEnabled")).stack.readBoolean(),
-    (await client.runMethod(RECIPIENT,"s04P001RecipientVault")).stack.readAddress(),
+    getNumber(client,RECIPIENT,"s04P001RecipientAcceptedCount"),getNumber(client,RECIPIENT,"s04P001RecipientEnabled"),
+    getAddress(RECIPIENT,"s04P001RecipientVault"),
     getNumber(client,VERIFIER,"verifierEpoch"),getNumber(client,VERIFIER,"verifierNetwork"),
     getNumber(client,VERIFIER,"verifierThreshold"),
-    (await client.runMethod(VERIFIER,"verifierMarketplace")).stack.readAddress(),
+    getAddress(VERIFIER,"verifierMarketplace"),
   ]);
   if(status!==2n||inFlight!==PRINCIPAL||principal!==PRINCIPAL||paid!==0n||available!==0n||
     operation!==1n||query!==1n||retries!==0n||dispatchHash===0n||accepted!==0n||
-    enabled!==false||!recipientVault.equals(VAULT)||epoch!==1n||network!==-3n||
+    enabled!==0n||!recipientVault.equals(VAULT)||epoch!==1n||network!==-3n||
     threshold!==3n||!verifierMarketplace.equals(OWNER))throw Error("on-chain Vault/recipient/verifier state changed; attestation blocked");
   // TON Center transaction hashes identify the actual dispatch and the inbound bounced transfer.
   const seq=BigInt(mc?.last?.seqno||0);
@@ -77,7 +105,7 @@ async function main(){
   const keys=[0,1,2].map(i=>deriveV3ValidatorKey(required("V3_VALIDATOR_"+i+"_SEED")));
   if(new Set(keys.map(k=>k.publicKeyDecimal)).size!==3)throw Error("not 3 independent validator keys");
   for(let i=0;i<3;i++){
-    const onchain=(await client.runMethod(VERIFIER,"verifierValidatorKey",[{type:"int",value:BigInt(i)}])).stack.readBigNumber();
+    const onchain=getNumber(client,VERIFIER,"verifierValidatorKey", [["num",String(i)]]);
     if(onchain!==BigInt(keys[i].publicKeyDecimal))throw Error("validator "+i+" public key mismatch");
   }
   const sigs=Dictionary.empty(Dictionary.Keys.Uint(8),Dictionary.Values.Cell());
