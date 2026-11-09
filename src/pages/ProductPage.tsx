@@ -419,7 +419,19 @@ export function ProductPage() {
           latestOrder?.type !== "null") {
         throw new Error("商品在检查期间发生出售、取消或订单占用，禁止付款。")
       }
-      setV3PreflightMessage("测试网钱包、NFT 托管、商品绑定、可售状态及二次订单检查通过。多次 RPC 读取仍非原子快照，不构成最终购买授权，当前不能付款。")
+      const latestTimes = [statusAfter.observed_at, orderAfter.observed_at].map((value) => Date.parse(value))
+      const finalNow = Date.now()
+      if (latestTimes.some((value) => !Number.isFinite(value) ||
+          value > finalNow + 5000 || finalNow - value > 15000) ||
+          Math.max(...observations, ...latestTimes) - Math.min(...observations, ...latestTimes) > 5000) {
+        throw new Error("订单二次检查与此前的 NFT / 价格读取时间不一致，禁止付款。")
+      }
+      if (tonConnectUI.wallet?.account.chain !== "-3" ||
+          !tonConnectUI.wallet.account.address ||
+          !Address.parse(tonConnectUI.wallet.account.address).equals(Address.parse(wallet.account.address))) {
+        throw new Error("检查期间连接的钱包已发生变化，请重新检查。")
+      }
+      setV3PreflightMessage("测试网钱包、NFT 托管、链上售价及二次订单检查通过。链上多次读取仍非原子快照，不构成付款授权。")
     } catch (cause) {
       setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
     } finally {
