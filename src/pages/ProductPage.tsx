@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react"
 import { beginCell } from "@ton/core"
 import { readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
+import { inspectMarketplaceV3TestnetProduct } from "../lib/marketplaceV3TestnetDiagnostics"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
@@ -203,9 +204,20 @@ export function ProductPage() {
         inspectV3TestnetNftCustody(nftAddress, binding.escrowAddress),
         inspectV3TestnetAssetProductBinding(nftAddress, productId),
       ])
-      setV3ReadMessage(custody.custodyMatches && asset.bindingMatches
-        ? "测试网 NFT 所有权及 Marketplace 商品绑定一致。仍需核验商品状态、价格和订单状态，暂不允许付款。"
-        : "测试网 NFT 托管或 Marketplace 商品绑定不匹配，禁止付款。")
+      if (!custody.custodyMatches || !asset.bindingMatches) {
+        setV3ReadMessage("测试网 NFT 托管或 Marketplace 商品绑定不匹配，禁止付款。")
+        return
+      }
+      const listing = await inspectMarketplaceV3TestnetProduct(productId)
+      if (listing.marketplaceAddress !== binding.marketplaceAddress ||
+          listing.status !== 2n || listing.existingOrderId !== null ||
+          listing.escrowId === null || listing.escrowId <= 0n ||
+          !listing.escrowConfigured || !listing.treasuryConfigured ||
+          !listing.coordinatorConfigured) {
+        setV3ReadMessage("测试网商品未处于可售状态，或合约绑定不完整，禁止付款。")
+        return
+      }
+      setV3ReadMessage("测试网 NFT 托管、商品绑定、上架状态和订单占用状态检查通过。仍需读取链上售价及同一区块一致性证明，当前不允许付款。")
     } catch (cause) {
       setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败，禁止付款。")
     } finally {
