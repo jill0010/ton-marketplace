@@ -193,6 +193,7 @@ The production V3 contracts use a separate opcode family from the experimental p
 | `0x72730505` | `ReserveFundedV3` | Vault → coordinator; authenticated funding ACK |
 | `0x72730506` | `ReserveRefundDispatchedV3` | Vault → buyer; reserve refund transfer with operation/query IDs |
 | `0x72730507` | `RetryReserveRefundV3` | Marketplace/owner → order vault; one bounded retry after verified return and exact top-up |
+| `0x50400101` | `S04P001EnableReceipt` | S04-P001 Testnet-only recipient owner → recipient; enable acceptance after first failed refund |
 | `0x72730601` | `AllocateReserveV3` | MarketplaceReserveV3 → coordinator; allocate immutable per-order vault |
 | `0x72730602` | `ReserveAllocationConfirmedV3` | Coordinator → marketplace; exact vault funding confirmation |
 | `0x72730603` | `ReserveAllocationFailedV3` | Coordinator → marketplace; failed funding compensation after original allocation bounce |
