@@ -16,6 +16,9 @@ export type Product = {
   deliveryMode: DeliveryMode
   imageUrl?: string | null
   productMetadata?: Record<string, unknown>
+  marketplaceContractAddress?: string | null
+  marketplaceProductId?: string | null
+  nftItemAddress?: string | null
   status: "listed"
   listingMode?: ListingMode
   auctionEndsAt?: string | null
