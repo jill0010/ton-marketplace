@@ -227,20 +227,21 @@ export function ProductPage() {
         return
       }
       const productGetter = await readMarketplaceV3TestnetGetter("productV2", productId)
-      if (!Address.parse(productGetter.contract_address).equals(Address.parse(listing.marketplaceAddress)) ||
-          productGetter.stack.length !== 1 ||
-          !productGetter.stack[0] ||
-          (productGetter.stack[0] as { type?: unknown }).type === "null") {
-        setV3ReadMessage("链上商品详情缺失或合约地址不一致，禁止付款。")
+      if (!Address.parse(productGetter.contract_address).equals(Address.parse(listing.marketplaceAddress))) {
+        setV3ReadMessage("链上商品详情合约地址不一致，禁止付款。")
         return
       }
-      // TON Center returns the product struct as a tuple. Do not guess its
-      // layout: reject any response that cannot be decoded unambiguously.
-      const entry = productGetter.stack[0] as { type?: unknown; items?: unknown }
-      if (entry.type !== "tuple" || !Array.isArray(entry.items) || entry.items.length !== 10) {
+      // TON Center may flatten a Tolk struct into ten TVM stack entries.
+      // Preserve the same field order for flattened and nested representations.
+      const productStack = productGetter.stack
+      const nested = productStack.length === 1 ? productStack[0] as { type?: unknown; items?: unknown } : null
+      const productFields = productStack.length === 10 ? productStack :
+        nested?.type === "tuple" && Array.isArray(nested.items) ? nested.items : null
+      if (!productFields || productFields.length !== 10) {
         setV3ReadMessage("链上商品结构尚不支持可信解码，禁止付款。")
         return
       }
+      const entry = { items: productFields }
       const nftEntry = entry.items[2] as { type?: unknown; cell?: unknown; value?: unknown } | null
       const nftBoc = typeof nftEntry?.cell === "string" ? nftEntry.cell :
         typeof nftEntry?.value === "string" ? nftEntry.value : null
