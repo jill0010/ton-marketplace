@@ -196,6 +196,10 @@ export function ProductPage() {
     setV3ReadMessage("正在读取 V3 测试网链上商品及 NFT 托管状态……")
     try {
       const binding = await readV3TestnetMarketplaceEscrow()
+      if (product.marketplaceContractAddress &&
+          !Address.parse(product.marketplaceContractAddress).equals(Address.parse(binding.marketplaceAddress))) {
+        throw new Error("数据库商品关联的合约与 V3 测试网合约不一致。")
+      }
       const metadata = product.productMetadata ?? {}
       const nftAddress = typeof metadata.nft_item_address === "string"
         ? metadata.nft_item_address : null
@@ -338,8 +342,8 @@ export function ProductPage() {
         throw new Error("请连接 TON 测试网钱包。主网钱包不能用于 V3 测试网购买。")
       }
       const metadata = product.productMetadata ?? {}
-      const rawId = metadata.v3_testnet_product_id
-      const nft = metadata.nft_item_address
+      const rawId = metadata.v3_testnet_product_id ?? product.marketplaceProductId
+      const nft = metadata.nft_item_address ?? product.nftItemAddress
       if ((typeof rawId !== "string" && typeof rawId !== "number") ||
           (typeof rawId === "number" && !Number.isSafeInteger(rawId)) ||
           !/^[1-9][0-9]*$/.test(String(rawId)) || typeof nft !== "string") {
@@ -508,7 +512,7 @@ export function ProductPage() {
     setV3OrderBusy(true)
     setV3OrderMessage("正在读取测试网链上订单状态……")
     try {
-      const rawId = product.productMetadata?.v3_testnet_product_id
+      const rawId = product.productMetadata?.v3_testnet_product_id ?? product.marketplaceProductId
       if ((typeof rawId !== "string" && typeof rawId !== "number") ||
           (typeof rawId === "number" && !Number.isSafeInteger(rawId)) ||
           !/^[1-9][0-9]*$/.test(String(rawId))) {
