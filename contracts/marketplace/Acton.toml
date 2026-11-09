@@ -117,3 +117,8 @@ display-name = "Production V3 reserve marketplace"
 src = "contracts/MarketplaceReserveV3.tolk"
 depends = ["ReserveCoordinatorV3", "NFTEscrowV2"]
 
+
+[contracts.S04P001RejectOnceRecipient]
+display-name = "S04-P001 Testnet-only reject-once refund recipient"
+src = "contracts/S04P001RejectOnceRecipient.tolk"
+depends = []
