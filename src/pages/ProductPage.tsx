@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react"
-import { Address, beginCell, toNano } from "@ton/core"
+import { Address, Cell, beginCell, toNano } from "@ton/core"
 import { readMarketplaceV3TestnetGetter, readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
 import { inspectMarketplaceV3TestnetProduct } from "../lib/marketplaceV3TestnetDiagnostics"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
@@ -239,6 +239,21 @@ export function ProductPage() {
       const entry = productGetter.stack[0] as { type?: unknown; items?: unknown }
       if (entry.type !== "tuple" || !Array.isArray(entry.items) || entry.items.length !== 10) {
         setV3ReadMessage("链上商品结构尚不支持可信解码，禁止付款。")
+        return
+      }
+      const nftEntry = entry.items[2] as { type?: unknown; cell?: unknown; value?: unknown } | null
+      const nftBoc = typeof nftEntry?.cell === "string" ? nftEntry.cell :
+        typeof nftEntry?.value === "string" ? nftEntry.value : null
+      if (nftEntry?.type !== "slice" || !nftBoc ||
+          !/^[A-Za-z0-9+/]+={0,2}$/.test(nftBoc) || nftBoc.length > 4096) {
+        setV3ReadMessage("链上商品 NFT 地址编码不受支持，禁止付款。")
+        return
+      }
+      const nftSlice = Cell.fromBase64(nftBoc).beginParse()
+      const listedNft = nftSlice.loadAddress()
+      if (nftSlice.remainingBits !== 0 || nftSlice.remainingRefs !== 0 ||
+          !listedNft.equals(Address.parse(nftAddress))) {
+        setV3ReadMessage("链上商品 NFT 地址与商城商品不一致，禁止付款。")
         return
       }
       const priceEntry = entry.items[3] as { type?: unknown; value?: unknown } | null
