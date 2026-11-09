@@ -1,0 +1,59 @@
+name: S04-P001 Fresh Testnet Execution Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      order_id:
+        description: "NEW isolated order ID > 4; never use an existing order"
+        required: true
+        type: string
+      payment_hash:
+        description: "Fresh unique 64-character hex payment commitment (nonzero)"
+        required: true
+        type: string
+      confirm_fresh_testnet_only:
+        description: "Confirm no historical order, no mainnet and no transfers during preflight"
+        required: true
+        type: boolean
+        default: false
+  push:
+    branches:
+      - feature/reserve-refund-v3-audit
+    paths:
+      - ".github/workflows/s04-p001-fresh-testnet-execution.yml"
+      - "contracts/marketplace/scripts/s04-p001-testnet-entry-guard.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s04-p001-fresh-testnet-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  execution-preflight:
+    name: Fresh Testnet execution preflight (no transfers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      S04_P001_NETWORK: testnet
+      S04_P001_MODE: preflight
+      S04_P001_ORDER_ID: ${{ inputs.order_id || '5' }}
+      S04_P001_PAYMENT_HASH: ${{ inputs.payment_hash || 'b73f13d173e729cbf0e3e497bd98e9a1db5ab1e9f8e032f0b421a0e1719cb66e' }}
+      S04_P001_CONFIRM: ${{ (github.event_name == 'push' || inputs.confirm_fresh_testnet_only) && 'S04-P001-FRESH-TESTNET-ONLY' || 'DENIED' }}
+    steps:
+      - name: Checkout same existing branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Reject non-Testnet and historical order reuse
+        run: node contracts/marketplace/scripts/s04-p001-testnet-entry-guard.mjs
+      - name: Setup Acton for isolated fixture compile
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
+      - name: Compile existing V3 vault and reject-once recipient
+        working-directory: contracts/marketplace
+        run: acton build
+      - name: Explicitly forbid broadcasting in this gate
+        run: |
+          echo "S04-P001 preflight complete. This workflow does not load wallet secrets, sign, deploy or broadcast."
+          echo "A separate audited Testnet-only transaction runner is required before the first failed-refund attempt."
