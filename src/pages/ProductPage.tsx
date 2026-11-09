@@ -235,7 +235,8 @@ export function ProductPage() {
       // Preserve the same field order for flattened and nested representations.
       const productStack = productGetter.stack
       const nested = productStack.length === 1 ? productStack[0] as { type?: unknown; items?: unknown } : null
-      const productFields = productStack.length === 10 ? productStack :
+      const productFields = productStack.length === 11 && productStack[10]?.type === "num" ? productStack.slice(0, 10) :
+        productStack.length === 10 ? productStack :
         nested?.type === "tuple" && Array.isArray(nested.items) ? nested.items : null
       if (!productFields || productFields.length !== 10) {
         setV3ReadMessage("链上商品结构尚不支持可信解码，禁止付款。")
