@@ -1,0 +1,42 @@
+name: S04-P001 Exact Testnet Top-up After 3-of-3 Proof
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_topup:
+        description: "Approve ONLY exact 184802 nanoTON top-up after finalized 3/3 attestation; no refund retry"
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s04-p001-exact-topup-666969981
+  cancel-in-progress: false
+jobs:
+  topup:
+    if: ${{ inputs.confirm_topup && github.ref == 'refs/heads/feature/reserve-refund-v3-audit' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      S04_P001_TOPUP_APPROVED: "true"
+      S04_P001_OWNER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      S04_P001_VAULT_ADDRESS: "kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u"
+      S04_P001_RECIPIENT_ADDRESS: "kQDCFOYiVkLV4H-UqNxPO2XEnm5lJpEEnYnU7fjH1iXqKXvy"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Send exact difference only, no retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          umask 077
+          printf '[wallets.deployer]\nkind = "v5r1"\nworkchain = 0\nkeys = { mnemonic-env = "DEPLOYER_MNEMONIC" }\n' > wallets.toml
+          trap 'rm -f wallets.toml' EXIT
+          acton script scripts/topup-s04-p001-after-attestation.tolk --net testnet
