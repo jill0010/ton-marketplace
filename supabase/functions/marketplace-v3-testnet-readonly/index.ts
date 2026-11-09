@@ -199,7 +199,7 @@ Deno.serve(async (req: Request) => {
       throw new Error("Invalid Testnet RPC response");
     }
     const payload = result as Record<string, unknown>;
-    const stackResult = extractV3TestnetGetterStack(payload);
+    const stackResult = extractV3TestnetGetterStack(payload, input.method === "productV2" ? 10 : 8);
     return reply(origin, 200, {
       success: true,
       network: "testnet",
