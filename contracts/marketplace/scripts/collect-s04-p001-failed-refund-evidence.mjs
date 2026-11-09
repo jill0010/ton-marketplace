@@ -1,6 +1,7 @@
 // S04-P001: read-only evidence collector for ONE fresh Testnet failed reserve refund.
 // No mnemonic, signatures, transaction submission, or reuse of settled orders.
 import { writeFile } from "node:fs/promises";
+import { Address } from "@ton/core";
 
 const API = "https://testnet.toncenter.com/api/v2";
 const required = (key) => {
@@ -28,6 +29,10 @@ async function rpc(method, args) {
     await delay(1000 * (attempt + 1));
   }
 }
+function normalizeAddress(value) {
+  if (!value) return null;
+  try { return Address.parse(value).toRawString().toLowerCase(); } catch { return null; }
+}
 function rawAddress(value) {
   if (!/^-?[0-9]+:[0-9a-fA-F]{64}$/.test(value)) throw new Error("Expected raw TON address");
   return value.toLowerCase();
@@ -51,25 +56,27 @@ export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTran
   const outbound = [];
   for (const tx of vaultTransactions) {
     for (const msg of messageArray(tx.out_msgs)) {
-      if (msg.destination !== buyer && msg.dest !== buyer) continue;
+      if (normalizeAddress(msg.destination ?? msg.dest) !== buyer) continue;
       outbound.push({
         transaction: txId(tx), valueNano: String(msg.value ?? ""),
         messageHash: msg.hash ?? null, createdLt: String(msg.created_lt ?? ""),
       });
     }
     const msg = inbound(tx);
-    if (msg.bounced === true) failedReceipts.push({
+    if (msg.bounced === true && normalizeAddress(msg.source ?? msg.src) === buyer) failedReceipts.push({
       transaction: txId(tx), source: msg.source ?? msg.src ?? null,
       returnedNano: String(msg.value ?? ""), messageHash: msg.hash ?? null,
     });
   }
   const buyerInbound = buyerTransactions.filter((tx) =>
-    [inbound(tx).source, inbound(tx).src].includes(vault)).map((tx) => ({
+    normalizeAddress(inbound(tx).source ?? inbound(tx).src) === vault).map((tx) => ({
       transaction: txId(tx), valueNano: String(inbound(tx).value ?? ""),
       failed: txFailed(tx), bounced: inbound(tx).bounced === true,
     }));
   return {
     orderId: expectedOrderId, vault, buyer, outbound, failedReceipts, buyerInbound,
+    scannedVaultTransactions: vaultTransactions.length,
+    scannedBuyerTransactions: buyerTransactions.length,
     evidenceComplete: false,
     reason: "Transaction lists alone cannot prove Vault operation/query linkage, actual returned principal, top-up, or safe retry. Require matching decoded message bodies, get-method states, and signed 3/3 bounce attestation.",
   };
