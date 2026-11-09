@@ -15,10 +15,6 @@ on:
         description: "Fresh positive run-specific nonce, incorporated in payment commitment"
         required: true
         type: string
-      verifier_address:
-        description: "Existing TESTNET V3 verifier address; must be active and trusted"
-        required: true
-        type: string
       confirm_testnet_deployment:
         description: "Approve ONLY new S04-P001 Testnet contract deployment and one-time binding; no refund yet"
         required: true
@@ -47,7 +43,9 @@ jobs:
       S04_P001_PAYMENT_HASH_INT: ${{ inputs.payment_hash_int }}
       S04_P001_UNIQUE_NONCE: ${{ inputs.unique_nonce }}
       S04_P001_OWNER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
-      S04_P001_VERIFIER_ADDRESS: ${{ inputs.verifier_address }}
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
     steps:
       - name: Checkout approved branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -61,8 +59,20 @@ jobs:
           [[ "$S04_P001_PAYMENT_HASH_INT" =~ ^[0-9]+$ ]] && [ "$S04_P001_PAYMENT_HASH_INT" -gt 0 ]
           [[ "$S04_P001_UNIQUE_NONCE" =~ ^[0-9]+$ ]] && [ "$S04_P001_UNIQUE_NONCE" -gt 0 ]
           test -n "$DEPLOYER_MNEMONIC"
-          test -n "$S04_P001_VERIFIER_ADDRESS"
-          test "$S04_P001_VERIFIER_ADDRESS" != "$S04_P001_OWNER_ADDRESS"
+          for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
+            test -n "${!name:-}"
+          done
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+      - name: Install locked validator derivation dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+      - name: Derive isolated verifier public keys
+        working-directory: .
+        run: |
+          node contracts/marketplace/scripts/derive-v3-validator-keys.mjs >> "$GITHUB_ENV"
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
       - name: Create ephemeral Testnet wallet profile
