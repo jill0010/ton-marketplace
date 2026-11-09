@@ -39,6 +39,8 @@ export function ProductPage() {
   const [paymentVerified, setPaymentVerified] = useState(false)
   const [v3ReadBusy, setV3ReadBusy] = useState(false)
   const [v3ReadMessage, setV3ReadMessage] = useState("")
+  const [v3OrderBusy, setV3OrderBusy] = useState(false)
+  const [v3OrderMessage, setV3OrderMessage] = useState("")
 
   useEffect(() => {
     let cancelled = false
@@ -323,6 +325,35 @@ export function ProductPage() {
     }
   }
 
+  async function readV3TestnetOrderStatus() {
+    if (v3OrderBusy || !product) return
+    setV3OrderBusy(true)
+    setV3OrderMessage("正在读取测试网链上订单状态……")
+    try {
+      const rawId = product.productMetadata?.v3_testnet_product_id
+      if ((typeof rawId !== "string" && typeof rawId !== "number") ||
+          (typeof rawId === "number" && !Number.isSafeInteger(rawId)) ||
+          !/^[1-9][0-9]*$/.test(String(rawId))) {
+        throw new Error("该商品没有有效的 V3 测试网链上商品编号。")
+      }
+      const chainId = BigInt(rawId)
+      if (chainId > 0xffff_ffff_ffff_ffffn) throw new Error("V3 商品编号超出范围。")
+      const diagnostic = await inspectMarketplaceV3TestnetProduct(chainId)
+      if (diagnostic.existingOrderId === null) {
+        setV3OrderMessage(diagnostic.status === 2n
+          ? "测试网链上商品仍在出售，尚无订单。此查询不代表购买授权。"
+          : `测试网链上商品状态：${diagnostic.status?.toString() ?? "不存在"}；尚无关联订单。`)
+        return
+      }
+      const reserve = diagnostic.reserveStatus === null ? "尚无状态" : diagnostic.reserveStatus.toString()
+      setV3OrderMessage(`测试网链上订单 #${diagnostic.existingOrderId.toString()}；商品状态 ${diagnostic.status?.toString() ?? "未知"}；预留金状态 ${reserve}。该订单已占用商品，不允许再次购买。最终交付及结算须结合独立收据核验。`)
+    } catch (cause) {
+      setV3OrderMessage(cause instanceof Error ? cause.message : "订单状态读取失败。")
+    } finally {
+      setV3OrderBusy(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="rounded-3xl border border-white/10 p-6 text-sm text-zinc-400">
@@ -485,6 +516,10 @@ export function ProductPage() {
             {v3ReadBusy ? "正在读取测试网链上状态…" : "读取 V3 测试网托管合约"}
           </button>
           {v3ReadMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3ReadMessage}</p>}
+          <button type="button" onClick={() => void readV3TestnetOrderStatus()} disabled={v3OrderBusy} className="w-full rounded-full border border-white/20 px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">
+            {v3OrderBusy ? "正在查询测试网订单…" : "查询 V3 测试网订单与预留金状态"}
+          </button>
+          {v3OrderMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3OrderMessage}</p>}
         </>
       )}
 
