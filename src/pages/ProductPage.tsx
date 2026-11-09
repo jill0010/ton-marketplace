@@ -523,6 +523,25 @@ export function ProductPage() {
           : `测试网链上商品状态：${diagnostic.status?.toString() ?? "不存在"}；尚无关联订单。`)
         return
       }
+      // Order diagnostics can span several RPC reads. Confirm the same
+      // order still occupies this product before presenting its state.
+      const [latestOrder, latestStatus] = await Promise.all([
+        readMarketplaceV3TestnetGetter("orderIdForProductV2", chainId),
+        readMarketplaceV3TestnetGetter("productStatusV2", chainId),
+      ])
+      const latestOrderEntry = latestOrder.stack[0] as { type?: unknown; value?: unknown } | undefined
+      const latestStatusEntry = latestStatus.stack[0] as { type?: unknown; value?: unknown } | undefined
+      const parseChainNumber = (entry: { type?: unknown; value?: unknown } | undefined): bigint | null =>
+        entry?.type === "num" && typeof entry.value === "string" &&
+        (/^(0|[1-9][0-9]*)$/.test(entry.value) || /^0x[0-9a-fA-F]+$/.test(entry.value))
+          ? BigInt(entry.value) : null
+      if (latestOrder.stack.length !== 1 || latestStatus.stack.length !== 1 ||
+          !Address.parse(latestOrder.contract_address).equals(Address.parse(diagnostic.marketplaceAddress)) ||
+          !Address.parse(latestStatus.contract_address).equals(Address.parse(diagnostic.marketplaceAddress)) ||
+          parseChainNumber(latestOrderEntry) !== diagnostic.existingOrderId ||
+          parseChainNumber(latestStatusEntry) !== diagnostic.status) {
+        throw new Error("查询期间订单或商品状态已改变，请重新查询。")
+      }
       const reserve = diagnostic.reserveStatus === null ? "尚无状态" : diagnostic.reserveStatus.toString()
       const productStatusLabel: Record<string, string> = {
         "1": "已登记", "2": "出售中", "3": "处理中", "5": "已完成或终止（需核对收据）", "6": "退款或取消（需核对收据）",
