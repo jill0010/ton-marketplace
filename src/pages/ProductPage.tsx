@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react"
 import { beginCell } from "@ton/core"
-import { readV3TestnetMarketplaceEscrow } from "../lib/marketplaceV3TestnetReadonly"
+import { readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
@@ -185,14 +185,29 @@ export function ProductPage() {
   }
 
   async function readV3TestnetCustodyBinding() {
-    if (v3ReadBusy) return
+    if (v3ReadBusy || !product) return
     setV3ReadBusy(true)
-    setV3ReadMessage("正在从 TON 测试网读取 Marketplace 的 Escrow 绑定……")
+    setV3ReadMessage("正在读取 V3 测试网链上商品及 NFT 托管状态……")
     try {
       const binding = await readV3TestnetMarketplaceEscrow()
-      setV3ReadMessage(`测试网 Marketplace：${binding.marketplaceAddress}；Escrow：${binding.escrowAddress}。已读取链上绑定，但尚未验证本商品的 NFT 托管及可购买状态，因此不能付款。`)
+      const metadata = product.productMetadata ?? {}
+      const nftAddress = typeof metadata.nft_item_address === "string"
+        ? metadata.nft_item_address : null
+      const chainProductId = metadata.v3_testnet_product_id
+      if (!nftAddress || (typeof chainProductId !== "string" && typeof chainProductId !== "number")) {
+        setV3ReadMessage(`已读取测试网 Marketplace 与 Escrow：${binding.marketplaceAddress} / ${binding.escrowAddress}。该商品尚未配置 V3 测试网 NFT 地址和链上商品编号，不能购买。`)
+        return
+      }
+      const productId = BigInt(chainProductId)
+      const [custody, asset] = await Promise.all([
+        inspectV3TestnetNftCustody(nftAddress, binding.escrowAddress),
+        inspectV3TestnetAssetProductBinding(nftAddress, productId),
+      ])
+      setV3ReadMessage(custody.custodyMatches && asset.bindingMatches
+        ? "测试网 NFT 所有权及 Marketplace 商品绑定一致。仍需核验商品状态、价格和订单状态，暂不允许付款。"
+        : "测试网 NFT 托管或 Marketplace 商品绑定不匹配，禁止付款。")
     } catch (cause) {
-      setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败。")
+      setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败，禁止付款。")
     } finally {
       setV3ReadBusy(false)
     }
