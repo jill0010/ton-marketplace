@@ -11,6 +11,7 @@ if (!/^[1-9][0-9]{0,14}$/.test(id) || BigInt(id) <= 4n) fail("order ID must be f
 if (!/^[a-f0-9]{64}$/i.test(e.S04_P001_PAYMENT_HASH || "")) fail("64-character nonzero payment hash required");
 if (/^0+$/.test(e.S04_P001_PAYMENT_HASH || "")) fail("payment hash cannot be zero");
 if (e.S04_P001_EXISTING_VAULT || e.S04_P001_EXISTING_BUYER) fail("existing vault or buyer reuse forbidden");
+if (e.S04_P001_ALLOW_MAINNET || e.S04_P001_BROADCAST || e.S04_P001_REUSE_ORDER) fail("mainnet, broadcast and historical order reuse must remain disabled");
 console.log(JSON.stringify({
   scope:"S04-P001", branch:e.GITHUB_REF, network:"testnet",
   mode:"preflight", orderId:id, paymentHash:e.S04_P001_PAYMENT_HASH,
