@@ -55,11 +55,9 @@ async function main(){
   if(process.env.GITHUB_REF!=="refs/heads/feature/reserve-refund-v3-audit")throw Error("wrong branch");
   if(required("S04_P001_ATTEST_APPROVED")!=="true")throw Error("explicit testnet attestation not enabled");
   const client=new TonClient({endpoint:API+"/jsonRPC",...(process.env.TONCENTER_TESTNET_API_KEY?{apiKey:process.env.TONCENTER_TESTNET_API_KEY}:{})});
-  const [vaultTx,buyerTx,mc]=await Promise.all([
-    rpc("getTransactions",{address:VAULT.toRawString(),limit:100}),
-    rpc("getTransactions",{address:RECIPIENT.toRawString(),limit:100}),
-    rpc("getMasterchainInfo"),
-  ]);
+  const vaultTx=await rpc("getTransactions",{address:VAULT.toRawString(),limit:100});
+  const buyerTx=await rpc("getTransactions",{address:RECIPIENT.toRawString(),limit:100});
+  const mc=await rpc("getMasterchainInfo");
   const evidence=inspectFailedRefund({vault:VAULT.toRawString().toLowerCase(),buyer:RECIPIENT.toRawString().toLowerCase(),vaultTransactions:vaultTx,buyerTransactions:buyerTx,expectedOrderId:ORDER});
   if(evidence.outbound.length!==1||evidence.failedReceipts.length!==1)throw Error("not exactly one dispatch/bounce");
   const dispatch=evidence.outbound[0],bounce=evidence.failedReceipts[0],body=dispatch.body;
