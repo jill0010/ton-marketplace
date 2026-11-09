@@ -199,7 +199,16 @@ export function ProductPage() {
         setV3ReadMessage(`已读取测试网 Marketplace 与 Escrow：${binding.marketplaceAddress} / ${binding.escrowAddress}。该商品尚未配置 V3 测试网 NFT 地址和链上商品编号，不能购买。`)
         return
       }
+      if ((typeof chainProductId === "number" && !Number.isSafeInteger(chainProductId)) ||
+          !/^[1-9][0-9]*$/.test(String(chainProductId))) {
+        setV3ReadMessage("V3 链上商品编号无效，禁止付款。")
+        return
+      }
       const productId = BigInt(chainProductId)
+      if (productId > 0xffff_ffff_ffff_ffffn) {
+        setV3ReadMessage("V3 链上商品编号超出 uint64 范围，禁止付款。")
+        return
+      }
       const [custody, asset] = await Promise.all([
         inspectV3TestnetNftCustody(nftAddress, binding.escrowAddress),
         inspectV3TestnetAssetProductBinding(nftAddress, productId),
