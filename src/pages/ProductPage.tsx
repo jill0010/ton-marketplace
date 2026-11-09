@@ -524,7 +524,15 @@ export function ProductPage() {
         return
       }
       const reserve = diagnostic.reserveStatus === null ? "尚无状态" : diagnostic.reserveStatus.toString()
-      setV3OrderMessage(`测试网链上订单 #${diagnostic.existingOrderId.toString()}；商品状态 ${diagnostic.status?.toString() ?? "未知"}；预留金状态 ${reserve}。该订单已占用商品，不允许再次购买。最终交付及结算须结合独立收据核验。`)
+      const productStatusLabel: Record<string, string> = {
+        "1": "已登记", "2": "出售中", "3": "处理中", "5": "已完成或终止（需核对收据）", "6": "退款或取消（需核对收据）",
+      }
+      const statusText = diagnostic.status === null ? "不存在" :
+        productStatusLabel[diagnostic.status.toString()] ?? "未知状态"
+      const orderMessage = diagnostic.status === 2n
+        ? "链上仍显示出售中，但存在关联订单，状态冲突，请勿再次付款。"
+        : "订单已占用商品，禁止重复付款。NFT 交付与预留金最终结算仍需独立链上收据证明。"
+      setV3OrderMessage(`测试网订单 #${diagnostic.existingOrderId.toString()}；商品：${statusText}；预留金状态码：${reserve}。${orderMessage}`)
     } catch (cause) {
       setV3OrderMessage(cause instanceof Error ? cause.message : "订单状态读取失败。")
     } finally {
