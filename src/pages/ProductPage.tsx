@@ -359,7 +359,7 @@ export function ProductPage() {
           <button type="button" onClick={() => void readV3TestnetCustodyBinding()} disabled={v3ReadBusy} className="w-full rounded-full border border-white/20 px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">
             {v3ReadBusy ? "正在读取测试网链上状态…" : "读取 V3 测试网托管合约"}
           </button>
-          {v3ReadMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3ReadMessage}</p>
+          {v3ReadMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3ReadMessage}</p>}
         </>
       )}
 
