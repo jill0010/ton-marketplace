@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react"
-import { beginCell } from "@ton/core"
+import { Address, beginCell, toNano } from "@ton/core"
 import { readMarketplaceV3TestnetGetter, readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
 import { inspectMarketplaceV3TestnetProduct } from "../lib/marketplaceV3TestnetDiagnostics"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
@@ -218,15 +218,32 @@ export function ProductPage() {
         return
       }
       const productGetter = await readMarketplaceV3TestnetGetter("productV2", productId)
-      if (productGetter.contract_address !== listing.marketplaceAddress ||
+      if (!Address.parse(productGetter.contract_address).equals(Address.parse(listing.marketplaceAddress)) ||
           productGetter.stack.length !== 1 ||
-          productGetter.stack[0] === null ||
-          (typeof productGetter.stack[0] === "object" &&
-           (productGetter.stack[0] as { type?: unknown }).type === "null")) {
+          !productGetter.stack[0] ||
+          (productGetter.stack[0] as { type?: unknown }).type === "null") {
         setV3ReadMessage("链上商品详情缺失或合约地址不一致，禁止付款。")
         return
       }
-      setV3ReadMessage("测试网 NFT 托管、商品绑定、上架及订单状态检查通过，链上商品详情已读取。售价结构尚未完成可信解码与核对，不能付款。")
+      // TON Center returns the product struct as a tuple. Do not guess its
+      // layout: reject any response that cannot be decoded unambiguously.
+      const entry = productGetter.stack[0] as { type?: unknown; items?: unknown }
+      if (entry.type !== "tuple" || !Array.isArray(entry.items) || entry.items.length !== 10) {
+        setV3ReadMessage("链上商品结构尚不支持可信解码，禁止付款。")
+        return
+      }
+      const priceEntry = entry.items[3] as { type?: unknown; value?: unknown } | null
+      if (!priceEntry || priceEntry.type !== "num" || typeof priceEntry.value !== "string" ||
+          !/^(0|[1-9][0-9]*)$/.test(priceEntry.value)) {
+        setV3ReadMessage("无法可靠读取链上售价，禁止付款。")
+        return
+      }
+      const chainPrice = BigInt(priceEntry.value)
+      if (chainPrice <= 0n || chainPrice !== toNano(product.priceTon.toString())) {
+        setV3ReadMessage("链上售价与商城展示价格不一致，禁止付款。")
+        return
+      }
+      setV3ReadMessage("测试网 NFT 托管、商品绑定、上架、订单状态及售价检查通过。仍需同一区块一致性验证，当前不允许付款。")
     } catch (cause) {
       setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败，禁止付款。")
     } finally {
