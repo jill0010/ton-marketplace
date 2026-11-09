@@ -359,7 +359,30 @@ export function ProductPage() {
           !listing.escrowConfigured || !listing.treasuryConfigured || !listing.coordinatorConfigured) {
         throw new Error("NFT 托管、链上绑定或商品可售状态不符合购买条件。")
       }
-      setV3PreflightMessage("测试网钱包、NFT 托管、商品绑定和可售状态初步检查通过。当前仅提供只读诊断，尚未完成可信原子快照与最终购买预检，不能发起付款。")
+      const observations = [binding.observedAt, custody.observedAt, asset.observedAt, listing.observedAt]
+        .map((value) => Date.parse(value))
+      const observedNow = Date.now()
+      if (observations.some((value) => !Number.isFinite(value) ||
+          value > observedNow + 5000 || observedNow - value > 15000) ||
+          Math.max(...observations) - Math.min(...observations) > 5000) {
+        throw new Error("链上读取结果已过期或时间跨度过大，请重新检查。")
+      }
+      // Recheck mutable order/listing state after the custody observations.
+      // This still is not an atomic snapshot and cannot authorize a purchase.
+      const [statusAfter, orderAfter] = await Promise.all([
+        readMarketplaceV3TestnetGetter("productStatusV2", chainId),
+        readMarketplaceV3TestnetGetter("orderIdForProductV2", chainId),
+      ])
+      const latestStatus = statusAfter.stack[0] as { type?: unknown; value?: unknown } | undefined
+      const latestOrder = orderAfter.stack[0] as { type?: unknown } | undefined
+      if (statusAfter.stack.length !== 1 || orderAfter.stack.length !== 1 ||
+          !Address.parse(statusAfter.contract_address).equals(Address.parse(listing.marketplaceAddress)) ||
+          !Address.parse(orderAfter.contract_address).equals(Address.parse(listing.marketplaceAddress)) ||
+          latestStatus?.type !== "num" || !["2", "0x2"].includes(String(latestStatus.value)) ||
+          latestOrder?.type !== "null") {
+        throw new Error("商品在检查期间发生出售、取消或订单占用，禁止付款。")
+      }
+      setV3PreflightMessage("测试网钱包、NFT 托管、商品绑定、可售状态及二次订单检查通过。多次 RPC 读取仍非原子快照，不构成最终购买授权，当前不能付款。")
     } catch (cause) {
       setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
     } finally {
