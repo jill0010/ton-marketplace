@@ -355,6 +355,14 @@ export function ProductPage() {
       const chainId = BigInt(rawId)
       if (chainId > 0xffff_ffff_ffff_ffffn) throw new Error("V3 商品编号无效。")
       const binding = await readV3TestnetMarketplaceEscrow()
+      if (product.marketplaceContractAddress &&
+          !Address.parse(product.marketplaceContractAddress).equals(Address.parse(binding.marketplaceAddress))) {
+        throw new Error("数据库商品关联的合约不是当前 V3 测试网 Marketplace。")
+      }
+      if (typeof metadata.v3_testnet_marketplace_address === "string" &&
+          !Address.parse(metadata.v3_testnet_marketplace_address).equals(Address.parse(binding.marketplaceAddress))) {
+        throw new Error("商品测试网元数据的合约地址与实际 V3 合约不一致。")
+      }
       const [custody, asset, listing] = await Promise.all([
         inspectV3TestnetNftCustody(nft, binding.escrowAddress),
         inspectV3TestnetAssetProductBinding(nft, chainId),
