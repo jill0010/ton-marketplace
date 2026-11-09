@@ -2,6 +2,7 @@
 import { Address, Cell, beginCell, toNano } from "@ton/core"
 import { readMarketplaceV3TestnetGetter, readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
 import { inspectMarketplaceV3TestnetProduct } from "../lib/marketplaceV3TestnetDiagnostics"
+import { preflightMarketplaceV3TestnetPurchase } from "../lib/marketplaceV3Preflight"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
@@ -447,7 +448,38 @@ export function ProductPage() {
           !Address.parse(tonConnectUI.wallet.account.address).equals(Address.parse(wallet.account.address))) {
         throw new Error("检查期间连接的钱包已发生变化，请重新检查。")
       }
-      setV3PreflightMessage("测试网钱包、NFT 托管、链上售价及二次订单检查通过。链上多次读取仍非原子快照，不构成付款授权。")
+      // Prepare and validate the canonical V3 wire quote without signing or
+      // submitting it. The RPC observations are not atomic; this is a
+      // diagnostic dry run, never a payment authorization.
+      const nowSeconds = Math.floor(Date.now() / 1000)
+      const quote = preflightMarketplaceV3TestnetPurchase({
+        snapshot: {
+          chain: "-3",
+          marketplaceAddress: listing.marketplaceAddress,
+          productId: chainId,
+          nftItemAddress: nft,
+          escrowAddress: binding.escrowAddress,
+          sellerAddress: seller.toRawString(),
+          buyerAddress: wallet.account.address,
+          priceNano: chainPrice,
+          productStatus: 2,
+          existingOrderId: null,
+          coordinatorConfigured: listing.coordinatorConfigured,
+          treasuryConfigured: listing.treasuryConfigured,
+          escrowConfigured: listing.escrowConfigured,
+          nftOwnerAddress: custody.ownerAddress,
+          escrowId: listing.escrowId,
+          fetchedAtSeconds: Math.floor(Math.min(...observations, ...latestTimes) / 1000),
+        },
+        connectedWalletChain: wallet.account.chain,
+        connectedBuyerAddress: wallet.account.address,
+        expectedMarketplaceAddress: listing.marketplaceAddress,
+        expectedProductId: chainId,
+        expectedNftItemAddress: nft,
+        expectedPriceNano: toNano(product.priceTon.toString()),
+        nowSeconds,
+      })
+      setV3PreflightMessage(`V3 测试网购买参数校验通过：商品 #${quote.productId.toString()}，售价 ${product.priceTon} TON，预留金 0.2 TON。当前为不签名、不发送的模拟预检；RPC 读取非原子快照，不能据此付款。`)
     } catch (cause) {
       setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
     } finally {
