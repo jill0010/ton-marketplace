@@ -46,10 +46,31 @@ function txId(tx) {
 function inbound(tx) {
   return tx.in_msg ?? {};
 }
-function txFailed(tx) {
+function txStatus(tx) {
   const d = tx.description ?? {};
-  return tx.aborted === true || d.aborted === true || d.compute_ph?.success === false ||
-    d.action?.success === false || inbound(tx).bounced === true;
+  const compute = d.compute_ph ?? tx.compute_ph ?? tx.compute_phase ?? {};
+  const action = d.action ?? tx.action ?? tx.action_phase ?? {};
+  return {
+    aborted: tx.aborted ?? d.aborted ?? null,
+    computeType: compute.type ?? null,
+    computeSuccess: compute.success ?? null,
+    computeExitCode: compute.exit_code ?? null,
+    actionSuccess: action.success ?? null,
+    actionResultCode: action.result_code ?? null,
+    outgoing: messageArray(tx.out_msgs).map((msg) => ({
+      destination: normalizeAddress(msg.destination ?? msg.dest),
+      valueNano: String(msg.value ?? ""),
+      bounced: msg.bounced ?? null,
+      bounce: msg.bounce ?? null,
+      messageHash: msg.hash ?? null,
+    })),
+  };
+}
+function txFailed(tx) {
+  const status = txStatus(tx);
+  return status.aborted === true || status.computeSuccess === false ||
+    (status.computeExitCode !== null && status.computeExitCode !== 0) ||
+    status.actionSuccess === false || inbound(tx).bounced === true;
 }
 export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTransactions, expectedOrderId }) {
   const failedReceipts = [];
@@ -72,13 +93,20 @@ export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTran
     normalizeAddress(inbound(tx).source ?? inbound(tx).src) === vault).map((tx) => ({
       transaction: txId(tx), valueNano: String(inbound(tx).value ?? ""),
       failed: txFailed(tx), bounced: inbound(tx).bounced === true,
+      status: txStatus(tx),
     }));
   return {
     orderId: expectedOrderId, vault, buyer, outbound, failedReceipts, buyerInbound,
+    vaultInbound: vaultTransactions.map((tx) => ({
+      transaction: txId(tx), source: normalizeAddress(inbound(tx).source ?? inbound(tx).src),
+      valueNano: String(inbound(tx).value ?? ""), bounced: inbound(tx).bounced ?? null,
+      bodyType: inbound(tx).msg_data?.["@type"] ?? null,
+      status: txStatus(tx),
+    })),
     scannedVaultTransactions: vaultTransactions.length,
     scannedBuyerTransactions: buyerTransactions.length,
     evidenceComplete: false,
-    reason: "Transaction lists alone cannot prove Vault operation/query linkage, actual returned principal, top-up, or safe retry. Require matching decoded message bodies, get-method states, and signed 3/3 bounce attestation.",
+    reason: "The transaction list is diagnostic only. A matching recipient inbound transaction is NOT proof of delivery. Bounce must be proved with decoded message linkage and confirmed returned value before any 3/3 attestation, top-up or retry.",
   };
 }
 async function main() {
@@ -99,6 +127,8 @@ async function main() {
     network: "testnet", collectedAt: new Date().toISOString(), ...evidence,
   }, null, 2) + "\n", { flag: "wx" });
   console.log("Read-only evidence written: " + output);
+  console.log("Dispatches=" + evidence.outbound.length + " buyerInbound=" + evidence.buyerInbound.length + " bounceCandidates=" + evidence.failedReceipts.length);
+  for (const tx of evidence.buyerInbound) console.log("Buyer tx " + tx.transaction.lt + " failed=" + tx.failed + " aborted=" + tx.status.aborted + " computeExit=" + tx.status.computeExitCode + " outgoing=" + tx.status.outgoing.length);
   if (evidence.outbound.length === 0 || evidence.failedReceipts.length === 0)
     throw new Error("No outbound and genuine bounce candidates found; on-chain failure NOT verified");
   console.log("Candidates collected; S04-P001 remains OPEN pending exact decoded linkage and safe retry");
