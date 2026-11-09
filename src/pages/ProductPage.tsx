@@ -238,6 +238,21 @@ export function ProductPage() {
         setV3ReadMessage("无法可靠读取链上售价，禁止付款。")
         return
       }
+      const readNumber = (index: number): bigint | null => {
+        const item = entry.items![index] as { type?: unknown; value?: unknown } | null
+        if (!item || item.type !== "num" || typeof item.value !== "string" ||
+            !(/^(0|[1-9][0-9]*)$/.test(item.value) || /^0x[0-9a-fA-F]+$/.test(item.value))) return null
+        return BigInt(item.value)
+      }
+      // Cross-check the immutable product ID, escrow ID, query ID and listing
+      // status from the SAME product tuple as the price.
+      if (readNumber(0) !== productId ||
+          readNumber(4) !== listing.escrowId ||
+          readNumber(5) !== listing.productQueryId ||
+          readNumber(7) !== listing.status) {
+        setV3ReadMessage("链上商品详情与商品状态不一致，禁止付款。")
+        return
+      }
       const chainPrice = BigInt(priceEntry.value)
       if (chainPrice <= 0n || chainPrice !== toNano(product.priceTon.toString())) {
         setV3ReadMessage("链上售价与商城展示价格不一致，禁止付款。")
