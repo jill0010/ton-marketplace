@@ -32,5 +32,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci --ignore-scripts
+      - name: Install isolated proof-script dependencies
+        run: npm install --no-save --package-lock=false --ignore-scripts @ton/ton@15.4.0 @ton/crypto@3.3.0
       - name: Reverify RichBounce and submit exact 3-of-3 Testnet proof
         run: node contracts/marketplace/scripts/attest-s04-p001-bounced-reserve.mjs
