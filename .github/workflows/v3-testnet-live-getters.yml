@@ -9,12 +9,14 @@ on:
         default: "kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_"
         type: string
       product_id:
-        description: "ACTIVE listed Testnet product ID (status=2; do not reuse sold product 4)"
+        description: "ACTIVE listed Testnet product ID (fresh fixture 5)"
         required: true
+        default: "5"
         type: string
       nft_item_address:
         description: "NFT Item address bound to the ACTIVE listed product"
         required: true
+        default: "kQCn2nYkDsCBBWqEDOBFwXtVhXtD7E1x6gIAQmbL8DZY1TDk"
         type: string
 
 permissions:
