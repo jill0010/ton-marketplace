@@ -67,7 +67,8 @@ const [status, bound, escrow, nftData, escrowConfigured, productData] = await Pr
 assert.equal(status.length, 1);
 assert.equal(bound.length, 1);
 assert.equal(escrow.length, 1);
-assert.equal(number(status[0]), 2n, "Product is not listed");
+assert.equal(number(status[0]), 2n,
+  `Product ${productId} is not actively listed (on-chain status=${number(status[0])}); choose a fresh listed Testnet fixture`);
 assert.equal(number(bound[0]), BigInt(productId), "NFT is not bound to product");
 assert.equal(escrowConfigured.length, 1);
 assert.equal(number(escrowConfigured[0]), -1n, "Escrow is not configured");
@@ -75,7 +76,8 @@ assert.equal(nftData.length, 5);
 assert.equal(number(nftData[0]), -1n, "NFT is not initialized");
 // Tolk's struct getter may expose ten flattened TVM entries rather than
 // one nested tuple; the two representations have the same field order.
-const productFields = productData.length === 10 ? productData :
+const productFields = productData.length === 11 && productData[10]?.type === "num" ? productData.slice(0, 10) :
+  productData.length === 10 ? productData :
   productData.length === 1 && productData[0]?.type === "tuple" &&
     Array.isArray(productData[0].items) ? productData[0].items : null;
 assert(Array.isArray(productFields) && productFields.length === 10,
