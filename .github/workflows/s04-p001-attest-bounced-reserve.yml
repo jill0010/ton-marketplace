@@ -1,0 +1,36 @@
+name: S04-P001 Attest Actual Testnet Bounce 3-of-3
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Confirm submitting exact one-time isolated Testnet bounce proof"
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s04-p001-attest-bounce
+  cancel-in-progress: false
+jobs:
+  attest:
+    if: ${{ inputs.confirm && github.ref == 'refs/heads/feature/reserve-refund-v3-audit' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      S04_P001_ATTEST_APPROVED: "true"
+      TONCENTER_TESTNET_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+      - name: Reverify RichBounce and submit exact 3-of-3 Testnet proof
+        run: node contracts/marketplace/scripts/attest-s04-p001-bounced-reserve.mjs
