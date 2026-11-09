@@ -1,0 +1,41 @@
+name: S04-P001 Collect Failed Refund Evidence
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence:
+    if: ${{ github.ref == 'refs/heads/feature/reserve-refund-v3-audit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      S04_P001_READ_ONLY: "true"
+      S04_P001_NEW_ORDER_ID: "666969981"
+      TONCENTER_TESTNET_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+      - name: Resolve fixed isolated Testnet addresses
+        run: |
+          node --input-type=module -e '
+            import { Address } from "@ton/core";
+            import { appendFileSync } from "node:fs";
+            const vault = Address.parse("kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u");
+            const buyer = Address.parse("kQDCFOYiVkLV4H-UqNxPO2XEnm5lJpEEnYnU7fjH1iXqKXvy");
+            appendFileSync(process.env.GITHUB_ENV, "S04_P001_NEW_VAULT_RAW=" + vault.toRawString() + "\nS04_P001_BUYER_RAW=" + buyer.toRawString() + "\n");
+          '
+      - name: Collect read-only bounce candidates
+        run: node contracts/marketplace/scripts/collect-s04-p001-failed-refund-evidence.mjs
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s04-p001-failed-refund-evidence
+          path: s04-p001-failed-refund-evidence.json
+          if-no-files-found: ignore
+          retention-days: 30
