@@ -299,6 +299,20 @@ export function ProductPage() {
         setV3ReadMessage("价格读取后商品状态或订单占用已发生变化，禁止付款。")
         return
       }
+      // Reject observations that drift too far apart; these checks remain
+      // diagnostic and never authorize a transaction.
+      const observations = [
+        binding.observedAt, custody.observedAt, asset.observedAt,
+        listing.observedAt, productGetter.observed_at,
+        statusAfter.observed_at, orderAfter.observed_at,
+      ].map((value) => Date.parse(value))
+      const observedNow = Date.now()
+      if (observations.some((value) => !Number.isFinite(value) ||
+          value > observedNow + 5000 || observedNow - value > 15000) ||
+          Math.max(...observations) - Math.min(...observations) > 5000) {
+        setV3ReadMessage("链上查询跨越时间过长，商品或订单状态可能已变化，禁止付款。")
+        return
+      }
       setV3ReadMessage("测试网托管、商品绑定、售价及二次订单状态检查通过。RPC 读取不是同一区块原子快照，仍禁止付款。")
     } catch (cause) {
       setV3ReadMessage(cause instanceof Error ? cause.message : "测试网链上读取失败，禁止付款。")
