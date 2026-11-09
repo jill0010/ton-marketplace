@@ -107,6 +107,7 @@ fun main() {
         }),
     );
     bind.waitForTrace();
+    assert (net.runGetMethod<address>(recipient, "s04P001RecipientVault") == vault) throw 859;
     assert (!net.runGetMethod<bool>(recipient, "s04P001RecipientEnabled")) throw 859;
     assert (net.runGetMethod<uint32>(recipient, "s04P001RecipientAcceptedCount") == 0) throw 860;
 
