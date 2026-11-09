@@ -21,7 +21,8 @@ async function getter(address, method, stack = []) {
   const data = await response.json();
   assert.equal(data.exit_code ?? data.result?.exit_code, 0, `${method}: TVM execution failed`);
   const result = data.stack ?? data.result?.stack;
-  assert(Array.isArray(result) && result.length <= 8, `${method}: invalid stack`);
+  assert(Array.isArray(result) && result.length <= (method === "productV2" ? 10 : 8),
+    `${method}: invalid stack (entries=${Array.isArray(result) ? result.length : "not-array"})`);
   return result;
 }
 function number(entry) {
@@ -64,16 +65,18 @@ assert.equal(escrowConfigured.length, 1);
 assert.equal(number(escrowConfigured[0]), -1n, "Escrow is not configured");
 assert.equal(nftData.length, 5);
 assert.equal(number(nftData[0]), -1n, "NFT is not initialized");
-assert.equal(productData.length, 1, "Expected one productV2 result");
-const productTuple = productData[0];
-assert.equal(productTuple?.type, "tuple", "Unexpected productV2 result encoding");
-assert(Array.isArray(productTuple.items) && productTuple.items.length === 10,
-  "Unexpected productV2 tuple layout");
-assert.equal(number(productTuple.items[0]), BigInt(productId), "Product tuple ID mismatch");
-assert(address(productTuple.items[2]).equals(nft), "Product tuple NFT mismatch");
-const priceNano = number(productTuple.items[3]);
+// Tolk's struct getter may expose ten flattened TVM entries rather than
+// one nested tuple; the two representations have the same field order.
+const productFields = productData.length === 10 ? productData :
+  productData.length === 1 && productData[0]?.type === "tuple" &&
+    Array.isArray(productData[0].items) ? productData[0].items : null;
+assert(Array.isArray(productFields) && productFields.length === 10,
+  "Unexpected productV2 representation (flat stack or ten-field tuple required)");
+assert.equal(number(productFields[0]), BigInt(productId), "Product ID mismatch");
+assert(address(productFields[2]).equals(nft), "Product NFT mismatch");
+const priceNano = number(productFields[3]);
 assert(priceNano > 0n, "Product has invalid price");
-assert.equal(number(productTuple.items[7]), 2n, "Product tuple is not listed");
+assert.equal(number(productFields[7]), 2n, "Product is not listed");
 const escrowAddress = address(escrow[0]);
 const ownerAddress = address(nftData[3]);
 assert(ownerAddress.equals(escrowAddress), "NFT owner is not the Marketplace escrow");
