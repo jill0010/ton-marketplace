@@ -285,7 +285,7 @@ export function ProductPage() {
         return
       }
       const chainPrice = BigInt(priceEntry.value)
-      if (chainPrice <= 0n || chainPrice !== toNano(product.priceTon.toString())) {
+      if (chainPrice <= 0n || chainPrice !== toNano(product.priceTonExact)) {
         setV3ReadMessage("链上售价与商城展示价格不一致，禁止付款。")
         return
       }
@@ -410,7 +410,7 @@ export function ProductPage() {
       if (numberAt(0) !== chainId || numberAt(4) !== listing.escrowId ||
           numberAt(5) !== listing.productQueryId || numberAt(7) !== listing.status ||
           chainPrice === null || chainPrice <= 0n ||
-          chainPrice !== toNano(product.priceTon.toString())) {
+          chainPrice !== toNano(product.priceTonExact)) {
         throw new Error("链上商品编号、价格、Escrow 或上架状态与页面不一致。")
       }
       const observations = [binding.observedAt, custody.observedAt, asset.observedAt, listing.observedAt, productGetter.observed_at]
@@ -483,7 +483,7 @@ export function ProductPage() {
         expectedMarketplaceAddress: listing.marketplaceAddress,
         expectedProductId: chainId,
         expectedNftItemAddress: nft,
-        expectedPriceNano: toNano(product.priceTon.toString()),
+        expectedPriceNano: toNano(product.priceTonExact),
         nowSeconds,
       })
       // The final quote must not be reused after a wallet or listing change.
