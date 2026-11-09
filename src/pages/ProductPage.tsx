@@ -344,6 +344,9 @@ export function ProductPage() {
       const metadata = product.productMetadata ?? {}
       const rawId = metadata.v3_testnet_product_id ?? product.marketplaceProductId
       const nft = metadata.nft_item_address ?? product.nftItemAddress
+      if (metadata.v3_testnet_product_id == null && !product.marketplaceContractAddress) {
+        throw new Error("商品没有明确的 V3 测试网合约绑定，不能复用其他网络的商品编号。")
+      }
       if ((typeof rawId !== "string" && typeof rawId !== "number") ||
           (typeof rawId === "number" && !Number.isSafeInteger(rawId)) ||
           !/^[1-9][0-9]*$/.test(String(rawId)) || typeof nft !== "string") {
@@ -513,6 +516,9 @@ export function ProductPage() {
     setV3OrderMessage("正在读取测试网链上订单状态……")
     try {
       const rawId = product.productMetadata?.v3_testnet_product_id ?? product.marketplaceProductId
+      if (product.productMetadata?.v3_testnet_product_id == null && !product.marketplaceContractAddress) {
+        throw new Error("商品缺少 V3 测试网合约绑定，无法可靠查询订单。")
+      }
       if ((typeof rawId !== "string" && typeof rawId !== "number") ||
           (typeof rawId === "number" && !Number.isSafeInteger(rawId)) ||
           !/^[1-9][0-9]*$/.test(String(rawId))) {
@@ -521,6 +527,10 @@ export function ProductPage() {
       const chainId = BigInt(rawId)
       if (chainId > 0xffff_ffff_ffff_ffffn) throw new Error("V3 商品编号超出范围。")
       const diagnostic = await inspectMarketplaceV3TestnetProduct(chainId)
+      if (product.marketplaceContractAddress &&
+          !Address.parse(product.marketplaceContractAddress).equals(Address.parse(diagnostic.marketplaceAddress))) {
+        throw new Error("商品关联的 Marketplace 合约不是当前 V3 测试网合约。")
+      }
       if (diagnostic.existingOrderId === null) {
         setV3OrderMessage(diagnostic.status === 2n
           ? "测试网链上商品仍在出售，尚无订单。此查询不代表购买授权。"
