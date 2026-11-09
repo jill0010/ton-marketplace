@@ -127,6 +127,7 @@ function txFailed(tx) {
 export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTransactions, expectedOrderId }) {
   const failedReceipts = [];
   const outbound = [];
+  // TON Center returns newest transactions first, so build ALL dispatches before matching earlier bounces.
   for (const tx of vaultTransactions) {
     for (const msg of messageArray(tx.out_msgs)) {
       if (normalizeAddress(msg.destination ?? msg.dest) !== buyer) continue;
@@ -136,6 +137,8 @@ export function inspectFailedRefund({ vault, buyer, vaultTransactions, buyerTran
         body: parseRefundBody(rawBody(msg)),
       });
     }
+  }
+  for (const tx of vaultTransactions) {
     const msg = inbound(tx);
     const decodedBounce = bouncedBody(msg);
     const matchingDispatch = decodedBounce && outbound.find((item) =>
