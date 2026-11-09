@@ -99,7 +99,7 @@ export async function readMarketplaceV3TestnetGetter(
     throw new Error("V3 Testnet RPC returned an invalid contract address");
   }
   if (parsedAddress.workChain !== 0 ||
-      (nftItem && method === "get_nft_data" && !parsedAddress.equals(nftItem)) || data.stack.length > 8 ||
+      (nftItem && method === "get_nft_data" && !parsedAddress.equals(nftItem)) || data.stack.length > (method === "productV2" ? 10 : 8) ||
       data.stack.some((entry: unknown) =>
         !entry || typeof entry !== "object" || Array.isArray(entry) ||
         typeof (entry as { type?: unknown }).type !== "string")) {
