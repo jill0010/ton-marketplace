@@ -56,7 +56,8 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$S04_P001_ORDER_ID" =~ ^[0-9]+$ ]] && [ "$S04_P001_ORDER_ID" -gt 4 ]
-          [[ "$S04_P001_PAYMENT_HASH_INT" =~ ^[0-9]+$ ]] && [ "$S04_P001_PAYMENT_HASH_INT" -gt 0 ]
+          [[ "$S04_P001_PAYMENT_HASH_INT" =~ ^[0-9]+$ ]]
+          [[ "$S04_P001_PAYMENT_HASH_INT" =~ [1-9] ]]
           [[ "$S04_P001_UNIQUE_NONCE" =~ ^[0-9]+$ ]] && [ "$S04_P001_UNIQUE_NONCE" -gt 0 ]
           test -n "$DEPLOYER_MNEMONIC"
           for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
