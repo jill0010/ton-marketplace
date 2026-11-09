@@ -39,6 +39,8 @@ export function ProductPage() {
   const [paymentVerified, setPaymentVerified] = useState(false)
   const [v3ReadBusy, setV3ReadBusy] = useState(false)
   const [v3ReadMessage, setV3ReadMessage] = useState("")
+  const [v3PreflightBusy, setV3PreflightBusy] = useState(false)
+  const [v3PreflightMessage, setV3PreflightMessage] = useState("")
   const [v3OrderBusy, setV3OrderBusy] = useState(false)
   const [v3OrderMessage, setV3OrderMessage] = useState("")
 
@@ -325,6 +327,46 @@ export function ProductPage() {
     }
   }
 
+  async function checkV3TestnetPurchasePrerequisites() {
+    if (v3PreflightBusy || !product) return
+    setV3PreflightBusy(true)
+    setV3PreflightMessage("正在检查测试网购买条件……")
+    try {
+      const wallet = tonConnectUI.wallet
+      if (!wallet || wallet.account.chain !== "-3") {
+        throw new Error("请连接 TON 测试网钱包。主网钱包不能用于 V3 测试网购买。")
+      }
+      const metadata = product.productMetadata ?? {}
+      const rawId = metadata.v3_testnet_product_id
+      const nft = metadata.nft_item_address
+      if ((typeof rawId !== "string" && typeof rawId !== "number") ||
+          (typeof rawId === "number" && !Number.isSafeInteger(rawId)) ||
+          !/^[1-9][0-9]*$/.test(String(rawId)) || typeof nft !== "string") {
+        throw new Error("商品缺少可信的 V3 测试网 NFT 与商品编号绑定。")
+      }
+      const chainId = BigInt(rawId)
+      if (chainId > 0xffff_ffff_ffff_ffffn) throw new Error("V3 商品编号无效。")
+      const binding = await readV3TestnetMarketplaceEscrow()
+      const [custody, asset, listing] = await Promise.all([
+        inspectV3TestnetNftCustody(nft, binding.escrowAddress),
+        inspectV3TestnetAssetProductBinding(nft, chainId),
+        inspectMarketplaceV3TestnetProduct(chainId),
+      ])
+      if (!custody.custodyMatches || !asset.bindingMatches ||
+          listing.marketplaceAddress !== binding.marketplaceAddress ||
+          listing.status !== 2n || listing.existingOrderId !== null ||
+          listing.escrowId === null || listing.escrowId <= 0n ||
+          !listing.escrowConfigured || !listing.treasuryConfigured || !listing.coordinatorConfigured) {
+        throw new Error("NFT 托管、链上绑定或商品可售状态不符合购买条件。")
+      }
+      setV3PreflightMessage("测试网钱包、NFT 托管、商品绑定和可售状态初步检查通过。当前仅提供只读诊断，尚未完成可信原子快照与最终购买预检，不能发起付款。")
+    } catch (cause) {
+      setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
+    } finally {
+      setV3PreflightBusy(false)
+    }
+  }
+
   async function readV3TestnetOrderStatus() {
     if (v3OrderBusy || !product) return
     setV3OrderBusy(true)
@@ -516,6 +558,10 @@ export function ProductPage() {
             {v3ReadBusy ? "正在读取测试网链上状态…" : "读取 V3 测试网托管合约"}
           </button>
           {v3ReadMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3ReadMessage}</p>}
+          <button type="button" onClick={() => void checkV3TestnetPurchasePrerequisites()} disabled={v3PreflightBusy} className="w-full rounded-full border border-sky-500/40 px-4 py-2.5 text-sm text-sky-200 hover:bg-sky-500/10 disabled:opacity-50">
+            {v3PreflightBusy ? "正在检查测试网购买条件…" : "检查 V3 测试网购买条件（不付款）"}
+          </button>
+          {v3PreflightMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3PreflightMessage}</p>}
           <button type="button" onClick={() => void readV3TestnetOrderStatus()} disabled={v3OrderBusy} className="w-full rounded-full border border-white/20 px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">
             {v3OrderBusy ? "正在查询测试网订单…" : "查询 V3 测试网订单与预留金状态"}
           </button>
