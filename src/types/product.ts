@@ -11,6 +11,7 @@ export type Product = {
   title: string
   subtitle: string
   priceTon: number
+  priceTonExact: string
   currency: ProductCurrency
   deliveryMode: DeliveryMode
   imageUrl?: string | null
