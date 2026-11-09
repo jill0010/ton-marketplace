@@ -4,6 +4,7 @@ import "ReserveVaultV3"
 // Never deploy this test fixture on Mainnet.
 struct S04P001RecipientStorage {
     owner: address
+    uniqueNonce: uint64
     vault: address
     enabled: bool
     received: coins
