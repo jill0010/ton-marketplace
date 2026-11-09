@@ -52,7 +52,7 @@ async function main(){
     getNumber(client,VAULT,"reserveVaultAvailableV3"),getNumber(client,VAULT,"reserveVaultOperationV3"),
     getNumber(client,VAULT,"reserveVaultQueryV3"),getNumber(client,VAULT,"reserveVaultRetryCountV3"),
     getNumber(client,VAULT,"reserveVaultDispatchMessageHashV3"),
-    getNumber(client,RECIPIENT,"s04P001RecipientAcceptedCount"),getNumber(client,RECIPIENT,"s04P001RecipientEnabled"),
+    getNumber(client,RECIPIENT,"s04P001RecipientAcceptedCount"),(await client.runMethod(RECIPIENT,"s04P001RecipientEnabled")).stack.readBoolean(),
     (await client.runMethod(RECIPIENT,"s04P001RecipientVault")).stack.readAddress(),
     getNumber(client,VERIFIER,"verifierEpoch"),getNumber(client,VERIFIER,"verifierNetwork"),
     getNumber(client,VERIFIER,"verifierThreshold"),
@@ -60,7 +60,7 @@ async function main(){
   ]);
   if(status!==2n||inFlight!==PRINCIPAL||principal!==PRINCIPAL||paid!==0n||available!==0n||
     operation!==1n||query!==1n||retries!==0n||dispatchHash===0n||accepted!==0n||
-    enabled!==0n||!recipientVault.equals(VAULT)||epoch!==1n||network!==-3n||
+    enabled!==false||!recipientVault.equals(VAULT)||epoch!==1n||network!==-3n||
     threshold!==3n||!verifierMarketplace.equals(OWNER))throw Error("on-chain Vault/recipient/verifier state changed; attestation blocked");
   // TON Center transaction hashes identify the actual dispatch and the inbound bounced transfer.
   const seq=BigInt(mc?.last?.seqno||0);
