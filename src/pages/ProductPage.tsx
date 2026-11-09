@@ -223,7 +223,7 @@ export function ProductPage() {
         return
       }
       const listing = await inspectMarketplaceV3TestnetProduct(productId)
-      if (listing.marketplaceAddress !== binding.marketplaceAddress ||
+      if (!Address.parse(listing.marketplaceAddress).equals(Address.parse(binding.marketplaceAddress)) ||
           listing.status !== 2n || listing.existingOrderId !== null ||
           listing.escrowId === null || listing.escrowId <= 0n ||
           !listing.escrowConfigured || !listing.treasuryConfigured ||
