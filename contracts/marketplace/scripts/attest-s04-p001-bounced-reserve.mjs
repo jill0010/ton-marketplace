@@ -108,7 +108,8 @@ async function main(){
   const keys=[0,1,2].map(i=>deriveV3ValidatorKey(required("V3_VALIDATOR_"+i+"_SEED")));
   if(new Set(keys.map(k=>k.publicKeyDecimal)).size!==3)throw Error("not 3 independent validator keys");
   for(let i=0;i<3;i++){
-    const onchain=getNumber(client,VERIFIER,"verifierValidatorKey",[{type:"int",value:BigInt(i)}]);
+    const onchain=await getNumber(client,VERIFIER,"verifierValidatorKey",[{type:"int",value:BigInt(i)}]);
+    await delay(350);
     if(onchain!==BigInt(keys[i].publicKeyDecimal))throw Error("validator "+i+" public key mismatch");
   }
   const sigs=Dictionary.empty(Dictionary.Keys.Uint(8),Dictionary.Values.Cell());
