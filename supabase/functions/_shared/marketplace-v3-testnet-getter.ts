@@ -2,7 +2,7 @@
  * Fail-closed decoding for TON Center V3 read-only getter responses.
  * This is a transport parser, NOT proof of chain finality or NFT custody.
  */
-export function extractV3TestnetGetterStack(response: unknown): Array<Record<string, unknown>> {
+export function extractV3TestnetGetterStack(response: unknown, maxEntries = 8): Array<Record<string, unknown>> {
   if (!response || typeof response !== "object" || Array.isArray(response)) {
     throw new Error("Invalid Testnet getter response");
   }
@@ -17,7 +17,7 @@ export function extractV3TestnetGetterStack(response: unknown): Array<Record<str
     throw new Error("Testnet RPC reported failure");
   }
   if (data.exit_code !== 0 || !Array.isArray(data.stack) ||
-      data.stack.length > 8) {
+      data.stack.length > maxEntries) {
     throw new Error("Testnet getter failed or returned an invalid stack");
   }
   const entries: Array<Record<string, unknown>> = [];
