@@ -65,3 +65,5 @@ get fun s04P001RecipientReceived(): coins {
 get fun s04P001RecipientAcceptedCount(): uint32 {
     return S04P001RecipientStorage.fromCell(contract.getData()).acceptedCount;
 }
+
+get fun s04P001RecipientVault(): address { return S04P001RecipientStorage.fromCell(contract.getData()).vault; }
