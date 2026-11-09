@@ -239,7 +239,7 @@ export function ProductPage() {
         return
       }
       const readNumber = (index: number): bigint | null => {
-        const item = entry.items![index] as { type?: unknown; value?: unknown } | null
+        const item = (entry.items as unknown[])[index] as { type?: unknown; value?: unknown } | null
         if (!item || item.type !== "num" || typeof item.value !== "string" ||
             !(/^(0|[1-9][0-9]*)$/.test(item.value) || /^0x[0-9a-fA-F]+$/.test(item.value))) return null
         return BigInt(item.value)
