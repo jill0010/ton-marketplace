@@ -41,6 +41,12 @@ jobs:
       V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS: "kQBBvJvEce3gr5OGIuzIaWPd7ylKeKxLw6l9saVjBTccl8Vs"
       V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQCn2nYkDsCBBWqEDOBFwXtVhXtD7E1x6gIAQmbL8DZY1TDk"
     steps:
+      - name: Prevent replay of already-settled order 4
+        working-directory: .
+        run: |
+          echo "::error::Testnet order 4 has already settled with 3/3 attestation and vault Paid=0.2 TON in run 42585212607. Do not replay settlement."
+          exit 1
+
       - name: Checkout pinned V3 code with order 4 read-only final verifier
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
