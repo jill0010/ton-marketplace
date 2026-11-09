@@ -32,7 +32,7 @@ async function retryGet(fn, label) {
   for (let attempt = 0; attempt < 8; attempt++) {
     try { return await fn(); }
     catch (error) {
-      const status = error?.response?.status ?? error?.status;
+      const status = error?.response?.status ?? error?.status ?? (String(error?.message ?? "").includes("429") ? 429 : undefined);
       if (status !== 429 && ![500,502,503,504,542].includes(status)) throw error;
       if (attempt === 7) throw Error(label+" exhausted read-only RPC retries ("+status+")");
       await delay(Math.min(1600*2**attempt,20000));
