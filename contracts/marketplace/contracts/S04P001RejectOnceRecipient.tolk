@@ -1,3 +1,4 @@
+import "ReserveVaultV3"
 // S04-P001 ONLY. Synthetic Testnet buyer endpoint: initially rejects a
 // reserve refund; owner can explicitly arm it to accept ONE subsequent refund.
 // Never deploy this test fixture on Mainnet.
@@ -9,13 +10,7 @@ struct S04P001RecipientStorage {
     acceptedCount: uint32
 }
 struct (0x50400101) S04P001EnableReceipt {}
-struct (0x72730506) S04P001ReserveRefund {
-    orderId: uint64
-    operationId: uint64
-    queryId: uint64
-    amount: coins
-}
-type S04P001RecipientMessage = S04P001EnableReceipt | S04P001ReserveRefund
+type S04P001RecipientMessage = S04P001EnableReceipt | ReserveRefundDispatchedV3
 
 contract S04P001RejectOnceRecipient {
     author: "TON Market"
@@ -35,7 +30,7 @@ fun onInternalMessage(in: InMessage) {
             storage.enabled = true;
             contract.setData(storage.toCell());
         }
-        S04P001ReserveRefund => {
+        ReserveRefundDispatchedV3 => {
             assert (in.senderAddress == storage.vault) throw 813;
             assert (storage.enabled) throw 814;
             assert (storage.acceptedCount == 0) throw 815;
