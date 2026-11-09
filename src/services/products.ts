@@ -28,7 +28,9 @@ function toProduct(item: DatabaseProduct): Product | null {
   if (!productType || (item.currency !== "GRAM" && item.currency !== "TON")) return null
   if (item.delivery_mode !== "manual" && item.delivery_mode !== "escrow") return null
 
-  const priceTon = Number(item.price)
+  const priceTonExact = String(item.price)
+  if (!/^(0|[1-9][0-9]*)(\\.[0-9]{1,9})?$/.test(priceTonExact)) return null
+  const priceTon = Number(priceTonExact)
   if (!Number.isFinite(priceTon) || priceTon < 0) return null
 
   return {
@@ -37,6 +39,7 @@ function toProduct(item: DatabaseProduct): Product | null {
     title: item.name,
     subtitle: item.description ?? "",
     priceTon,
+    priceTonExact,
     currency: item.currency as ProductCurrency,
     deliveryMode: item.delivery_mode as DeliveryMode,
     imageUrl: item.image_url,
