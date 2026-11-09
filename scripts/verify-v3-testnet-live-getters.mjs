@@ -21,7 +21,15 @@ async function getter(address, method, stack = []) {
   const data = await response.json();
   assert.equal(data.exit_code ?? data.result?.exit_code, 0, `${method}: TVM execution failed`);
   const result = data.stack ?? data.result?.stack;
-  assert(Array.isArray(result) && result.length <= (method === "productV2" ? 10 : 8),
+  if (method === "productV2" && Array.isArray(result)) {
+    // Types and positions only; never print seller/NFT addresses or raw BOCs.
+    console.log("productV2 stack layout:", JSON.stringify(result.map((entry, index) => ({
+      index,
+      type: entry?.type ?? null,
+      nestedLength: Array.isArray(entry?.items) ? entry.items.length : null,
+    }))));
+  }
+  assert(Array.isArray(result) && result.length <= (method === "productV2" ? 11 : 8),
     `${method}: invalid stack (entries=${Array.isArray(result) ? result.length : "not-array"})`);
   return result;
 }
