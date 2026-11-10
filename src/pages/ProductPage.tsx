@@ -3,6 +3,7 @@ import { Address, Cell, beginCell, toNano } from "@ton/core"
 import { readMarketplaceV3TestnetGetter, readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
 import { inspectMarketplaceV3TestnetProduct } from "../lib/marketplaceV3TestnetDiagnostics"
 import { preflightMarketplaceV3TestnetPurchase } from "../lib/marketplaceV3Preflight"
+import { buildMarketplaceV3TestnetWalletRequest } from "../lib/marketplaceV3TestnetPurchaseSubmit"
 import { useTonAddress, useTonConnectUI } from "@tonconnect/ui-react"
 import { Link, useParams } from "react-router-dom"
 import { getListedProductById } from "../services/products"
@@ -45,6 +46,16 @@ export function ProductPage() {
   const [v3OrderBusy, setV3OrderBusy] = useState(false)
   const [v3OrderMessage, setV3OrderMessage] = useState("")
   const v3ObservationEpoch = useRef(0)
+  const v3PurchaseBusyRef = useRef(false)
+  // Staging-only. Even if the Vite flag is accidentally set in production,
+  // the production hostname is not eligible for a wallet transaction.
+  const v3TestnetCheckoutEnabled =
+    import.meta.env.VITE_V3_TESTNET_CHECKOUT_ENABLED === "true" &&
+    (window.location.hostname === "localhost" ||
+     window.location.hostname === "127.0.0.1" ||
+     (window.location.hostname.endsWith(".ton-marketplace-cvj.pages.dev") &&
+      window.location.hostname !== "ton-marketplace-cvj.pages.dev"))
+
 
   useEffect(() => {
     let cancelled = false
@@ -340,10 +351,18 @@ export function ProductPage() {
     }
   }
 
-  async function checkV3TestnetPurchasePrerequisites() {
-    if (v3PreflightBusy || !product) return
+  async function checkV3TestnetPurchasePrerequisites(submitTestnetPurchase = false) {
+    if (v3PreflightBusy || v3PurchaseBusyRef.current || !product) return
+    if (submitTestnetPurchase && !v3TestnetCheckoutEnabled) {
+      setV3PreflightMessage("V3 交易提交只对测试网预览环境开放，主网购买保持禁用。")
+      return
+    }
+    const observationEpoch = v3ObservationEpoch.current
+    v3PurchaseBusyRef.current = true
     setV3PreflightBusy(true)
-    setV3PreflightMessage("正在检查测试网购买条件……")
+    setV3PreflightMessage(submitTestnetPurchase
+      ? "正在重新核对测试网商品、NFT 托管及链上订单，检查通过后才会请求钱包确认……"
+      : "正在检查测试网购买条件……")
     try {
       const wallet = tonConnectUI.wallet
       if (!wallet || wallet.account.chain !== "-3") {
@@ -509,8 +528,8 @@ export function ProductPage() {
         expectedPriceNano: toNano(product.priceTonExact),
         nowSeconds,
       })
-      // The final quote must not be reused after a wallet or listing change.
-      // Do not persist the payload or offer a send button from this dry run.
+      // Never use a previously displayed quote for payment. The Testnet
+      // checkout path always reruns every chain getter and price comparison.
       if (quote.network !== "-3" || quote.productId !== chainId ||
           quote.priceNano !== chainPrice || quote.reserveNano !== toNano("0.2") ||
           !Address.parse(quote.address).equals(Address.parse(listing.marketplaceAddress)) ||
@@ -518,10 +537,53 @@ export function ProductPage() {
           quote.totalNano !== quote.priceNano + quote.reserveNano) {
         throw new Error("V3 交易报价与链上验证结果不一致，禁止付款。")
       }
+      if (observationEpoch !== v3ObservationEpoch.current) {
+        throw new Error("商品或钱包已切换，禁止使用旧报价。")
+      }
+      if (!submitTestnetPurchase) {
       setV3PreflightMessage(`V3 测试网购买参数校验通过：商品 #${quote.productId.toString()}，售价 ${product.priceTonExact} TON，预留金 0.2 TON，报价总发送金额 ${(quote.totalNano / 1_000_000_000n).toString()}.${(quote.totalNano % 1_000_000_000n).toString().padStart(9, "0").replace(/0+$/, "") || "0"} TON（售价与 0.2 TON 执行预留金合计）。当前仅模拟预检，不签名、不发送；RPC 读取非原子快照，不能据此付款。`)
+      } else {
+        // The host+environment flag gate is independent of the quote checks.
+        if (!v3TestnetCheckoutEnabled) throw new Error("测试网交易提交未启用。")
+        const currentWallet = tonConnectUI.wallet
+        if (!currentWallet || currentWallet.account.chain !== "-3" ||
+            !Address.parse(currentWallet.account.address).equals(Address.parse(wallet.account.address))) {
+          throw new Error("钱包已发生变化，禁止付款。")
+        }
+        const request = buildMarketplaceV3TestnetWalletRequest({
+          quote,
+          walletChain: currentWallet.account.chain,
+          buyerAddress: currentWallet.account.address,
+          nowSeconds: Math.floor(Date.now() / 1000),
+        })
+        // Browser-side persistent one-attempt guard. The chain, not this
+        // marker, determines payment and delivery. Unknown send results
+        // MUST NOT cause an automatic retry.
+        const attemptKey = [
+          "v3-testnet-purchase-v1",
+          Address.parse(quote.address).toRawString(),
+          quote.productId.toString(10),
+          Address.parse(currentWallet.account.address).toRawString(),
+        ].join(":")
+        if (window.localStorage.getItem(attemptKey) !== null) {
+          throw new Error("此钱包已尝试购买该测试网商品。请先查询链上状态，不要重复付款。")
+        }
+        window.localStorage.setItem(attemptKey, JSON.stringify({
+          network: "-3",
+          queryId: quote.queryId.toString(10),
+          buyer: Address.parse(currentWallet.account.address).toRawString(),
+          createdAt: new Date().toISOString(),
+        }))
+        setV3PreflightMessage("请在测试网钱包中核对金额后确认。已锁定该商品的单次尝试；取消或未知结果也不会自动重试。")
+        await tonConnectUI.sendTransaction(request)
+        if (observationEpoch === v3ObservationEpoch.current) {
+          setV3PreflightMessage("测试网 TON Connect 已提交钱包请求，但不等于链上付款成功、NFT 已交付或预留金已结算。请查询下方链上订单状态，不要重复付款。")
+        }
+      }
     } catch (cause) {
       setV3PreflightMessage(cause instanceof Error ? cause.message : "测试网购买条件检查失败。")
     } finally {
+      v3PurchaseBusyRef.current = false
       setV3PreflightBusy(false)
     }
   }
@@ -756,6 +818,13 @@ export function ProductPage() {
             {v3PreflightBusy ? "正在检查测试网购买条件…" : "检查 V3 测试网购买条件（不付款）"}
           </button>
           {v3PreflightMessage && <p role="status" className="break-all rounded-xl bg-white/[0.05] p-3 text-xs leading-5 text-zinc-300">{v3PreflightMessage}</p>}
+          {v3TestnetCheckoutEnabled && (
+            <button type="button" onClick={() => void checkV3TestnetPurchasePrerequisites(true)}
+              disabled={v3PreflightBusy || v3OrderBusy}
+              className="w-full rounded-full border border-amber-400/60 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50">
+              {v3PreflightBusy ? "正在重新验证测试网购买条件…" : "使用测试网 TON 购买（需钱包确认）"}
+            </button>
+          )}
           <button type="button" onClick={() => void readV3TestnetOrderStatus()} disabled={v3OrderBusy} className="w-full rounded-full border border-white/20 px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-50">
             {v3OrderBusy ? "正在查询测试网订单…" : "查询 V3 测试网订单与预留金状态"}
           </button>
