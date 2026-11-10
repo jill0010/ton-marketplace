@@ -1,0 +1,45 @@
+name: S07 V3 Production Roles On-chain Proof (Read Only)
+on:
+  workflow_dispatch:
+    inputs:
+      vault_address:
+        description: "Actual deployed Testnet ReserveVaultV3 instance address"
+        required: false
+        type: string
+      verifier_address:
+        description: "Actual deployed Testnet SettlementAttestationVerifierV3 address"
+        required: false
+        type: string
+      production_escrow_address:
+        description: "Actual deployed Testnet production NFTEscrowV2 address (NOT fixture)"
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+      - name: Read-only chain evidence
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          V3_TESTNET_VAULT_ADDRESS: ${{ inputs.vault_address }}
+          V3_TESTNET_VERIFIER_ADDRESS: ${{ inputs.verifier_address }}
+          V3_TESTNET_PRODUCTION_ESCROW_ADDRESS: ${{ inputs.production_escrow_address }}
+        run: node scripts/verify-v3-testnet-production-roles.mjs
+      - name: Preserve evidence even when a role is missing or mismatched
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-production-roles-evidence
+          path: v3-production-roles-evidence.json
+          if-no-files-found: ignore
+          retention-days: 30
