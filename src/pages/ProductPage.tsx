@@ -85,11 +85,17 @@ export function ProductPage() {
     }
   }, [id, t])
 
+  // S06: never carry a read-only Testnet preflight or order observation
+  // across products or connected-wallet changes. A prior observation is
+  // never permission to pay for a different listing or with another wallet.
   useEffect(() => {
     setCheckout(null)
     setCheckoutMessage("")
     setPaymentVerified(false)
-  }, [id])
+    setV3ReadMessage("")
+    setV3PreflightMessage("")
+    setV3OrderMessage("")
+  }, [id, walletAddress, tonConnectUI.wallet?.account.chain])
 
   async function startManualCheckout() {
     if (!product || checkoutBusy || checkout) return
