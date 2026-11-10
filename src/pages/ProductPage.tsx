@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react"
+﻿import { useEffect, useRef, useState } from "react"
 import { Address, Cell, beginCell, toNano } from "@ton/core"
 import { readMarketplaceV3TestnetGetter, readV3TestnetMarketplaceEscrow, inspectV3TestnetNftCustody, inspectV3TestnetAssetProductBinding } from "../lib/marketplaceV3TestnetReadonly"
 import { inspectMarketplaceV3TestnetProduct } from "../lib/marketplaceV3TestnetDiagnostics"
@@ -44,6 +44,7 @@ export function ProductPage() {
   const [v3PreflightMessage, setV3PreflightMessage] = useState("")
   const [v3OrderBusy, setV3OrderBusy] = useState(false)
   const [v3OrderMessage, setV3OrderMessage] = useState("")
+  const v3ObservationEpoch = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -89,6 +90,7 @@ export function ProductPage() {
   // across products or connected-wallet changes. A prior observation is
   // never permission to pay for a different listing or with another wallet.
   useEffect(() => {
+    v3ObservationEpoch.current += 1
     setCheckout(null)
     setCheckoutMessage("")
     setPaymentVerified(false)
@@ -526,8 +528,9 @@ export function ProductPage() {
 
   async function readV3TestnetOrderStatus() {
     if (v3OrderBusy || !product) return
+    const observationEpoch = v3ObservationEpoch.current
     setV3OrderBusy(true)
-    setV3OrderMessage("正在读取测试网链上订单状态……")
+    if (observationEpoch === v3ObservationEpoch.current) setV3OrderMessage("正在读取测试网链上订单状态……")
     try {
       const rawId = product.productMetadata?.v3_testnet_product_id ?? product.marketplaceProductId
       if (product.productMetadata?.v3_testnet_product_id == null && !product.marketplaceContractAddress) {
@@ -546,7 +549,7 @@ export function ProductPage() {
         throw new Error("商品关联的 Marketplace 合约不是当前 V3 测试网合约。")
       }
       if (diagnostic.existingOrderId === null) {
-        setV3OrderMessage(diagnostic.status === 2n
+        if (observationEpoch === v3ObservationEpoch.current) setV3OrderMessage(diagnostic.status === 2n
           ? "测试网链上商品仍在出售，尚无订单。此查询不代表购买授权。"
           : `测试网链上商品状态：${diagnostic.status?.toString() ?? "不存在"}；尚无关联订单。`)
         return
@@ -579,9 +582,9 @@ export function ProductPage() {
       const orderMessage = diagnostic.status === 2n
         ? "链上仍显示出售中，但存在关联订单，状态冲突，请勿再次付款。"
         : "订单已占用商品，禁止重复付款。NFT 交付与预留金最终结算仍需独立链上收据证明。"
-      setV3OrderMessage(`测试网订单 #${diagnostic.existingOrderId.toString()}；商品：${statusText}；预留金状态码：${reserve}。${orderMessage}`)
+      if (observationEpoch === v3ObservationEpoch.current) setV3OrderMessage(`测试网订单 #${diagnostic.existingOrderId.toString()}；商品：${statusText}；预留金状态码：${reserve}。${orderMessage}`)
     } catch (cause) {
-      setV3OrderMessage(cause instanceof Error ? cause.message : "订单状态读取失败。")
+      if (observationEpoch === v3ObservationEpoch.current) setV3OrderMessage(cause instanceof Error ? cause.message : "订单状态读取失败。")
     } finally {
       setV3OrderBusy(false)
     }
