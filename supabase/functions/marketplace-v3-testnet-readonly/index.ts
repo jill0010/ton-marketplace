@@ -5,6 +5,21 @@ const ALLOWED_ORIGINS = new Set([
   "https://ton-marketplace-cvj.pages.dev",
   "http://localhost:5173",
 ]);
+function allowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const url = new URL(origin);
+    const suffix = ".ton-marketplace-cvj.pages.dev";
+    const label = url.hostname.endsWith(suffix)
+      ? url.hostname.slice(0, -suffix.length) : "";
+    return url.protocol === "https:" &&
+      url.username === "" && url.password === "" &&
+      url.port === "" && url.pathname === "/" &&
+      /^[a-z0-9-]+$/.test(label);
+  } catch {
+    return false;
+  }
+}
 const GETTERS = new Set([
   "purchaseSchemaVersionV3",
   "nextOrderIdV3",
@@ -56,7 +71,7 @@ function reply(origin: string, status: number, data: Record<string, unknown>): R
  */
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin") ?? "";
-  if (!ALLOWED_ORIGINS.has(origin)) return new Response("Forbidden", { status: 403 });
+  if (!allowedOrigin(origin)) return new Response("Forbidden", { status: 403 });
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: headers(origin) });
   if (req.method !== "POST") return reply(origin, 405, { success: false, error: "Method not allowed" });
 
