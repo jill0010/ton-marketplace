@@ -46,3 +46,11 @@
 
 ## Current decision
 **BLOCKED** for Mainnet deployment. Read-only CI success proves only the checks it actually ran. No new contract was deployed, no real customer checkout enabled and no funds moved in this evidence update.
+
+## S07 live Testnet Vault and Verifier code proof (2026-11-10)
+- [Read-only Actions 42865241709](https://github.com/jill0010/ton-marketplace/actions/runs/42865241709): the **Vault and Settlement Verifier checks PASSED** with active on-chain accounts and exact code-hash matches against the pinned candidate; the overall job is red **only because production NFTEscrowV2 was not supplied**.
+- [Immutable run artifact 13787011643](https://github.com/jill0010/ton-marketplace/actions/runs/42865241709/artifacts/13787011643) contains the full JSON evidence.
+- Vault: `kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u` — observed/expected decimal hash `96403339264512730204843696723697573046015770335637526243123230074643027115550`; active; match=true.
+- Settlement Verifier: `kQB_3iLBqs2iW0qC2QbPeOisGfxPf46yGLZUOw3GgGxXZYO4` — observed/expected decimal hash `40137527310137199081220684777089428003119541313287351217810842336613359506965`; active; match=true.
+- **Still OPEN**: production `NFTEscrowV2` deployment hash. The historic marketplace Testnet escrow is a distinct Testnet fixture and cannot satisfy this gate. Additionally, code-hash matches do not prove cross-contract bindings, code safety, current runtime correctness or independent audit.
+- No Mainnet approval or transaction was given or performed by this read-only job.
