@@ -4,11 +4,13 @@ on:
     inputs:
       vault_address:
         description: "Actual deployed Testnet ReserveVaultV3 instance address"
-        required: false
+        required: true
+        default: "kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u"
         type: string
       verifier_address:
         description: "Actual deployed Testnet SettlementAttestationVerifierV3 address"
-        required: false
+        required: true
+        default: "kQB_3iLBqs2iW0qC2QbPeOisGfxPf46yGLZUOw3GgGxXZYO4"
         type: string
       production_escrow_address:
         description: "Actual deployed Testnet production NFTEscrowV2 address (NOT fixture)"
