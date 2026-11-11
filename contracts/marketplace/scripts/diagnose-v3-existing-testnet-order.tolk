@@ -28,18 +28,26 @@ fun main() {
         println("V3_FRESH_PRODUCT_NFT_MATCHES: {}", listing!!.nftItem == nftItem!!);
         println("V3_FRESH_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
         println("V3_FRESH_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
-        println("V3_FRESH_COORDINATOR_CONFIGURED: {}", net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"));
+        println(
+            "V3_FRESH_COORDINATOR_CONFIGURED: {}",
+            net.runGetMethod<bool>(
+                marketplace.address,
+                "marketplaceReserveCoordinatorConfiguredV3",
+            ),
+        );
         val nft = net.runGetMethod<tuple>(nftItem!!, "get_nft_data");
         val nftOwner = nft.get(3) as address;
         println("V3_FRESH_NFT_OWNER: {}", nftOwner);
         val escrowOwnerMatches = nftOwner == marketplace.escrowV2();
-        val listingIsReady = status != null && status!! == 2 &&
-            listing!!.nftItem == nftItem!! &&
+        val listingIsReady = status != null && status!! == 2 && listing!!.nftItem == nftItem!! &&
             listing!!.price == grams("0.01") &&
             listing!!.escrowId > 0 &&
             marketplace.treasuryConfiguredV2() &&
             marketplace.escrowConfiguredV2() &&
-            net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3") &&
+            net.runGetMethod<bool>(
+                marketplace.address,
+                "marketplaceReserveCoordinatorConfiguredV3",
+            ) &&
             escrowOwnerMatches;
         println("V3_FRESH_ESCROW_OWNS_NFT: {}", escrowOwnerMatches);
         println("V3_FRESH_LISTING_READY_FOR_CONTROLLED_TEST: {}", listingIsReady);
@@ -61,9 +69,30 @@ fun main() {
         println("V3_FRESH_DELIVERY_STATUS: {}", order.deliveryStatus);
         println("V3_FRESH_SELLER_PAYOUT_STATUS: {}", order.sellerPayoutStatus);
         println("V3_FRESH_PLATFORM_PAYOUT_STATUS: {}", order.platformPayoutStatus);
-        println("V3_FRESH_MARKETPLACE_RESERVE_STATUS: {}", net.runGetMethod<uint8>(marketplace.address, "marketplaceReserveStatusV3", [freshOrderId!!]));
-        println("V3_FRESH_COORDINATOR_RESERVE_STATUS: {}", net.runGetMethod<uint8>(coordinatorAddress!!, "reserveCoordinatorStatusV3", [freshOrderId!!]));
-        println("V3_FRESH_COORDINATOR_VAULT: {}", net.runGetMethod<address?>(coordinatorAddress!!, "reserveCoordinatorVaultV3", [freshOrderId!!]));
+        println(
+            "V3_FRESH_MARKETPLACE_RESERVE_STATUS: {}",
+            net.runGetMethod<uint8>(
+                marketplace.address,
+                "marketplaceReserveStatusV3",
+                [freshOrderId!!],
+            ),
+        );
+        println(
+            "V3_FRESH_COORDINATOR_RESERVE_STATUS: {}",
+            net.runGetMethod<uint8>(
+                coordinatorAddress!!,
+                "reserveCoordinatorStatusV3",
+                [freshOrderId!!],
+            ),
+        );
+        println(
+            "V3_FRESH_COORDINATOR_VAULT: {}",
+            net.runGetMethod<address?>(
+                coordinatorAddress!!,
+                "reserveCoordinatorVaultV3",
+                [freshOrderId!!],
+            ),
+        );
         println("V3_FRESH_RESULT: ORDER_EXISTS. Getter-only inspection complete; settlement is not attested.");
         return;
     }
@@ -82,12 +111,25 @@ fun main() {
     val historicalCreatedAt: int = 1794066402;
     val historicalDeadline: int = 1794067298;
     val historicalDeadlineMargin = historicalCreatedAt + 900 - historicalDeadline;
-    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_VALID: {}", historicalDeadline >= historicalCreatedAt && historicalDeadline <= historicalCreatedAt + 900);
-    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_SECONDS_AFTER_INBOUND: {}", historicalDeadline - historicalCreatedAt);
+    println(
+        "V3_DIAGNOSTIC_HISTORICAL_DEADLINE_VALID: {}",
+        historicalDeadline >= historicalCreatedAt &&
+            historicalDeadline <= historicalCreatedAt + 900,
+    );
+    println(
+        "V3_DIAGNOSTIC_HISTORICAL_DEADLINE_SECONDS_AFTER_INBOUND: {}",
+        historicalDeadline - historicalCreatedAt,
+    );
     println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_MARGIN_SECONDS: {}", historicalDeadlineMargin);
-    println("V3_DIAGNOSTIC_HISTORICAL_DEADLINE_NEAR_LIMIT: {}", historicalDeadlineMargin >= 0 && historicalDeadlineMargin <= 30);
+    println(
+        "V3_DIAGNOSTIC_HISTORICAL_DEADLINE_NEAR_LIMIT: {}",
+        historicalDeadlineMargin >= 0 && historicalDeadlineMargin <= 30,
+    );
     println("V3_DIAGNOSTIC_PRODUCT_ID_MATCHES: {}", product.id == productId!!);
-    println("V3_DIAGNOSTIC_BUYER_EQUALS_NFT_ITEM: {}", historicalBuyer != null && historicalBuyer!! == product.nftItem);
+    println(
+        "V3_DIAGNOSTIC_BUYER_EQUALS_NFT_ITEM: {}",
+        historicalBuyer != null && historicalBuyer!! == product.nftItem,
+    );
     println("V3_DIAGNOSTIC_PRODUCT_NFT_MATCHES_FIXTURE: {}", product.nftItem == nftItem!!);
     println("V3_DIAGNOSTIC_SELLER: {}", product.seller);
     println("V3_DIAGNOSTIC_PRICE_NANOTON: {}", product.price);
@@ -108,12 +150,21 @@ fun main() {
 
     println("V3_DIAGNOSTIC_TREASURY_CONFIGURED: {}", marketplace.treasuryConfiguredV2());
     println("V3_DIAGNOSTIC_ESCROW_CONFIGURED: {}", marketplace.escrowConfiguredV2());
-    println("V3_DIAGNOSTIC_COORDINATOR_CONFIGURED: {}", net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"));
+    println(
+        "V3_DIAGNOSTIC_COORDINATOR_CONFIGURED: {}",
+        net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3"),
+    );
     if (historicalBuyer != null && historicalSeller != null) {
         println("V3_DIAGNOSTIC_BUYER_EQUALS_SELLER: {}", historicalBuyer!! == product.seller);
         println("V3_DIAGNOSTIC_EXPECTED_SELLER_MATCHES: {}", historicalSeller!! == product.seller);
-        println("V3_DIAGNOSTIC_BUYER_EQUALS_ESCROW: {}", historicalBuyer!! == marketplace.escrowV2());
-        println("V3_DIAGNOSTIC_BUYER_EQUALS_MARKETPLACE: {}", historicalBuyer!! == marketplace.address);
+        println(
+            "V3_DIAGNOSTIC_BUYER_EQUALS_ESCROW: {}",
+            historicalBuyer!! == marketplace.escrowV2(),
+        );
+        println(
+            "V3_DIAGNOSTIC_BUYER_EQUALS_MARKETPLACE: {}",
+            historicalBuyer!! == marketplace.address,
+        );
     }
     val orderId = marketplace.orderIdForProductV2(productId!!);
     println("V3_DIAGNOSTIC_ORDER_ID: {}", orderId);

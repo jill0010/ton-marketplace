@@ -28,12 +28,16 @@ fun main() {
     assert (listing!!.id == productId && listing!!.price == grams("0.01")) throw 915;
     assert (listing!!.seller != buyer.address && listing!!.escrowId > 0) throw 915;
     assert (marketplace.treasuryConfiguredV2() && marketplace.escrowConfiguredV2()) throw 915;
-    assert (net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")) throw 915;
+    assert (
+        net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")
+    ) throw 915;
     // Use a per-deployment monotonic payment query ID instead of reusing 8005.
     // The existing Marketplace address may retain state across repeated Testnet runs.
     val paymentQueryId = marketplace.nextQueryIdV2() + 10000;
     assert (paymentQueryId > marketplace.nextQueryIdV2() + 3) throw 915;
-    assert (!net.runGetMethod<bool>(marketplace.address, "paymentQueryUsedV3", [paymentQueryId])) throw 915;
+    assert (
+        !net.runGetMethod<bool>(marketplace.address, "paymentQueryUsedV3", [paymentQueryId])
+    ) throw 915;
     val nft = net.runGetMethod<tuple>(nftItem!!, "get_nft_data");
     assert ((nft.get(3) as address) == marketplace.escrowV2()) throw 913;
     val result = marketplace.sendBuyProductV2(
@@ -57,7 +61,10 @@ fun main() {
         println("V3_TESTNET_PURCHASE_REJECTED: Full trace completed but Marketplace did not create an order. Do not pay again; inspect the trace.");
         throw 916;
     }
-    println("V3 Testnet purchase submitted once. Full trace settled. Product ID: {}; gross: 0.01 TON; reserve: 0.2 TON.", productId);
+    println(
+        "V3 Testnet purchase submitted once. Full trace settled. Product ID: {}; gross: 0.01 TON; reserve: 0.2 TON.",
+        productId,
+    );
     println("Buyer: {}", buyer.address);
     println("NFT Item: {}", nftItem!!);
     println("Do not repeat this payment; run read-only delivery and reserve checks.");

@@ -86,7 +86,9 @@ fun onInternalMessage(in: InMessage) {
         AllocateReserveV3 => {
             assert (in.senderAddress == storage.marketplace) throw 781;
             assert (msg.orderId > 0 && msg.paymentHash != 0) throw 782;
-            assert (msg.buyer != contract.getAddress() && msg.buyer != storage.marketplace) throw 782;
+            assert (
+                msg.buyer != contract.getAddress() && msg.buyer != storage.marketplace
+            ) throw 782;
             assert (!storage.bindings.get(msg.orderId).isFound) throw 783;
             // Buyer reserve principal is 0.2 TON. 0.08 TON is an explicit,
             // separate per-order vault operational budget; network execution
@@ -133,16 +135,18 @@ fun onInternalMessage(in: InMessage) {
                 stateInit: vaultState,
             };
             val vault = destination.calculateAddress();
-            storage.bindings.set(
-                msg.orderId,
-                ReserveCoordinatorBindingV3 {
-                    vault,
-                    buyer: msg.buyer,
-                    paymentHash: msg.paymentHash,
-                    status: 1,
-                    returnedNano: 0,
-                }.toCell(),
-            );
+            storage
+                .bindings
+                .set(
+                    msg.orderId,
+                    ReserveCoordinatorBindingV3 {
+                        vault,
+                        buyer: msg.buyer,
+                        paymentHash: msg.paymentHash,
+                        status: 1,
+                        returnedNano: 0,
+                    }.toCell(),
+                );
             storage.save();
             createMessage({
                 bounce: BounceMode.RichBounce,
@@ -201,7 +205,8 @@ fun onBouncedMessage(in: InMessageBounced) {
             in.senderAddress != binding.vault || binding.status != 1 ||
             funded.paymentHash != binding.paymentHash ||
             originalInfo.valueCoins != grams("0.28") ||
-            in.valueCoins < grams("0.19")
+            in.valueCoins <
+            grams("0.19")
         ) {
             return;
         }

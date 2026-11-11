@@ -27,9 +27,7 @@ fun main() {
     val validator2 = env<int>("V3_VALIDATOR_2_PUBLIC_KEY");
     assert (validator0 != null && validator1 != null && validator2 != null) throw 823;
     assert (
-        validator0!! != validator1!! &&
-        validator0!! != validator2!! &&
-        validator1!! != validator2!!
+        validator0!! != validator1!! && validator0!! != validator2!! && validator1!! != validator2!!
     ) throw 823;
 
     // A fresh funded validation must never resolve to the historical deterministic address.
@@ -145,7 +143,10 @@ fun main() {
     println("V3 trusted compiled escrow code hash: {}", build("NFTEscrowV2Testnet").hash());
     println("V3 trusted compiled vault code hash: {}", build("ReserveVaultV3").hash());
     println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
-    println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
+    println(
+        "V3 trusted compiled verifier code hash: {}",
+        build("SettlementAttestationVerifierV3").hash(),
+    );
 
     val marketDeploy = marketplace.deploy(deployer.address, { value: grams("0.4") });
     if (marketDeploy.waitForFirstTransaction() == null) {
@@ -272,12 +273,22 @@ fun main() {
     assert (escrowIsConfigured) throw 831;
     assert (treasuryAddressMatches) throw 838;
     assert (treasuryIsConfigured) throw 832;
-    assert (net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3") == coordinator) throw 836;
-    assert (net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")) throw 836;
+    assert (
+        net.runGetMethod<address>(marketplace.address, "marketplaceReserveCoordinatorV3") ==
+        coordinator
+    ) throw 836;
+    assert (
+        net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")
+    ) throw 836;
     assert (escrow.marketplace() == marketplace.address) throw 833;
     assert (escrow.owner() == deployer.address) throw 833;
-    assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorMarketplaceV3") == marketplace.address) throw 834;
-    assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorVerifierV3") == verifier) throw 834;
+    assert (
+        net.runGetMethod<address>(coordinator, "reserveCoordinatorMarketplaceV3") ==
+        marketplace.address
+    ) throw 834;
+    assert (
+        net.runGetMethod<address>(coordinator, "reserveCoordinatorVerifierV3") == verifier
+    ) throw 834;
     assert (net.runGetMethod<uint32>(verifier, "verifierEpoch") == 1) throw 835;
     assert (net.runGetMethod<int32>(verifier, "verifierNetwork") == -3) throw 835;
     assert (net.runGetMethod<uint8>(verifier, "verifierThreshold") == 2) throw 835;

@@ -1,5 +1,6 @@
-import "@acton/env"
 import "@acton/build"
+import "@acton/env"
+
 import "@acton/io"
 import "@acton/emulation/network"
 import "@acton/testing/expect"
@@ -110,7 +111,12 @@ fun listV3TestnetMockNftFixture(
     val activeStatus = marketplace.productStatusV2(productId)!!;
     val escrowId = escrow.escrowIdForQueryV2(queryId);
     val productEscrowId = marketplace.productEscrowIdV2(productId)!!;
-    println("V3 fixture post-transfer diagnostics: status={}, escrowId={}, productEscrowId={}", activeStatus, escrowId, productEscrowId);
+    println(
+        "V3 fixture post-transfer diagnostics: status={}, escrowId={}, productEscrowId={}",
+        activeStatus,
+        escrowId,
+        productEscrowId,
+    );
     assert (activeStatus == 2 && escrowId > 0 && productEscrowId == escrowId) throw 969;
     println("V3 Testnet synthetic TEP-62 fixture listed and NFT custody verified.");
     println("NFT Item: {}", nftItem);

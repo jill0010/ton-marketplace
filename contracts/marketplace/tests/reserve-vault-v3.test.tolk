@@ -6,7 +6,15 @@ import "@acton/testing/expect"
 import "@contracts/ReserveVaultV3"
 import "@contracts/SettlementAttestationVerifierV3"
 
-fun productionReserveSetup(): (address, address, address, address, address, KeyPair, KeyPair) {
+fun productionReserveSetup(): (
+    address,
+    address,
+    address,
+    address,
+    address,
+    KeyPair,
+    KeyPair,
+) {
     testing.setNow(1700000000);
     val owner = testing.treasury("productionReserveOwner").address;
     val marketplace = testing.treasury("productionReserveMarketplace").address;
@@ -51,10 +59,7 @@ fun productionReserveSetup(): (address, address, address, address, address, KeyP
                     fundingSource: funder,
                     marketplace,
                 }.toCell(),
-                parties: ReserveVaultPartiesV3 {
-                    verifier,
-                    buyer,
-                }.toCell(),
+                parties: ReserveVaultPartiesV3 { verifier, buyer }.toCell(),
                 order: ReserveVaultOrderIdentityV3 {
                     orderId: 1,
                     paymentHash: 12345,
@@ -89,7 +94,15 @@ fun productionReserveSetup(): (address, address, address, address, address, KeyP
             createMessage({ bounce: false, value: grams("0.1"), dest: vaultDestination }),
         ),
     ).toHaveSuccessfulDeploy({ to: vault });
-    return (vault, verifier, owner, marketplace, funder, key0, key1);
+    return (
+        vault,
+        verifier,
+        owner,
+        marketplace,
+        funder,
+        key0,
+        key1,
+    );
 }
 
 fun productionReserveFund(vault: address, funder: address) {
@@ -100,7 +113,10 @@ fun productionReserveFund(vault: address, funder: address) {
                 bounce: BounceMode.RichBounce,
                 value: grams("0.28"),
                 dest: vault,
-                body: FundReserveV3 { orderId: 1, paymentHash: 12345 }.toCell(),
+                body: FundReserveV3 {
+                    orderId: 1,
+                    paymentHash: 12345,
+                }.toCell(),
             }),
         ),
     ).toHaveSuccessfulTx({ to: vault });
@@ -193,7 +209,15 @@ fun productionReserveSubmit(
 }
 
 get fun `test production reserve vault funds dispatches and settles only after verifier quorum`() {
-    val (vault, verifier, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    val (
+        vault,
+        verifier,
+        owner,
+        marketplace,
+        funder,
+        key0,
+        key1,
+    ) = productionReserveSetup();
     productionReserveFund(vault, funder);
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(1);
     expect(net.runGetMethod<coins>(vault, "reserveVaultAvailableV3")).toEqual(grams("0.2"));
@@ -202,25 +226,55 @@ get fun `test production reserve vault funds dispatches and settles only after v
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(grams("0.2"));
     val buyer = testing.treasury("productionReserveBuyer").address;
     val dispatchMessageHash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
-    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"), dispatchMessageHash);
+    val statement = productionReserveStatement(
+        vault,
+        marketplace,
+        buyer,
+        1,
+        1,
+        1,
+        grams("0.2"),
+        dispatchMessageHash,
+    );
     val signatures = productionReserveSignatures(statement, key0, key1);
     val result = productionReserveSubmit(vault, owner, statement, signatures);
     expect(result).toHaveSuccessfulTx({ to: vault });
-    expect(result).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: verifier, to: vault });
+    expect(
+        result,
+    ).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: verifier, to: vault });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
     expect(net.runGetMethod<coins>(vault, "reserveVaultPaidV3")).toEqual(grams("0.2"));
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(0);
 }
 
 get fun `test production reserve vault quarantines returned principal and requires exact topup before one retry`() {
-    val (vault, _, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    val (
+        vault,
+        _,
+        owner,
+        marketplace,
+        funder,
+        key0,
+        key1,
+    ) = productionReserveSetup();
     productionReserveFund(vault, funder);
     productionReserveDispatch(vault, marketplace);
     val buyer = testing.treasury("productionReserveBuyer").address;
     val dispatchMessageHash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
-    val returned = productionReserveStatement(vault, marketplace, buyer, 1, 1, 2, grams("0.19"), dispatchMessageHash);
+    val returned = productionReserveStatement(
+        vault,
+        marketplace,
+        buyer,
+        1,
+        1,
+        2,
+        grams("0.19"),
+        dispatchMessageHash,
+    );
     val signatures = productionReserveSignatures(returned, key0, key1);
-    expect(productionReserveSubmit(vault, owner, returned, signatures)).toHaveSuccessfulTx({ to: vault });
+    expect(
+        productionReserveSubmit(vault, owner, returned, signatures),
+    ).toHaveSuccessfulTx({ to: vault });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(4);
     expect(net.runGetMethod<coins>(vault, "reserveVaultAvailableV3")).toEqual(grams("0.19"));
     expect(
@@ -267,7 +321,15 @@ get fun `test production reserve vault quarantines returned principal and requir
 }
 
 get fun `test production reserve vault rejects forged verifier callbacks and unauthorized dispatch`() {
-    val (vault, _, owner, marketplace, funder, _, _) = productionReserveSetup();
+    val (
+        vault,
+        _,
+        owner,
+        marketplace,
+        funder,
+        _,
+        _,
+    ) = productionReserveSetup();
     productionReserveFund(vault, funder);
     expect(
         net.send(
@@ -303,7 +365,15 @@ get fun `test production reserve vault rejects forged verifier callbacks and una
 }
 
 get fun `test production reserve vault rejects duplicate dispatch and unauthorized order messages`() {
-    val (vault, _, owner, marketplace, funder, _, _) = productionReserveSetup();
+    val (
+        vault,
+        _,
+        owner,
+        marketplace,
+        funder,
+        _,
+        _,
+    ) = productionReserveSetup();
     expect(
         net.send(
             owner,
@@ -344,14 +414,33 @@ get fun `test production reserve vault rejects duplicate dispatch and unauthoriz
 }
 
 get fun `test production reserve vault rejects replay after settled quorum proof`() {
-    val (vault, verifier, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    val (
+        vault,
+        verifier,
+        owner,
+        marketplace,
+        funder,
+        key0,
+        key1,
+    ) = productionReserveSetup();
     productionReserveFund(vault, funder);
     productionReserveDispatch(vault, marketplace);
     val buyer = testing.treasury("productionReserveBuyer").address;
     val hash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
-    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"), hash);
+    val statement = productionReserveStatement(
+        vault,
+        marketplace,
+        buyer,
+        1,
+        1,
+        1,
+        grams("0.2"),
+        hash,
+    );
     val signatures = productionReserveSignatures(statement, key0, key1);
-    expect(productionReserveSubmit(vault, owner, statement, signatures)).toHaveSuccessfulTx({ to: vault });
+    expect(
+        productionReserveSubmit(vault, owner, statement, signatures),
+    ).toHaveSuccessfulTx({ to: vault });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
     expect(
         net.send(
@@ -392,14 +481,33 @@ get fun `test production reserve vault rejects replay after settled quorum proof
 }
 
 get fun `test production reserve retry cannot bypass exact topup or retry twice`() {
-    val (vault, _, owner, marketplace, funder, key0, key1) = productionReserveSetup();
+    val (
+        vault,
+        _,
+        owner,
+        marketplace,
+        funder,
+        key0,
+        key1,
+    ) = productionReserveSetup();
     productionReserveFund(vault, funder);
     productionReserveDispatch(vault, marketplace);
     val buyer = testing.treasury("productionReserveBuyer").address;
     val hash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
-    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 2, grams("0.19"), hash);
+    val statement = productionReserveStatement(
+        vault,
+        marketplace,
+        buyer,
+        1,
+        1,
+        2,
+        grams("0.19"),
+        hash,
+    );
     val signatures = productionReserveSignatures(statement, key0, key1);
-    expect(productionReserveSubmit(vault, owner, statement, signatures)).toHaveSuccessfulTx({ to: vault });
+    expect(
+        productionReserveSubmit(vault, owner, statement, signatures),
+    ).toHaveSuccessfulTx({ to: vault });
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(4);
     expect(
         net.send(
@@ -419,7 +527,11 @@ get fun `test production reserve retry cannot bypass exact topup or retry twice`
                 bounce: false,
                 value: grams("0.04"),
                 dest: vault,
-                body: TopUpReserveV3 { orderId: 1, fundingId: 88, principalTopUp: grams("0.02") }.toCell(),
+                body: TopUpReserveV3 {
+                    orderId: 1,
+                    fundingId: 88,
+                    principalTopUp: grams("0.02"),
+                }.toCell(),
             }),
         ),
     ).toHaveFailedTx({ to: vault, exitCode: 772 });
@@ -431,7 +543,11 @@ get fun `test production reserve retry cannot bypass exact topup or retry twice`
                 bounce: false,
                 value: grams("0.04"),
                 dest: vault,
-                body: TopUpReserveV3 { orderId: 1, fundingId: 89, principalTopUp: grams("0.01") }.toCell(),
+                body: TopUpReserveV3 {
+                    orderId: 1,
+                    fundingId: 89,
+                    principalTopUp: grams("0.01"),
+                }.toCell(),
             }),
         ),
     ).toHaveSuccessfulTx({ to: vault });

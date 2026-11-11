@@ -457,8 +457,14 @@ fun main() {
         .storeCoins(grams("0.2"))
         .endCell();
     val statementOperation = beginCell().storeUint(1, 64).storeUint(1, 64).endCell();
-    val dispatchMessageHash = net.runGetMethod<uint256>(allocation.vault, "reserveVaultDispatchMessageHashV3");
-    val statementDispatch = beginCell().storeUint(4, 256).storeUint(dispatchMessageHash, 256).endCell();
+    val dispatchMessageHash = net.runGetMethod<uint256>(
+        allocation.vault,
+        "reserveVaultDispatchMessageHashV3",
+    );
+    val statementDispatch = beginCell()
+        .storeUint(4, 256)
+        .storeUint(dispatchMessageHash, 256)
+        .endCell();
     val statementResult = beginCell()
         .storeUint(1, 8)
         .storeUint(6, 256)
@@ -478,8 +484,14 @@ fun main() {
         .storeRef(statementResult)
         .endCell();
     var signatures: map<uint8, cell> = [];
-    signatures.set(0, beginCell().storeSlice(crypto.sign(validator0.privateKey, statement)).endCell());
-    signatures.set(1, beginCell().storeSlice(crypto.sign(validator1.privateKey, statement)).endCell());
+    signatures.set(
+        0,
+        beginCell().storeSlice(crypto.sign(validator0.privateKey, statement)).endCell(),
+    );
+    signatures.set(
+        1,
+        beginCell().storeSlice(crypto.sign(validator1.privateKey, statement)).endCell(),
+    );
     val submitted = net.send(
         deployer.address,
         createMessage({

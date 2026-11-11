@@ -5,7 +5,13 @@ import "@acton/testing/expect"
 import "@contracts/ReserveCoordinatorV3"
 import "@contracts/ReserveVaultV3"
 
-fun productionCoordinatorSetup(vaultCode: cell? = null): (address, address, address, address, address) {
+fun productionCoordinatorSetup(vaultCode: cell? = null): (
+    address,
+    address,
+    address,
+    address,
+    address,
+) {
     val owner = testing.treasury("productionCoordinatorOwner").address;
     val marketplace = testing.treasury("productionCoordinatorMarketplace").address;
     val verifier = testing.treasury("productionCoordinatorVerifier").address;
@@ -99,7 +105,8 @@ get fun `test production coordinator rejects wrong source amount and duplicate o
             coordinator,
             "reserveCoordinatorBindingV3",
             [1],
-        ) == null,
+        ) ==
+            null,
     ).toEqual(true);
     expect(
         productionCoordinatorAllocate(marketplace, coordinator, 1, buyer, grams("0.28")),

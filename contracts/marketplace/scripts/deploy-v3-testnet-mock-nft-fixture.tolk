@@ -1,16 +1,24 @@
 import "@acton/build"
+
+import "@acton/io"
+import "@acton/io"
 import "@acton/emulation/network"
-import "@acton/io"
-import "@acton/io"
 import "@contracts/MockNFTItemV3"
 
-fun deployV3TestnetMockNftFixture(collection: address, seller: address, itemIndex: uint256): address {
+fun deployV3TestnetMockNftFixture(
+    collection: address,
+    seller: address,
+    itemIndex: uint256,
+): address {
     assert (collection != seller) throw 951;
     val code = build("MockNFTItemV3");
     val config = beginCell().storeUint(itemIndex, 256).storeAddress(collection).endCell();
     val data = beginCell().storeRef(config).storeUint(0, 1).endCell();
     val stateInit: ContractState = { code: code, data: data };
-    val destination = AutoDeployAddress { workchain: 0, stateInit };
+    val destination = AutoDeployAddress {
+        workchain: 0,
+        stateInit,
+    };
     val nftItem = destination.calculateAddress();
 
     val tokenInfo = beginCell()
