@@ -58,6 +58,17 @@ jobs:
           NFT_ADDRESS="$(sed -n 's/^S05_RECOVERY_NFT_ADDRESS: //p' s05-recovery.log | tail -n 1)"
           test -n "$NFT_ADDRESS"
           S05_RECOVERY_NFT_ADDRESS="$NFT_ADDRESS" node scripts/inspect-s05-failed-nft-account.mjs | tee -a s05-recovery.log
+      - name: Verify NFT ownership and production escrow bindings without transactions
+        shell: bash
+        env:
+          V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQB6a9pNVw_PEnuHW9FciV_ELODGXC-pWguu1xXnX4V-1njh"
+          V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQAmmiCphiv-RewyM2dwTzzhY4cY0fjlUX0vpxqe-gUp-mtN"
+        run: |
+          set -euo pipefail
+          NFT_ADDRESS="$(sed -n 's/^S05_RECOVERY_NFT_ADDRESS: //p' s05-recovery.log | tail -n 1)"
+          test -n "$NFT_ADDRESS"
+          S05_RECOVERY_NFT_ADDRESS="$NFT_ADDRESS" acton script scripts/verify-s05-recovered-nft-readonly.tolk --net testnet 2>&1 | tee -a s05-recovery.log
+          grep -Fq "S05 NFT owner and marketplace bindings verified (read only)." s05-recovery.log
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
