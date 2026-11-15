@@ -1,0 +1,146 @@
+name: S07 Resume Remaining Three Production Contracts (Testnet Only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_resume_three_only:
+        description: "Resume original S07 deployment: only Escrow, Coordinator, Verifier; no Marketplace redeploy or purchase"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s07-resume-original-production-v3-pair-testnet
+  cancel-in-progress: false
+
+jobs:
+  deploy-pair:
+    if: ${{ inputs.confirm_resume_three_only == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
+      V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_FRESH_DEPLOYMENT_NONCE: '43747006664'
+    steps:
+      - name: Checkout immutable branch revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Guard production contract sources and Testnet-only deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -f contracts/MarketplaceReserveV3.tolk
+          test -f contracts/NFTEscrowV2.tolk
+          grep -Fq 'import "@wrappers/NFTEscrowV2.gen"' scripts/deploy-v3-production-testnet.tolk
+          grep -Fq 'NFTEscrowV2.fromStorage' scripts/deploy-v3-production-testnet.tolk
+          grep -Fq 'build("NFTEscrowV2").hash()' scripts/deploy-v3-production-testnet.tolk
+          ! grep -Eq 'NFTEscrowV2Testnet|--net mainnet' scripts/deploy-v3-production-testnet.tolk
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
+            value="${!name:-}"
+            [[ "$value" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "::error::Missing/invalid $name"; exit 1; }
+          done
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+      - name: Derive public validator keys without exposing seeds
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/s07-validator-keys.env"
+          cat "$RUNNER_TEMP/s07-validator-keys.env" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/s07-validator-keys.env"
+      - name: Check Testnet deployer funding before any transaction
+        run: node scripts/preflight-v3-testnet-funding.mjs
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Create ephemeral Testnet-only wallet profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+      - name: Compile production V3 and production Escrow V2
+        run: acton build
+      - name: Confirm existing Marketplace and three undeployed candidates (read only)
+        working-directory: .
+        run: node contracts/marketplace/scripts/s07-resume-preflight.mjs
+      - name: Deploy remaining three contracts and verify reciprocal bindings on Testnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/s07-resume-production-testnet.tolk --net testnet > v3-production-testnet-deployment.log 2>&1 || {
+            tail -80 v3-production-testnet-deployment.log
+            exit 1
+          }
+          grep -Fq "S07_REUSE_EXISTING_MARKETPLACE_NO_DEPLOY: true" v3-production-testnet-deployment.log
+          grep -Fq "PRODUCTION V3 TESTNET deployment and immutable bindings verified." v3-production-testnet-deployment.log
+          for name in marketplace escrow coordinator verifier; do
+            grep -Fq "V3 testnet candidate $name:" v3-production-testnet-deployment.log
+            grep -Fq "V3 trusted compiled $name code hash:" v3-production-testnet-deployment.log
+          done
+      - name: Read-only independent postflight of code hashes and bindings
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/postflight-v3-production-testnet.mjs \
+            contracts/marketplace/v3-production-testnet-deployment.log \
+            s07-resumed-production-pair-postflight.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('s07-resumed-production-pair-postflight.json', 'utf8'));
+          if (!report.candidateAccountsActive || !report.codeHashesVerified || !report.bindingsVerified) {
+            throw new Error('S07 production pair on-chain postflight failed');
+          }
+          console.log('S07 production pair: active, code hashes verified, reciprocal bindings verified');
+          NODE
+      - name: Upload S07 deployment and independent proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-resumed-production-pair-${{ github.run_id }}
+          path: |
+            contracts/marketplace/v3-production-testnet-deployment.log
+            s07-resumed-production-pair-postflight.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove temporary wallet profiles
+        if: always()
+        run: rm -f wallets.toml
