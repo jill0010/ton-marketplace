@@ -15,3 +15,8 @@
 
 ## Status
 **Blocked pending fresh-pair deployment implementation and real Testnet proof.** This file is a deployment specification, not evidence of deployment, binding, audit completion or release approval.
+
+## Existing source located on feature branch (2026-11-15)
+- Production `MarketplaceReserveV3.tolk` and `deploy-v3-production-testnet.tolk` exist on `feature/reserve-refund-v3-audit`, **not** on current `main`.
+- Existing deployment script uses `@wrappers/NFTEscrowV2Testnet.gen`, `NFTEscrowV2Testnet.fromStorage` and `build("NFTEscrowV2Testnet")`: it deploys the **fixture escrow** despite its production-sounding filename. Never run it unchanged to satisfy S07 production escrow proof.
+- Next code change must be on the feature branch (or a carefully reviewed integration branch): switch the script to the production `NFTEscrowV2` wrapper and compiled hash, preserve the Marketplace V3 initialization and fresh nonce, and verify all four role getters. Merge production source and CI only after review. Existing `main` lacks the production V3 source and Acton manifest entries.
