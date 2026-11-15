@@ -16,6 +16,7 @@ fun listTestFixture(
     collection: address,
     administrator: address,
     itemIndex: uint256,
+    skipConfirmedCollectionPause: bool = false,
 ) {
     assert (collection != seller) throw 409;
     assert (marketplace.ownerV2() == administrator && escrow.owner() == administrator) throw 401;
@@ -35,13 +36,17 @@ fun listTestFixture(
     ) throw 402;
     // The wallet sends an external message first; waiting for its first transaction 
     // does not prove the subsequent internal Escrow call completed. 
-    val paused = escrow.sendSetCollectionStatusV2(
+    if (!skipConfirmedCollectionPause) {
+        val paused = escrow.sendSetCollectionStatusV2(
         administrator,
         collection,
         2,
         { value: grams("0.05") },
     );
-    paused.waitForTrace();
+        paused.waitForTrace();
+    } else {
+        println("S05_RESUME: skip confirmed collection pause (Escrow compute=0 action=0 aborted=false)");
+    }
     val configured = escrow.sendSetCollectionItemCodeV2(
         administrator,
         collection,
