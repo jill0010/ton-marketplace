@@ -33,13 +33,13 @@ fun listTestFixture(
     assert (
         code.hash() == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
     ) throw 402;
-    val paused = escrow.sendSetCollectionStatusV2(
+    // The wallet sends an external message first; waiting for its first transaction\n    // does not prove the subsequent internal Escrow call completed.\n    val paused = escrow.sendSetCollectionStatusV2(
         administrator,
         collection,
         2,
         { value: grams("0.05") },
     );
-    assert (paused.waitForFirstTransaction() != null) throw 404;
+    paused.waitForTrace();
     val configured = escrow.sendSetCollectionItemCodeV2(
         administrator,
         collection,
@@ -47,14 +47,14 @@ fun listTestFixture(
         code,
         { value: grams("0.05") },
     );
-    assert (configured.waitForFirstTransaction() != null) throw 404;
+    configured.waitForTrace();
     val enabled = escrow.sendSetCollectionStatusV2(
         administrator,
         collection,
         1,
         { value: grams("0.05") },
     );
-    assert (enabled.waitForFirstTransaction() != null) throw 404;
+    enabled.waitForTrace();
 
     val productId = marketplace.nextProductIdV2();
     val queryId = marketplace.nextQueryIdV2();
@@ -69,7 +69,7 @@ fun listTestFixture(
         grams("0.01"),
         { value: grams("0.2") },
     );
-    assert (published.waitForFirstTransaction() != null) throw 404;
+    published.waitForTrace();
     // Prove the reservation exists before giving up NFT ownership.
     assert (marketplace.productStatusV2(productId)!! == 1) throw 405;
     val escrowId = escrow.escrowIdForQueryV2(queryId);
@@ -92,7 +92,7 @@ fun listTestFixture(
         },
     });
     val deposited = net.send(seller, transfer);
-    assert (deposited.waitForFirstTransaction() != null) throw 404;
+    deposited.waitForTrace();
     if (env<bool>("FIXTURE_EMULATION") ?? false) {
         expect(deposited).toHaveSuccessfulTx({ from: seller, to: nftItem });
     }
