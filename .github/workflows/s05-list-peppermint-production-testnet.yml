@@ -39,6 +39,13 @@ jobs:
           test -n "$SELLER_MNEMONIC"
           test -n "$TONCENTER_API_KEY"
           ! grep -Eq 'sendBuyProductV2|--net mainnet|deployV3TestnetMockNftFixture' scripts/list-s05-peppermint-production-testnet.tolk
+      - name: Verify exact S05 recovery checkpoint without signing
+        working-directory: .
+        env:
+          S05_RESUME_PREFLIGHT: "true"
+        run: |
+          npm ci
+          node scripts/s05-timeout-recovery-readonly.mjs
       - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
       - name: Configure testnet signer wallets
         shell: bash
