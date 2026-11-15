@@ -16,7 +16,7 @@ get fun `test S05 deployed index one Peppermint Item transfer`() {
     testing.registerLibrary(libraryCode);
 
     val deployer = testing.treasury("testnetPeppermintDeployer");
-    val collection = testing.treasury("testnetPeppermintCollection");
+    val collection = deployer;
     val buyer = testing.treasury("testnetPeppermintBuyer");
 
     val code = parseCellFromHex("b5ee9c720101010100230008420291d9e2ac169fc785ce00de0a81af27622b9b7d1764415c775e7e50c03ce98aa2");
@@ -134,7 +134,7 @@ get fun `test S05 deployed index one Peppermint Item transfer`() {
     expect(stack.get(3) as address).toEqual(deployer.address);
 
     val transferBody = NftTransfer {
-        queryId: 1,
+        queryId: 50501,
         newOwner: buyer.address,
         responseDestination: deployer.address,
         customPayload: null,
@@ -143,7 +143,7 @@ get fun `test S05 deployed index one Peppermint Item transfer`() {
     };
 
     val transferMessage = createMessage({
-        bounce: false,
+        bounce: true,
         value: grams("0.1"),
         dest: nftItem,
         body: transferBody,
@@ -179,7 +179,7 @@ get fun `test S05 deployed index one Peppermint Item transfer`() {
     expect(notificationMessage.info.dest).toEqual(buyer.address);
 
     val notification = notificationMessage.loadBody();
-    expect(notification.queryId).toEqual(1);
+    expect(notification.queryId).toEqual(50501);
     expect(notification.prevOwner).toEqual(deployer.address);
 
     val excessLookup = messages.outMsgs.get(1);
