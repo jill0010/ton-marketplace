@@ -23,8 +23,8 @@ Status: **BLOCKED / independent audit not performed**. This is a scope and evide
 | MarketplaceReserveV3 | 78359546161773769121804334657237004017492887152734900376191088699783038521579 | Testnet matched |
 | ReserveCoordinatorV3 | 66691359611383353754318373230718900986162645101604635612762337495115879334100 | Testnet matched |
 | NFTEscrowV2 production | 81598614757632845067695927561143533301816638303328283688424659201933137039160 | **Not proven**: historical Testnet escrow is fixture variant |
-| ReserveVaultV3 | 96403339264512730204843696723697573046015770335637526243123230074643027115550 | **Not proven** as independent deployed account; may be instantiated per order |
-| SettlementAttestationVerifierV3 | 40137527310137199081220684777089428003119541313287351217810842336613359506965 | **Not proven** against deployed Testnet account |
+| ReserveVaultV3 | 96403339264512730204843696723697573046015770335637526243123230074643027115550 | **Verified** on a real Testnet instance (`kQB9H6xuScwj6Jn5jI_iSA8Zr5y-8gvweh6nQTTNvODz8f4u`); see Actions 42865241709 |
+| SettlementAttestationVerifierV3 | 40137527310137199081220684777089428003119541313287351217810842336613359506965 | **Verified** on Testnet (`kQB_3iLBqs2iW0qC2QbPeOisGfxPf46yGLZUOw3GgGxXZYO4`); see Actions 42865241709 |
 
 Do not equate an embedded Vault code cell with a separately deployed Vault instance; derive a concrete instance address from an actual order and compare its on-chain code hash. Do not use the Testnet escrow fixture hash as evidence for production NFTEscrowV2. Collect address, workchain, code hash, active state, network, immutable binding getter results, block identifiers, RPC endpoint, UTC observation time, candidate compiler/toolchain versions and immutable logs for each verified role.
 
@@ -37,5 +37,5 @@ Do not equate an embedded Vault code cell with a separately deployed Vault insta
 
 ## Next owner actions
 1. Appoint an independent Tolk/TON contract auditor and give them the pinned source, tests and this scope.
-2. Gather read-only code/binding evidence for a real Testnet Vault instance and the deployed settlement verifier; report production escrow as not deployed/verified unless a distinct production deployment is found.
+2. Vault and Verifier read-only code hashes are now recorded in Actions 42865241709; retain the evidence artifact and repeat against the final candidate if bytecode changes. Identify or deploy a **distinct production-code NFTEscrowV2 on Testnet**, then provide its actual address to `.github/workflows/s07-v3-production-roles-proof.yml`. Do not use the fixture Escrow address. Record deployment transaction, candidate source, owner/marketplace binding, code hash, and independent read-only verification. Until then production Escrow remains **NOT VERIFIED**.
 3. Track findings and close only after independent re-review.
