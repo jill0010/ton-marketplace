@@ -47,10 +47,9 @@ for(const t of candidate.slice(0,20)){
  console.log("S05_DEPLOYER_TX:",JSON.stringify({time:new Date(Number(t.utime)*1000).toISOString(),lt:t.transaction_id?.lt,hash:t.transaction_id?.hash,fee:t.fee,description:t.description?.compute_ph?.exit_code,action:t.description?.action?.result_code,outputs:(t.out_msgs??[]).map(fmt)}));
 }
 for(const t of itemTxs.filter(within).slice(0,20)){
- console.log("S05_NFT_TX:",JSON.stringify({time:new Date(Number(t.utime)*1000).toISOString(),lt:t.transaction_id?.lt,hash:t.transaction_id?.hash,incoming:fmt(t.in_msg),aborted:t.description?.aborted,compute_exit:t.description?.compute_ph?.exit_code,action_exit:t.description?.action?.result_code,outputs:(t.out_msgs??[]).map(fmt)}));
+ console.log("S05_NFT_TX:",JSON.stringify({time:new Date(Number(t.utime)*1000).toISOString(),lt:t.transaction_id?.lt,hash:t.transaction_id?.hash,incoming:fmt(t.in_msg),aborted:t.description?.aborted??t.compute_phase?.skipped,compute_exit:t.description?.compute_ph?.exit_code??t.compute_phase?.exit_code,action_exit:t.description?.action?.result_code??t.action_phase?.result_code,compute_phase:t.compute_phase,action_phase:t.action_phase,bounce_phase:t.bounce_phase,in_msg_bounced:t.in_msg?.bounced,in_msg_op:t.in_msg?.op_code,in_msg_body:t.in_msg?.decoded_body?.op??null,outputs:(t.out_msgs??[]).map(fmt)}));
 }
-const getter=await rpc("runGetMethod",{address:nft,method:"get_nft_data",stack:"[]"});
-console.log("S05_GETTER_EXIT:",getter.exit_code);
-console.log("S05_GETTER_OWNER_STACK:",JSON.stringify(getter.stack?.[3]??null));
+// Current owner already independently verified by the dedicated S05 identity workflow.
+// Do not use a GET query for TonCenter runGetMethod (the endpoint returns HTTP 404).
 console.log("S05_SELLER_EXPECTED:",seller);
 console.log("S05_DIAGNOSTIC_READ_ONLY: true");
