@@ -70,6 +70,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       bindingsVerified: report.bindingsVerified,
       mainnetApproved: false,
     }, null, 2));
+    if (!report.bindingsVerified) console.log("S07_BINDING_DIAGNOSTICS: " + JSON.stringify(report.bindings, null, 2));
     if (!report.candidateAccountsActive || !report.codeHashesVerified || !report.bindingsVerified) process.exitCode = 1;
   } catch (error) {
     console.error("Production V3 Testnet postflight failed: " + error.message);
