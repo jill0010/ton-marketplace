@@ -1,0 +1,71 @@
+name: S05 Recover Failed NFT Deployment (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - name: Checkout audited branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Configure read-only wallet identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+      - name: Compile and reconstruct deterministic NFT address without sending
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/inspect-s05-failed-nft-address.tolk --net testnet 2>&1 | tee s05-recovery.log
+          grep -Fq "S05 recovery is read-only; no transaction sent." s05-recovery.log
+      - name: Query TON Testnet account state (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          NFT_ADDRESS="$(sed -n 's/^S05_RECOVERY_NFT_ADDRESS: //p' s05-recovery.log | tail -n 1)"
+          test -n "$NFT_ADDRESS"
+          S05_RECOVERY_NFT_ADDRESS="$NFT_ADDRESS" node scripts/inspect-s05-failed-nft-account.mjs | tee -a s05-recovery.log
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s05-recovery-readonly-${{ github.run_id }}
+          path: contracts/marketplace/s05-recovery.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove wallet identities
+        if: always()
+        run: rm -f wallets.toml
