@@ -160,6 +160,13 @@ jobs:
           PLATFORM_TREASURY_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000001"
         run: acton script scripts/deploy-v2.tolk
 
+      - name: S05 independent Collection deployment rehearsal (emulator only)
+        env:
+          S05_EMULATION: "true"
+          S05_TESTNET_SELLER_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000002"
+          S05_PEPPERMINT_ITEM_CODE_BOC_HEX: "b5ee9c720101010100230008420291d9e2ac169fc785ce00de0a81af27622b9b7d1764415c775e7e50c03ce98aa2"
+        run: acton script scripts/deploy-s05-peppermint-collection-testnet.tolk
+
       - name: Rehearse Testnet NFT fixture deployment in emulator
         env:
           TESTNET_FIXTURE_ENABLED: "true"
