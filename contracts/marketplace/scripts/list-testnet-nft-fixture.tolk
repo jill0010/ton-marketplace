@@ -81,6 +81,13 @@ fun listTestFixture(
     assert (marketplace.productStatusV2(productId)!! == 1) throw 405;
     val escrowId = escrow.escrowIdForQueryV2(queryId);
     assert (escrowId > 0) throw 405;
+    // Recheck custody immediately before broadcasting the irreversible NFT transfer.
+    // A timed-out earlier attempt or an external transfer must fail closed.
+    val ownerBeforeTransfer = net.runGetMethod<tuple>(nftItem, "get_nft_data");
+    assert ((ownerBeforeTransfer.get(3) as address) == seller) throw 406;
+    assert (marketplace.assetProductIdV2(nftItem) == productId) throw 405;
+    assert (marketplace.productStatusV2(productId)!! == 1) throw 405;
+    assert (escrow.escrowIdForQueryV2(queryId) == escrowId) throw 405;
     val payload = beginCell()
         .storeUint(1, 1)
         .storeRef(beginCell().storeUint(0x53564950, 32).storeUint(queryId, 64).endCell())
