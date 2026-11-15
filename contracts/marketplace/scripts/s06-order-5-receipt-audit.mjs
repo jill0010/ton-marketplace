@@ -12,11 +12,20 @@ async function rpc(method, params={}){
   const url=new URL(API+"/"+method);
   for(const [k,v] of Object.entries(params))url.searchParams.set(k,String(v));
   for(let n=0;n<6;n++){
-    const res=await fetch(url,{headers:process.env.TONCENTER_TESTNET_API_KEY?{"X-API-Key":process.env.TONCENTER_TESTNET_API_KEY}:{},redirect:"error"});
+    let res;
+    try { res=await fetch(url,{headers:process.env.TONCENTER_TESTNET_API_KEY?{"X-API-Key":process.env.TONCENTER_TESTNET_API_KEY}:{},redirect:"error"}); } catch(e) { if(n===5)throw Error(method+" network failure: "+e.message); await sleep(Math.min(1500*2**n,16000)); continue; }
     if(res.ok){const body=await res.json();if(body.ok!==true)throw Error(method+" RPC not ok");return body.result;}
-    if(![429,500,502,503,504,542].includes(res.status)||n===5)throw Error(method+" HTTP "+res.status);
+    if(![429,500,502,503,504,542].includes(res.status)||n===5)throw Error(method+" HTTP "+res.status+" for address "+params.address+" limit "+params.limit);
     await sleep(Math.min(1500*2**n,16000));
   }
+}
+async function history(address){
+  let lastError;
+  for(const limit of [20,10,5]){
+    try {return await rpc("getTransactions",{address:address.toRawString(),limit});}
+    catch(e){lastError=e; console.error("S06_RPC_READ_ONLY_BACKOFF: "+e.message);}
+  }
+  throw lastError;
 }
 function fields(msg){
   const b=msg?.msg_data?.body??msg?.message_content?.body;
@@ -33,7 +42,7 @@ function fields(msg){
 let core;
 async function main(){
   core=await import("@ton/core");
-  const txs=await rpc("getTransactions",{address:marketplace.toRawString(),limit:100});
+  const txs=await history(marketplace);
   const candidates=[];
   for(const tx of txs){
     const outputs=msgs(tx.out_msgs).filter(m=>fields(m)?.order===order);
@@ -46,7 +55,7 @@ async function main(){
   const platformAddress=Address.parse(found.platform.destination??found.platform.dest);
   if(platformAddress.equals(marketplace)||platformAddress.equals(seller))throw Error("Invalid platform beneficiary");
   async function receipt(out,recipient,kind,amount){
-    const history=await rpc("getTransactions",{address:recipient.toRawString(),limit:100});
+    const history=await history(recipient);
     const matches=history.filter(t=>{
       const incoming=t.in_msg;
       return norm(incoming?.source??incoming?.src)===marketplace.toRawString().toLowerCase()
