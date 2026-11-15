@@ -30,7 +30,7 @@ for(const [role,address] of Object.entries(A)){
   if(batch.length<10||batch.some(t=>t.utime<start))break;
   cursor=batch.at(-1)?.transaction_id;if(!cursor?.lt||!cursor?.hash)break;
  }
- observed[role]={matched,matchedTransactions};
+ observed[role]={matched,matchedTransactions,lastTransaction:state.last_transaction_id};
  console.log("S05_MATCHING_TX_COUNT",role,matched);
 }
 const s=await getter(A.item,"get_nft_data");const owner=Cell.fromBase64(s[3][1].bytes).beginParse().loadAddress();console.log("S05_CURRENT_NFT_OWNER",owner?.toString());console.log("S05_OWNER_IS_SELLER",owner?.equals(Address.parse(A.seller)));console.log("S05_OWNER_IS_ESCROW",owner?.equals(Address.parse(A.escrow)));
@@ -39,6 +39,7 @@ if(strict){
  const escrowTx=observed.escrow.matchedTransactions;
  const deployerTx=observed.deployer.matchedTransactions;
  if(escrowTx.length!==1||deployerTx.length!==1||observed.seller.matched!==0||observed.marketplace.matched!==0||observed.item.matched!==0)throw Error("S05_RESUME_BLOCKED: transaction history differs from verified checkpoint");
+ if(observed.escrow.lastTransaction?.hash!=="cSjZTMCfFwXIQkV+eDLvyYKzi4s9vJGhL+QKS4tgyRc="||observed.deployer.lastTransaction?.hash!=="DaQqMGWIHKW/zJNjkDyX/0xOQTdR39KbzJXJaM4WfG8=")throw Error("S05_RESUME_BLOCKED: newer deployer or Escrow transaction detected");
  const e=transactionExecution(escrowTx[0]);
  if(!e.executionVerified||e.aborted!==false||e.computeExit!==0||e.actionResult!==0)throw Error("S05_RESUME_BLOCKED: escrow checkpoint execution not successful");
  if(!Address.parse(escrowTx[0].in_msg?.source).equals(Address.parse(A.deployer))||escrowTx[0].in_msg?.value!=="50000000")throw Error("S05_RESUME_BLOCKED: escrow checkpoint sender/value mismatch");
