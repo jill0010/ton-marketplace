@@ -2,6 +2,11 @@ name: Buy Testnet NFT Fixture
 on:
   workflow_dispatch:
     inputs:
+      confirm_s06_order_5_readonly_receipt_audit:
+        description: "S06 Order 5: audit seller/platform inbound receipts and classify 0.2 TON reserve. No purchase."
+        required: true
+        type: boolean
+        default: false
       confirm_s06_product_7_purchase:
         description: "S06 ONLY: buy Product 7 once on TON Testnet (0.21 TON, reserve refund not guaranteed). Never rerun after timeout."
         required: true
@@ -19,7 +24,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   rehearsal:
-    if: ${{ inputs.confirm_testnet_purchase == true && inputs.confirm_s06_product_7_purchase != true && github.ref == 'refs/heads/main' }}
+    if: ${{ inputs.confirm_testnet_purchase == true && inputs.confirm_s06_product_7_purchase != true && inputs.confirm_s06_order_5_readonly_receipt_audit != true && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -94,7 +99,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   s06-product-7:
-    if: ${{ inputs.confirm_s06_product_7_purchase == true && inputs.confirm_testnet_purchase != true && github.ref == 'refs/heads/main' && github.run_attempt == 1 }}
+    if: ${{ inputs.confirm_s06_product_7_purchase == true && inputs.confirm_s06_order_5_readonly_receipt_audit != true && inputs.confirm_testnet_purchase != true && github.ref == 'refs/heads/main' && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -156,4 +161,33 @@ jobs:
             echo "## S06 Product #7 Testnet purchase"
             grep -E "S06_ORDER_ID:|S06_SELLER_PAYOUT|S06_PLATFORM_PAYOUT|S06_PRODUCT_7_DELIVERY" s06-verify.log
             echo "0.2 TON reserve refund not guaranteed; payout receipt traces not independently verified."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  s06-order-5-readonly-receipts:
+    if: ${{ inputs.confirm_s06_order_5_readonly_receipt_audit == true && inputs.confirm_s06_product_7_purchase != true && inputs.confirm_testnet_purchase != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify Order 5 seller/platform receipts and reserve classification (read-only)
+        env:
+          TONCENTER_TESTNET_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/s06-order-5-receipt-audit.mjs 2>&1 | tee s06-receipts.log
+          grep -Fq "S06_SELLER_RECEIPT_VERIFIED: true" s06-receipts.log
+          grep -Fq "S06_PLATFORM_RECEIPT_VERIFIED: true" s06-receipts.log
+          grep -Fq "S06_READ_ONLY_NO_BROADCAST: true" s06-receipts.log
+          {
+            echo "## S06 Order #5 independent receipt audit"
+            grep -E "^S06_" s06-receipts.log
           } >> "$GITHUB_STEP_SUMMARY"
