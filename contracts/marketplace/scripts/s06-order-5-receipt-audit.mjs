@@ -19,13 +19,31 @@ async function rpc(method, params={}){
     await sleep(Math.min(1500*2**n,16000));
   }
 }
-async function history(address){
+// Query each page with adaptive limits; a failed page must never be treated as an empty page.
+async function pageHistory(address,cursor){
   let lastError;
-  for(const limit of [20,10,5]){
-    try {return await rpc("getTransactions",{address:address.toRawString(),limit});}
-    catch(e){lastError=e; console.error("S06_RPC_READ_ONLY_BACKOFF: "+e.message);}
+  for(const limit of [20,10,5,2]){
+    const params={address:address.toRawString(),limit};
+    if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
+    try{return {batch:await rpc("getTransactions",params),limit};}
+    catch(e){lastError=e;console.error("S06_RPC_READ_ONLY_BACKOFF: "+e.message);}
   }
   throw lastError;
+}
+async function scanHistory(address,maxPages=12){
+  const txs=[];let cursor=null;
+  for(let page=0;page<maxPages;page++){
+    const {batch,limit}=await pageHistory(address,cursor);
+    if(!Array.isArray(batch))throw Error("Malformed getTransactions result");
+    if(batch.length===0)break;
+    const seen=new Set(txs.map(t=>t.transaction_id?.hash));
+    txs.push(...batch.filter(t=>!seen.has(t.transaction_id?.hash)));
+    const tail=batch.at(-1)?.transaction_id;
+    if(!tail?.lt||!tail?.hash||batch.length<limit)break;
+    if(cursor?.lt===tail.lt&&cursor?.hash===tail.hash)break;
+    cursor={lt:tail.lt,hash:tail.hash};
+  }
+  return txs;
 }
 function fields(msg){
   const b=msg?.msg_data?.body??msg?.message_content?.body;
@@ -42,20 +60,7 @@ function fields(msg){
 let core;
 async function main(){
   core=await import("@ton/core");
-  const txs=[];
-  let cursor=null;
-  for(let page=0;page<12;page++){
-    const params={address:marketplace.toRawString(),limit:20};
-    if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
-    const batch=await rpc("getTransactions",params);
-    if(!Array.isArray(batch)||!batch.length)break;
-    const seen=new Set(txs.map(t=>t.transaction_id?.hash));
-    txs.push(...batch.filter(t=>!seen.has(t.transaction_id?.hash)));
-    const tail=batch.at(-1)?.transaction_id;
-    if(!tail?.lt||!tail?.hash||batch.length<20)break;
-    if(cursor?.lt===tail.lt&&cursor?.hash===tail.hash)break;
-    cursor={lt:tail.lt,hash:tail.hash};
-  }
+  const txs=await scanHistory(marketplace,30);
   const sellerCandidates=[], platformCandidates=[];
   let bodyMatches=0, sellerValueMatches=0, platformValueMatches=0;
   for(const tx of txs){
@@ -83,20 +88,7 @@ async function main(){
   const platformAddress=Address.parse(found.platform.destination??found.platform.dest);
   if(platformAddress.equals(marketplace)||platformAddress.equals(seller))throw Error("Invalid platform beneficiary");
   async function receipt(out,recipient,kind,amount){
-    const recipientTxs=[];
-    let cursor=null;
-    for(let page=0;page<12;page++){
-      const params={address:recipient.toRawString(),limit:20};
-      if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
-      const batch=await rpc("getTransactions",params);
-      if(!Array.isArray(batch)||!batch.length)break;
-      const seen=new Set(recipientTxs.map(t=>t.transaction_id?.hash));
-      recipientTxs.push(...batch.filter(t=>!seen.has(t.transaction_id?.hash)));
-      const tail=batch.at(-1)?.transaction_id;
-      if(!tail?.lt||!tail?.hash||batch.length<20)break;
-      if(cursor?.lt===tail.lt&&cursor?.hash===tail.hash)break;
-      cursor={lt:tail.lt,hash:tail.hash};
-    }
+    const recipientTxs=await scanHistory(recipient,30);
     const matches=recipientTxs.filter(t=>{
       const incoming=t.in_msg;
       return norm(incoming?.source??incoming?.src)===marketplace.toRawString().toLowerCase()
