@@ -1,5 +1,6 @@
 // S05: list the already-deployed NFT from run 43703734360.
 // No NFT deployment, purchase, reserve or settlement.
+import "@acton/build"
 import "@acton/env"
 import "@acton/io"
 import "@acton/emulation/scripts"
@@ -14,6 +15,14 @@ fun main() {
     val marketAddress = env<address>("V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS");
     val escrowAddress = env<address>("V3_PRODUCTION_TESTNET_ESCROW_ADDRESS");
     assert (nft != null && marketAddress != null && escrowAddress != null) throw 982;
+    // Fail closed before any wallet-signed message: production Escrow only accepts
+    // the two pinned NFT Item code hashes. The old MockNFTItemV3 is not one.
+    val fixtureCodeHash = build("MockNFTItemV3").hash();
+    val compatible =
+        fixtureCodeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
+        fixtureCodeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251;
+    println("S05_PRODUCTION_ESCROW_ITEM_CODE_ALLOWED: {}", compatible);
+    assert (compatible) throw 968;
     val deployer = scripts.wallet("deployer");
     val treasury = scripts.wallet("treasury");
     val marketplace = MarketplaceV2 { address: marketAddress! };
