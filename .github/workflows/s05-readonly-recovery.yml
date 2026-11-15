@@ -1,0 +1,50 @@
+name: S05 Read-only Testnet Deployment Recovery
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect S05 deployer transactions (read-only, no wallet secrets)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          const deployer = "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu";
+          const base = "https://testnet.toncenter.com/api/v2/";
+          const headers = process.env.TONCENTER_API_KEY ? {"X-API-Key":process.env.TONCENTER_API_KEY} : {};
+          async function get(method,params) {
+            const url = new URL(method,base);
+            for(const [k,v] of Object.entries(params)) url.searchParams.set(k,String(v));
+            const response = await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
+            if(!response.ok) throw Error(method+" HTTP "+response.status);
+            const body=await response.json();
+            if(body.ok!==true) throw Error(method+" API error "+JSON.stringify(body.error??body.description));
+            return body.result;
+          }
+          const transactions=await get("getTransactions",{address:deployer,limit:100,archival:true});
+          const start=Date.parse("2026-11-15T14:04:40Z")/1000;
+          const end=Date.parse("2026-11-15T14:06:30Z")/1000;
+          const relevant=transactions.filter(tx=>tx.utime>=start-120&&tx.utime<=end+120);
+          console.log("Scanned",transactions.length,"recent transactions; relevant",relevant.length);
+          let found=0;
+          for(const tx of relevant){
+            const messages=tx.out_msgs??[];
+            for(const msg of messages){
+              const dest=msg.destination;
+              if(!dest) continue;
+              const info=await get("getAddressInformation",{address:dest});
+              const isDeploy=!!msg.init_state;
+              console.log(JSON.stringify({txTime:new Date(tx.utime*1000).toISOString(),walletTx:tx.transaction_id?.hash,destination:dest,value:msg.value,hasInitState:isDeploy,accountState:info.state,accountCodeHash:info.code_hash??null}));
+              if(isDeploy) found++;
+            }
+          }
+          console.log("Outbound messages carrying state init:",found);
+          console.log("Read-only evidence only. A zero count is NOT proof that no deployment was broadcast.");
+          JS
