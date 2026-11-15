@@ -1,6 +1,7 @@
 // Read-only deterministic address derivation for the official Peppermint Item.
 // Must match deploy-testnet-nft-fixture.tolk; never signs or sends a message.
 import "@acton/io"
+import "@acton/fmt"
 import "@acton/env"
 import "@acton/emulation/network"
 
