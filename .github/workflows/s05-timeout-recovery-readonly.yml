@@ -1,0 +1,19 @@
+name: S05 Diagnose Listing Timeout (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - run: npm ci
+      - name: Inspect failed listing transactions without signing or broadcasting
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: node scripts/s05-timeout-recovery-readonly.mjs
