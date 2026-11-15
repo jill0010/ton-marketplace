@@ -44,9 +44,9 @@ jobs:
           if (!address) throw new Error('No deterministic NFT address emitted');
           if (!process.env.TONCENTER_API_KEY) throw new Error('Missing testnet API key');
           async function rpc(method, params) {
-            const u = new URL('https://testnet.toncenter.com/api/v2/' + method);
+            const u = new URL('https://testnet.toncenter.com/api/v2/' + (method === 'runGetMethod' ? 'runGetMethod' : method));
             for (const [k,v] of Object.entries(params)) u.searchParams.set(k, v);
-            const response = await fetch(u, {headers:{'X-API-Key':process.env.TONCENTER_API_KEY},signal:AbortSignal.timeout(15000)});
+            const response = await fetch(u, {method: method === 'runGetMethod' ? 'POST' : 'GET',headers:{'X-API-Key':process.env.TONCENTER_API_KEY,...(method === 'runGetMethod' ? {'Content-Type':'application/json'} : {})},body:method === 'runGetMethod' ? JSON.stringify(params) : undefined,signal:AbortSignal.timeout(15000)});
             if (!response.ok) throw new Error(method+' HTTP '+response.status);
             const data = await response.json();
             if (data.ok !== true) throw new Error(method+' RPC error: '+JSON.stringify(data.error ?? data.description));
