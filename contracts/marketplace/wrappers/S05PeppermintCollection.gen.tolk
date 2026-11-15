@@ -4,6 +4,7 @@ import "@acton/build"
 import "@acton/emulation/network"
 import "@acton/testing/assert"
 import "@contracts/S05PeppermintCollection"
+import "@contracts/types"
 
 struct S05PeppermintCollection {
     address: address
