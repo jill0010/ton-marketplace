@@ -33,7 +33,8 @@ fun listTestFixture(
     assert (
         code.hash() == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
     ) throw 402;
-    // The wallet sends an external message first; waiting for its first transaction\n    // does not prove the subsequent internal Escrow call completed.\n    val paused = escrow.sendSetCollectionStatusV2(
+    // The wallet sends an external message first; waiting for its first transaction 
+    // does not prove the subsequent internal Escrow call completed.\n    val paused = escrow.sendSetCollectionStatusV2(
         administrator,
         collection,
         2,
