@@ -5,11 +5,11 @@ import "@acton/emulation/network"
 import "@acton/testing/expect"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
-import "@wrappers/NFTEscrowV2Testnet.gen"
+import "@wrappers/NFTEscrowV2.gen"
 
 fun listV3TestnetMockNftFixture(
     marketplace: MarketplaceV2,
-    escrow: NFTEscrowV2Testnet,
+    escrow: NFTEscrowV2,
     seller: address,
     nftItem: address,
     collection: address,
