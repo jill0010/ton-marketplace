@@ -1,10 +1,10 @@
 // Read-only forensic check for S05 run 43728417510. No wallet secrets, signing, or broadcast.
-import {Address,Cell} from "@ton/core";
+import {Address,Cell,loadTransaction} from "@ton/core";
 const A={deployer:"0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu",seller:"0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0",escrow:"kQAp5SqhqBj1LK3q9mHpBDsVzUnMyWBiH-nvtTB7q0vdP0mG",marketplace:"kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_",item:"EQAk73VdUMdm_H9RYLNVfjHaEAfDC-fVm2s4bc_X669XZOin"};
 const headers=process.env.TONCENTER_API_KEY?{"X-API-Key":process.env.TONCENTER_API_KEY}:{};
 async function rpc(method,params){const u=new URL("https://testnet.toncenter.com/api/v2/"+method);for(const [k,v] of Object.entries(params))u.searchParams.set(k,String(v));for(let n=1;n<=5;n++){try{const r=await fetch(u,{headers,signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error("HTTP "+r.status);const j=await r.json();if(!j.ok)throw Error(JSON.stringify(j));return j.result}catch(e){if(n===5||!/429|500|502|503|504|542|timeout|fetch failed/i.test(String(e)))throw e;await new Promise(resolve=>setTimeout(resolve,n*1600))}}}
 async function getter(address,method,stack=[]){const r=await fetch("https://testnet.toncenter.com/api/v2/runGetMethod",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({address,method,stack}),signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error(method+" HTTP "+r.status);const j=await r.json();if(!j.ok||j.result?.exit_code!==0)throw Error(method+" "+JSON.stringify(j));return j.result.stack}
-const start=Date.parse("2026-11-15T15:09:00Z")/1000;
+function transactionExecution(tx){\n const result={aborted:null,computeExit:null,actionResult:null,executionVerified:false};\n try {\n  const boc=tx.data??tx.raw_data??tx.boc;\n  if(!boc) return {...result,verificationError:"transaction BOC unavailable"};\n  const parsed=loadTransaction(Cell.fromBase64(boc).beginParse());\n  const d=parsed.description;\n  if(d.type!=="generic") return {...result,verificationError:"non-generic transaction"};\n  return {aborted:d.aborted,computeExit:d.computePhase.type==="vm"?d.computePhase.exitCode:null,actionResult:d.actionPhase?.resultCode??null,executionVerified:true};\n }catch(e){return {...result,verificationError:String(e)}}\n}\nconst start=Date.parse("2026-11-15T15:09:00Z")/1000;
 const end=Date.parse("2026-11-15T15:14:00Z")/1000;
 for(const [role,address] of Object.entries(A)){
  const state=await rpc("getAddressInformation",{address});
@@ -13,7 +13,7 @@ for(const [role,address] of Object.entries(A)){
  for(let page=0;page<12;page++){
   const params={address,limit:10};if(cursor){params.lt=cursor.lt;params.hash=cursor.hash}
   let batch;try{batch=await rpc("getTransactions",params)}catch(e){console.log("S05_TRANSACTION_HISTORY_UNAVAILABLE",role,String(e));break;}
-  for(const tx of batch){if(tx.utime<start||tx.utime>end)continue;matched++;console.log("S05_TX",role,JSON.stringify({time:new Date(tx.utime*1000).toISOString(),hash:tx.transaction_id?.hash,in:{source:tx.in_msg?.source,value:tx.in_msg?.value},out:(tx.out_msgs??[]).map(m=>({destination:m.destination,value:m.value})),aborted:tx.description?.aborted,computeExit:tx.description?.compute_ph?.exit_code,actionResult:tx.description?.action?.result_code}))}
+  for(const tx of batch){if(tx.utime<start||tx.utime>end)continue;matched++;console.log("S05_TX",role,JSON.stringify({time:new Date(tx.utime*1000).toISOString(),hash:tx.transaction_id?.hash,in:{source:tx.in_msg?.source,value:tx.in_msg?.value},out:(tx.out_msgs??[]).map(m=>({destination:m.destination,value:m.value})),...transactionExecution(tx)}))}
   if(batch.length<10||batch.some(t=>t.utime<start))break;
   cursor=batch.at(-1)?.transaction_id;if(!cursor?.lt||!cursor?.hash)break;
  }
