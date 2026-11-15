@@ -92,7 +92,7 @@ get fun `test S05 real collection deploy initializes Peppermint and transfers ow
     val deployResult = net.send(deployer.address, mintMessage);
     expect(deployResult).toHaveSuccessfulTx({ from: deployer.address, to: collection.address });
 
-    expect(collection.getNftAddressByIndex(1)).toEqual(nftItem);
+    expect(deployResult).toHaveSuccessfulTx({ from: collection.address, to: nftItem });
     val nftTx = deployResult.findTransaction({
         to: nftItem,
     });
