@@ -111,6 +111,16 @@ async function main(){
   }
   console.log("S06_MARKETPLACE_HISTORY_SCANNED: "+txs.length);
   console.log("S06_ORDER_BODY_MATCH_COUNT: "+bodyMatches);
+  for(const tx of txs){
+    for(const m of msgs(tx.out_msgs)){
+      const d=norm(m.destination??m.dest),v=BigInt(m.value??-1);
+      if(d===seller.toRawString().toLowerCase()||v===expected.platform||v===expected.seller){
+        const body=m.msg_data?.body??m.message_content?.body;
+        const decoded=fields(m);
+        console.log("S06_PAYOUT_DIAGNOSTIC: "+JSON.stringify({tx:tx.transaction_id?.hash,destination:d,value:String(v),bodyType:typeof body,bodyLength:typeof body==="string"?body.length:0,opcode:decoded?.opcode??null,decodedOrder:decoded?.order?.toString()??null,messageHash:hashHex(m.hash)}));
+      }
+    }
+  }
   console.log("S06_SELLER_AMOUNT_DEST_MATCH_COUNT: "+sellerValueMatches);
   console.log("S06_PLATFORM_AMOUNT_MATCH_COUNT: "+platformValueMatches);
   console.log("S06_SELLER_ORDER_MATCH_COUNT: "+sellerCandidates.length);
