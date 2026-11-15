@@ -1,0 +1,72 @@
+name: S05 Check Peppermint Index 1 Occupancy (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout audited code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build contracts
+        run: acton build
+      - name: Derive official Peppermint NFT address without signer
+        env:
+          S05_COLLECTION_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+        run: acton script scripts/derive-s05-peppermint-index-one.tolk --net testnet | tee s05-address.log
+      - name: Check account occupancy and ownership via read-only TON Center API
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const log = fs.readFileSync('s05-address.log', 'utf8');
+          const address = log.match(/S05_PEPPERMINT_INDEX_1_ADDRESS:\s*(\S+)/)?.[1];
+          if (!address) throw new Error('No deterministic NFT address emitted');
+          if (!process.env.TONCENTER_API_KEY) throw new Error('Missing testnet API key');
+          async function rpc(method, params) {
+            const u = new URL('https://testnet.toncenter.com/api/v2/' + method);
+            for (const [k,v] of Object.entries(params)) u.searchParams.set(k, v);
+            const response = await fetch(u, {headers:{'X-API-Key':process.env.TONCENTER_API_KEY},signal:AbortSignal.timeout(15000)});
+            if (!response.ok) throw new Error(method+' HTTP '+response.status);
+            const data = await response.json();
+            if (data.ok !== true) throw new Error(method+' RPC error: '+JSON.stringify(data.error ?? data.description));
+            return data.result;
+          }
+          const account = await rpc('getAddressInformation',{address});
+          console.log('S05_NFT_ADDRESS:', address);
+          console.log('S05_NFT_ACCOUNT_STATE:', account.state);
+          if (account.state === 'active') {
+            const nft = await rpc('runGetMethod',{address,method:'get_nft_data',stack:'[]'});
+            console.log('S05_NFT_GET_DATA_EXIT_CODE:',nft.exit_code);
+            console.log('S05_NFT_GET_DATA_STACK:',JSON.stringify(nft.stack));
+            if (nft.exit_code !== 0) throw new Error('Active address is not a compatible NFT');
+            console.log('S05_NEXT_ACTION: verify owner before reuse; never redeploy index 1');
+          } else if (account.state === 'uninitialized' || account.state === 'nonexist') {
+            console.log('S05_NEXT_ACTION: index 1 is uninitialized; eligible for guarded deployment');
+          } else {
+            throw new Error('Unknown account state: '+account.state);
+          }
+          NODE
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s05-peppermint-occupancy-${{ github.run_id }}
+          path: contracts/marketplace/s05-address.log
+          if-no-files-found: ignore
