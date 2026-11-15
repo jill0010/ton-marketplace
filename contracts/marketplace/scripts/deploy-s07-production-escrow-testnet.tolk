@@ -9,6 +9,8 @@ import "@wrappers/NFTEscrowV2.gen"
 // S07: isolated production-code NFTEscrowV2 proof deployment.
 // TESTNET ONLY. This script does not deploy Marketplace or alter any live binding.
 fun main() {
+    // Explicit opt-in; this script must only be invoked with --net testnet or in emulator.
+    assert (env<bool>("S07_TESTNET_ESCROW_DEPLOY_ENABLED") ?? false) throw 401;
     val deployer = scripts.wallet("deployer");
     val marketplaceAddress = env<address>("S07_TESTNET_MARKETPLACE_ADDRESS");
 
