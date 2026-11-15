@@ -115,6 +115,7 @@ jobs:
 
       - name: Exercise S07 production Escrow V2 proof deployment in emulator only
         env:
+          S07_TESTNET_ESCROW_DEPLOY_ENABLED: "true"
           S07_TESTNET_MARKETPLACE_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000001"
         run: acton script scripts/deploy-s07-production-escrow-testnet.tolk
 
