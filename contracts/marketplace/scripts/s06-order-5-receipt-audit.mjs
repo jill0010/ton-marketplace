@@ -2,7 +2,8 @@
 const API = "https://testnet.toncenter.com/api/v2";
 import { Address } from "@ton/core";
 const marketplace = Address.parse("kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_");
-const seller = Address.parse("0:d011ec08afaf6619cabab8322502d89bc56dfb826eeb25f296aeeee8e3f8523d");
+// Order #5 stores the same beneficiary for seller proceeds and platform fee.
+const seller = Address.parse("0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0");
 const treasury = Address.parse("0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0");
 const order = 5n;
 const expected = {seller:9700000n, platform:300000n};
@@ -103,11 +104,11 @@ async function main(){
       if(parsed?.order===order)bodyMatches++;
       if(d===seller.toRawString().toLowerCase() && v===expected.seller){
         sellerValueMatches++;
-        if(parsed?.order===order)sellerCandidates.push({tx,msg:m});
+        if(parsed?.order===order && parsed?.opcode===0x71b00101)sellerCandidates.push({tx,msg:m});
       }
       if(d===treasury.toRawString().toLowerCase() && v===expected.platform){
         platformValueMatches++;
-        if(parsed?.order===order)platformCandidates.push({tx,msg:m});
+        if(parsed?.order===order && parsed?.opcode===0x71b00102)platformCandidates.push({tx,msg:m});
       }
     }
   }
@@ -131,7 +132,7 @@ async function main(){
   if(sellerCandidates[0].tx.transaction_id?.hash!==platformCandidates[0].tx.transaction_id?.hash)throw Error("Payout messages did not originate in same settlement transaction");
   const found={seller:sellerCandidates[0].msg,platform:platformCandidates[0].msg,tx:sellerCandidates[0].tx};
   const platformAddress=Address.parse(found.platform.destination??found.platform.dest);
-  if(!platformAddress.equals(treasury)||platformAddress.equals(marketplace)||platformAddress.equals(seller))throw Error("Invalid platform beneficiary");
+  if(!platformAddress.equals(treasury)||platformAddress.equals(marketplace))throw Error("Invalid platform beneficiary");
   async function receipt(out,recipient,kind,amount){
     const recipientTxs=await scanHistory(recipient,30);
     const matches=recipientTxs.filter(t=>{
