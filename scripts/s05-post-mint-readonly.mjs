@@ -41,8 +41,9 @@ if(itemState.state==="active"){
  const nft=await getter(item,"get_nft_data");
  console.log("S05_ITEM_GETTER_EXIT:",nft.exit_code);
  console.log("S05_ITEM_GETTER_STACK:",JSON.stringify(nft.stack));
- const initialized=BigInt(nft.stack[0][1])===-1n;
- const index=BigInt(nft.stack[1][1])===1n;
+ const parseTvmInt=(value)=>typeof value==="string"&&value.startsWith("-0x") ? -BigInt("0x"+value.slice(3)) : BigInt(value);
+ const initialized=parseTvmInt(nft.stack[0][1])===-1n;
+ const index=parseTvmInt(nft.stack[1][1])===1n;
  const decode=(entry)=>{if(entry?.[0]!=="cell"||!entry[1]?.bytes)throw Error("Invalid NFT address stack entry");const address=Cell.fromBase64(entry[1].bytes).beginParse().loadAddress();if(!address)throw Error("NFT address is null");return address;};
  const actualCollection=decode(nft.stack[2]);
  const actualOwner=decode(nft.stack[3]);
