@@ -69,4 +69,18 @@ const approvedHashes=[
 console.log("S05_ITEM_CODE_HASH:",codeHash);
 console.log("S05_ESCROW_ITEM_CODE_ALLOWED:",approvedHashes.includes(codeHash));
 if(!approvedHashes.includes(codeHash))throw Error("S05 Peppermint NFT code hash is not approved by deployed NFTEscrowV2; do not transfer NFT");
+const parseGetterAddress=(result,label)=>{
+ if(result.exit_code!==0||!Array.isArray(result.stack)||result.stack.length!==1)throw Error(label+" getter invalid result");
+ const entry=result.stack[0];
+ if(entry[0]!=="cell"||!entry[1]?.bytes)throw Error(label+" getter did not return address cell");
+ const address=Cell.fromBase64(entry[1].bytes).beginParse().loadAddress();
+ if(!address)throw Error(label+" getter returned null address");
+ return address;
+};
+const marketEscrow=parseGetterAddress(await getter(marketplace,"escrowV2"),"Marketplace.escrowV2");
+const escrowMarket=parseGetterAddress(await getter(escrow,"marketplace"),"Escrow.marketplace");
+console.log("S05_MARKETPLACE_BOUND_ESCROW:",marketEscrow.toString());
+console.log("S05_ESCROW_BOUND_MARKETPLACE:",escrowMarket.toString());
+if(!marketEscrow.equals(escrow)||!escrowMarket.equals(marketplace))throw Error("Marketplace/Escrow reciprocal binding mismatch; do not list");
+console.log("S05_RECIPROCAL_BINDING_VERIFIED: true");
 console.log("S05_READ_ONLY_NO_BROADCAST: true");
