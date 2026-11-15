@@ -183,7 +183,7 @@ fun main() {
     // Await the full wallet -> Marketplace trace before reading persisted state.
     configureEscrow.waitForTrace();
 
-    // Treasury address is already correct: do not send another configuration message.
+    // The treasury address is correct, but the configured flag may still be false.\n    if (!marketplace.treasuryConfiguredV2()) {\n        val configureTreasury = marketplace.sendSetMarketplaceV2Treasury(\n            deployer.address, treasuryAddress, { value: grams("0.05") },\n        );\n        configureTreasury.waitForTrace();\n    }
 
     val configureCoordinator = net.send(
         deployer.address,
