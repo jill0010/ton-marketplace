@@ -1,0 +1,20 @@
+name: S05 Check Peppermint Shared Library (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Check Peppermint shared library on TON testnet (read only)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          TESTNET_ITEM_VARIANT: peppermint
+          REQUIRE_TESTNET_LIBRARIES: "true"
+        run: node contracts/marketplace/scripts/check-testnet-fragment-libraries.mjs
