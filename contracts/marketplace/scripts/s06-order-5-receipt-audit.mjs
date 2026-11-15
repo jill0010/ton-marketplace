@@ -50,13 +50,13 @@ async function main(){
     const b=outputs.filter(m=>norm(m.destination??m.dest)!==seller.toRawString().toLowerCase()&&BigInt(m.value??-1)===expected.platform);
     for(const x of a)for(const y of b)if(fields(x).opcode!==fields(y).opcode)candidates.push({tx,seller:x,platform:y});
   }
-  if(candidates.length!==1)throw Error("Expected one exact Order #5 seller/platform payout pair; found "+candidates.length);
+  if(candidates.length!==1)throw Error("Expected one exact Order #5 seller/platform payout pair; found "+candidates.length+" among "+txs.length+" Marketplace transactions; inspect order linkage before proceeding");
   const found=candidates[0];
   const platformAddress=Address.parse(found.platform.destination??found.platform.dest);
   if(platformAddress.equals(marketplace)||platformAddress.equals(seller))throw Error("Invalid platform beneficiary");
   async function receipt(out,recipient,kind,amount){
-    const history=await history(recipient);
-    const matches=history.filter(t=>{
+    const recipientTxs=await history(recipient);
+    const matches=recipientTxs.filter(t=>{
       const incoming=t.in_msg;
       return norm(incoming?.source??incoming?.src)===marketplace.toRawString().toLowerCase()
         &&BigInt(incoming?.value??-1)===amount
