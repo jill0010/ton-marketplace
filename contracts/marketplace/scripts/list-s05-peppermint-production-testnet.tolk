@@ -1,6 +1,7 @@
 // S05 existing Peppermint Item #1 only. No deployment, purchase or mainnet.
 import "@acton/env"
 import "@acton/io"
+import "@acton/fmt"
 import "@acton/emulation/scripts"
 import "@wrappers/MarketplaceV2.gen"
 import "@wrappers/NFTEscrowV2.gen"
