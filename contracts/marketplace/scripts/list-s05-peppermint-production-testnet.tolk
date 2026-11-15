@@ -27,6 +27,7 @@ fun main() {
         parseAddress("EQABD-C8AWc8PnlrsZYg-aDWrB3MhsB0etXI91KO6lZs3KO4"),
         administrator.address,
         1,
+        true, // S05 Escrow tx cSjZTMCfFwXIQkV+eDLvyYKzi4s9vJGhL+QKS4tgyRc= succeeded
     );
     println("S05_PEPPERMINT_LISTING_ATTEMPT_COMPLETED: true");
 }
