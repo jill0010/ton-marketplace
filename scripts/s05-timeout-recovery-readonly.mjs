@@ -22,20 +22,22 @@ const end=Date.parse("2026-11-15T15:14:00Z")/1000;
 for(const [role,address] of Object.entries(A)){
  const state=await rpc("getAddressInformation",{address});
  console.log("S05_ACCOUNT",role,JSON.stringify({state:state.state,balance:state.balance,lastTransaction:state.last_transaction_id}));
- let cursor,matched=0,matchedTransactions=[];
+ let cursor,matched=0,matchedTransactions=[],historyComplete=true;
  for(let page=0;page<12;page++){
   const params={address,limit:10};if(cursor){params.lt=cursor.lt;params.hash=cursor.hash}
-  let batch;try{batch=await rpc("getTransactions",params)}catch(e){console.log("S05_TRANSACTION_HISTORY_UNAVAILABLE",role,String(e));break;}
+  let batch;try{batch=await rpc("getTransactions",params)}catch(e){console.log("S05_TRANSACTION_HISTORY_UNAVAILABLE",role,String(e));historyComplete=false;break;}
   for(const tx of batch){if(tx.utime<start||tx.utime>end)continue;matched++;matchedTransactions.push(tx);console.log("S05_TX",role,JSON.stringify({time:new Date(tx.utime*1000).toISOString(),hash:tx.transaction_id?.hash,in:{source:tx.in_msg?.source,value:tx.in_msg?.value},out:(tx.out_msgs??[]).map(m=>({destination:m.destination,value:m.value})),...transactionExecution(tx)}))}
   if(batch.length<10||batch.some(t=>t.utime<start))break;
+  if(page===11)historyComplete=false;
   cursor=batch.at(-1)?.transaction_id;if(!cursor?.lt||!cursor?.hash)break;
  }
- observed[role]={matched,matchedTransactions,lastTransaction:state.last_transaction_id};
+ observed[role]={matched,matchedTransactions,lastTransaction:state.last_transaction_id,historyComplete};
  console.log("S05_MATCHING_TX_COUNT",role,matched);
 }
 const s=await getter(A.item,"get_nft_data");const owner=Cell.fromBase64(s[3][1].bytes).beginParse().loadAddress();console.log("S05_CURRENT_NFT_OWNER",owner?.toString());console.log("S05_OWNER_IS_SELLER",owner?.equals(Address.parse(A.seller)));console.log("S05_OWNER_IS_ESCROW",owner?.equals(Address.parse(A.escrow)));
 for(const [role,method] of [["marketplace","nextProductIdV2"],["marketplace","nextQueryIdV2"]]){try{console.log("S05_GETTER",method,JSON.stringify(await getter(A[role],method)))}catch(e){console.log("S05_GETTER_ERROR",method,String(e))}}
 if(strict){
+ if(Object.values(observed).some(v=>!v.historyComplete))throw Error("S05_RESUME_BLOCKED: transaction history incomplete");
  const escrowTx=observed.escrow.matchedTransactions;
  const deployerTx=observed.deployer.matchedTransactions;
  if(escrowTx.length!==1||deployerTx.length!==1||observed.seller.matched!==0||observed.marketplace.matched!==0||observed.item.matched!==0)throw Error("S05_RESUME_BLOCKED: transaction history differs from verified checkpoint");
@@ -44,6 +46,10 @@ if(strict){
  if(!e.executionVerified||e.aborted!==false||e.computeExit!==0||e.actionResult!==0)throw Error("S05_RESUME_BLOCKED: escrow checkpoint execution not successful");
  if(!Address.parse(escrowTx[0].in_msg?.source).equals(Address.parse(A.deployer))||escrowTx[0].in_msg?.value!=="50000000")throw Error("S05_RESUME_BLOCKED: escrow checkpoint sender/value mismatch");
  if(!owner?.equals(Address.parse(A.seller)))throw Error("S05_RESUME_BLOCKED: NFT owner changed");
+ if(observed.marketplace.lastTransaction?.lt!=="108832836000007"||observed.item.lastTransaction?.lt!=="109922827000005"||observed.seller.lastTransaction?.lt!=="109922827000007")throw Error("S05_RESUME_BLOCKED: seller, item or marketplace has newer transaction");
+ const nextProduct=await getter(A.marketplace,"nextProductIdV2");
+ const nextQuery=await getter(A.marketplace,"nextQueryIdV2");
+ if(nextProduct?.[0]?.[1]!=="0x7"||nextQuery?.[0]?.[1]!=="0x17")throw Error("S05_RESUME_BLOCKED: marketplace counters changed");
  console.log("S05_RESUME_PREFLIGHT_PASSED: true");
 }
 console.log("S05_READ_ONLY_NO_BROADCAST: true");
