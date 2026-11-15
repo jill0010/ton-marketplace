@@ -122,6 +122,13 @@ jobs:
       - name: Gate deployment on full production V3 emulation suite
         run: acton test --backtrace full
 
+      - name: Require Peppermint shared library on TON Testnet before S05 mint
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          TESTNET_ITEM_VARIANT: "peppermint"
+          REQUIRE_TESTNET_LIBRARIES: "true"
+        run: node scripts/check-testnet-fragment-libraries.mjs
+
       - name: Deploy Marketplace V3, Reserve Coordinator, Vault code and Settlement Verifier to Testnet
         shell: bash
         run: |
