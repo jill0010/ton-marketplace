@@ -2,6 +2,11 @@ name: Buy Testnet NFT Fixture
 on:
   workflow_dispatch:
     inputs:
+      confirm_s06_product_7_purchase:
+        description: "S06 ONLY: buy Product 7 once on TON Testnet (0.21 TON, reserve refund not guaranteed). Never rerun after timeout."
+        required: true
+        type: boolean
+        default: false
       confirm_testnet_purchase:
         description: "Buy test product 1 with 0.01 TON + 0.2 TON reserve. Reserve refund is not implemented."
         required: true
@@ -14,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   rehearsal:
-    if: ${{ inputs.confirm_testnet_purchase == true && github.ref == 'refs/heads/main' }}
+    if: ${{ inputs.confirm_testnet_purchase == true && inputs.confirm_s06_product_7_purchase != true && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -86,4 +91,69 @@ jobs:
             echo "Attached: 0.21 test TON, plus wallet fees. No Mainnet transaction."
             echo "Payout dispatch states require separate receipt-trace verification."
             echo "The 0.2 TON reserve remains unrefunded. This is not full refund acceptance."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  s06-product-7:
+    if: ${{ inputs.confirm_s06_product_7_purchase == true && inputs.confirm_testnet_purchase != true && github.ref == 'refs/heads/main' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: S06 Product 7 read-only preflight (no wallet secrets)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$TONCENTER_API_KEY"
+          acton script scripts/s06-product-7-purchase-preflight.tolk --net testnet 2>&1 | tee s06-preflight.log
+          grep -Fq "S06_PRODUCT_7_PREFLIGHT_PASSED: true" s06-preflight.log
+      - name: S06 submit exactly one Testnet purchase
+        env:
+          DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          S06_TESTNET_PRODUCT_7_PURCHASE_ENABLED: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          trap 'rm -f wallets.toml' EXIT
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+          export S06_TESTNET_PURCHASE_DEADLINE="$(( $(date +%s) + 600 ))"
+          acton script scripts/s06-product-7-purchase.tolk --net testnet 2>&1 | tee s06-purchase.log
+          grep -Fq "S06_PRODUCT_7_PURCHASE_CONFIRMED: true" s06-purchase.log
+      - name: S06 verify delivery and payout dispatch (read-only)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified=false
+          for attempt in 1 2 3 4 5 6; do
+            if acton script scripts/s06-product-7-verify.tolk --net testnet > s06-verify.log 2>&1; then
+              verified=true
+              break
+            fi
+            echo "S06 read-only delivery verification pending: $attempt"
+            if [ "$attempt" -lt 6 ]; then sleep 10; fi
+          done
+          cat s06-verify.log
+          test "$verified" = true
+          grep -Fq "S06_PRODUCT_7_DELIVERY_VERIFIED: true" s06-verify.log
+          {
+            echo "## S06 Product #7 Testnet purchase"
+            grep -E "S06_ORDER_ID:|S06_SELLER_PAYOUT|S06_PLATFORM_PAYOUT|S06_PRODUCT_7_DELIVERY" s06-verify.log
+            echo "0.2 TON reserve refund not guaranteed; payout receipt traces not independently verified."
           } >> "$GITHUB_STEP_SUMMARY"
