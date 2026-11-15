@@ -27,14 +27,20 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
+          # A rejected fixture is a valid diagnostic outcome, not a workflow failure.
+          set +e
           acton script scripts/check-s05-production-item-code.tolk --net testnet 2>&1 | tee s05-code-compatibility.log
           status=${PIPESTATUS[0]}
+          set -e
           echo "S05_CODE_COMPATIBILITY_SCRIPT_EXIT: $status" | tee -a s05-code-compatibility.log
           grep -Fq "S05_PRODUCTION_ESCROW_CODE_HASH_ALLOWED:" s05-code-compatibility.log || exit 1
           if grep -Fq "S05_PRODUCTION_ESCROW_CODE_HASH_ALLOWED: false" s05-code-compatibility.log; then
             echo "S05_DIAGNOSIS: existing synthetic NFT code is not trusted by production Escrow" | tee -a s05-code-compatibility.log
+            echo "S05_COMPATIBILITY_RESULT: BLOCKED_EXPECTED" | tee -a s05-code-compatibility.log
           elif grep -Fq "S05_PRODUCTION_ESCROW_CODE_HASH_ALLOWED: true" s05-code-compatibility.log; then
             echo "S05_DIAGNOSIS: code hash allowed; inspect StateInit and failed chain transaction" | tee -a s05-code-compatibility.log
+            test "$status" -eq 0 || exit 1
+            echo "S05_COMPATIBILITY_RESULT: CODE_ALLOWED" | tee -a s05-code-compatibility.log
           else
             exit 1
           fi
