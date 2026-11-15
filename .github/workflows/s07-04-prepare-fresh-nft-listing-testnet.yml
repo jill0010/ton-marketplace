@@ -1,0 +1,101 @@
+name: S07-04 Prepare Fresh NFT Listing (Testnet Only)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_listing_only:
+        description: "I approve a NEW synthetic NFT and listing on TON TESTNET only; no purchase."
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s07-04-new-fixture-listing
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: ${{ inputs.confirm_testnet_listing_only == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: kQC_UhR2wStYmFmPl_W2acYW7aeLUMBWn7GgQN4b1GmxqCyA
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: kQBMWX9agczB5MGgqHQTBU2yhVS7ApWAjhgaeoFHdkQBRsCy
+      V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: kQAxUi7LTfvy02mzY_d3odgbIklni0lNtOn5VEwta4ZMFowc
+      V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS: kQB91R0ihPflIhFRFrfEKq0IhIQfzcoazsf6BPUa01_27Xu0
+      V3_TESTNET_DEPLOYER_ADDRESS: 0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu
+      PLATFORM_TREASURY_ADDRESS: 0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+      - name: Confirm four production roles read-only before any transaction
+        working-directory: .
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/s07-04-purchase-readiness-readonly.mjs > s07-04-listing-preflight.json
+          cat s07-04-listing-preflight.json
+      - name: Validate testnet credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Create temporary wallet profile and check identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+      - name: Build candidate
+        run: acton build
+      - name: Deploy ONE new synthetic testnet NFT and list via existing production Escrow
+        env:
+          V3_TESTNET_FIXTURE_ENABLED: 'true'
+          V3_TESTNET_FIXTURE_ITEM_INDEX: ${{ github.run_id }}
+          FIXTURE_EMULATION: 'false'
+        run: |
+          set -euo pipefail
+          acton script scripts/run-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee s07-04-fixture-listing.log
+          grep -Fq 'V3_TESTNET_FIXTURE_NFT_ADDRESS:' s07-04-fixture-listing.log
+          grep -Fq 'V3 production Marketplace V3 and NFT Escrow V2 Testnet fixture listing/custody verified.' s07-04-fixture-listing.log
+          echo 'A NEW TESTNET NFT was listed; NO purchase was sent.'
+      - name: Preserve preflight and listing evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-fixture-listing-${{ github.run_id }}
+          path: |
+            s07-04-listing-preflight.json
+            contracts/marketplace/s07-04-fixture-listing.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Delete temporary wallet profile
+        if: always()
+        run: rm -f wallets.toml
