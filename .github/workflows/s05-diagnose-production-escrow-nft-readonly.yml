@@ -1,0 +1,48 @@
+name: S05 Diagnose Production Escrow NFT Compatibility (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - name: Checkout audited source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build contracts
+        run: acton build
+      - name: Compare fixture code hash with production Escrow allowlist (no transactions)
+        shell: bash
+        run: |
+          set -uo pipefail
+          acton script scripts/check-s05-production-item-code.tolk --net testnet 2>&1 | tee s05-code-compatibility.log
+          status=${PIPESTATUS[0]}
+          echo "S05_CODE_COMPATIBILITY_SCRIPT_EXIT: $status" | tee -a s05-code-compatibility.log
+          grep -Fq "S05_PRODUCTION_ESCROW_CODE_HASH_ALLOWED:" s05-code-compatibility.log || exit 1
+          if grep -Fq "S05_PRODUCTION_ESCROW_CODE_HASH_ALLOWED: false" s05-code-compatibility.log; then
+            echo "S05_DIAGNOSIS: existing synthetic NFT code is not trusted by production Escrow" | tee -a s05-code-compatibility.log
+          elif grep -Fq "S05_PRODUCTION_ESCROW_CODE_HASH_ALLOWED: true" s05-code-compatibility.log; then
+            echo "S05_DIAGNOSIS: code hash allowed; inspect StateInit and failed chain transaction" | tee -a s05-code-compatibility.log
+          else
+            exit 1
+          fi
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s05-code-compatibility-${{ github.run_id }}
+          path: contracts/marketplace/s05-code-compatibility.log
+          if-no-files-found: ignore
+          retention-days: 30
