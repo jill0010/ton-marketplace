@@ -113,6 +113,11 @@ jobs:
           PLATFORM_TREASURY_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000001"
         run: acton script scripts/deploy-v2.tolk
 
+      - name: Exercise S07 production Escrow V2 proof deployment in emulator only
+        env:
+          S07_TESTNET_MARKETPLACE_ADDRESS: "0:0000000000000000000000000000000000000000000000000000000000000001"
+        run: acton script scripts/deploy-s07-production-escrow-testnet.tolk
+
       - name: Rehearse Testnet NFT fixture deployment in emulator
         env:
           TESTNET_FIXTURE_ENABLED: "true"
