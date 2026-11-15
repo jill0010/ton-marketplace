@@ -20,8 +20,9 @@ fun main() {
     assert (productId != null) throw 933;
     val orderId = marketplace.orderIdForProductV2(productId!!);
     assert (orderId != null) throw 933;
-    // This read-only audit is exclusively for the already-settled Testnet order 1.
-    assert (orderId!! == 1) throw 939;
+    // Bind the read-only settlement check to the NFT-specific order index.
+    // Fresh testnet deployments can assign any positive monotonic order ID.
+    assert (orderId!! > 0) throw 939;
     val orderCell = marketplace.orderCellV2(orderId!!);
     assert (orderCell != null) throw 933;
     val order = MarketplaceV2Order.fromCell(orderCell!!);
