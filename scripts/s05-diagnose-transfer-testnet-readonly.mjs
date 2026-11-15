@@ -18,9 +18,22 @@ async function rpc(method,params){
 const canonical=a=>{try{return Address.parse(a).toRawString()}catch{return String(a??"")}};
 const item=canonical(nft);
 const fmt=m=>({source:m?.source??null,destination:m?.destination??null,value:m?.value??null,op:m?.message?.slice(0,70)??null});
+async function tonapiTransactions(address,limit){
+ const url=`https://testnet.tonapi.io/v2/blockchain/accounts/${encodeURIComponent(address)}/transactions?limit=${limit}`;
+ for(let i=0;i<4;i++){
+  const r=await fetch(url,{signal:AbortSignal.timeout(20000)});
+  if([429,500,502,503,504,542].includes(r.status)&&i<3){await new Promise(x=>setTimeout(x,1500*(i+1)));continue;}
+  if(!r.ok)throw Error("TonAPI HTTP "+r.status);
+  const j=await r.json();return (j.transactions??[]).map(t=>({...t,utime:t.utime??t.now,transaction_id:t.transaction_id??{lt:t.lt,hash:t.hash},out_msgs:t.out_msgs??t.out_msgs}));
+ }throw Error("TonAPI history retry exhausted");
+}
 async function transactions(address,limit){
  try{return await rpc("getTransactions",{address,limit,archival:false});}
- catch(e){console.log("S05_NON_ARCHIVAL_RPC_FAILED:",String(e));return await rpc("getTransactions",{address,limit:Math.min(20,limit),archival:true});}
+ catch(e){
+  console.log("S05_NON_ARCHIVAL_RPC_FAILED:",String(e));
+  try{return await rpc("getTransactions",{address,limit:Math.min(20,limit),archival:true});}
+  catch(archivalError){console.log("S05_ARCHIVAL_RPC_FAILED:",String(archivalError));console.log("S05_FALLBACK_PROVIDER: TonAPI testnet");return await tonapiTransactions(address,limit);}
+ }
 }
 const txs=await transactions(deployer,30);
 const itemTxs=await transactions(nft,20);
