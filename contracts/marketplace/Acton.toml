@@ -122,3 +122,8 @@ depends = ["ReserveCoordinatorV3", "NFTEscrowV2"]
 display-name = "S04-P001 Testnet-only reject-once refund recipient"
 src = "contracts/S04P001RejectOnceRecipient.tolk"
 depends = ["ReserveVaultV3"]
+
+[contracts.S05PeppermintCollection]
+display-name = "S05 testnet-only Peppermint Collection"
+src = "contracts/S05PeppermintCollection.tolk"
+depends = []
