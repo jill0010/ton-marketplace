@@ -1,0 +1,97 @@
+name: S05 Verify Production V3 NFT Custody on Testnet (No Purchase)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_one_testnet_nft_fixture:
+        description: "Create ONE synthetic NFT and list/deposit it into the existing production Escrow on TON Testnet; no purchase, settlement or mainnet"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s05-production-v3-nft-custody-testnet
+  cancel-in-progress: false
+
+jobs:
+  custody:
+    if: ${{ inputs.confirm_one_testnet_nft_fixture == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_TESTNET_FIXTURE_ENABLED: "true"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQB6a9pNVw_PEnuHW9FciV_ELODGXC-pWguu1xXnX4V-1njh"
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQAmmiCphiv-RewyM2dwTzzhY4cY0fjlUX0vpxqe-gUp-mtN"
+      V3_TESTNET_FIXTURE_ITEM_INDEX: ${{ github.run_id }}
+    steps:
+      - name: Checkout tested development branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Fail closed before signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          test "$V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS" = "kQB6a9pNVw_PEnuHW9FciV_ELODGXC-pWguu1xXnX4V-1njh"
+          test "$V3_PRODUCTION_TESTNET_ESCROW_ADDRESS" = "kQAmmiCphiv-RewyM2dwTzzhY4cY0fjlUX0vpxqe-gUp-mtN"
+          grep -Fq 'import "@wrappers/NFTEscrowV2.gen"' scripts/run-v3-production-testnet-fixture.tolk
+          ! grep -Eq 'NFTEscrowV2Testnet|--net mainnet' scripts/run-v3-production-testnet-fixture.tolk
+          ! grep -Eq 'sendBuyProductV2|attest-v3|settlement' scripts/run-v3-production-testnet-fixture.tolk
+      - name: Check testnet wallet funding before transactions
+        run: node scripts/preflight-v3-testnet-funding.mjs
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Create temporary testnet wallet profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+      - name: Compile contracts
+        run: acton build
+      - name: Create, list and verify custody of one synthetic NFT
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/run-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee s05-production-nft-custody.log
+          grep -Fq "V3 production Marketplace V3 and NFT Escrow V2 Testnet fixture listing/custody verified." s05-production-nft-custody.log
+          grep -Fq "V3_TESTNET_FIXTURE_NFT_ADDRESS:" s05-production-nft-custody.log
+      - name: Preserve custody evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s05-production-nft-custody-${{ github.run_id }}
+          path: contracts/marketplace/s05-production-nft-custody.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove wallet profiles
+        if: always()
+        run: rm -f wallets.toml
