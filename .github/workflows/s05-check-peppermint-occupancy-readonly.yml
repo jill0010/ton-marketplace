@@ -26,7 +26,11 @@ jobs:
       - name: Derive official Peppermint NFT address without signer
         env:
           S05_COLLECTION_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
-        run: acton script scripts/derive-s05-peppermint-index-one.tolk --net testnet | tee s05-address.log
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/derive-s05-peppermint-index-one.tolk --net testnet | tee s05-address.log
+          grep -Fq "S05_PEPPERMINT_INDEX_1_ADDRESS:" s05-address.log
       - name: Check account occupancy and ownership via read-only TON Center API
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
