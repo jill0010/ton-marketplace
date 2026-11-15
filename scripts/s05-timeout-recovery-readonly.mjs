@@ -4,7 +4,18 @@ const A={deployer:"0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu",seller:"0QA
 const headers=process.env.TONCENTER_API_KEY?{"X-API-Key":process.env.TONCENTER_API_KEY}:{};
 async function rpc(method,params){const u=new URL("https://testnet.toncenter.com/api/v2/"+method);for(const [k,v] of Object.entries(params))u.searchParams.set(k,String(v));for(let n=1;n<=5;n++){try{const r=await fetch(u,{headers,signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error("HTTP "+r.status);const j=await r.json();if(!j.ok)throw Error(JSON.stringify(j));return j.result}catch(e){if(n===5||!/429|500|502|503|504|542|timeout|fetch failed/i.test(String(e)))throw e;await new Promise(resolve=>setTimeout(resolve,n*1600))}}}
 async function getter(address,method,stack=[]){const r=await fetch("https://testnet.toncenter.com/api/v2/runGetMethod",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({address,method,stack}),signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error(method+" HTTP "+r.status);const j=await r.json();if(!j.ok||j.result?.exit_code!==0)throw Error(method+" "+JSON.stringify(j));return j.result.stack}
-function transactionExecution(tx){\n const result={aborted:null,computeExit:null,actionResult:null,executionVerified:false};\n try {\n  const boc=tx.data??tx.raw_data??tx.boc;\n  if(!boc) return {...result,verificationError:"transaction BOC unavailable"};\n  const parsed=loadTransaction(Cell.fromBase64(boc).beginParse());\n  const d=parsed.description;\n  if(d.type!=="generic") return {...result,verificationError:"non-generic transaction"};\n  return {aborted:d.aborted,computeExit:d.computePhase.type==="vm"?d.computePhase.exitCode:null,actionResult:d.actionPhase?.resultCode??null,executionVerified:true};\n }catch(e){return {...result,verificationError:String(e)}}\n}\nconst start=Date.parse("2026-11-15T15:09:00Z")/1000;
+function transactionExecution(tx){
+ const result={aborted:null,computeExit:null,actionResult:null,executionVerified:false};
+ try {
+  const boc=tx.data??tx.raw_data??tx.boc;
+  if(!boc) return {...result,verificationError:"transaction BOC unavailable"};
+  const parsed=loadTransaction(Cell.fromBase64(boc).beginParse());
+  const d=parsed.description;
+  if(d.type!=="generic") return {...result,verificationError:"non-generic transaction"};
+  return {aborted:d.aborted,computeExit:d.computePhase.type==="vm"?d.computePhase.exitCode:null,actionResult:d.actionPhase?.resultCode??null,executionVerified:true};
+ }catch(e){return {...result,verificationError:String(e)}}
+}
+const start=Date.parse("2026-11-15T15:09:00Z")/1000;
 const end=Date.parse("2026-11-15T15:14:00Z")/1000;
 for(const [role,address] of Object.entries(A)){
  const state=await rpc("getAddressInformation",{address});
