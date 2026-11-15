@@ -1,0 +1,77 @@
+name: S05 List Minted Peppermint NFT (Testnet Only)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_nft_transfer:
+        description: "Approve ONE testnet-only Peppermint listing and transfer; no mainnet, purchase or NFT mint"
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s05-peppermint-item-one-production-escrow
+  cancel-in-progress: false
+jobs:
+  list:
+    if: ${{ inputs.confirm_testnet_nft_transfer == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      S05_PEPPERMINT_LISTING_APPROVED: "true"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Guard testnet only and signing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          ! grep -Eq 'sendBuyProductV2|--net mainnet|deployV3TestnetMockNftFixture' scripts/list-s05-peppermint-production-testnet.tolk
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Configure testnet signer wallets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.seller]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+      - name: Build and list minted Peppermint NFT
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/list-s05-peppermint-production-testnet.tolk --net testnet 2>&1 | tee s05-peppermint-listing.log
+          grep -Fq "S05_PEPPERMINT_LISTING_ATTEMPT_COMPLETED: true" s05-peppermint-listing.log
+      - name: Preserve listing evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s05-peppermint-listing-${{ github.run_id }}
+          path: contracts/marketplace/s05-peppermint-listing.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove signer wallet configuration
+        if: always()
+        run: rm -f wallets.toml
