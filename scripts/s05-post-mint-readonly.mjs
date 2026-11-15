@@ -53,4 +53,20 @@ if(itemState.state==="active"){
  if(!initialized||!index||!actualCollection.equals(collection)||!actualOwner.equals(seller))throw Error("S05 NFT initialization, index, Collection or seller Owner mismatch");
  console.log("S05_SELLER_OWNER_VERIFIED: true");
 }
+const marketplace=Address.parse("kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_");
+const escrow=Address.parse("kQAp5SqhqBj1LK3q9mHpBDsVzUnMyWBiH-nvtTB7q0vdP0mG");
+for(const [label,address] of [["MARKETPLACE",marketplace],["ESCROW",escrow]]){
+ const state=await get("getAddressInformation",{address:address.toString()});
+ console.log("S05_"+label+"_ADDRESS:",address.toString());
+ console.log("S05_"+label+"_ACTIVE:",state.state==="active"&&Boolean(state.code));
+ if(state.state!=="active"||!state.code)throw Error(label+" is not an active deployed contract");
+}
+const codeHash=Cell.fromBase64(itemState.code).hash().toString("hex");
+const approvedHashes=[
+ "8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32",
+ "30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251"
+];
+console.log("S05_ITEM_CODE_HASH:",codeHash);
+console.log("S05_ESCROW_ITEM_CODE_ALLOWED:",approvedHashes.includes(codeHash));
+if(!approvedHashes.includes(codeHash))throw Error("S05 Peppermint NFT code hash is not approved by deployed NFTEscrowV2; do not transfer NFT");
 console.log("S05_READ_ONLY_NO_BROADCAST: true");
