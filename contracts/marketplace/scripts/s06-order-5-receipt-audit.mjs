@@ -19,31 +19,63 @@ async function rpc(method, params={}){
     await sleep(Math.min(1500*2**n,16000));
   }
 }
-// Query each page with adaptive limits; a failed page must never be treated as an empty page.
-async function pageHistory(address,cursor){
-  let lastError;
-  for(const limit of [20,10,5,2]){
-    const params={address:address.toRawString(),limit};
-    if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
-    try{return {batch:await rpc("getTransactions",params),limit};}
-    catch(e){lastError=e;console.error("S06_RPC_READ_ONLY_BACKOFF: "+e.message);}
-  }
-  throw lastError;
+// TonAPI testnet is an independent read-only source when Toncenter history fails.
+// Normalize both APIs into the same transaction/message shape before strict matching.
+const TONAPI="https://testnet.tonapi.io/v2";
+function hashHex(value){
+  if(!value)return null;
+  if(/^[a-f0-9]{64}$/i.test(value))return value.toLowerCase();
+  try{return Buffer.from(value.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString("hex")}catch{return null}
 }
-async function scanHistory(address,maxPages=12){
-  const txs=[];let cursor=null;
-  for(let page=0;page<maxPages;page++){
-    const {batch,limit}=await pageHistory(address,cursor);
-    if(!Array.isArray(batch))throw Error("Malformed getTransactions result");
-    if(batch.length===0)break;
-    const seen=new Set(txs.map(t=>t.transaction_id?.hash));
-    txs.push(...batch.filter(t=>!seen.has(t.transaction_id?.hash)));
-    const tail=batch.at(-1)?.transaction_id;
-    if(!tail?.lt||!tail?.hash||batch.length<limit)break;
-    if(cursor?.lt===tail.lt&&cursor?.hash===tail.hash)break;
-    cursor={lt:tail.lt,hash:tail.hash};
+function normalizeTonapiMessage(m){
+  if(!m)return null;
+  return {source:m.source?.address??m.source??null,destination:m.destination?.address??m.destination??null,
+    value:String(m.value??0),hash:hashHex(m.hash),
+    msg_data:{body:m.raw_body??m.message_content?.body??null},bounced:m.bounced??false};
+}
+async function tonapiHistory(address){
+  const all=[];let before=null;
+  for(let page=0;page<8;page++){
+    const url=new URL(TONAPI+"/blockchain/accounts/"+encodeURIComponent(address.toRawString())+"/transactions");
+    url.searchParams.set("limit","100");
+    if(before!==null)url.searchParams.set("before_lt",String(before));
+    let response;
+    for(let attempt=0;attempt<3;attempt++){
+      response=await fetch(url,{redirect:"error"});
+      if(response.ok)break;
+      if(![429,500,502,503,504].includes(response.status)||attempt===2)throw Error("TonAPI testnet history HTTP "+response.status);
+      await sleep(1000*(attempt+1));
+    }
+    const json=await response.json(),batch=json.transactions;
+    if(!Array.isArray(batch))throw Error("TonAPI testnet history response invalid");
+    for(const t of batch)all.push({transaction_id:{hash:hashHex(t.hash),lt:String(t.lt)},
+      in_msg:normalizeTonapiMessage(t.in_msg),
+      out_msgs:(t.out_msgs??[]).map(normalizeTonapiMessage),
+      description:t.description,
+      compute_phase:t.compute_phase});
+    if(batch.length<100)break;
+    const last=batch.at(-1)?.lt;
+    if(!last||String(last)===String(before))break;
+    before=last;
   }
-  return txs;
+  console.log("S06_HISTORY_PROVIDER: TonAPI testnet");
+  return all;
+}
+async function scanHistory(address){
+  try{
+    // First try a bounded Toncenter request. Never paginate into persistent HTTP 500.
+    const batch=await rpc("getTransactions",{address:address.toRawString(),limit:20});
+    if(!Array.isArray(batch))throw Error("Toncenter history invalid");
+    // Prefer independent provider for full history, falling back to the available first page.
+    try{return await tonapiHistory(address)}catch(e){
+      console.error("S06_TONAPI_FALLBACK_WARNING: "+e.message);
+      console.log("S06_HISTORY_PROVIDER: Toncenter limited first page");
+      return batch;
+    }
+  }catch(e){
+    console.error("S06_TONCENTER_HISTORY_UNAVAILABLE: "+e.message);
+    return await tonapiHistory(address);
+  }
 }
 function fields(msg){
   const b=msg?.msg_data?.body??msg?.message_content?.body;
@@ -93,7 +125,7 @@ async function main(){
       const incoming=t.in_msg;
       return norm(incoming?.source??incoming?.src)===marketplace.toRawString().toLowerCase()
         &&BigInt(incoming?.value??-1)===amount
-        &&incoming?.hash===out.hash
+        &&hashHex(incoming?.hash)===hashHex(out.hash)
         &&fields(incoming)?.order===order
         &&fields(incoming)?.opcode===fields(out)?.opcode;
     });
