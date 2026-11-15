@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_s05_testnet_only:
-        description: "Approve one fresh S05 Collection deploy and NFT mint on TON TESTNET only (never mainnet)"
+        description: "Approve one mint into the EXISTING S05 Collection on TESTNET only; no Collection deployment"
         required: true
         type: boolean
         default: false
@@ -27,7 +27,8 @@ jobs:
     env:
       DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
-      S05_COLLECTION_TESTNET_APPROVED: "true"
+      S05_MINT_TESTNET_APPROVED: "true"
+      S05_EXISTING_COLLECTION_ADDRESS: "EQABD-C8AWc8PnlrsZYg-aDWrB3MhsB0etXI91KO6lZs3KO4"
       S05_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       S05_TESTNET_SELLER_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
       S05_PEPPERMINT_ITEM_CODE_BOC_HEX: "b5ee9c720101010100230008420291d9e2ac169fc785ce00de0a81af27622b9b7d1764415c775e7e50c03ce98aa2"
@@ -51,6 +52,14 @@ jobs:
           REQUIRE_TESTNET_LIBRARIES: "true"
         run: node scripts/check-testnet-fragment-libraries.mjs
 
+      - name: Install existing project dependencies for read-only preflight
+        working-directory: .
+        run: npm ci
+
+      - name: Verify Collection owner, Item code, minted flag and NFT absence before broadcast
+        working-directory: .
+        run: node scripts/s05-existing-collection-preflight.mjs
+
       - name: Setup Acton
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e # v1.2.0
 
@@ -69,11 +78,11 @@ jobs:
       - name: Build S05 contracts
         run: acton build
 
-      - name: Deploy independent S05 Collection and mint Peppermint NFT on TON Testnet
+      - name: Mint Peppermint NFT into existing S05 Collection on TON Testnet
         shell: bash
         run: |
           set -euo pipefail
-          acton script scripts/deploy-s05-peppermint-collection-testnet.tolk --net testnet 2>&1 | tee s05-testnet-deployment.log
+          acton script scripts/mint-s05-existing-peppermint-testnet.tolk --net testnet 2>&1 | tee s05-testnet-deployment.log
           grep -Fq "S05_COLLECTION_ADDRESS:" s05-testnet-deployment.log
           grep -Fq "S05_NFT_ITEM_ADDRESS:" s05-testnet-deployment.log
           grep -Fq "S05_SELLER_ADDRESS:" s05-testnet-deployment.log
