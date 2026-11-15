@@ -130,3 +130,11 @@ jobs:
           if(getter.exit_code!==0)throw Error("S05 Collection getter not verified; do not mint or redeploy");
           console.log("S05_CANDIDATE_COLLECTION_GETTER_VERIFIED: true");
           JS
+
+      - name: Install dependencies for S05 post-mint read-only verification
+        run: npm ci
+
+      - name: Inspect Collection minted flag, Item activation and NFT getter (no broadcast)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: node scripts/s05-post-mint-readonly.mjs
