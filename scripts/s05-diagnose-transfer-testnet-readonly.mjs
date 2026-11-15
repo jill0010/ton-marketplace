@@ -1,5 +1,5 @@
 // S05: inspect testnet transactions; read-only, no signer or mnemonic.
-import { Address, Cell } from "@ton/core";
+import { Address } from "@ton/core";
 const deployer="0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu";
 const nft="kQCq13VYJqQ0Oov-a2-MKE57MWIuEtiQaoF_lYNCAEnAofhm";
 const seller="0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0";
@@ -9,17 +9,21 @@ async function rpc(method,params){
  const u=new URL(base+method);for(const [k,v] of Object.entries(params))u.searchParams.set(k,String(v));
  for(let i=0;i<4;i++){
   const r=await fetch(u,{headers:{"X-API-Key":process.env.TONCENTER_API_KEY},signal:AbortSignal.timeout(20000)});
-  if([429,500,502,503,504].includes(r.status)&&i<3){await new Promise(x=>setTimeout(x,1200*(i+1)));continue;}
+  if([429,500,502,503,504,520,522,524,542].includes(r.status)&&i<3){console.log("S05_RPC_RETRY:",method,r.status,"attempt",i+1);await new Promise(x=>setTimeout(x,1500*(i+1)));continue;}
   if(!r.ok)throw Error(method+" HTTP "+r.status);
   const j=await r.json();if(!j.ok)throw Error(method+": "+JSON.stringify(j.description));
   return j.result;
  }throw Error("RPC retries exhausted");
 }
 const canonical=a=>{try{return Address.parse(a).toRawString()}catch{return String(a??"")}};
-const wallet=canonical(deployer),item=canonical(nft);
+const item=canonical(nft);
 const fmt=m=>({source:m?.source??null,destination:m?.destination??null,value:m?.value??null,op:m?.message?.slice(0,70)??null});
-const txs=await rpc("getTransactions",{address:deployer,limit:50,archival:true});
-const itemTxs=await rpc("getTransactions",{address:nft,limit:30,archival:true});
+async function transactions(address,limit){
+ try{return await rpc("getTransactions",{address,limit,archival:false});}
+ catch(e){console.log("S05_NON_ARCHIVAL_RPC_FAILED:",String(e));return await rpc("getTransactions",{address,limit:Math.min(20,limit),archival:true});}
+}
+const txs=await transactions(deployer,30);
+const itemTxs=await transactions(nft,20);
 const start=Date.parse("2026-11-15T11:53:00Z")/1000,end=Date.parse("2026-11-15T12:02:00Z")/1000;
 const within=t=>Number(t.utime)>=start&&Number(t.utime)<=end;
 const candidate=txs.filter(t=>within(t)||t.out_msgs?.some(m=>canonical(m.destination)===item));
