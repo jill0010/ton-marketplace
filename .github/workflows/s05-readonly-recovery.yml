@@ -70,3 +70,48 @@ jobs:
           console.log("Outbound messages carrying state init:",found);
           console.log("Read-only evidence only. A zero count is NOT proof that no deployment was broadcast.");
           JS
+
+      - name: Verify candidate Collection address and inbound deployment transaction
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          const address="EQABD-C8AWc8PnlrsZYg-aDWrB3MhsB0etXI91KO6lZs3KO4";
+          const deployer="0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu";
+          const headers={"X-API-Key":process.env.TONCENTER_API_KEY};
+          async function get(method,params){
+            const url=new URL("https://testnet.toncenter.com/api/v2/"+method);
+            for(const [key,value] of Object.entries(params))url.searchParams.set(key,String(value));
+            for(let attempt=1;attempt<=4;attempt++){
+              try{
+                const res=await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
+                if(!res.ok)throw Error("HTTP "+res.status);
+                const body=await res.json();
+                if(!body.ok)throw Error(JSON.stringify(body));
+                return body.result;
+              }catch(error){
+                if(attempt===4||!/429|500|502|503|504|542|timeout|fetch failed/i.test(String(error)))throw error;
+                await new Promise(resolve=>setTimeout(resolve,attempt*1500));
+              }
+            }
+          }
+          const state=await get("getAddressInformation",{address});
+          console.log("CANDIDATE_ADDRESS:",address);
+          console.log("CANDIDATE_STATE:",state.state);
+          console.log("CANDIDATE_CODE_PRESENT:",Boolean(state.code));
+          const txs=await get("getTransactions",{address,limit:10});
+          for(const tx of txs){
+            console.log("CANDIDATE_TX:",JSON.stringify({time:new Date(tx.utime*1000).toISOString(),hash:tx.transaction_id?.hash,source:tx.in_msg?.source,value:tx.in_msg?.value,description:tx.description?.type??null}));
+          }
+          const deploy=txs.find(tx=>tx.in_msg?.value==="2500000000"&&tx.utime>=Date.parse("2026-11-15T14:04:00Z")/1000&&tx.utime<=Date.parse("2026-11-15T14:08:00Z")/1000);
+          console.log("MATCHING_DEPLOYMENT_INBOUND:",Boolean(deploy));
+          console.log("EXPECTED_DEPLOYER:",deployer);
+          if(state.state!=="active"||!state.code||!deploy)throw Error("Candidate not sufficiently verified; do not mint or redeploy");
+          const getter=await get("runGetMethod",{address,method:"get_nft_address_by_index",stack:JSON.stringify([["num","1"]])});
+          console.log("S05_GETTER_EXIT_CODE:",getter.exit_code);
+          console.log("S05_GETTER_STACK:",JSON.stringify(getter.stack));
+          if(getter.exit_code!==0)throw Error("S05 Collection getter not verified; do not mint or redeploy");
+          console.log("S05_CANDIDATE_COLLECTION_GETTER_VERIFIED: true");
+          JS
