@@ -1,6 +1,5 @@
-// S05 TESTNET ONLY: minimal one-item Peppermint fixture collection.
-// The item StateInit must embed THIS contract's address as collection.
-// Owner can mint once; no mainnet use, no public minting.
+// S05 TESTNET ONLY: one-shot Peppermint NFT fixture collection.
+// Item StateInit uses this deployed contract address, never the wallet address.
 import "types"
 
 contract S05PeppermintCollection {
@@ -15,13 +14,11 @@ struct S05PeppermintCollectionStorage {
     owner: address
     itemIndex: uint256
     itemCode: cell
-    itemData: cell
     minted: bool
 }
 
 struct (0x53050001) S05PeppermintMint {
     queryId: uint64
-    initialOwner: address
     deployBody: cell
 }
 
@@ -33,22 +30,25 @@ fun S05PeppermintCollectionStorage.save(self) {
     contract.setData(self.toCell());
 }
 
+fun S05PeppermintCollectionStorage.itemState(self, collection: address): ContractState {
+    val config = beginCell().storeUint(self.itemIndex, 256).storeAddress(collection).endCell();
+    val itemData = beginCell().storeRef(config).storeUint(0, 1).endCell();
+    return { code: self.itemCode, data: itemData };
+}
+
 fun onInternalMessage(in: InMessage) {
+    // Allow the initial contract deployment without attempting a mint.
+    if (in.body.isEmpty()) {
+        return;
+    }
     val msg = lazy S05PeppermintMint.fromSlice(in.body);
     var storage = lazy S05PeppermintCollectionStorage.load();
     assert (in.senderAddress == storage.owner) throw 401;
     assert (!storage.minted) throw 402;
     assert (storage.itemIndex == 1) throw 403;
-
-    // The item data and its address are immutable after this mint.
-    // The StateInit must use the Peppermint library-reference Item code.
-    val init: ContractState = {
-        code: storage.itemCode,
-        data: storage.itemData,
-    };
     val destination = AutoDeployAddress {
         workchain: 0,
-        stateInit: init,
+        stateInit: storage.itemState(contract.getAddress()),
     };
     val deploy = createMessage({
         bounce: false,
@@ -56,7 +56,6 @@ fun onInternalMessage(in: InMessage) {
         dest: destination,
         body: msg.deployBody,
     });
-    // Prevent replay before dispatching the outbound initialization.
     storage.minted = true;
     storage.save();
     deploy.send(SEND_MODE_PAY_FEES_SEPARATELY);
@@ -67,13 +66,9 @@ fun onBouncedMessage(_in: InMessageBounced) {}
 get fun get_nft_address_by_index(index: int): address {
     val storage = lazy S05PeppermintCollectionStorage.load();
     assert (index == storage.itemIndex) throw 404;
-    val init: ContractState = {
-        code: storage.itemCode,
-        data: storage.itemData,
-    };
     val destination = AutoDeployAddress {
         workchain: 0,
-        stateInit: init,
+        stateInit: storage.itemState(contract.getAddress()),
     };
     return destination.calculateAddress();
 }
