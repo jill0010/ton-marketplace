@@ -102,6 +102,9 @@ get fun `test S05 isolate separate collection bounce true`() {
 
             println("VM success: {}", compute.success);
             println("VM exit code: {}", vm.exitCode);
+            expect(vm.exitCode).toEqual(0);
+            expect(compute.success).toEqual(true);
+            expect(description.aborted).toEqual(false);
             println("VM gas used: {}", vm.gasUsed);
             println("VM gas limit: {}", vm.gasLimit);
             println("VM steps: {}", vm.vmSteps);
@@ -155,6 +158,21 @@ get fun `test S05 isolate separate collection bounce true`() {
         from: deployer.address,
         to: nftItem,
     });
+
+    val successfulTransferTx = transferResult.findTransaction({ to: nftItem });
+    expect(successfulTransferTx).toBeNotNull();
+    val successfulTransferDescription = successfulTransferTx!!.description.load();
+    if (successfulTransferDescription is TlbTransOrd) {
+        expect(successfulTransferDescription.aborted).toEqual(false);
+        if (successfulTransferDescription.computePh is TlbTrComputeVm) {
+            expect(successfulTransferDescription.computePh.success).toEqual(true);
+            expect(successfulTransferDescription.computePh.data.load().exitCode).toEqual(0);
+        } else {
+            throw 410;
+        }
+    } else {
+        throw 411;
+    }
 
     val afterTransfer = net.runGetMethodExt<tuple>(
         nftItem,
