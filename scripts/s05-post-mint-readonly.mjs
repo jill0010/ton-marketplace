@@ -1,6 +1,6 @@
 import {Address,Cell} from "@ton/core";
 const collection=Address.parse("EQABD-C8AWc8PnlrsZYg-aDWrB3MhsB0etXI91KO6lZs3KO4");
-const item=Address.parse("EQAk73VdUMdm_H9RYLNVfjHaEAfDC-fVm2s4bc_X669XZOin");
+
 const seller=Address.parse("0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0");
 const headers=process.env.TONCENTER_API_KEY?{"X-API-Key":process.env.TONCENTER_API_KEY}:{};
 async function get(method,params){
@@ -21,6 +21,12 @@ const isMinted=cs.state==="active"&&!!cs.data?Cell.fromBase64(cs.data).beginPars
 let minted=null;
 if(isMinted){isMinted.loadAddress();isMinted.loadUintBig(256);isMinted.loadRef();minted=isMinted.loadBit();}
 console.log("S05_COLLECTION_MINTED:",minted);
+const collectionGetter=await getter(collection,"get_nft_address_by_index",[["num","1"]]);
+if(collectionGetter.exit_code!==0)throw Error("Collection getter exited nonzero");
+const addressCell=Cell.fromBase64(collectionGetter.stack[0][1].bytes);
+const item=addressCell.beginParse().loadAddress();
+if(!item)throw Error("Collection returned no item address");
+console.log("S05_DERIVED_ITEM_ADDRESS:",item.toString());
 const itemState=await get("getAddressInformation",{address:item.toString()});
 console.log("S05_ITEM_STATE:",itemState.state);
 console.log("S05_ITEM_CODE_PRESENT:",Boolean(itemState.code));
