@@ -26,6 +26,10 @@ fun main() {
         return;
     }
     assert (owner == deployer.address) throw 984;
+    // S05 safety stop: the actual Peppermint fixture with collection == owner
+    // reproducibly aborts standard NFT transfer with VM exit 213.
+    // Never spend testnet funds retrying this known-bad state.
+    assert (collection != owner) throw 987;
     val body = NftTransfer {
         queryId: 50501,
         newOwner: seller,
