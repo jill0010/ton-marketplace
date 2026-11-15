@@ -1,0 +1,22 @@
+name: S05 Peppermint Index One Emulator Regression (No Chain)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build contracts
+        run: acton build
+      - name: Test S05 deployed index-one Peppermint fixture (emulator only)
+        run: acton test tests/s05-peppermint-index-one-transfer.test.tolk
