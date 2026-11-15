@@ -12,7 +12,7 @@ for(const [role,address] of Object.entries(A)){
  let cursor,matched=0;
  for(let page=0;page<12;page++){
   const params={address,limit:10};if(cursor){params.lt=cursor.lt;params.hash=cursor.hash}
-  const batch=await rpc("getTransactions",params);
+  let batch;try{batch=await rpc("getTransactions",params)}catch(e){console.log("S05_TRANSACTION_HISTORY_UNAVAILABLE",role,String(e));break;}
   for(const tx of batch){if(tx.utime<start||tx.utime>end)continue;matched++;console.log("S05_TX",role,JSON.stringify({time:new Date(tx.utime*1000).toISOString(),hash:tx.transaction_id?.hash,in:{source:tx.in_msg?.source,value:tx.in_msg?.value},out:(tx.out_msgs??[]).map(m=>({destination:m.destination,value:m.value})),aborted:tx.description?.aborted,computeExit:tx.description?.compute_ph?.exit_code,actionResult:tx.description?.action?.result_code}))}
   if(batch.length<10||batch.some(t=>t.utime<start))break;
   cursor=batch.at(-1)?.transaction_id;if(!cursor?.lt||!cursor?.hash)break;
