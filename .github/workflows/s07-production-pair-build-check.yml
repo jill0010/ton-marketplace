@@ -1,0 +1,42 @@
+name: S07 Production V3 and Escrow Build Check (No Transactions)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/reserve-refund-v3-audit
+    paths:
+      - 'contracts/marketplace/scripts/deploy-v3-production-testnet.tolk'
+      - '.github/workflows/s07-production-pair-build-check.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Verify production-only deployment source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f contracts/MarketplaceReserveV3.tolk
+          test -f contracts/NFTEscrowV2.tolk
+          grep -Fq 'import "@wrappers/NFTEscrowV2.gen"' scripts/deploy-v3-production-testnet.tolk
+          grep -Fq 'NFTEscrowV2.fromStorage' scripts/deploy-v3-production-testnet.tolk
+          grep -Fq 'build("NFTEscrowV2").hash()' scripts/deploy-v3-production-testnet.tolk
+          if grep -Eq 'NFTEscrowV2Testnet|--net mainnet' scripts/deploy-v3-production-testnet.tolk; then
+            echo "::error::Fixture escrow or Mainnet invocation found"; exit 1
+          fi
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build production contracts without wallet or transactions
+        run: acton build
+      - name: Confirm deploy script syntax and no transaction execution
+        run: |
+          acton fmt --check
+          echo "Production source build completed. No wallet loaded, no transaction broadcast."
