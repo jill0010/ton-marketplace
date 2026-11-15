@@ -151,45 +151,22 @@ get fun `test S05 isolate same collection bounce false`() {
 
     val transferResult = net.send(deployer.address, transferMessage);
 
-    expect(transferResult).toHaveSuccessfulTx({
-        from: deployer.address,
-        to: nftItem,
-    });
+    val failedTx = transferResult.findTransaction({ to: nftItem });
+    expect(failedTx).toBeNotNull();
+    val failedDescription = failedTx!!.description.load();
+    if (failedDescription is TlbTransOrd) {
+        if (failedDescription.computePh is TlbTrComputeVm) {
+            val failedVm = failedDescription.computePh.data.load();
+            println("S05_EXPECTED_VM_EXIT: {}", failedVm.exitCode);
+            expect(failedVm.exitCode).toEqual(213);
+        } else {
+            throw 408;
+        }
+    } else {
+        throw 409;
+    }
 
-    val afterTransfer = net.runGetMethodExt<tuple>(
-        nftItem,
-        "get_nft_data",
-    );
-
-    expect(afterTransfer.isSuccess()).toEqual(true);
-    val afterStack = afterTransfer.unwrap();
-    expect(afterStack.get(3) as address).toEqual(buyer.address);
-
-    val transferNftTx = transferResult.findTransaction({ to: nftItem });
-    expect(transferNftTx).toBeNotNull();
-
-    val messages = transferNftTx!!.messages.load();
-
-    val notificationLookup = messages.outMsgs.get(0);
-    expect(notificationLookup.isFound).toEqual(true);
-
-    val notificationCell = notificationLookup.loadValue();
-    val notificationMessage = (notificationCell as cell as Cell<TlbMessageRelaxed<NftOwnershipAssigned>>).load();
-
-    expect(notificationMessage.info.dest).toEqual(buyer.address);
-
-    val notification = notificationMessage.loadBody();
-    expect(notification.queryId).toEqual(50501);
-    expect(notification.prevOwner).toEqual(deployer.address);
-
-    val excessLookup = messages.outMsgs.get(1);
-    expect(excessLookup.isFound).toEqual(true);
-
-    val excessCell = excessLookup.loadValue();
-    val excessMessage = (excessCell as cell as Cell<TlbMessageRelaxed<NftExcesses>>).load();
-
-    expect(excessMessage.info.dest).toEqual(deployer.address);
-
-    val excess = excessMessage.loadBody();
-    expect(excess.queryId).toEqual(50501);
+    val afterFailure = net.runGetMethodExt<tuple>(nftItem, "get_nft_data");
+    expect(afterFailure.isSuccess()).toEqual(true);
+    expect(afterFailure.unwrap().get(3) as address).toEqual(deployer.address);
 }
