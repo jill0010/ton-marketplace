@@ -41,7 +41,13 @@ console.log("S05_ESCROW_CODE_ALLOWLIST_MATCH:",allowed.has(hash));
 if (!allowed.has(hash)) throw new Error("Production Escrow code allowlist mismatch; custody forbidden");
 const data=await rpc("runGetMethod",{address:nftAddress,method:"get_nft_data",stack:[]},true);
 if (data.exit_code!==0||!Array.isArray(data.stack)||data.stack.length!==5) throw new Error("Unexpected NFT getter response");
-function getNumber(entry){if(entry?.[0]!=="num")throw new Error("Unexpected number stack entry");return BigInt(entry[1]);}
+function getNumber(entry){
+  if(entry?.[0]!=="num" || typeof entry[1]!=="string")throw new Error("Unexpected number stack entry");
+  const value=entry[1].trim();
+  if(!/^-?(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(value))throw new Error("Invalid TON integer encoding");
+  if(value.startsWith("-0x"))return -BigInt(value.slice(1));
+  return BigInt(value);
+}
 function getAddress(entry){
   if (!["cell","slice"].includes(entry?.[0])||typeof entry[1]?.bytes!=="string")throw new Error("Unexpected address stack entry");
   const cells=Cell.fromBoc(Buffer.from(entry[1].bytes,"base64"));
