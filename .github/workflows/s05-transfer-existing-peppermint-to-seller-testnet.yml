@@ -1,0 +1,48 @@
+name: S05 Transfer Existing Peppermint NFT to Seller (Testnet)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_existing_nft_transfer:
+        description: "I authorize ONE existing NFT transfer from testnet deployer to testnet seller (0.1 test TON attached). No mainnet."
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s05-existing-peppermint-transfer
+  cancel-in-progress: false
+jobs:
+  transfer:
+    if: ${{ inputs.confirm_existing_nft_transfer == true && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build
+        run: acton build
+      - name: Transfer exactly one existing NFT to seller on testnet
+        env:
+          DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+          S05_CONFIRM_OWNER_TRANSFER: "true"
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          trap 'rm -f wallets.toml' EXIT
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+          WALLETS
+          acton script scripts/s05-transfer-existing-peppermint-to-seller.tolk --net testnet
