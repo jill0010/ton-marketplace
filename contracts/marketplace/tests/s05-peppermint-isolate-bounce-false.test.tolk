@@ -156,7 +156,8 @@ get fun `test S05 isolate same collection bounce false`() {
     val failedDescription = failedTx!!.description.load();
     if (failedDescription is TlbTransOrd) {
         if (failedDescription.computePh is TlbTrComputeVm) {
-            val failedVm = failedDescription.computePh.data.load();
+            val failedCompute = failedDescription.computePh;
+            val failedVm = failedCompute.data.load();
             println("S05_EXPECTED_VM_EXIT: {}", failedVm.exitCode);
             expect(failedVm.exitCode).toEqual(213);
         } else {
