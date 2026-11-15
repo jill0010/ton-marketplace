@@ -3,7 +3,7 @@ import "@acton/io"
 import "@acton/emulation/scripts"
 import "@contracts/types"
 import "@wrappers/MarketplaceV2.gen"
-import "@wrappers/NFTEscrowV2Testnet.gen"
+import "@wrappers/NFTEscrowV2.gen"
 import "deploy-v3-testnet-mock-nft-fixture"
 import "list-v3-testnet-mock-nft-fixture"
 
@@ -16,7 +16,7 @@ fun main() {
     val itemIndex: uint256 = (env<int>("V3_TESTNET_FIXTURE_ITEM_INDEX") ?? 1000) as uint256;
     assert (marketplaceAddress != null && escrowAddress != null) throw 902;
     val marketplace = MarketplaceV2 { address: marketplaceAddress! };
-    val escrow = NFTEscrowV2Testnet { address: escrowAddress! };
+    val escrow = NFTEscrowV2 { address: escrowAddress! };
     assert (marketplace.ownerV2() == deployer.address) throw 903;
     assert (escrow.owner() == deployer.address) throw 903;
     assert (marketplace.escrowConfiguredV2() && marketplace.escrowV2() == escrow.address) throw 903;
