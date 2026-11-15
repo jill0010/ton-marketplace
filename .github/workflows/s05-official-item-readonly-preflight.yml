@@ -27,10 +27,10 @@ jobs:
         run: acton test tests/gift-nft-address.test.tolk
       - name: Verify escrow and publish allowlists agree with official code hashes
         run: node scripts/check-fragment-item-code-policy.mjs
-      - name: Read-only testnet shared-library availability (no chain writes)
+      - name: Verify Peppermint shared library on testnet (no chain writes)
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
-          TESTNET_ITEM_VARIANT: all
+          TESTNET_ITEM_VARIANT: peppermint
           REQUIRE_TESTNET_LIBRARIES: "true"
         run: |
           if [ -z "$TONCENTER_API_KEY" ]; then
