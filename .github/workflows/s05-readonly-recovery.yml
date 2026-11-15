@@ -109,7 +109,22 @@ jobs:
           console.log("MATCHING_DEPLOYMENT_INBOUND:",Boolean(deploy));
           console.log("EXPECTED_DEPLOYER:",deployer);
           if(state.state!=="active"||!state.code||!deploy)throw Error("Candidate not sufficiently verified; do not mint or redeploy");
-          const getter=await get("runGetMethod",{address,method:"get_nft_address_by_index",stack:JSON.stringify([["num","1"]])});
+          const getUrl="https://testnet.toncenter.com/api/v2/runGetMethod";
+          const getBody={address,method:"get_nft_address_by_index",stack:[["num","1"]]};
+          let getter;
+          for(let attempt=1;attempt<=4;attempt++){
+            try{
+              const response=await fetch(getUrl,{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(getBody),signal:AbortSignal.timeout(20000)});
+              if(!response.ok)throw Error("runGetMethod HTTP "+response.status);
+              const result=await response.json();
+              if(!result.ok)throw Error("runGetMethod API "+JSON.stringify(result.error));
+              getter=result.result;
+              break;
+            }catch(error){
+              if(attempt===4||!/429|500|502|503|504|542|timeout|fetch failed/i.test(String(error)))throw error;
+              await new Promise(resolve=>setTimeout(resolve,attempt*1500));
+            }
+          }
           console.log("S05_GETTER_EXIT_CODE:",getter.exit_code);
           console.log("S05_GETTER_STACK:",JSON.stringify(getter.stack));
           if(getter.exit_code!==0)throw Error("S05 Collection getter not verified; do not mint or redeploy");
