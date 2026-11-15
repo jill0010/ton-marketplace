@@ -1,0 +1,30 @@
+name: S07-04 Production Purchase Readiness (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - name: Check exact four contracts, bindings and purchase script compatibility
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: node contracts/marketplace/scripts/s07-04-purchase-readiness-readonly.mjs | tee s07-04-readiness.json
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-readiness-${{ github.run_id }}
+          path: s07-04-readiness.json
+          if-no-files-found: ignore
+          retention-days: 30
