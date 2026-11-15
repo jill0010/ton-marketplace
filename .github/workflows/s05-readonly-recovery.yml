@@ -22,15 +22,37 @@ jobs:
           async function get(method,params) {
             const url = new URL(method,base);
             for(const [k,v] of Object.entries(params)) url.searchParams.set(k,String(v));
-            const response = await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
-            if(!response.ok) throw Error(method+" HTTP "+response.status);
-            const body=await response.json();
-            if(body.ok!==true) throw Error(method+" API error "+JSON.stringify(body.error??body.description));
-            return body.result;
+            for(let attempt=1;attempt<=4;attempt++) {
+              try {
+                const response=await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
+                if(!response.ok) throw Error(method+" HTTP "+response.status);
+                const body=await response.json();
+                if(body.ok!==true) throw Error(method+" API error "+JSON.stringify(body.error??body.description));
+                return body.result;
+              } catch(error) {
+                if(attempt===4 || !/HTTP (429|500|502|503|504|542)|timeout|fetch failed/i.test(String(error))) throw error;
+                console.warn("RPC temporary failure, attempt",attempt,":",String(error));
+                await new Promise(resolve=>setTimeout(resolve,attempt*1500));
+              }
+            }
           }
-          const transactions=await get("getTransactions",{address:deployer,limit:100,archival:true});
+
           const start=Date.parse("2026-11-15T14:04:40Z")/1000;
           const end=Date.parse("2026-11-15T14:06:30Z")/1000;
+          const transactions=[];
+          let cursor;
+          for(let page=0;page<20;page++){
+            const params={address:deployer,limit:10};
+            if(cursor) {params.lt=cursor.lt;params.hash=cursor.hash;}
+            const batch=await get("getTransactions",params);
+            if(!Array.isArray(batch)) throw Error("getTransactions did not return an array");
+            transactions.push(...batch);
+            console.log("Read-only page",page+1,"size",batch.length);
+            if(batch.length<10 || batch.some(tx=>tx.utime<start-120)) break;
+            const last=batch.at(-1)?.transaction_id;
+            if(!last?.lt || !last?.hash) throw Error("Missing transaction cursor");
+            cursor=last;
+          }
           const relevant=transactions.filter(tx=>tx.utime>=start-120&&tx.utime<=end+120);
           console.log("Scanned",transactions.length,"recent transactions; relevant",relevant.length);
           let found=0;
