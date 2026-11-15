@@ -42,20 +42,61 @@ function fields(msg){
 let core;
 async function main(){
   core=await import("@ton/core");
-  const txs=await history(marketplace);
-  const candidates=[];
-  for(const tx of txs){
-    const outputs=msgs(tx.out_msgs).filter(m=>fields(m)?.order===order);
-    const a=outputs.filter(m=>norm(m.destination??m.dest)===seller.toRawString().toLowerCase()&&BigInt(m.value??-1)===expected.seller);
-    const b=outputs.filter(m=>norm(m.destination??m.dest)!==seller.toRawString().toLowerCase()&&BigInt(m.value??-1)===expected.platform);
-    for(const x of a)for(const y of b)if(fields(x).opcode!==fields(y).opcode)candidates.push({tx,seller:x,platform:y});
+  const txs=[];
+  let cursor=null;
+  for(let page=0;page<12;page++){
+    const params={address:marketplace.toRawString(),limit:20};
+    if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
+    const batch=await rpc("getTransactions",params);
+    if(!Array.isArray(batch)||!batch.length)break;
+    const seen=new Set(txs.map(t=>t.transaction_id?.hash));
+    txs.push(...batch.filter(t=>!seen.has(t.transaction_id?.hash)));
+    const tail=batch.at(-1)?.transaction_id;
+    if(!tail?.lt||!tail?.hash||batch.length<20)break;
+    if(cursor?.lt===tail.lt&&cursor?.hash===tail.hash)break;
+    cursor={lt:tail.lt,hash:tail.hash};
   }
-  if(candidates.length!==1)throw Error("Expected one exact Order #5 seller/platform payout pair; found "+candidates.length+" among "+txs.length+" Marketplace transactions; inspect order linkage before proceeding");
-  const found=candidates[0];
+  const sellerCandidates=[], platformCandidates=[];
+  let bodyMatches=0, sellerValueMatches=0, platformValueMatches=0;
+  for(const tx of txs){
+    for(const m of msgs(tx.out_msgs)){
+      const d=norm(m.destination??m.dest), v=BigInt(m.value??-1), parsed=fields(m);
+      if(parsed?.order===order)bodyMatches++;
+      if(d===seller.toRawString().toLowerCase() && v===expected.seller){
+        sellerValueMatches++;
+        if(parsed?.order===order)sellerCandidates.push({tx,msg:m});
+      }
+      if(d && d!==seller.toRawString().toLowerCase() && v===expected.platform){
+        platformValueMatches++;
+        if(parsed?.order===order)platformCandidates.push({tx,msg:m});
+      }
+    }
+  }
+  console.log("S06_MARKETPLACE_HISTORY_SCANNED: "+txs.length);
+  console.log("S06_ORDER_BODY_MATCH_COUNT: "+bodyMatches);
+  console.log("S06_SELLER_AMOUNT_DEST_MATCH_COUNT: "+sellerValueMatches);
+  console.log("S06_PLATFORM_AMOUNT_MATCH_COUNT: "+platformValueMatches);
+  console.log("S06_SELLER_ORDER_MATCH_COUNT: "+sellerCandidates.length);
+  console.log("S06_PLATFORM_ORDER_MATCH_COUNT: "+platformCandidates.length);
+  if(sellerCandidates.length!==1 || platformCandidates.length!==1)throw Error("Order 5 payout messages not uniquely identified; seller="+sellerCandidates.length+" platform="+platformCandidates.length);
+  const found={seller:sellerCandidates[0].msg,platform:platformCandidates[0].msg,tx:sellerCandidates[0].tx};
   const platformAddress=Address.parse(found.platform.destination??found.platform.dest);
   if(platformAddress.equals(marketplace)||platformAddress.equals(seller))throw Error("Invalid platform beneficiary");
   async function receipt(out,recipient,kind,amount){
-    const recipientTxs=await history(recipient);
+    const recipientTxs=[];
+    let cursor=null;
+    for(let page=0;page<12;page++){
+      const params={address:recipient.toRawString(),limit:20};
+      if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
+      const batch=await rpc("getTransactions",params);
+      if(!Array.isArray(batch)||!batch.length)break;
+      const seen=new Set(recipientTxs.map(t=>t.transaction_id?.hash));
+      recipientTxs.push(...batch.filter(t=>!seen.has(t.transaction_id?.hash)));
+      const tail=batch.at(-1)?.transaction_id;
+      if(!tail?.lt||!tail?.hash||batch.length<20)break;
+      if(cursor?.lt===tail.lt&&cursor?.hash===tail.hash)break;
+      cursor={lt:tail.lt,hash:tail.hash};
+    }
     const matches=recipientTxs.filter(t=>{
       const incoming=t.in_msg;
       return norm(incoming?.source??incoming?.src)===marketplace.toRawString().toLowerCase()
@@ -76,7 +117,8 @@ async function main(){
   await receipt(found.seller,seller,"SELLER",expected.seller);
   await receipt(found.platform,platformAddress,"PLATFORM",expected.platform);
   console.log("S06_ORDER_ID: 5");
-  console.log("S06_MARKETPLACE_PAYOUT_TX_HASH: "+found.tx.transaction_id?.hash);
+  console.log("S06_SELLER_PAYOUT_TX_HASH: "+sellerCandidates[0].tx.transaction_id?.hash);
+  console.log("S06_PLATFORM_PAYOUT_TX_HASH: "+platformCandidates[0].tx.transaction_id?.hash);
   console.log("S06_RESERVE_INPUT_NANOTON: 200000000");
   console.log("S06_RESERVE_CLASSIFICATION: MarketplaceV2 execution reserve, not V3 Reserve Vault deposit");
   console.log("S06_RESERVE_REFUND_NOT_PROVEN: true");
