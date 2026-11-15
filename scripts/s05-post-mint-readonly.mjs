@@ -36,10 +36,20 @@ for(const [label,address] of [["COLLECTION",collection],["ITEM",item]]){
   console.log("S05_"+label+"_TX:",JSON.stringify({time:new Date(tx.utime*1000).toISOString(),hash:tx.transaction_id?.hash,source:tx.in_msg?.source,value:tx.in_msg?.value,computeExit:tx.description?.compute_ph?.exit_code,aborted:tx.description?.aborted,out:tx.out_msgs?.map(m=>({destination:m.destination,value:m.value}))}));
  }
 }
+if(itemState.state!=="active"||!itemState.code)throw Error("S05 NFT item not active");
 if(itemState.state==="active"){
  const nft=await getter(item,"get_nft_data");
  console.log("S05_ITEM_GETTER_EXIT:",nft.exit_code);
  console.log("S05_ITEM_GETTER_STACK:",JSON.stringify(nft.stack));
+ const initialized=BigInt(nft.stack[0][1])===-1n;
+ const index=BigInt(nft.stack[1][1])===1n;
+ const decode=(entry)=>{if(entry?.[0]!=="cell"||!entry[1]?.bytes)throw Error("Invalid NFT address stack entry");const address=Cell.fromBase64(entry[1].bytes).beginParse().loadAddress();if(!address)throw Error("NFT address is null");return address;};
+ const actualCollection=decode(nft.stack[2]);
+ const actualOwner=decode(nft.stack[3]);
+ console.log("S05_ACTUAL_OWNER:",actualOwner.toString());
  console.log("S05_EXPECTED_SELLER:",seller.toString());
+ console.log("S05_ACTUAL_COLLECTION:",actualCollection.toString());
+ if(!initialized||!index||!actualCollection.equals(collection)||!actualOwner.equals(seller))throw Error("S05 NFT initialization, index, Collection or seller Owner mismatch");
+ console.log("S05_SELLER_OWNER_VERIFIED: true");
 }
 console.log("S05_READ_ONLY_NO_BROADCAST: true");
