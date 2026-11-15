@@ -1,0 +1,38 @@
+name: S05 Peppermint Transfer 213 Cause Isolation (Emulator Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build contracts
+        run: acton build
+      - name: A - same collection, bounce false
+        shell: bash
+        run: |
+          set +e
+          acton test tests/s05-peppermint-isolate-bounce-false.test.tolk 2>&1 | tee /tmp/s05-a.log
+          result=${PIPESTATUS[0]}
+          echo "S05_A_TEST_EXIT_CODE=$result"
+          if grep -q 'exit_code=213' /tmp/s05-a.log; then echo 'S05_A_NFT_VM_EXIT=213'; elif [ "$result" -eq 0 ]; then echo 'S05_A_NFT_VM_EXIT=0'; else echo 'S05_A_NFT_VM_EXIT=UNKNOWN'; fi
+          exit 0
+      - name: B - separate collection, bounce true
+        shell: bash
+        run: |
+          set +e
+          acton test tests/s05-peppermint-isolate-separate-collection.test.tolk 2>&1 | tee /tmp/s05-b.log
+          result=${PIPESTATUS[0]}
+          echo "S05_B_TEST_EXIT_CODE=$result"
+          if grep -q 'exit_code=213' /tmp/s05-b.log; then echo 'S05_B_NFT_VM_EXIT=213'; elif [ "$result" -eq 0 ]; then echo 'S05_B_NFT_VM_EXIT=0'; else echo 'S05_B_NFT_VM_EXIT=UNKNOWN'; fi
+          exit 0
