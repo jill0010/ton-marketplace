@@ -26,6 +26,8 @@ get fun `test S05 real collection deploy initializes Peppermint and transfers ow
     });
     val collectionDeploy = collection.deploy(deployer.address, { value: grams("0.2") });
     expect(collectionDeploy).toHaveSuccessfulDeploy({ to: collection.address });
+    // Prevent the old failure mode: collection must never alias the deployer wallet.
+    expect(collection.address == deployer.address).toEqual(false);
     val buyer = testing.treasury("testnetPeppermintBuyer");
 
     val code = parseCellFromHex("b5ee9c720101010100230008420291d9e2ac169fc785ce00de0a81af27622b9b7d1764415c775e7e50c03ce98aa2");
