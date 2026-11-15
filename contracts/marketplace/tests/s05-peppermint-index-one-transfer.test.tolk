@@ -191,5 +191,5 @@ get fun `test S05 deployed index one Peppermint Item transfer`() {
     expect(excessMessage.info.dest).toEqual(deployer.address);
 
     val excess = excessMessage.loadBody();
-    expect(excess.queryId).toEqual(1);
+    expect(excess.queryId).toEqual(50501);
 }
