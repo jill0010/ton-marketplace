@@ -236,7 +236,7 @@ async function findConfirmedRefund(vault, buyer) {
   for (let attempt = 0; attempt < 18; attempt++) {
     const [vaultTransactions, buyerTransactions] = await Promise.all([
       toncenter("getTransactions", { address: vault, limit: 30 }),
-      toncenter("getTransactions", { address: buyer, limit: 30 }),
+      toncenter("getTransactions", { address: buyer, limit: 10 }),
     ]);
     const dispatch = findReserveRefundDispatch(vaultTransactions, buyer);
     const receipt = findReserveRefundReceipt(buyerTransactions, vault);
