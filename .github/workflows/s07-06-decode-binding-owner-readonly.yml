@@ -26,7 +26,8 @@ jobs:
             fixtureMarketplace:'kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF',
             fixtureEscrow:'kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm',
             nft:'kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr',
-            expectedBuyer:'0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0'
+            expectedBuyer:'0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0',
+            actualBoundEscrow:'0:29e52aa1a818f52cadeaf661e9043b15cd49ccc960621fe9efb5307bab4bdd3f'
           };
           const out={network:'testnet',timestamp:new Date().toISOString(),getters:{},checks:{},limitations:[],mainnetApproved:false};
           const eq=(a,b)=>Address.parse(a).equals(Address.parse(b));
@@ -41,6 +42,12 @@ jobs:
               return payload.result.stack;
             }
             throw Error('RPC retries exhausted');
+          }
+          async function accountInfo(address){
+            const res=await fetch(base,{method:'POST',headers:{'content-type':'application/json',...(process.env.TONCENTER_API_KEY?{'X-API-Key':process.env.TONCENTER_API_KEY}:{})},body:JSON.stringify({jsonrpc:'2.0',id:2,method:'getAddressInformation',params:{address}})});
+            if(!res.ok)throw Error('Account HTTP '+res.status);
+            const data=await res.json();if(data.error||!data.result)throw Error(JSON.stringify(data.error||data));
+            const a=data.result;return {state:a.state,hasCode:!!a.code,codeHash:a.code?Cell.fromBase64(a.code).hash().toString('hex'):null,lastTransactionId:a.last_transaction_id||null};
           }
           function decodeCell(entry){
             if(!Array.isArray(entry)||!['cell','slice'].includes(entry[0]))throw Error('Expected cell/slice stack entry, got '+JSON.stringify(entry).slice(0,180));
@@ -57,6 +64,11 @@ jobs:
           const escrowMarket=await capture('escrow.marketplace',addr.escrow,'marketplace',s=>decodeAddress(s[0]));
           const marketEscrow=await capture('marketplace.escrowV2',addr.marketplace,'escrowV2',s=>decodeAddress(s[0]));
           const configured=await capture('marketplace.escrowConfiguredV2',addr.marketplace,'escrowConfiguredV2',s=>decodeBool(s[0]));
+          const actualBound=await capture('actualBoundEscrow.marketplace',addr.actualBoundEscrow,'marketplace',s=>decodeAddress(s[0]));
+          for(const role of ['actualBoundEscrow','escrow']){
+            try{out.getters[role+'.account']={status:'OK',value:await accountInfo(addr[role])}}
+            catch(e){out.getters[role+'.account']={status:'ERROR',error:String(e)}}
+          }
           const fixtureEscrow=await capture('fixtureMarketplace.escrowV2',addr.fixtureMarketplace,'escrowV2',s=>decodeAddress(s[0]));
           const nft=await capture('nft.get_nft_data',addr.nft,'get_nft_data',s=>{
             if(s.length<4)throw Error('NFT getter returned fewer than four fields');
@@ -67,8 +79,11 @@ jobs:
           out.checks.marketplaceEscrowConfigured=configured===true;
           out.checks.fixtureMarketplacePointsToFixtureEscrow=fixtureEscrow!==null&&eq(fixtureEscrow,addr.fixtureEscrow);
           out.checks.nftOwnerMatchesExpectedBuyer=!!nft?.owner&&eq(nft.owner,addr.expectedBuyer);
+          out.checks.actualBoundEscrowPointsBackToMarketplace=actualBound!==null&&eq(actualBound,addr.marketplace);
+          out.checks.actualBoundEscrowActive=out.getters['actualBoundEscrow.account']?.value?.state==='active';
+          out.checks.actualBoundCodeMatchesIsolatedProductionEscrow=!!out.getters['actualBoundEscrow.account']?.value?.codeHash&&out.getters['actualBoundEscrow.account'].value.codeHash===out.getters['escrow.account']?.value?.codeHash;
           out.checks.productionPairReciprocal=out.checks.productionEscrowPointsToMarketplace&&out.checks.marketplacePointsToProductionEscrow&&out.checks.marketplaceEscrowConfigured;
-          out.limitations=['Expected buyer is sourced from historical fixture workflow; independent order-party decode is pending.','NFT owner is current state, not historical ownership at settlement block.','No transaction message hash matching or independent block finality in this workflow.','Production pair binding alone is not production end-to-end settlement acceptance.'];
+          out.limitations=['Code hash equality with an isolated escrow is comparative evidence, not independent proof of a pinned production NFTEscrowV2 build.','Expected buyer is sourced from historical fixture workflow; independent order-party decode is pending.','NFT owner is current state, not historical ownership at settlement block.','No transaction message hash matching or independent block finality in this workflow.','Production pair binding alone is not production end-to-end settlement acceptance.'];
           fs.writeFileSync('s07-06-decoded-evidence.json',JSON.stringify(out,null,2));
           console.log(JSON.stringify({checks:out.checks,decoded:Object.fromEntries(Object.entries(out.getters).map(([k,v])=>[k,{status:v.status,value:v.value,error:v.error}])),mainnetApproved:false},null,2));
           if(Object.values(out.getters).some(x=>x.status!=='OK'))process.exitCode=1;
