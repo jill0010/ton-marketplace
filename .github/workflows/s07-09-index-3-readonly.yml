@@ -20,7 +20,7 @@ jobs:
       - name: Inspect deterministic fixture address and marketplace state
         working-directory: contracts/marketplace
         env:
-          PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+          PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"\n          V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
           V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg"
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
         run: |
@@ -51,8 +51,8 @@ jobs:
           for(const [name,address] of Object.entries(addresses)){
             try{
               const url=new URL('https://testnet.toncenter.com/api/v2/getTransactions');
-              url.searchParams.set('address',address);url.searchParams.set('limit','100');
-              const res=await fetch(url,{headers,signal:AbortSignal.timeout(25000)});
+              url.searchParams.set('address',address);url.searchParams.set('limit','20');
+              let res; for(let attempt=0;attempt<4;attempt++){res=await fetch(url,{headers,signal:AbortSignal.timeout(25000)});if(res.ok || ![429,500,502,503,504,542].includes(res.status))break;await new Promise(resolve=>setTimeout(resolve,1500*(attempt+1)));}
               if(!res.ok)throw Error('HTTP '+res.status);
               const json=await res.json();if(!json.ok)throw Error(JSON.stringify(json));
               const txs=json.result??[];
