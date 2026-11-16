@@ -1,0 +1,144 @@
+name: S07-04 Product 1 One-Time Testnet Purchase
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_single_testnet_purchase:
+        description: "I authorize ONE real TON TESTNET purchase of listed S07-04 Product 1 (0.01 TON + 0.2 TON reserve); no Mainnet."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s07-04-product-1-one-time-purchase
+  cancel-in-progress: false
+
+jobs:
+  purchase:
+    if: ${{ inputs.confirm_single_testnet_purchase == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF"
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm"
+      V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: "kQByrR9dHWfBsVYsF-F_G5zXk8xnp2T1gI6hQ-NHl6kjeVmQ"
+      V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr"
+      V3_TESTNET_PURCHASE_ENABLED: "true"
+      S07_04_RECOVERED_NFT_ADDRESS: "kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr"
+    steps:
+      - name: Checkout proven testnet purchase script
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Require exact immutable Testnet S07-04 product 1 target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC" && test -n "$SELLER_MNEMONIC" && test -n "$TONCENTER_API_KEY"
+          test "$V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS" = "kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF"
+          test "$V3_TESTNET_FIXTURE_NFT_ADDRESS" = "kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr"
+          test "$V3_PRODUCTION_TESTNET_ESCROW_ADDRESS" = "kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm"
+          test "$V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS" = "kQByrR9dHWfBsVYsF-F_G5zXk8xnp2T1gI6hQ-NHl6kjeVmQ"
+          test "$V3_TESTNET_PURCHASE_ENABLED" = true
+      - name: Block re-runs and duplicate workflow dispatches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${{ github.run_attempt }}" = "1"
+          gh api "repos/${{ github.repository }}/actions/workflows/s07-04-product-1-once-testnet-purchase.yml/runs?event=workflow_dispatch&per_page=100" --jq ".workflow_runs | map(select(.id != ${GITHUB_RUN_ID})) | length" > /tmp/previous-runs
+          test "$(cat /tmp/previous-runs)" = "0" || { echo "::error::Previous funded run exists; do not repeat purchase."; exit 1; }
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Create temporary Testnet wallet profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+      - name: Build production contract wrappers
+        run: acton build
+      - name: Preflight S07-04 product 1 and buyer balance before purchase
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet > s07-04-product1-preflight.log 2>&1 || {
+            cat s07-04-product1-preflight.log
+            exit 1
+          }
+      - name: Read-only NFT custody and exact product preflight
+        run: |
+          set -euo pipefail
+          acton script scripts/s07-04-check-recovered-nft-readonly.tolk --net testnet | tee s07-04-product1-custody-before.log
+          grep -Fq "S07_04_PRODUCT_ID: 1" s07-04-product1-custody-before.log
+          grep -Fq "S07_04_ORDER_ID: null" s07-04-product1-custody-before.log
+          grep -Fq "S07_04_OWNER_IS_ESCROW: true" s07-04-product1-custody-before.log
+      - name: Submit a single TESTNET purchase of S07-04 product 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          export V3_TESTNET_BUY_DEADLINE="$(( $(date +%s) + 900 ))"
+          acton script scripts/buy-v3-production-testnet-fixture.tolk --net testnet 2>&1 | tee s07-04-product1-purchase.log
+          grep -Fq "V3 Testnet purchase submitted once." s07-04-product1-purchase.log
+      - name: Verify delivery, payout and reserve on-chain (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if acton script scripts/verify-v3-production-testnet-purchase.tolk --net testnet > s07-04-product1-verification.log 2>&1; then
+              verified=true
+              break
+            fi
+            echo "Read-only post-purchase verification attempt $attempt not complete"
+            if [ "$attempt" -lt 12 ]; then sleep 10; fi
+          done
+          cat s07-04-product1-verification.log
+          test "$verified" = true
+          grep -Fq "V3_TESTNET_VAULT_ADDRESS:" s07-04-product1-verification.log
+          {
+            echo "## S07-04 Product 1 Testnet purchase"
+            grep -E '^V3_TESTNET_(PRODUCT_ID|ORDER_ID|VAULT_ADDRESS):' s07-04-product1-verification.log
+            echo "Buyer NFT ownership, seller/platform payout dispatch, and isolated reserve verified."
+            echo "Reserve receipt attestation / final settlement is a separate step."
+            echo "NEVER rerun the funded purchase for this product."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload purchase evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-product1-purchase-${{ github.run_id }}
+          path: |
+            contracts/marketplace/s07-04-product1-preflight.log
+            contracts/marketplace/s07-04-product1-custody-before.log
+            contracts/marketplace/s07-04-product1-purchase.log
+            contracts/marketplace/s07-04-product1-verification.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Delete temporary wallet profiles
+        if: always()
+        run: rm -f wallets.toml
