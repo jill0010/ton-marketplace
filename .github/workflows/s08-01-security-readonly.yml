@@ -42,7 +42,8 @@ jobs:
           node --test contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs
           node contracts/marketplace/scripts/verify-v3-production-testnet-bindings.mjs | tee s08-bindings.json
         env:
-          V3_PRODUCTION_EXPECTED_VAULT_CODE_HASH: ${{ vars.V3_PRODUCTION_EXPECTED_VAULT_CODE_HASH }}
+          # Derived from the production ReserveVaultV3 compiled code hash printed by v3-compiled-hashes.test.tolk in run 43911432920; compare against chain getter, never treat source alone as proof.
+          V3_PRODUCTION_EXPECTED_VAULT_CODE_HASH: "d5225b3d77a5700476a3046d663a66907162849989c49caa4b98412ace60be1e"
       - name: Explicitly report remaining S08 release blockers
         if: always()
         run: |
