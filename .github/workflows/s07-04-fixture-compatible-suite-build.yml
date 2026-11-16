@@ -1,0 +1,31 @@
+name: S07-04 Fixture-Compatible Suite Build (No Transactions)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Build all contracts including isolated testnet Escrow
+        run: acton build
+      - name: Ensure mainnet production Escrow unchanged and fixture hash allowlisted
+        run: |
+          set -euo pipefail
+          grep -Fq '0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f' contracts/NFTEscrowV2Testnet.tolk
+          if grep -Fq '0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f' contracts/NFTEscrowV2.tolk; then
+            echo 'ERROR: synthetic fixture hash must not be allowed by production escrow'
+            exit 1
+          fi
+          grep -Fq 'NFTEscrowV2Testnet.fromStorage' scripts/s07-04-deploy-testnet-fixture-suite.tolk
+          grep -Fq 'S07_04_TESTNET_FIXTURE_SUITE_APPROVED' scripts/s07-04-deploy-testnet-fixture-suite.tolk
+          echo 'S07_04_TESTNET_SUITE_BUILD_READY: true'
