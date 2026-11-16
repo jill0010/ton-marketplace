@@ -28,6 +28,6 @@ fun main() {
     val nft = net.runGetMethod<tuple>(nftItem, "get_nft_data");
     println("S07_09_NFT_INITIALIZED: {}", nft.get(0));
     println("S07_09_NFT_INDEX: {}", nft.get(1));
-    println("S07_09_NFT_COLLECTION: {}", nft.get(2));
-    println("S07_09_NFT_OWNER: {}", nft.get(3));
+    println("S07_09_NFT_COLLECTION: {}", nft.get(2) as address);
+    println("S07_09_NFT_OWNER: {}", nft.get(3) as address);\n    println("S07_09_OWNER_IS_DEPLOYER: {}", (nft.get(3) as address) == env<address>("V3_TESTNET_DEPLOYER_ADDRESS"));
 }
