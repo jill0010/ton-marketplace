@@ -13,10 +13,17 @@ jobs:
           ref: feature/reserve-refund-v3-audit
           persist-credentials: false
       - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
-      - name: Compile NFT recovery script without executing transactions
+      - name: Compile and safely stop NFT recovery script before any wallet access
         working-directory: contracts/marketplace
+        env:
+          V3_TESTNET_FIXTURE_ENABLED: "false"
+          V3_TESTNET_FIXTURE_OWNER_RECOVERY_APPROVED: "false"
         run: |
           set -euo pipefail
           acton build
-          acton script --help
-          echo "S07-09 build completed; no wallet keys loaded and no transactions sent."
+          result=0
+          acton script scripts/s07-09-recover-fixture-owner.tolk > recovery-build-gate.log 2>&1 || result=$?
+          cat recovery-build-gate.log
+          test "$result" -ne 0
+          grep -Eq 'throw 901|code 901|exit code 901|THROW 901|Throw 901|901' recovery-build-gate.log
+          echo "Recovery script compiled and intentionally stopped at disabled fixture gate (901). No secrets, wallets or transactions."
