@@ -18,6 +18,7 @@ fun main() {
     val nftItem = destination.calculateAddress();
     println("S07_09_FIXTURE_INDEX: {}", itemIndex);
     println("S07_09_EXPECTED_NFT_ADDRESS: {}", nftItem);
+    println("S07_09_EXPECTED_CODE_HASH: {}", code.hash());
     val marketplace = MarketplaceV2 { address: marketplaceAddress!! };
     val productId = marketplace.assetProductIdV2(nftItem);
     println("S07_09_PRODUCT_ID: {}", productId);
