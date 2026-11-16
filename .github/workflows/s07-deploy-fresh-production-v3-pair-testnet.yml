@@ -34,7 +34,7 @@ jobs:
       V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
-      V3_FRESH_DEPLOYMENT_NONCE: ${{ github.run_id }}
+      V3_FRESH_DEPLOYMENT_NONCE: "43855669637"
     steps:
       - name: Checkout immutable branch revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -73,6 +73,22 @@ jobs:
           node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/s07-validator-keys.env"
           cat "$RUNNER_TEMP/s07-validator-keys.env" >> "$GITHUB_ENV"
           rm -f "$RUNNER_TEMP/s07-validator-keys.env"
+      - name: Confirm exact S07-08 candidate before deployment (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/s07-08-derive-addresses.tolk --net testnet > "$RUNNER_TEMP/s07-08-deployment-addresses.log"
+          for expected in \
+            'S07_08_MARKETPLACE_ADDRESS=kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg' \
+            'S07_08_ESCROW_ADDRESS=kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8' \
+            'S07_08_COORDINATOR_ADDRESS=kQCUs3jh8gTQtlAE3FgLVsiM5_j9TOTLKZUJgqacUFiO5_je' \
+            'S07_08_VERIFIER_ADDRESS=kQALNPtOZ5AIkaEwf4hoDTdJwgVttAwDq2ONZwuJTTzrZy-k'; do
+            grep -Fxq "$expected" "$RUNNER_TEMP/s07-08-deployment-addresses.log" || {
+              echo "::error::Actual validator keys or deployment parameters differ from the S07-08 verified candidate. No transaction sent."
+              exit 1
+            }
+          done
+          echo "S07-08 exact four-address candidate matched."
       - name: Check Testnet deployer funding before any transaction
         run: node scripts/preflight-v3-testnet-funding.mjs
       - name: Setup Acton
