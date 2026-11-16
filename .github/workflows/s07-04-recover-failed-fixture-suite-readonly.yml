@@ -71,11 +71,17 @@ jobs:
               console.log('S07_04_MARKETPLACE_CODE_B64: '+(state.code??''));
             }
           }
-          const txs=await request('getTransactions',{address:addresses.DEPLOYER,limit:20,archival:true});
-          for(const tx of txs){
-            const outs=tx.out_msgs??[];
-            const matching=outs.filter(m=>Object.values(addresses).includes(m.destination));
-            if(matching.length)console.log('S07_04_DEPLOYER_TX_MATCH: '+JSON.stringify({utime:tx.utime,lt:tx.transaction_id?.lt,hash:tx.transaction_id?.hash,targets:matching.map(m=>m.destination)}));
+          try {
+            const txs=await request('getTransactions',{address:addresses.DEPLOYER,limit:20});
+            for(const tx of txs){
+              const outs=tx.out_msgs??[];
+              const matching=outs.filter(m=>Object.values(addresses).includes(m.destination));
+              if(matching.length)console.log('S07_04_DEPLOYER_TX_MATCH: '+JSON.stringify({utime:tx.utime,lt:tx.transaction_id?.lt,hash:tx.transaction_id?.hash,targets:matching.map(m=>m.destination)}));
+            }
+            console.log('S07_04_TX_HISTORY_READ: true');
+          } catch(error) {
+            console.log('S07_04_TX_HISTORY_UNAVAILABLE: '+String(error.message));
+            console.log('S07_04_TX_HISTORY_READ: false');
           }
           console.log('S07_04_READ_ONLY: true');
           NODE
