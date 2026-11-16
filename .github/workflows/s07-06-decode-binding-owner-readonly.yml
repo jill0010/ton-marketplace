@@ -1,0 +1,82 @@
+name: S07-06 Decode Contract Bindings and NFT Owner (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install read-only TON cell decoder
+        run: npm install --no-save --no-package-lock --prefix /tmp/s07-ton @ton/core@0.63.1
+      - name: Decode getters from testnet
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          cat > /tmp/s07-ton/check.cjs <<'JS'
+          const fs=require('fs'),{Address,Cell}=require('@ton/core');
+          const base='https://testnet.toncenter.com/api/v2/jsonRPC';
+          const addr={
+            escrow:'kQBdX2PpCASy50dZOmspilaHrnPa6mgJ-DhuzBpNR4LJpQOP',
+            marketplace:'kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_',
+            fixtureMarketplace:'kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF',
+            fixtureEscrow:'kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm',
+            nft:'kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr',
+            expectedBuyer:'0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0'
+          };
+          const out={network:'testnet',timestamp:new Date().toISOString(),getters:{},checks:{},limitations:[],mainnetApproved:false};
+          const eq=(a,b)=>Address.parse(a).equals(Address.parse(b));
+          async function rpc(address,method){
+            const body={jsonrpc:'2.0',id:1,method:'runGetMethod',params:{address,method,stack:[]}};
+            for(let i=0;i<6;i++){
+              const res=await fetch(base,{method:'POST',headers:{'content-type':'application/json',...(process.env.TONCENTER_API_KEY?{'X-API-Key':process.env.TONCENTER_API_KEY}:{})},body:JSON.stringify(body)});
+              if([429,500,502,503,504,542].includes(res.status)&&i<5){await new Promise(r=>setTimeout(r,2500*(i+1)));continue}
+              if(!res.ok)throw Error('HTTP '+res.status);
+              const payload=await res.json();if(payload.error||!payload.result)throw Error(JSON.stringify(payload.error||payload));
+              if(payload.result.exit_code!==0)throw Error('exit_code '+payload.result.exit_code);
+              return payload.result.stack;
+            }
+            throw Error('RPC retries exhausted');
+          }
+          function decodeCell(entry){
+            if(!Array.isArray(entry)||!['cell','slice'].includes(entry[0]))throw Error('Expected cell/slice stack entry, got '+JSON.stringify(entry).slice(0,180));
+            const b=entry[1]?.bytes||entry[1];if(typeof b!=='string')throw Error('Missing BOC bytes');
+            return Cell.fromBase64(b).beginParse();
+          }
+          function decodeAddress(entry){const a=decodeCell(entry).loadAddress();if(!a)throw Error('Null address');return a.toRawString()}
+          function decodeBool(entry){if(!Array.isArray(entry)||!['num','int'].includes(entry[0]))throw Error('Expected numeric bool');const raw=entry[1];const n=BigInt(typeof raw==='string'?raw:raw?.value);if(n!==0n&&n!==-1n&&n!==1n)throw Error('Invalid boolean');return n!==0n}
+          async function capture(label,address,method,decode){
+            try{const stack=await rpc(address,method);const value=decode(stack);out.getters[label]={status:'OK',value,stack};return value}
+            catch(e){out.getters[label]={status:'ERROR',error:String(e)};return null}
+          }
+          const escrowMarket=await capture('escrow.marketplace',addr.escrow,'marketplace',s=>decodeAddress(s[0]));
+          const marketEscrow=await capture('marketplace.escrowV2',addr.marketplace,'escrowV2',s=>decodeAddress(s[0]));
+          const configured=await capture('marketplace.escrowConfiguredV2',addr.marketplace,'escrowConfiguredV2',s=>decodeBool(s[0]));
+          const fixtureEscrow=await capture('fixtureMarketplace.escrowV2',addr.fixtureMarketplace,'escrowV2',s=>decodeAddress(s[0]));
+          const nft=await capture('nft.get_nft_data',addr.nft,'get_nft_data',s=>{
+            if(s.length<4)throw Error('NFT getter returned fewer than four fields');
+            return {initialized:decodeBool(s[0]),owner:decodeAddress(s[3]),stackLength:s.length};
+          });
+          out.checks.productionEscrowPointsToMarketplace=escrowMarket!==null&&eq(escrowMarket,addr.marketplace);
+          out.checks.marketplacePointsToProductionEscrow=marketEscrow!==null&&eq(marketEscrow,addr.escrow);
+          out.checks.marketplaceEscrowConfigured=configured===true;
+          out.checks.fixtureMarketplacePointsToFixtureEscrow=fixtureEscrow!==null&&eq(fixtureEscrow,addr.fixtureEscrow);
+          out.checks.nftOwnerMatchesExpectedBuyer=!!nft?.owner&&eq(nft.owner,addr.expectedBuyer);
+          out.checks.productionPairReciprocal=out.checks.productionEscrowPointsToMarketplace&&out.checks.marketplacePointsToProductionEscrow&&out.checks.marketplaceEscrowConfigured;
+          out.limitations=['Expected buyer is sourced from historical fixture workflow; independent order-party decode is pending.','NFT owner is current state, not historical ownership at settlement block.','No transaction message hash matching or independent block finality in this workflow.','Production pair binding alone is not production end-to-end settlement acceptance.'];
+          fs.writeFileSync('s07-06-decoded-evidence.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify({checks:out.checks,decoded:Object.fromEntries(Object.entries(out.getters).map(([k,v])=>[k,{status:v.status,value:v.value,error:v.error}])),mainnetApproved:false},null,2));
+          if(Object.values(out.getters).some(x=>x.status!=='OK'))process.exitCode=1;
+          if(!out.checks.productionPairReciprocal)process.exitCode=1;
+          JS
+          node /tmp/s07-ton/check.cjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: s07-06-decoded-evidence-${{ github.run_id }}
+          path: s07-06-decoded-evidence.json
+          retention-days: 30
