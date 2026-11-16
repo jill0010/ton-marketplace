@@ -1,0 +1,38 @@
+name: S07-09 Diagnose Escrow Create Rejection (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      V3_TESTNET_FIXTURE_ENABLED: "true"
+      V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQCFIvfUBsScOo7mfRaplQ2szE7e0AdqIXyFDEY0zGYQ8UqO"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg"
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8"
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Read-only inspection of failed product and NFT custody
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/s07-09-diagnose-escrow-create.tolk --net testnet 2>&1 | tee s07-09-diagnostics.log
+      - name: Save diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-09-create-rejection-diagnostics-${{ github.run_id }}
+          path: contracts/marketplace/s07-09-diagnostics.log
+          if-no-files-found: ignore
