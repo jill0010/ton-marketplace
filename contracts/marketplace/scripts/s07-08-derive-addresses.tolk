@@ -1,0 +1,154 @@
+// Production V3 contracts: explicit Testnet-only deployment.
+import "@acton/build"
+import "@acton/env"
+import "@acton/io"
+import "@acton/emulation/network"
+import "@acton/emulation/scripts"
+import "@contracts/MarketplaceReserveV3"
+import "@contracts/ReserveCoordinatorV3"
+import "@contracts/ReserveVaultV3"
+import "@contracts/SettlementAttestationVerifierV3"
+import "@contracts/types"
+import "@wrappers/MarketplaceV2.gen"
+import "@wrappers/NFTEscrowV2.gen"
+
+fun main() {
+    // Read-only address derivation: no deployment approval or wallet loaded.
+    val expectedDeployer = env<address>("V3_TESTNET_DEPLOYER_ADDRESS");
+    assert (expectedDeployer != null) throw 821;
+    val deployerAddress = expectedDeployer!;
+    val treasuryAddress = env<address>("PLATFORM_TREASURY_ADDRESS");
+    assert (treasuryAddress != null) throw 821;
+    assert (deployerAddress != treasuryAddress!) throw 822;
+
+    val validator0 = env<int>("V3_VALIDATOR_0_PUBLIC_KEY");
+    val validator1 = env<int>("V3_VALIDATOR_1_PUBLIC_KEY");
+    val validator2 = env<int>("V3_VALIDATOR_2_PUBLIC_KEY");
+    assert (validator0 != null && validator1 != null && validator2 != null) throw 823;
+    assert (
+        validator0!! != validator1!! &&
+        validator0!! != validator2!! &&
+        validator1!! != validator2!!
+    ) throw 823;
+
+    // A fresh funded validation must never resolve to the historical deterministic address.
+    // A unique GitHub run ID seeds the initial query counter and therefore StateInit.
+    val freshNonce = env<int>("V3_FRESH_DEPLOYMENT_NONCE") ?? 1;
+    assert (freshNonce > 0 && freshNonce < 9223372036854775807) throw 839;
+    val initial = MarketplaceReserveStorageV3 {
+        owner: deployerAddress,
+        escrow: deployerAddress,
+        escrowConfigured: false,
+        nextProductId: 1,
+        nextQueryId: freshNonce,
+        products: [],
+        assetListings: [],
+        queryToProduct: [],
+        purchaseStorage: MarketplaceReservePurchaseStorageV3 {
+            coordinator: deployerAddress,
+            coordinatorConfigured: false,
+            reserves: [],
+            schemaVersion: 3,
+            treasury: treasuryAddress!,
+            treasuryConfigured: false,
+            nextOrderId: 1,
+            nextOperationId: 1,
+            refundQueryToProduct: [],
+            orders: MarketplaceV2OrderStorage {
+                orders: [],
+                productToOrder: [],
+                paymentQueryToOrder: [],
+                refundQueryToOrder: [],
+            }.toCell(),
+            payoutStorage: MarketplaceV2PayoutStorage {
+                payouts: [],
+                payoutQueryToOperation: [],
+            }.toCell(),
+        }.toCell(),
+    };
+    val marketCode = build("MarketplaceReserveV3");
+    val marketState: ContractState = { code: marketCode, data: initial.toCell() };
+    val marketDestination = AutoDeployAddress {
+        workchain: 0,
+        stateInit: marketState,
+    };
+    val marketplace = MarketplaceV2 {
+        address: marketDestination.calculateAddress(),
+        stateInit: marketState,
+    };
+
+    val escrow = NFTEscrowV2.fromStorage(NFTEscrowV2Storage {
+        owner: deployerAddress,
+        marketplace: marketplace.address,
+        records: [],
+        assetToEscrow: [],
+        nextEscrowId: 1,
+        queryToEscrow: [],
+        callbacks: NFTEscrowV2CallbackStorage {
+            depositCallbacks: [],
+            releaseStorage: NFTEscrowV2ReleaseCallbackStorage {
+                pendingReleases: [],
+                releaseCallbacks: [],
+                releaseFailureCallbacks: [],
+            }.toCell(),
+            refundStorage: NFTEscrowV2RefundCallbackStorage {
+                pendingRefunds: [],
+                refundCallbacks: [],
+            }.toCell(),
+            collectionStorage: NFTEscrowV2CollectionStorage {
+                collections: [],
+                collectionItemCodes: [],
+            }.toCell(),
+        }.toCell(),
+    });
+
+    var validatorKeys: map<uint8, uint256> = [];
+    validatorKeys.set(0, validator0!! as uint256);
+    validatorKeys.set(1, validator1!! as uint256);
+    validatorKeys.set(2, validator2!! as uint256);
+    val verifierState: ContractState = {
+        code: build("SettlementAttestationVerifierV3"),
+        data: SettlementVerifierStorageV3 {
+            owner: deployerAddress,
+            marketplace: marketplace.address,
+            networkGlobalId: -3,
+            epoch: 1,
+            threshold: 2,
+            validatorKeys,
+            consumedStatements: [],
+        }.toCell(),
+    };
+    val verifierDestination = AutoDeployAddress {
+        workchain: 0,
+        stateInit: verifierState,
+    };
+    val verifier = verifierDestination.calculateAddress();
+
+    val coordinatorState: ContractState = {
+        code: build("ReserveCoordinatorV3"),
+        data: ReserveCoordinatorStorageV3 {
+            owner: deployerAddress,
+            marketplace: marketplace.address,
+            verifier,
+            vaultCode: build("ReserveVaultV3"),
+            bindings: [],
+        }.toCell(),
+    };
+    val coordinatorDestination = AutoDeployAddress {
+        workchain: 0,
+        stateInit: coordinatorState,
+    };
+    val coordinator = coordinatorDestination.calculateAddress();
+
+    println("V3 trusted compiled marketplace code hash: {}", marketCode.hash());
+    println("V3 trusted compiled escrow code hash: {}", build("NFTEscrowV2").hash());
+    println("V3 trusted compiled vault code hash: {}", build("ReserveVaultV3").hash());
+    println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
+    println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
+
+    println("S07_08_MARKETPLACE_ADDRESS={}", marketplace.address);
+    println("S07_08_ESCROW_ADDRESS={}", escrow.address);
+    println("S07_08_COORDINATOR_ADDRESS={}", coordinator);
+    println("S07_08_VERIFIER_ADDRESS={}", verifier);
+    println("S07_08_READ_ONLY=true");
+}
