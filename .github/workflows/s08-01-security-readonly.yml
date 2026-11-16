@@ -1,0 +1,65 @@
+name: S08-01 Production Security Baseline (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  security-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8
+      V3_PRODUCTION_TESTNET_COORDINATOR_ADDRESS: kQCUs3jh8gTQtlAE3FgLVsiM5_j9TOTLKZUJgqacUFiO5_je
+      V3_PRODUCTION_TESTNET_VERIFIER_ADDRESS: kQALNPtOZ5AIkaEwf4hoDTdJwgVttAwDq2ONZwuJTTzrZy-k
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Record exact source revision and static contract SHA256 (NOT deployed code hashes)
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD | tee s08-source-revision.txt
+          sha256sum contracts/marketplace/contracts/{MarketplaceReserveV3,ReserveCoordinatorV3,ReserveVaultV3,NFTEscrowV2}.tolk | tee s08-source-sha256.txt
+          echo 'SOURCE_HASHES_ARE_NOT_DEPLOYED_CODE_HASHES=true'
+      - name: Compile production contracts and run existing security tests
+        working-directory: contracts/marketplace
+        run: |
+          set -euo pipefail
+          acton build
+          acton test
+      - name: Verify current on-chain owners, cross-bindings and verifier quorum (read only)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node --test contracts/marketplace/scripts/verify-v3-production-testnet-bindings.test.mjs
+          node contracts/marketplace/scripts/verify-v3-production-testnet-bindings.mjs | tee s08-bindings.json
+        env:
+          V3_PRODUCTION_EXPECTED_VAULT_CODE_HASH: ${{ vars.V3_PRODUCTION_EXPECTED_VAULT_CODE_HASH }}
+      - name: Explicitly report remaining S08 release blockers
+        if: always()
+        run: |
+          {
+            echo 'S08-01 is a read-only baseline, NOT an independent security audit.'
+            echo 'Production deployed code hash matching requires independent reproducible build/code comparison.'
+            echo 'Payment/refund/attestation finality and replay protections require independent audit.'
+            echo 'Mainnet deployment remains blocked.'
+          } | tee s08-release-blockers.txt
+      - name: Preserve S08-01 read-only outputs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s08-01-security-baseline-${{ github.run_id }}
+          path: |
+            s08-source-revision.txt
+            s08-source-sha256.txt
+            s08-bindings.json
+            s08-release-blockers.txt
+          if-no-files-found: ignore
