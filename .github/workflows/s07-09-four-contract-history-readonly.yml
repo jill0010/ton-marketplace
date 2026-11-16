@@ -1,0 +1,91 @@
+name: S07-09 Existing Four Contracts Transaction History (Read Only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Query existing production Testnet contracts without sending transactions
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p s07-09-evidence
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          const addresses={
+            marketplace:'kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg',
+            escrow:'kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8',
+            coordinator:'kQCUs3jh8gTQtlAE3FgLVsiM5_j9TOTLKZUJgqacUFiO5_je',
+            verifier:'kQALNPtOZ5AIkaEwf4hoDTdJwgVttAwDq2ONZwuJTTzrZy-k'
+          };
+          const endpoint='https://testnet.toncenter.com/api/v2/';
+          const headers=process.env.TONCENTER_API_KEY?{'X-API-Key':process.env.TONCENTER_API_KEY}:{};
+          async function call(method,params) {
+            const url=new URL(endpoint+method);
+            for(const [key,value] of Object.entries(params))url.searchParams.set(key,String(value));
+            for(let attempt=0;attempt<4;attempt++){
+              const response=await fetch(url,{headers,redirect:'error',signal:AbortSignal.timeout(20000)});
+              if([429,500,502,503,504].includes(response.status)&&attempt<3){
+                await new Promise(resolve=>setTimeout(resolve,1000*(attempt+1)));continue;
+              }
+              if(!response.ok)throw Error(method+' HTTP '+response.status);
+              const data=await response.json();
+              if(!data.ok)throw Error(method+' '+JSON.stringify(data.error??data.description??'RPC rejected'));
+              return data.result;
+            }
+            throw Error(method+' retry exhausted');
+          }
+          const output={network:'testnet',readOnly:true,contracts:{}};
+          for(const [name,address] of Object.entries(addresses)){
+            const info=await call('getAddressInformation',{address});
+            if(info.state!=='active')throw Error(name+' is not active');
+            const transactions=[];
+            let cursor=null;
+            for(let page=0;page<5;page++){
+              const params={address,limit:100,archival:true};
+              if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
+              const batch=await call('getTransactions',params);
+              if(!Array.isArray(batch))throw Error('Invalid transaction list for '+name);
+              if(!batch.length)break;
+              for(const tx of batch){
+                const msg=m=>m?({source:m.source??null,destination:m.destination??null,value:m.value??null,bodyHash:m.msg_data?.body??null,createdLt:m.created_lt??null}):null;
+                transactions.push({lt:tx.transaction_id?.lt??null,hash:tx.transaction_id?.hash??null,utime:tx.utime??null,in:msg(tx.in_msg),out:(tx.out_msgs??[]).map(msg),computeExitCode:tx.compute?.exit_code??null,actionResultCode:tx.action?.result_code??null});
+              }
+              if(batch.length<100)break;
+              const last=batch.at(-1)?.transaction_id;
+              if(!last?.lt||!last?.hash)throw Error('Missing pagination cursor');
+              if(cursor?.lt===last.lt)throw Error('Pagination stalled');
+              cursor=last;
+            }
+            output.contracts[name]={address,state:info.state,transactionCountFetched:transactions.length,historyTruncated:transactions.length>=500,transactions};
+            console.log(name+': '+transactions.length+' transactions retrieved');
+          }
+          writeFileSync('s07-09-evidence/four-contract-history.json',JSON.stringify(output,null,2));
+          const lines=['# S07-09 existing four-contract Testnet history','Read-only RPC query; no new NFT, purchase, attestation or deployment.',''];
+          for(const [name,v] of Object.entries(output.contracts)){
+            lines.push('- '+name+': '+v.transactionCountFetched+' transactions; '+v.address+(v.historyTruncated?' (500-record limit reached)':''));
+          }
+          lines.push('','IMPORTANT: Nonzero transaction history alone does not prove a complete order. Match the same order ID, NFT ownership, 0.2 TON reserve, 3/3 attestation and final settlement before accepting S07-09.');
+          writeFileSync('s07-09-evidence/summary.md',lines.join('\n')+'\n');
+          console.log(lines.join('\n'));
+          NODE
+      - name: Upload read-only chain evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-09-existing-four-contract-history-${{ github.run_id }}
+          path: s07-09-evidence/
+          if-no-files-found: warn
+          retention-days: 30
