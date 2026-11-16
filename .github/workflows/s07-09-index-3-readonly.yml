@@ -67,6 +67,59 @@ jobs:
           }
           writeFileSync('fixture-index-3-transactions.json',JSON.stringify(result,null,2));
           NODE
+      - name: Compare live NFT account code and inspect owner history (read only)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {Cell} from '@ton/core';
+          const log=readFileSync('fixture-index-3-inspection.log','utf8');
+          const extract=(key)=>log.match(new RegExp(key+':\\s*(\\S+)'))?.[1]??null;
+          const nft=extract('S07_09_EXPECTED_NFT_ADDRESS');
+          const expectedCodeHash=extract('S07_09_EXPECTED_CODE_HASH');
+          const output={nft,expectedCodeHash,chainCodeHash:null,codeMatches:null,account:null,transactions:[],errors:[]};
+          const headers=process.env.TONCENTER_API_KEY?{'X-API-Key':process.env.TONCENTER_API_KEY}:{};
+          async function request(method,params){
+            const url=new URL('https://testnet.toncenter.com/api/v2/'+method);
+            for(const [key,value] of Object.entries(params))url.searchParams.set(key,String(value));
+            let lastError;
+            for(let i=0;i<4;i++){
+              try{
+                const response=await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
+                if(!response.ok)throw Error('HTTP '+response.status);
+                const json=await response.json();
+                if(!json.ok)throw Error(JSON.stringify(json));
+                return json.result;
+              }catch(error){lastError=error;await new Promise(resolve=>setTimeout(resolve,1000*(i+1)));}
+            }
+            throw lastError;
+          }
+          if(!nft){output.errors.push('NFT address missing from inspection log');}
+          else {
+            try {
+              const account=await request('getAddressInformation',{address:nft});
+              output.account={state:account.state,balance:account.balance,last_transaction_id:account.last_transaction_id};
+              if(account.code){
+                output.chainCodeHash=Cell.fromBoc(Buffer.from(account.code,'base64'))[0].hash().toString('hex');
+                const clean=s=>String(s??'').replace(/^0x/,'').toLowerCase();
+                if(expectedCodeHash && /^[0-9a-f]{64}$/i.test(clean(expectedCodeHash))){
+                  output.codeMatches=clean(expectedCodeHash)===clean(output.chainCodeHash);
+                }
+              }
+            }catch(error){output.errors.push('account: '+error);}
+            try {
+              const transactions=await request('getTransactions',{address:nft,limit:50,archival:true});
+              output.transactions=transactions.map(tx=>({
+                utime:tx.utime,lt:tx.transaction_id?.lt,hash:tx.transaction_id?.hash,
+                incoming:tx.in_msg&&{source:tx.in_msg.source,destination:tx.in_msg.destination,value:tx.in_msg.value,op:tx.in_msg.message},
+                outgoing:(tx.out_msgs??[]).map(m=>({source:m.source,destination:m.destination,value:m.value}))
+              }));
+            }catch(error){output.errors.push('history: '+error);}
+          }
+          writeFileSync('fixture-index-3-code-history.json',JSON.stringify(output,null,2));
+          console.log(JSON.stringify({nft,expectedCodeHash,chainCodeHash:output.chainCodeHash,codeMatches:output.codeMatches,account:output.account,transactionCount:output.transactions.length,errors:output.errors},null,2));
+          NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -74,4 +127,5 @@ jobs:
           path: |
             fixture-index-3-inspection.log
             fixture-index-3-transactions.json
+            fixture-index-3-code-history.json
           if-no-files-found: warn
