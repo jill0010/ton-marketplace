@@ -137,7 +137,7 @@ jobs:
           labels=['MARKETPLACE','ESCROW','COORDINATOR','VERIFIER']
           addresses={}
           for label in labels:
-            match=re.search(r'S07_08_'+label+r'_ADDRESS=([^\\s]+)',log)
+            match=re.search(r'S07_08_'+label+r'_ADDRESS=(\\S+)',log)
             if not match: raise SystemExit('Missing derived address: '+label)
             addresses[label]=match.group(1).strip()
           if len(set(addresses.values()))!=4: raise SystemExit('Derived address collision')
