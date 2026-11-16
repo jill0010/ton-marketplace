@@ -41,12 +41,26 @@ jobs:
               evidence['accounts'][role]={'address':address,'state':a.get('state'),'last_transaction_id':a.get('last_transaction_id'),'has_code':bool(a.get('code'))}
             except Exception as exc:evidence['accounts'][role]={'address':address,'error':str(exc)}
           try:
-            getter=rpc('runGetMethod',{'address':addresses['nft'],'method':'get_nft_data','stack':'[]'})
+            # Use documented JSON-RPC POST for runGetMethod, not v2 REST query encoding.
+            rpc_url='https://testnet.toncenter.com/api/v2/jsonRPC'
+            payload=json.dumps({'jsonrpc':'2.0','id':'s07-06','method':'runGetMethod','params':{'address':addresses['nft'],'method':'get_nft_data','stack':[]}}).encode()
+            headers={'Content-Type':'application/json'}
+            if os.environ.get('TONCENTER_API_KEY'): headers['X-API-Key']=os.environ['TONCENTER_API_KEY']
+            req=urllib.request.Request(rpc_url,data=payload,headers=headers,method='POST')
+            for attempt in range(7):
+              try:
+                with urllib.request.urlopen(req,timeout=20) as resp: response=json.load(resp)
+                if 'error' in response:raise RuntimeError('JSON-RPC error: '+str(response['error']))
+                getter=response['result']
+                break
+              except urllib.error.HTTPError as error:
+                if error.code not in (429,500,502,503,504,542) or attempt==6:raise
+                time.sleep(min(3*2**attempt,30))
             evidence['nft_getter']={'exit_code':getter.get('exit_code'),'stack':getter.get('stack'),'gas_used':getter.get('gas_used')}
             if getter.get('exit_code')!=0:evidence['nft_owner_status']='GETTER_FAILED'
             else:evidence['nft_owner_status']='RAW_STACK_CAPTURED_OWNER_NOT_CANONICALIZED'
           except Exception as exc:
-            evidence['nft_getter']={'error':str(exc)}
+            evidence['nft_getter']={'error':type(exc).__name__+': '+str(exc)}
             evidence['nft_owner_status']='RPC_UNAVAILABLE'
           evidence['limitations']=[
             'Raw getter stack is preserved; address decoding and owner comparison to buyer are not asserted.',
