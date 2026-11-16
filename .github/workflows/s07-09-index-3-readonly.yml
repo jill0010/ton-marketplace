@@ -20,7 +20,8 @@ jobs:
       - name: Inspect deterministic fixture address and marketplace state
         working-directory: contracts/marketplace
         env:
-          PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"\n          V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+          PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+          V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
           V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg"
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
         run: |
