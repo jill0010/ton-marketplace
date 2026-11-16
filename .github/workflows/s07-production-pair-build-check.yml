@@ -36,6 +36,8 @@ jobs:
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
       - name: Build production contracts without wallet or transactions
         run: acton build
+      - name: Print compiled production and fixture Escrow hashes (no transactions)
+        run: acton script scripts/s07-07-escrow-hashes.tolk --net testnet | tee s07-07-compiled-hashes.log
       - name: Compare compiled production Escrow with live bound Escrow (read only)
         env:
           TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
@@ -51,8 +53,19 @@ jobs:
           if account.get('state')!='active' or not account.get('code'): raise RuntimeError('Actual Escrow not active with code')
           pathlib.Path('s07-07-bound-escrow-code.b64').write_text(account['code'])
           print('S07_07_BOUND_ESCROW_ACTIVE=true')
+          print('S07_07_BOUND_ESCROW_CODE_B64_CAPTURED=true')
           PY
-          echo 'Code captured for offline identity comparison; compilation hash evidence must be reviewed before acceptance.'
+          echo 'Chain code captured; review compiled code hash output above against known chain hash e0fcac28e547f0185f97818ab7690f049c26fbff8efbba3a84fc5d6dd5f80890.'
+      - name: Upload S07-07 hash evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-07-escrow-hashes-${{ github.run_id }}
+          path: |
+            contracts/marketplace/s07-07-compiled-hashes.log
+            contracts/marketplace/s07-07-bound-escrow-code.b64
+          if-no-files-found: warn
+          retention-days: 30
       - name: Confirm production build without transaction execution
         run: |
           set -euo pipefail
