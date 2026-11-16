@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_fresh_testnet_pair_only:
-        description: "Deploy NEW Marketplace V3 + production Escrow V2 on TON Testnet only; no purchase, settlement or Mainnet"
+        description: "Resume fixed S07-08 Testnet deployment: existing Marketplace + remaining three contracts; no purchase or Mainnet"
         required: true
         type: boolean
         default: false
@@ -32,6 +32,7 @@ jobs:
       V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
       V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
       V3_PRODUCTION_TESTNET_DEPLOY_APPROVED: "true"
+      V3_RESUME_EXISTING_MARKETPLACE_TESTNET: "true"
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
       V3_FRESH_DEPLOYMENT_NONCE: "43855669637"
@@ -113,7 +114,28 @@ jobs:
           acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
       - name: Compile production V3 and production Escrow V2
         run: acton build
-      - name: Deploy fresh pair and verify reciprocal bindings on Testnet
+      - name: Verify already-deployed Marketplace code hash before any transaction
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { Cell } from '@ton/core';
+          const address = 'kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg';
+          const expectedHash = 78359546161773769121804334657237004017492887152734900376191088699783038521579n;
+          const url = 'https://testnet.toncenter.com/api/v2/getAddressInformation?address=' + encodeURIComponent(address);
+          const headers = process.env.TONCENTER_API_KEY ? {'X-API-Key':process.env.TONCENTER_API_KEY} : {};
+          const response = await fetch(url,{headers});
+          if (!response.ok) throw new Error('TON Center HTTP ' + response.status);
+          const result = await response.json();
+          if (!result.ok || result.result?.state !== 'active' || !result.result.code) {
+            throw new Error('Expected Marketplace is not active with code; aborting before transactions');
+          }
+          const actualHash = BigInt('0x' + Cell.fromBase64(result.result.code).hash().toString('hex'));
+          if (actualHash !== expectedHash) throw new Error('Live Marketplace code hash mismatch; aborting before transactions');
+          console.log('S07-08 active Marketplace code hash matches original deployment: safe to resume');
+          NODE
+      - name: Resume remaining three contracts and verify reciprocal bindings on Testnet
         shell: bash
         run: |
           set -euo pipefail
