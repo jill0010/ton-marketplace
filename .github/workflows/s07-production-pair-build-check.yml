@@ -6,6 +6,7 @@ on:
       - feature/reserve-refund-v3-audit
     paths:
       - 'contracts/marketplace/scripts/deploy-v3-production-testnet.tolk'
+      - 'contracts/marketplace/scripts/s07-08-derive-addresses.tolk'
       - '.github/workflows/s07-production-pair-build-check.yml'
 permissions:
   contents: read
