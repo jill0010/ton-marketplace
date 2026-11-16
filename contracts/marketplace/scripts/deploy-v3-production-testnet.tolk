@@ -147,10 +147,19 @@ fun main() {
     println("V3 trusted compiled coordinator code hash: {}", build("ReserveCoordinatorV3").hash());
     println("V3 trusted compiled verifier code hash: {}", build("SettlementAttestationVerifierV3").hash());
 
-    val marketDeploy = marketplace.deploy(deployer.address, { value: grams("0.4") });
-    if (marketDeploy.waitForFirstTransaction() == null) {
-        println("Production Marketplace V3 deployment failed");
-        throw 824;
+    // Resume only the exact S07-08 candidate after its Marketplace deployment
+    // was confirmed on-chain. The workflow independently checks the live code hash.
+    if (env<bool>("V3_RESUME_EXISTING_MARKETPLACE_TESTNET") ?? false) {
+        assert (marketplace.ownerV2() == deployer.address) throw 840;
+        assert (!marketplace.escrowConfiguredV2()) throw 840;
+        assert (!marketplace.treasuryConfiguredV2()) throw 840;
+        println("Existing production Marketplace V3 verified; skipping duplicate deployment.");
+    } else {
+        val marketDeploy = marketplace.deploy(deployer.address, { value: grams("0.4") });
+        if (marketDeploy.waitForFirstTransaction() == null) {
+            println("Production Marketplace V3 deployment failed");
+            throw 824;
+        }
     }
     val escrowDeploy = escrow.deploy(deployer.address, { value: grams("0.6") });
     if (escrowDeploy.waitForFirstTransaction() == null) {
