@@ -1,0 +1,50 @@
+name: S07-04 Recover Timed-Out NFT (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLATFORM_TREASURY_ADDRESS: 0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0
+      V3_TESTNET_FIXTURE_ITEM_INDEX: '43819564334'
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Derive exact previously attempted NFT address WITHOUT new transaction
+        working-directory: contracts/marketplace
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/s07-04-recover-fixture-address-readonly.tolk --net testnet | tee ../../s07-04-recovery-address.txt
+      - name: Query TESTNET account state (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          nft_address="$(sed -n 's/^S07_04_RECOVERY_NFT_ADDRESS: //p' s07-04-recovery-address.txt | tail -1)"
+          test -n "$nft_address"
+          echo "Checking exact prior NFT: $nft_address"
+          curl --fail-with-body --show-error --silent --retry 4 --retry-delay 3 \
+            --get --data-urlencode "address=$nft_address" \
+            --data-urlencode "api_key=$TONCENTER_API_KEY" \
+            https://testnet.toncenter.com/api/v2/getAddressInformation \
+            | tee s07-04-recovery-account.json
+          echo
+          echo "This workflow submitted ZERO blockchain transactions."
+      - name: Upload recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-timed-out-nft-recovery-${{ github.run_id }}
+          path: |
+            s07-04-recovery-address.txt
+            s07-04-recovery-account.json
+          if-no-files-found: ignore
+          retention-days: 30
