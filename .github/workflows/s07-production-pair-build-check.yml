@@ -118,6 +118,52 @@ jobs:
           path: contracts/marketplace/s07-08-preflight.json
           if-no-files-found: warn
           retention-days: 30
+      - name: S07-08 derive addresses and check testnet collisions (read only)
+        env:
+          V3_TESTNET_DEPLOYER_ADDRESS: 0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu
+          PLATFORM_TREASURY_ADDRESS: 0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0
+          V3_FRESH_DEPLOYMENT_NONCE: ${{ github.run_id }}
+          V3_VALIDATOR_0_PUBLIC_KEY: '41342504511421031216359151772997008361520885874590610453802248433713791789750'
+          V3_VALIDATOR_1_PUBLIC_KEY: '70196674598014218319300736070722549539525448612563048212591029421895869851173'
+          V3_VALIDATOR_2_PUBLIC_KEY: '107081252761244582133121058092518624768332978352580661449874361986314605721472'
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          acton script scripts/s07-08-derive-addresses.tolk --net testnet | tee s07-08-derived-addresses.log
+          python3 - <<'PY'
+          import json,os,pathlib,re,urllib.request
+          log=pathlib.Path('s07-08-derived-addresses.log').read_text()
+          labels=['MARKETPLACE','ESCROW','COORDINATOR','VERIFIER']
+          addresses={}
+          for label in labels:
+            match=re.search(r'S07_08_'+label+r'_ADDRESS=([^\\s]+)',log)
+            if not match: raise SystemExit('Missing derived address: '+label)
+            addresses[label]=match.group(1).strip()
+          if len(set(addresses.values()))!=4: raise SystemExit('Derived address collision')
+          report={'nonce':int(os.environ['V3_FRESH_DEPLOYMENT_NONCE']),'addresses':addresses,'account_states':{},'all_uninitialized':False,'deployed':False}
+          for label,address in addresses.items():
+            payload=json.dumps({'jsonrpc':'2.0','id':1,'method':'getAddressInformation','params':{'address':address}}).encode()
+            headers={'Content-Type':'application/json'}
+            if os.environ.get('TONCENTER_API_KEY'):headers['X-API-Key']=os.environ['TONCENTER_API_KEY']
+            req=urllib.request.Request('https://testnet.toncenter.com/api/v2/jsonRPC',data=payload,headers=headers)
+            with urllib.request.urlopen(req,timeout=30) as response: result=json.load(response)
+            if result.get('error') or not result.get('result'):raise RuntimeError(str(result))
+            report['account_states'][label]=result['result'].get('state')
+          report['all_uninitialized']=all(state=='uninitialized' for state in report['account_states'].values())
+          pathlib.Path('s07-08-address-collision.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          if not report['all_uninitialized']:raise SystemExit('One or more derived addresses already initialized')
+          PY
+      - name: Upload S07-08 address evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-08-address-evidence-${{ github.run_id }}
+          path: |
+            contracts/marketplace/s07-08-derived-addresses.log
+            contracts/marketplace/s07-08-address-collision.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Confirm production build without transaction execution
         run: |
           set -euo pipefail
