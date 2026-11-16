@@ -1,0 +1,76 @@
+name: S07-09 Inspect Failed Fixture Index 3 (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Inspect deterministic fixture address and marketplace state
+        working-directory: contracts/marketplace
+        env:
+          PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+          V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg"
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -uo pipefail
+          acton build
+          acton script scripts/s07-09-inspect-fixture-index-3.tolk --net testnet > "$GITHUB_WORKSPACE/fixture-index-3-inspection.log" 2>&1
+          result=$?
+          cat "$GITHUB_WORKSPACE/fixture-index-3-inspection.log"
+          echo "Inspector exit status: $result (getter may fail if NFT not initialized)" | tee -a "$GITHUB_WORKSPACE/fixture-index-3-inspection.log"
+          exit 0
+      - name: Read recent wallet and four-contract transaction history
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync,readFileSync} from 'node:fs';
+          const addresses={
+            deployer:'0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu',
+            treasury:'0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0',
+            marketplace:'kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg',
+            escrow:'kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8'
+          };
+          const log=readFileSync('fixture-index-3-inspection.log','utf8');
+          const match=log.match(/S07_09_EXPECTED_NFT_ADDRESS:\s*(\S+)/);
+          if(match)addresses.expectedNft=match[1];
+          const headers=process.env.TONCENTER_API_KEY?{'X-API-Key':process.env.TONCENTER_API_KEY}:{};
+          const result={runInvestigated:'43874285713',itemIndex:3,windowUtc:['2026-11-16T13:16:00Z','2026-11-16T13:21:00Z'],addresses,accounts:{}};
+          for(const [name,address] of Object.entries(addresses)){
+            try{
+              const url=new URL('https://testnet.toncenter.com/api/v2/getTransactions');
+              url.searchParams.set('address',address);url.searchParams.set('limit','100');
+              const res=await fetch(url,{headers,signal:AbortSignal.timeout(25000)});
+              if(!res.ok)throw Error('HTTP '+res.status);
+              const json=await res.json();if(!json.ok)throw Error(JSON.stringify(json));
+              const txs=json.result??[];
+              result.accounts[name]={count:txs.length,transactions:txs.map(tx=>({
+                utime:tx.utime,lt:tx.transaction_id?.lt,hash:tx.transaction_id?.hash,
+                incoming:tx.in_msg&&{source:tx.in_msg.source,destination:tx.in_msg.destination,value:tx.in_msg.value},
+                outgoing:(tx.out_msgs??[]).map(m=>({source:m.source,destination:m.destination,value:m.value}))
+              }))};
+              console.log(name+': '+txs.length+' recent transactions');
+            }catch(error){result.accounts[name]={error:String(error)};console.error(name+': '+error)}
+          }
+          writeFileSync('fixture-index-3-transactions.json',JSON.stringify(result,null,2));
+          NODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: s07-09-index-3-readonly-${{ github.run_id }}
+          path: |
+            fixture-index-3-inspection.log
+            fixture-index-3-transactions.json
+          if-no-files-found: warn
