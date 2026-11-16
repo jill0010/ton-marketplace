@@ -1,0 +1,36 @@
+name: S07-09 Compatible NFT Preflight (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      S07_09_COMPATIBLE_NFT_ADDRESS: "0:24ef755d50c766fc7f5160b3557e31da1007c30be7d59b6b386dcfd7ebaf5764"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: "kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg"
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8"
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Validate existing compatible NFT and custody availability
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/s07-09-compatible-nft-preflight.tolk --net testnet 2>&1 | tee s07-09-compatible-preflight.log
+      - name: Preserve preflight evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-09-compatible-preflight-${{ github.run_id }}
+          path: contracts/marketplace/s07-09-compatible-preflight.log
+          if-no-files-found: ignore
