@@ -37,7 +37,7 @@ jobs:
             for(const [key,value] of Object.entries(params))url.searchParams.set(key,String(value));
             for(let attempt=0;attempt<4;attempt++){
               const response=await fetch(url,{headers,redirect:'error',signal:AbortSignal.timeout(20000)});
-              if([429,500,502,503,504].includes(response.status)&&attempt<3){
+              if([429,500,502,503,504,542].includes(response.status)&&attempt<3){
                 await new Promise(resolve=>setTimeout(resolve,1000*(attempt+1)));continue;
               }
               if(!response.ok)throw Error(method+' HTTP '+response.status);
@@ -49,6 +49,7 @@ jobs:
           }
           const output={network:'testnet',readOnly:true,contracts:{}};
           for(const [name,address] of Object.entries(addresses)){
+            try {
             const info=await call('getAddressInformation',{address});
             if(info.state!=='active')throw Error(name+' is not active');
             const transactions=[];
@@ -56,7 +57,20 @@ jobs:
             for(let page=0;page<5;page++){
               const params={address,limit:100,archival:true};
               if(cursor){params.lt=cursor.lt;params.hash=cursor.hash;}
-              const batch=await call('getTransactions',params);
+              let batch;
+              try {
+                batch=await call('getTransactions',params);
+              } catch(error) {
+                // Some TON Center gateways reject archival history queries with HTTP 542.
+                // Fallback is read-only, and never interprets unavailable history as empty.
+                if(page===0) {
+                  console.warn(name+': archival history unavailable; trying standard history: '+error.message);
+                  delete params.archival;
+                  batch=await call('getTransactions',params);
+                } else {
+                  throw error;
+                }
+              }
               if(!Array.isArray(batch))throw Error('Invalid transaction list for '+name);
               if(!batch.length)break;
               for(const tx of batch){
@@ -71,15 +85,23 @@ jobs:
             }
             output.contracts[name]={address,state:info.state,transactionCountFetched:transactions.length,historyTruncated:transactions.length>=500,transactions};
             console.log(name+': '+transactions.length+' transactions retrieved');
+            } catch(error) {
+              output.contracts[name]={address,complete:false,error:String(error?.message??error)};
+              console.error(name+': history INCOMPLETE: '+String(error?.message??error));
+            }
           }
           writeFileSync('s07-09-evidence/four-contract-history.json',JSON.stringify(output,null,2));
           const lines=['# S07-09 existing four-contract Testnet history','Read-only RPC query; no new NFT, purchase, attestation or deployment.',''];
           for(const [name,v] of Object.entries(output.contracts)){
-            lines.push('- '+name+': '+v.transactionCountFetched+' transactions; '+v.address+(v.historyTruncated?' (500-record limit reached)':''));
+            lines.push('- '+name+': '+(v.complete===false?'INCOMPLETE: '+v.error:v.transactionCountFetched+' transactions')+'; '+v.address+(v.historyTruncated?' (500-record limit reached)':''));
           }
           lines.push('','IMPORTANT: Nonzero transaction history alone does not prove a complete order. Match the same order ID, NFT ownership, 0.2 TON reserve, 3/3 attestation and final settlement before accepting S07-09.');
           writeFileSync('s07-09-evidence/summary.md',lines.join('\n')+'\n');
           console.log(lines.join('\n'));
+          if(Object.values(output.contracts).some(v=>v.complete===false)) {
+            console.error('RPC HISTORY INCOMPLETE: evidence archived; no conclusion about missing orders');
+            process.exitCode=1;
+          }
           NODE
       - name: Upload read-only chain evidence
         if: always()
