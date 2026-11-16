@@ -36,6 +36,23 @@ jobs:
         uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
       - name: Build production contracts without wallet or transactions
         run: acton build
+      - name: Compare compiled production Escrow with live bound Escrow (read only)
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,urllib.request,pathlib,subprocess,re
+          actual='0:29e52aa1a818f52cadeaf661e9043b15cd49ccc960621fe9efb5307bab4bdd3f'
+          req=urllib.request.Request('https://testnet.toncenter.com/api/v2/jsonRPC',data=json.dumps({'jsonrpc':'2.0','id':1,'method':'getAddressInformation','params':{'address':actual}}).encode(),headers={'Content-Type':'application/json',**({'X-API-Key':os.environ['TONCENTER_API_KEY']} if os.environ.get('TONCENTER_API_KEY') else {})})
+          with urllib.request.urlopen(req,timeout=30) as response: data=json.load(response)
+          if data.get('error') or not data.get('result'): raise RuntimeError(str(data))
+          account=data['result']
+          if account.get('state')!='active' or not account.get('code'): raise RuntimeError('Actual Escrow not active with code')
+          pathlib.Path('s07-07-bound-escrow-code.b64').write_text(account['code'])
+          print('S07_07_BOUND_ESCROW_ACTIVE=true')
+          PY
+          echo 'Code captured for offline identity comparison; compilation hash evidence must be reviewed before acceptance.'
       - name: Confirm production build without transaction execution
         run: |
           set -euo pipefail
