@@ -73,6 +73,10 @@ jobs:
           node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/s07-validator-keys.env"
           cat "$RUNNER_TEMP/s07-validator-keys.env" >> "$GITHUB_ENV"
           rm -f "$RUNNER_TEMP/s07-validator-keys.env"
+      - name: Check Testnet deployer funding before any transaction
+        run: node scripts/preflight-v3-testnet-funding.mjs
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
       - name: Confirm exact S07-08 candidate before deployment (read only)
         shell: bash
         run: |
@@ -89,10 +93,6 @@ jobs:
             }
           done
           echo "S07-08 exact four-address candidate matched."
-      - name: Check Testnet deployer funding before any transaction
-        run: node scripts/preflight-v3-testnet-funding.mjs
-      - name: Setup Acton
-        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
       - name: Create ephemeral Testnet-only wallet profiles
         shell: bash
         run: |
