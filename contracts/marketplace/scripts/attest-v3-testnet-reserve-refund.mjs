@@ -208,7 +208,7 @@ async function findConfirmedPayouts(seller, treasury, marketplace, orderId) {
   for (let attempt = 0; attempt < 18; attempt++) {
     const [sellerTransactions, treasuryTransactions] = await Promise.all([
       toncenter("getTransactions", { address: seller, limit: 30 }),
-      toncenter("getTransactions", { address: treasury, limit: 30 }),
+      toncenter("getTransactions", { address: treasury, limit: 10 }),
     ]);
     const sellerPayout = findMarketplacePayoutReceipt(
       sellerTransactions, marketplace, "9700000", 0x71b00101, orderId,
