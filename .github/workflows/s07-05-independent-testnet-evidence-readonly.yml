@@ -61,16 +61,30 @@ jobs:
           for name,expected in targets.items():
             address=accounts[name]
             try:
-              transactions=rpc('getTransactions',address=address,limit=100,archival='true')
+              # TON Center archival=true with limit=100 can return gateway 542.
+              # Use standard recent-history pagination, reducing batch size on failure.
+              transactions=None
+              last_error=None
+              for size in (20,10,5):
+                try:
+                  transactions=rpc('getTransactions',address=address,limit=size)
+                  evidence['observed'][name+'_history_page_size']=size
+                  break
+                except Exception as query_error:
+                  last_error=str(query_error)
+              if transactions is None: raise RuntimeError('all read-only page sizes failed: '+str(last_error))
               for key in expected:
                 hits=[t for t in transactions if match(t,receipts[key])]
                 found[key]=hits
+                evidence['checks'][key+'_rpc_available']=True
                 evidence['checks'][key+'_unique_in_page']=len(hits)==1
                 evidence['checks'][key+'_transaction_success']=len(hits)==1 and success(hits[0])
                 evidence['observed'][key]={'matches':len(hits),'hash':receipts[key],'lt':(hits[0].get('transaction_id') or {}).get('lt') if hits else None,'in_msg':hits[0].get('in_msg') if hits else None,'out_msgs':hits[0].get('out_msgs') if hits else None}
             except Exception as e:
               evidence['observed'][name+'_history_error']=str(e)
-              for key in expected:evidence['checks'][key+'_unique_in_page']=False
+              for key in expected:
+                  evidence['checks'][key+'_rpc_available']=False
+                  evidence['checks'][key+'_unique_in_page']=None
           def msgsrc(msg):return msg.get('source') or msg.get('src')
           def msgdst(msg):return msg.get('destination') or msg.get('dest')
           # Avoid claiming equality of friendly address encodings: require exact
@@ -84,7 +98,9 @@ jobs:
           evidence['notes']+=['This is an independent read-only transaction retrieval, not a cryptographic light-client proof of masterchain inclusion.','Account code_boc_sha256 is a SHA256 of serialized BOC, not TON Cell representation hash; do not compare it to compiled code cell hash.','Receipt uniqueness is limited to returned history page; absence may be due to RPC pagination or archival support.','Source/destination and NFT ownership must be separately validated using canonical TON addresses and trusted transaction traces.','Fixture escrow is not production escrow; production escrow deployment binding remains unverified.']
           (out/'evidence.json').write_text(json.dumps(evidence,indent=2,ensure_ascii=False))
           print(json.dumps({'checks':evidence['checks'],'errors':{k:v for k,v in evidence['observed'].items() if 'error' in k},'notes':evidence['notes']},indent=2))
-          if not all(evidence['checks'].values()):raise SystemExit('S07-05 independent receipts INCOMPLETE; no mainnet approval')
+          if any(v is False or v is None for v in evidence['checks'].values()):
+            rpc_failed=any(k.endswith('_rpc_available') and v is False for k,v in evidence['checks'].items())
+            raise SystemExit('S07-05 RPC_UNAVAILABLE; evidence inconclusive; no mainnet approval' if rpc_failed else 'S07-05 RECEIPT_MISMATCH_OR_NOT_IN_RECENT_PAGE; extend history, no mainnet approval')
           print('S07_05_READONLY_RECEIPT_GATE=PASS_WITH_LIMITATIONS')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
