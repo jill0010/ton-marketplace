@@ -175,17 +175,24 @@ fun main() {
         }
     }
 
-    val verifierDeploy = net.send(
-        deployer.address,
-        createMessage({
-            bounce: false,
-            value: grams("0.2"),
-            dest: verifierDestination,
-        }),
-    );
-    if (verifierDeploy.waitForFirstTransaction() == null) {
-        println("Settlement verifier deployment transaction missing");
-        throw 826;
+    if (env<bool>("V3_RESUME_EXISTING_VERIFIER_TESTNET") ?? false) {
+        assert (net.runGetMethod<uint32>(verifier, "verifierEpoch") == 1) throw 842;
+        assert (net.runGetMethod<int32>(verifier, "verifierNetwork") == -3) throw 842;
+        assert (net.runGetMethod<uint8>(verifier, "verifierThreshold") == 2) throw 842;
+        println("Existing production Settlement Verifier V3 verified; skipping duplicate deployment.");
+    } else {
+        val verifierDeploy = net.send(
+            deployer.address,
+            createMessage({
+                bounce: false,
+                value: grams("0.2"),
+                dest: verifierDestination,
+            }),
+        );
+        if (verifierDeploy.waitForFirstTransaction() == null) {
+            println("Settlement verifier deployment transaction missing");
+            throw 826;
+        }
     }
 
     val coordinatorDeploy = net.send(
