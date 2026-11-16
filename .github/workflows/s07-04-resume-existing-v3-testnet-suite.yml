@@ -105,22 +105,22 @@ jobs:
         run: |
           set -euo pipefail
           acton script scripts/s07-04-resume-existing-testnet-fixture-suite.tolk --net testnet > s07-04-resumed-suite-deployment.log 2>&1 || {
-            tail -100 s07-04-fixture-suite-deployment.log
+            tail -100 s07-04-resumed-suite-deployment.log
             exit 1
           }
-          grep -Fq "S07_04_RECOVERED_TESTNET_SUITE_BOUND: true" s07-04-fixture-suite-deployment.log
+          grep -Fq "S07_04_RECOVERED_TESTNET_SUITE_BOUND: true" s07-04-resumed-suite-deployment.log
           for name in marketplace escrow coordinator verifier; do
-            grep -Fq "V3 testnet candidate $name:" s07-04-fixture-suite-deployment.log
+            grep -Fq "V3 testnet candidate $name:" s07-04-resumed-suite-deployment.log
           done
-          grep -F 'V3 testnet candidate ' s07-04-fixture-suite-deployment.log
-          grep -F 'V3 trusted compiled ' s07-04-fixture-suite-deployment.log
+          grep -F 'V3 testnet candidate ' s07-04-resumed-suite-deployment.log
+          grep -F 'V3 trusted compiled ' s07-04-resumed-suite-deployment.log
           echo "S07_04_EXISTING_SUITE_RESUMED_AND_BOUND=true"
       - name: Upload deployment and binding evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: s07-04-resumed-suite-${{ github.run_id }}
-          path: contracts/marketplace/s07-04-fixture-suite-deployment.log
+          path: contracts/marketplace/s07-04-resumed-suite-deployment.log
           if-no-files-found: ignore
           retention-days: 30
       - name: Remove temporary wallet profiles
