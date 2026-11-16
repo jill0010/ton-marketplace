@@ -1,0 +1,74 @@
+name: S07-09 Restore Existing Testnet NFT Owner (No Purchase)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_existing_nft_owner_recovery:
+        description: "I approve ONE TESTNET transfer of existing fixture NFT index 3 from Treasury to Deployer; no purchase, no mainnet."
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: s07-09-existing-nft-owner-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    if: ${{ inputs.confirm_existing_nft_owner_recovery == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_TESTNET_FIXTURE_ENABLED: "true"
+      V3_TESTNET_FIXTURE_OWNER_RECOVERY_APPROVED: "true"
+      V3_TESTNET_FIXTURE_NFT_ADDRESS: "kQCFIvfUBsScOo7mfRaplQ2szE7e0AdqIXyFDEY0zGYQ8UqO"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Validate existing wallet configuration and compile
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          umask 077
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton build
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+      - name: Restore existing NFT ownership exactly once on testnet
+        run: |
+          set -euo pipefail
+          acton script scripts/s07-09-recover-fixture-owner.tolk --net testnet 2>&1 | tee s07-09-owner-recovery.log
+          grep -Eq 'S07_09_RECOVERY: (NFT ownership restored to seller|already owned by intended seller)' s07-09-owner-recovery.log
+      - name: Preserve nonsecret recovery result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-09-owner-recovery-${{ github.run_id }}
+          path: contracts/marketplace/s07-09-owner-recovery.log
+          if-no-files-found: ignore
+      - name: Remove wallet profile
+        if: always()
+        run: rm -f wallets.toml
