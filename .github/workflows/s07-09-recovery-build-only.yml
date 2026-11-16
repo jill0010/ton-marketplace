@@ -1,0 +1,22 @@
+name: S07-09 Validate Existing NFT Recovery (Build Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Compile NFT recovery script without executing transactions
+        working-directory: contracts/marketplace
+        run: |
+          set -euo pipefail
+          acton build
+          acton script --help
+          echo "S07-09 build completed; no wallet keys loaded and no transactions sent."
