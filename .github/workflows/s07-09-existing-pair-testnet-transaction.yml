@@ -136,6 +136,44 @@ jobs:
           if(!result.bindingsVerified)throw Error('Existing S07-08 binding mismatch: '+JSON.stringify(result.checks));
           console.log('S07-08 existing four-contract bindings verified; no deployment');
           NODE
+      - name: Block duplicate funded runs across workflow dispatches
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Fail closed if run history cannot be checked. Prior pre-checkout failures are safe.
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          repo=os.environ["GITHUB_REPOSITORY"]
+          current=int(os.environ["GITHUB_RUN_ID"])
+          workflow="s07-09-existing-pair-testnet-transaction.yml"
+          def api(path):
+              return json.loads(subprocess.check_output(["gh","api",path],text=True))
+          runs=[]
+          for page in range(1,11):
+              data=api(f"repos/{repo}/actions/workflows/{workflow}/runs?event=workflow_dispatch&per_page=100&page={page}")
+              batch=data.get("workflow_runs",[])
+              runs.extend(batch)
+              if len(batch)<100: break
+          else:
+              sys.exit("Run history exceeds 1000; refusing funded purchase")
+          for run in runs:
+              if run["id"]==current: continue
+              jobs=api(f"repos/{repo}/actions/runs/{run['id']}/jobs?per_page=100")
+              if jobs.get("total_count",0)>100:
+                  sys.exit("Cannot exhaustively inspect previous run jobs")
+              for job in jobs.get("jobs",[]):
+                  for step in job.get("steps",[]):
+                      name=step.get("name","")
+                      if name in ("Create ONE synthetic NFT fixture on existing S07-08 Marketplace V3 / Escrow V2",
+                                  "Submit one real Testnet purchase through production Marketplace V3") and step.get("status")!="queued" and step.get("conclusion")!="skipped":
+                          sys.exit(f"Previous run {run['id']} reached funded operation {name}; stop and use read-only evidence")
+              if run.get("status")!="completed":
+                  sys.exit(f"Previous run {run['id']} not completed; refusing concurrent funding")
+          print("Previous dispatches did not reach fixture or purchase; one new attempt permitted")
+          PY
       - name: Create ONE synthetic NFT fixture on existing S07-08 Marketplace V3 / Escrow V2
         env:
           V3_TESTNET_FIXTURE_ENABLED: "true"
@@ -247,7 +285,7 @@ jobs:
             contracts/marketplace/v3-production-testnet-purchase.log
             contracts/marketplace/v3-production-testnet-purchase-verification.log
             contracts/marketplace/v3-production-testnet-purchase-verification-attempt-*.log
-            v3-production-testnet-attestation.log
+            contracts/marketplace/v3-production-testnet-attestation.log
             contracts/marketplace/v3-production-testnet-settlement.log
           if-no-files-found: ignore
           retention-days: 30
