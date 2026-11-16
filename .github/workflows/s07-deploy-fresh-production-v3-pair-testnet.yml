@@ -35,6 +35,7 @@ jobs:
       V3_RESUME_EXISTING_MARKETPLACE_TESTNET: "true"
       V3_RESUME_EXISTING_ESCROW_TESTNET: "true"
       V3_RESUME_EXISTING_VERIFIER_TESTNET: "true"
+      V3_RESUME_EXISTING_COORDINATOR_TESTNET: "true"
       V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
       V3_FRESH_DEPLOYMENT_NONCE: "43855669637"
@@ -116,7 +117,7 @@ jobs:
           acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
       - name: Compile production V3 and production Escrow V2
         run: acton build
-      - name: Verify existing Marketplace, Escrow, Verifier code hashes before any transaction
+      - name: Verify all four deployed contract code hashes before any binding transaction
         working-directory: .
         shell: bash
         run: |
@@ -127,6 +128,7 @@ jobs:
             ['Marketplace V3','kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg',78359546161773769121804334657237004017492887152734900376191088699783038521579n],
             ['NFTEscrow V2','kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8',81598614757632845067695927561143533301816638303328283688424659201933137039160n],
             ['Settlement Verifier V3','kQALNPtOZ5AIkaEwf4hoDTdJwgVttAwDq2ONZwuJTTzrZy-k',40137527310137199081220684777089428003119541313287351217810842336613359506965n],
+            ['Reserve Coordinator V3','kQCUs3jh8gTQtlAE3FgLVsiM5_j9TOTLKZUJgqacUFiO5_je',66691359611383353754318373230718900986162645101604635612762337495115879334100n],
           ];
           const headers = process.env.TONCENTER_API_KEY ? {'X-API-Key':process.env.TONCENTER_API_KEY} : {};
           for (const [name,address,expectedHash] of candidates) {
@@ -142,7 +144,7 @@ jobs:
             console.log('S07-08 existing ' + name + ' on-chain code hash verified');
           }
           NODE
-      - name: Resume remaining Coordinator and verify reciprocal bindings on Testnet
+      - name: Configure production Marketplace and verify reciprocal bindings on Testnet
         shell: bash
         run: |
           set -euo pipefail
