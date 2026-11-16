@@ -1,0 +1,29 @@
+name: S07-09 Find Compatible Testnet NFT (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Install existing project dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Inspect seller-owned testnet NFT Item code hashes
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/s07-09-find-compatible-nft.mjs | tee s07-09-compatible-nft.log
+      - name: Save discovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-09-compatible-nft-${{ github.run_id }}
+          path: s07-09-compatible-nft.log
+          if-no-files-found: ignore
