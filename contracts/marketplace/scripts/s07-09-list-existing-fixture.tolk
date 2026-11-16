@@ -1,5 +1,6 @@
 import "@acton/env"
 import "@acton/io"
+import "@acton/build"
 import "@acton/emulation/scripts"
 import "@acton/emulation/network"
 import "@wrappers/MarketplaceV2.gen"
@@ -25,6 +26,13 @@ fun main() {
     assert (escrow.marketplace() == marketplace.address) throw 977;
     assert (marketplace.treasuryV2() == treasury.address) throw 977;
     assert (marketplace.assetProductIdV2(nftItem) == null) throw 978;
+    // Escrow V2 only accepts these immutable Item code hashes; fail before any wallet transaction.
+    val fixtureCodeHash = build("MockNFTItemV3").hash();
+    println("S07_09_FIXTURE_CODE_HASH: {}", fixtureCodeHash);
+    assert (
+        fixtureCodeHash == 0x8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32 ||
+        fixtureCodeHash == 0x30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251
+    ) throw 979;
     listV3TestnetMockNftFixture(
         marketplace,
         escrow,
