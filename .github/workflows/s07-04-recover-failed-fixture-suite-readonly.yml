@@ -1,0 +1,91 @@
+name: S07-04 Recover Failed Fixture Suite Deployment (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      V3_TESTNET_DEPLOYER_ADDRESS: 0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu
+      PLATFORM_TREASURY_ADDRESS: 0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0
+      V3_FRESH_DEPLOYMENT_NONCE: '43828407746'
+      V3_VALIDATOR_0_PUBLIC_KEY: '41342504511421031216359151772997008361520885874590610453802248433713791789750'
+      V3_VALIDATOR_1_PUBLIC_KEY: '70196674598014218319300736070722549539525448612563048212591029421895869851173'
+      V3_VALIDATOR_2_PUBLIC_KEY: '107081252761244582133121058092518624768332978352580661449874361986314605721472'
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Calculate deterministic contract addresses without signing
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/s07-04-calculate-failed-suite-addresses-readonly.tolk --net testnet | tee s07-04-recovery-addresses.log
+          grep -Fq 'S07_04_NO_TRANSACTION_SENT: true' s07-04-recovery-addresses.log
+      - name: Inspect TESTNET contract states and deployer history (read-only RPC)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE' | tee s07-04-recovery-rpc.log
+          import fs from 'node:fs';
+          const log=fs.readFileSync('s07-04-recovery-addresses.log','utf8');
+          const keys=['MARKETPLACE','ESCROW','COORDINATOR','VERIFIER'];
+          const addresses={};
+          for(const key of keys){
+            const m=log.match(new RegExp('S07_04_RECOVERY_'+key+':\\s*([^\\s]+)'));
+            if(!m)throw Error('Missing calculated '+key+' address');
+            addresses[key]=m[1];
+          }
+          addresses.DEPLOYER=process.env.V3_TESTNET_DEPLOYER_ADDRESS;
+          const api='https://testnet.toncenter.com/api/v2/';
+          const request=async(method,params)=>{
+            const u=new URL(method,api);
+            for(const [k,v] of Object.entries(params))u.searchParams.set(k,String(v));
+            const headers={};
+            if(process.env.TONCENTER_API_KEY)headers['X-API-Key']=process.env.TONCENTER_API_KEY;
+            for(let i=0;i<3;i++){
+              const response=await fetch(u,{headers,signal:AbortSignal.timeout(15000)});
+              if((response.status===429||response.status>=500)&&i<2){await new Promise(r=>setTimeout(r,1500*(i+1)));continue;}
+              if(!response.ok)throw Error(method+' HTTP '+response.status);
+              const body=await response.json();
+              if(!body.ok)throw Error(method+' RPC '+JSON.stringify(body.error??body.description??'unknown'));
+              return body.result;
+            }
+          };
+          for(const [key,address] of Object.entries(addresses)){
+            console.log('S07_04_'+key+'_ADDRESS: '+address);
+            const state=await request('getAddressInformation',{address});
+            console.log('S07_04_'+key+'_STATE: '+state.state);
+            console.log('S07_04_'+key+'_BALANCE_NANO: '+state.balance);
+            console.log('S07_04_'+key+'_LAST_TX: '+JSON.stringify(state.last_transaction_id??null));
+            if(key==='MARKETPLACE' && state.state==='active'){
+              console.log('S07_04_MARKETPLACE_CODE_PRESENT: '+Boolean(state.code));
+              console.log('S07_04_MARKETPLACE_CODE_B64: '+(state.code??''));
+            }
+          }
+          const txs=await request('getTransactions',{address:addresses.DEPLOYER,limit:20,archival:true});
+          for(const tx of txs){
+            const outs=tx.out_msgs??[];
+            const matching=outs.filter(m=>Object.values(addresses).includes(m.destination));
+            if(matching.length)console.log('S07_04_DEPLOYER_TX_MATCH: '+JSON.stringify({utime:tx.utime,lt:tx.transaction_id?.lt,hash:tx.transaction_id?.hash,targets:matching.map(m=>m.destination)}));
+          }
+          console.log('S07_04_READ_ONLY: true');
+          NODE
+      - name: Upload read-only recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-recovery-43828407746
+          path: |
+            contracts/marketplace/s07-04-recovery-addresses.log
+            contracts/marketplace/s07-04-recovery-rpc.log
+          if-no-files-found: ignore
+          retention-days: 30
