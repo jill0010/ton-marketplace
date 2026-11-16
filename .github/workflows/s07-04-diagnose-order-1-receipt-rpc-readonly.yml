@@ -1,0 +1,57 @@
+name: S07-04 Diagnose Order 1 Receipt RPC (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+    steps:
+      - name: Probe existing Testnet account histories without sending transactions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE' | tee s07-04-rpc-diagnostic.json
+          const accounts = {
+            vault: "kQAEE6nrpZDqAReQQLgqPwxvP17dmiEO3bgsSY6U-x4nn0PY",
+            buyerAndTreasury: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0",
+            sellerAndDeployer: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu",
+            marketplace: "kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF"
+          };
+          const results = [];
+          for (const [role, address] of Object.entries(accounts)) {
+            for (const limit of [30, 10, 3]) {
+              const u = new URL("https://testnet.toncenter.com/api/v2/getTransactions");
+              u.searchParams.set("address", address);
+              u.searchParams.set("limit", String(limit));
+              let status = "network-error", ok = false, count = null, diagnostic = "";
+              try {
+                const response = await fetch(u, {
+                  headers: process.env.TONCENTER_API_KEY ? {"X-API-Key":process.env.TONCENTER_API_KEY} : {},
+                  signal: AbortSignal.timeout(15000)
+                });
+                status = response.status;
+                const body = await response.text();
+                try {
+                  const json = JSON.parse(body);
+                  ok = response.ok && json.ok === true && Array.isArray(json.result);
+                  count = Array.isArray(json.result) ? json.result.length : null;
+                  diagnostic = ok ? "" : String(json.error ?? json.message ?? "").slice(0,150);
+                } catch { diagnostic = "non-JSON response"; }
+              } catch (e) { diagnostic = String(e.message).slice(0,150); }
+              results.push({role, limit, httpStatus:status, ok, transactionCount:count, diagnostic});
+            }
+          }
+          console.log(JSON.stringify({stage:"S07-04-order-1-receipt-rpc",network:"testnet",readOnly:true,noTransactionsSent:true,results},null,2));
+          NODE
+      - name: Preserve diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-order1-rpc-diagnostic-${{ github.run_id }}
+          path: s07-04-rpc-diagnostic.json
+          retention-days: 30
+          if-no-files-found: ignore
