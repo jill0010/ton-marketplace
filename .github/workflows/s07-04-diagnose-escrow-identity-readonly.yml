@@ -1,0 +1,36 @@
+name: S07-04 Diagnose Escrow NFT Identity (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      S07_04_RECOVERED_NFT_ADDRESS: kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: kQC_UhR2wStYmFmPl_W2acYW7aeLUMBWn7GgQN4b1GmxqCyA
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: kQBMWX9agczB5MGgqHQTBU2yhVS7ApWAjhgaeoFHdkQBRsCy
+      PLATFORM_TREASURY_ADDRESS: 0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Check NFT code allowlist, deterministic address and escrow index
+        working-directory: contracts/marketplace
+        run: |
+          set -euo pipefail
+          acton build
+          acton script scripts/s07-04-diagnose-escrow-identity-readonly.tolk --net testnet 2>&1 | tee ../../s07-04-escrow-identity.log
+          grep -Fq 'S07_04_READ_ONLY: true' ../../s07-04-escrow-identity.log
+      - name: Preserve diagnosis
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-escrow-identity-${{ github.run_id }}
+          path: s07-04-escrow-identity.log
+          if-no-files-found: ignore
+          retention-days: 30
