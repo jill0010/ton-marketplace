@@ -161,10 +161,18 @@ fun main() {
             throw 824;
         }
     }
-    val escrowDeploy = escrow.deploy(deployer.address, { value: grams("0.6") });
-    if (escrowDeploy.waitForFirstTransaction() == null) {
-        println("NFT Escrow V2 deployment failed");
-        throw 825;
+    // The S07-08 Escrow deployment was also confirmed active on Testnet
+    // after the wallet trace timed out. Skip sending it again on resume.
+    if (env<bool>("V3_RESUME_EXISTING_ESCROW_TESTNET") ?? false) {
+        assert (escrow.owner() == deployer.address) throw 841;
+        assert (escrow.marketplace() == marketplace.address) throw 841;
+        println("Existing production NFT Escrow V2 verified; skipping duplicate deployment.");
+    } else {
+        val escrowDeploy = escrow.deploy(deployer.address, { value: grams("0.6") });
+        if (escrowDeploy.waitForFirstTransaction() == null) {
+            println("NFT Escrow V2 deployment failed");
+            throw 825;
+        }
     }
 
     val verifierDeploy = net.send(
