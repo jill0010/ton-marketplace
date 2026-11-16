@@ -53,6 +53,7 @@ jobs:
             try{const stack=await rpc(address,method);const value=decode(stack);out.getters[label]={status:'OK',value,stack};return value}
             catch(e){out.getters[label]={status:'ERROR',error:String(e)};return null}
           }
+          async function main(){
           const escrowMarket=await capture('escrow.marketplace',addr.escrow,'marketplace',s=>decodeAddress(s[0]));
           const marketEscrow=await capture('marketplace.escrowV2',addr.marketplace,'escrowV2',s=>decodeAddress(s[0]));
           const configured=await capture('marketplace.escrowConfiguredV2',addr.marketplace,'escrowConfiguredV2',s=>decodeBool(s[0]));
@@ -72,6 +73,8 @@ jobs:
           console.log(JSON.stringify({checks:out.checks,decoded:Object.fromEntries(Object.entries(out.getters).map(([k,v])=>[k,{status:v.status,value:v.value,error:v.error}])),mainnetApproved:false},null,2));
           if(Object.values(out.getters).some(x=>x.status!=='OK'))process.exitCode=1;
           if(!out.checks.productionPairReciprocal)process.exitCode=1;
+          }
+          main().catch(error=>{console.error(error);process.exitCode=1});
           JS
           node /tmp/s07-ton/check.cjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
