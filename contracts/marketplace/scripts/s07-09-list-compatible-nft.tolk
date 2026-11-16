@@ -1,5 +1,6 @@
 import "@acton/env"
 import "@acton/io"
+import "@acton/fmt"
 import "@acton/emulation/scripts"
 import "@acton/emulation/network"
 import "@wrappers/MarketplaceV2.gen"
