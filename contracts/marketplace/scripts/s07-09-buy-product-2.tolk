@@ -18,8 +18,8 @@ fun main() {
     assert (marketplace.escrowConfiguredV2() && marketplace.escrowV2() == escrow) throw 913;
     assert (marketplace.treasuryConfiguredV2() && marketplace.treasuryV2() == buyer.address) throw 913;
     assert (net.runGetMethod<bool>(marketplace.address, "marketplaceReserveCoordinatorConfiguredV3")) throw 913;
-    assert (marketplace.assetProductIdV2(nftItem) == 2) throw 914;
-    assert (marketplace.productStatusV2(2) == 2) throw 914;
+    assert (marketplace.assetProductIdV2(nftItem)!! == 2) throw 914;
+    assert (marketplace.productStatusV2(2)!! == 2) throw 914;
     assert (marketplace.orderIdForProductV2(2) == null) throw 914;
     val listing = marketplace.productV2(2)!!;
     assert (listing.seller == seller.address && listing.price == grams("0.01") && listing.escrowId == 1) throw 915;
