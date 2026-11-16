@@ -44,6 +44,6 @@ fun main() {
     assert (expected == nftItem) throw 980;
     assert (marketplace.assetProductIdV2(nftItem) == null) throw 981;
     assert (escrow.assetEscrowIdV2(nftItem) == null) throw 981;
-    assert (marketplace.productStatusV2(1) == 5) throw 981;
+    assert (marketplace.productStatusV2(1)!! == 5) throw 981;
     println("S07_09_READ_ONLY_RECOVERY_PREFLIGHT: PASS");
 }
