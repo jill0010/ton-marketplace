@@ -44,6 +44,7 @@ jobs:
       PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
     steps:
       - name: Reject reruns and enforce TESTNET only
+        working-directory: . # Checkout has not run; contracts/marketplace does not exist yet
         shell: bash
         run: |
           set -euo pipefail
@@ -253,4 +254,8 @@ jobs:
 
       - name: Remove temporary wallet profile
         if: always()
-        run: rm -f wallets.toml
+        working-directory: . # Must also work if Checkout did not run
+        run: |
+          if [ -d contracts/marketplace ]; then
+            rm -f contracts/marketplace/wallets.toml
+          fi
