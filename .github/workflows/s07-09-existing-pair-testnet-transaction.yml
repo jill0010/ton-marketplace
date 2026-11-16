@@ -52,10 +52,25 @@ jobs:
           test "${{ inputs.confirm_existing_pair_testnet_only }}" = "true"
           test "${{ inputs.confirm_one_funded_testnet_purchase }}" = "true"
           echo "Existing four production contracts ONLY; no contract deployment; ONE synthetic NFT testnet purchase."
-      - name: Checkout
+      - name: Checkout verified V3 implementation branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
+          ref: feature/reserve-refund-v3-audit
           persist-credentials: false
+      - name: Confirm required transaction scripts exist before funding
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            contracts/marketplace/scripts/run-v3-production-testnet-fixture.tolk \
+            contracts/marketplace/scripts/buy-v3-production-testnet-fixture.tolk \
+            contracts/marketplace/scripts/verify-v3-production-testnet-purchase.tolk \
+            contracts/marketplace/scripts/verify-v3-production-testnet-settlement.tolk \
+            contracts/marketplace/scripts/attest-v3-testnet-reserve-refund.mjs; do
+            test -s "$file" || { echo "::error::Missing transaction script: $file"; exit 1; }
+          done
+          echo "All required production testnet scripts found; no transaction sent."
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
