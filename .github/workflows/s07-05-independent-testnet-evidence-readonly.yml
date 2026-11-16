@@ -1,0 +1,95 @@
+name: S07-05 Independent Testnet Evidence (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Independently inspect immutable transaction receipts and deployed contract states
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,time,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          out=Path('s07-05-evidence');out.mkdir(exist_ok=True)
+          api='https://testnet.toncenter.com/api/v2/'
+          accounts={
+            'marketplace':'kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF',
+            'fixture_escrow':'kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm',
+            'vault':'kQAEE6nrpZDqAReQQLgqPwxvP17dmiEO3bgsSY6U-x4nn0PY',
+            'buyer_treasury':'0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0',
+            'seller':'0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu',
+            'nft':'kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr',
+            'coordinator':'kQByrR9dHWfBsVYsF-F_G5zXk8xnp2T1gI6hQ-NHl6kjeVmQ',
+            'verifier':'kQDH2CEuo0bVVQm35V15cD75fm1kb3bXJH8TSXEdfR_Y8C4h',
+          }
+          receipts={
+            'buyer_reserve':'B5CJbAf4ibz/cKJIxvYItMF7J2D4E0N9dlqk30VOhYM=',
+            'vault_dispatch':'BA1meAxcnBo1lm/2RLVl8MMA5XaYZFgEtw7ywd05Na4=',
+            'seller_payout':'1dJEcuRK0/5oOk74jPAczYZGoU7qOVyd9elDODapfQg=',
+            'platform_payout':'OUAyMw6JksgMDo5GwlmCS+2vpSFxkkFGzVXpq4MYluk=',
+          }
+          def rpc(path,**params):
+            url=api+path+'?'+urllib.parse.urlencode(params)
+            for i in range(5):
+              try:
+                req=urllib.request.Request(url,headers={'X-API-Key':os.environ.get('TONCENTER_API_KEY','')} if os.environ.get('TONCENTER_API_KEY') else {})
+                with urllib.request.urlopen(req,timeout=18) as resp: data=json.load(resp)
+                if not data.get('ok'): raise ValueError(path+' returned ok=false')
+                return data['result']
+              except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError) as e:
+                if i==4: raise RuntimeError(path+' unavailable: '+str(e))
+                time.sleep(min(2**i,8))
+          evidence={'network':'testnet','rpc':api,'accounts':accounts,'expected_receipts':receipts,'observed':{},'checks':{},'notes':[]}
+          def txhash(t):return (t.get('transaction_id') or {}).get('hash')
+          def match(t,h):return txhash(t)==h
+          def success(t):
+            d=t.get('description') or {}
+            return not (t.get('aborted') is True or d.get('aborted') is True or (d.get('compute_ph') or {}).get('success') is False or (d.get('action') or {}).get('success') is False)
+          for name,address in accounts.items():
+            try:
+              info=rpc('getAddressInformation',address=address)
+              evidence['observed'][name]={'account_state':info.get('state'),'code_boc_sha256':hashlib.sha256(base64.b64decode(info['code'])).hexdigest() if info.get('code') else None}
+            except Exception as e:
+              evidence['observed'][name]={'error':str(e)}
+          targets={'vault':('vault_dispatch',),'buyer_treasury':('buyer_reserve','platform_payout'),'seller':('seller_payout',)}
+          found={}
+          for name,expected in targets.items():
+            address=accounts[name]
+            try:
+              transactions=rpc('getTransactions',address=address,limit=100,archival='true')
+              for key in expected:
+                hits=[t for t in transactions if match(t,receipts[key])]
+                found[key]=hits
+                evidence['checks'][key+'_unique_in_page']=len(hits)==1
+                evidence['checks'][key+'_transaction_success']=len(hits)==1 and success(hits[0])
+                evidence['observed'][key]={'matches':len(hits),'hash':receipts[key],'lt':(hits[0].get('transaction_id') or {}).get('lt') if hits else None,'in_msg':hits[0].get('in_msg') if hits else None,'out_msgs':hits[0].get('out_msgs') if hits else None}
+            except Exception as e:
+              evidence['observed'][name+'_history_error']=str(e)
+              for key in expected:evidence['checks'][key+'_unique_in_page']=False
+          def msgsrc(msg):return msg.get('source') or msg.get('src')
+          def msgdst(msg):return msg.get('destination') or msg.get('dest')
+          # Avoid claiming equality of friendly address encodings: require exact
+          # message-value evidence, then explicitly flag cross-format address validation.
+          buyer=found.get('buyer_reserve',[None])[0] if found.get('buyer_reserve') else None
+          evidence['checks']['buyer_received_200m_nano']=bool(buyer and str((buyer.get('in_msg') or {}).get('value'))=='200000000')
+          seller=found.get('seller_payout',[None])[0] if found.get('seller_payout') else None
+          platform=found.get('platform_payout',[None])[0] if found.get('platform_payout') else None
+          evidence['checks']['seller_received_9700000_nano']=bool(seller and str((seller.get('in_msg') or {}).get('value'))=='9700000')
+          evidence['checks']['platform_received_300000_nano']=bool(platform and str((platform.get('in_msg') or {}).get('value'))=='300000')
+          evidence['notes']+=['This is an independent read-only transaction retrieval, not a cryptographic light-client proof of masterchain inclusion.','Account code_boc_sha256 is a SHA256 of serialized BOC, not TON Cell representation hash; do not compare it to compiled code cell hash.','Receipt uniqueness is limited to returned history page; absence may be due to RPC pagination or archival support.','Source/destination and NFT ownership must be separately validated using canonical TON addresses and trusted transaction traces.','Fixture escrow is not production escrow; production escrow deployment binding remains unverified.']
+          (out/'evidence.json').write_text(json.dumps(evidence,indent=2,ensure_ascii=False))
+          print(json.dumps({'checks':evidence['checks'],'errors':{k:v for k,v in evidence['observed'].items() if 'error' in k},'notes':evidence['notes']},indent=2))
+          if not all(evidence['checks'].values()):raise SystemExit('S07-05 independent receipts INCOMPLETE; no mainnet approval')
+          print('S07_05_READONLY_RECEIPT_GATE=PASS_WITH_LIMITATIONS')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: s07-05-independent-evidence-${{ github.run_id }}
+          path: s07-05-evidence/
+          retention-days: 30
