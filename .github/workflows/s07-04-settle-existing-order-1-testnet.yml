@@ -131,6 +131,7 @@ jobs:
           node "$RUNNER_TEMP/v3-attestor/attest.mjs" 2>&1 | tee s07-04-order1-attestation.log
           grep -Fq '"vaultStatus": 3' s07-04-order1-attestation.log
           grep -Fq '"orderId": "1"' s07-04-order1-attestation.log
+          grep -Fq '"paidNano": "200000000"' s07-04-order1-attestation.log
 
       - name: Read-only verify final on-chain settlement
         shell: bash
