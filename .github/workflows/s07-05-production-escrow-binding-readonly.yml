@@ -1,0 +1,51 @@
+name: S07-05 Production Escrow Binding Read Only
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Compare production and fixture roles against live testnet
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.parse,datetime,pathlib,sys
+          endpoint='https://testnet.toncenter.com/api/v2/getAddressInformation'
+          addresses={
+            'production_escrow':'kQBdX2PpCASy50dZOmspilaHrnPa6mgJ-DhuzBpNR4LJpQOP',
+            'production_escrow_configured_marketplace':'kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_',
+            'fixture_order_marketplace':'kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF',
+            'fixture_escrow':'kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm',
+            'fixture_nft':'kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr'
+          }
+          result={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'endpoint':endpoint,'accounts':{},'binding':{},'mainnetApproved':False}
+          for role,address in addresses.items():
+            try:
+              req=urllib.request.Request(endpoint+'?'+urllib.parse.urlencode({'address':address}))
+              with urllib.request.urlopen(req,timeout=18) as resp: payload=json.load(resp)
+              if not payload.get('ok'):raise ValueError(str(payload.get('error')))
+              data=payload['result']
+              result['accounts'][role]={'address':address,'state':data.get('state'),'last_transaction_id':data.get('last_transaction_id'),'has_code':bool(data.get('code'))}
+            except Exception as exc:result['accounts'][role]={'address':address,'rpc_error':str(exc)}
+          # These configured addresses are sourced from previous audited deployment evidence,
+          # not from a newly decoded on-chain getter. Never claim to have read a binding here.
+          result['binding']['configured_marketplace_from_deployment_evidence']=addresses['production_escrow_configured_marketplace']
+          result['binding']['fixture_order_marketplace']=addresses['fixture_order_marketplace']
+          result['binding']['same_marketplace']=addresses['production_escrow_configured_marketplace']==addresses['fixture_order_marketplace']
+          result['binding']['source']='Actions 43700458809, 43700721551 and 43844621546; NOT a fresh on-chain storage decode'
+          result['limitations']=['This run checks live account existence and historical address mismatch only.','No canonical on-chain escrow getter or Marketplace reciprocal binding decoded.','No NFT owner get_nft_data decoding or message trace verification in this run.','No production escrow end-to-end test or independent external audit.']
+          pathlib.Path('s07-05-binding-evidence.json').write_text(json.dumps(result,indent=2))
+          print(json.dumps(result,indent=2))
+          if any('rpc_error' in a for a in result['accounts'].values()):sys.exit('RPC_UNAVAILABLE: no mainnet approval')
+          if result['binding']['same_marketplace']:sys.exit('Unexpected binding identity: review deployment evidence')
+          print('S07_05_BINDING_MISMATCH_CONFIRMED=true')
+          print('S07_05_PRODUCTION_END_TO_END_APPROVED=false')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: s07-05-binding-evidence-${{ github.run_id }}
+          path: s07-05-binding-evidence.json
+          retention-days: 30
