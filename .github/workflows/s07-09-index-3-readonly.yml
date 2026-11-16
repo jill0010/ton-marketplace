@@ -103,13 +103,16 @@ jobs:
               if(account.code){
                 output.chainCodeHash=Cell.fromBoc(Buffer.from(account.code,'base64'))[0].hash().toString('hex');
                 const clean=s=>String(s??'').replace(/^0x/,'').toLowerCase();
-                if(expectedCodeHash && /^[0-9a-f]{64}$/i.test(clean(expectedCodeHash))){
-                  output.codeMatches=clean(expectedCodeHash)===clean(output.chainCodeHash);
+                const expectedHex=/^[0-9]+$/.test(expectedCodeHash??'')?BigInt(expectedCodeHash).toString(16).padStart(64,'0'):clean(expectedCodeHash);
+                if(expectedHex && /^[0-9a-f]{64}$/i.test(expectedHex)){
+                  output.codeMatches=expectedHex===clean(output.chainCodeHash);
                 }
               }
             }catch(error){output.errors.push('account: '+error);}
             try {
-              const transactions=await request('getTransactions',{address:nft,limit:50,archival:true});
+              let transactions;
+              try{transactions=await request('getTransactions',{address:nft,limit:50,archival:true});}
+              catch(error){output.errors.push('archival history: '+error);transactions=await request('getTransactions',{address:nft,limit:10});}
               output.transactions=transactions.map(tx=>({
                 utime:tx.utime,lt:tx.transaction_id?.lt,hash:tx.transaction_id?.hash,
                 incoming:tx.in_msg&&{source:tx.in_msg.source,destination:tx.in_msg.destination,value:tx.in_msg.value,op:tx.in_msg.message},
