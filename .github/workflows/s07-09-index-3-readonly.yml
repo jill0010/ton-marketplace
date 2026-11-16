@@ -123,6 +123,73 @@ jobs:
           writeFileSync('fixture-index-3-code-history.json',JSON.stringify(output,null,2));
           console.log(JSON.stringify({nft,expectedCodeHash,chainCodeHash:output.chainCodeHash,codeMatches:output.codeMatches,account:output.account,transactionCount:output.transactions.length,errors:output.errors},null,2));
           NODE
+      - name: Independently trace NFT initialization and ownership using TonAPI testnet
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {Address,Cell} from '@ton/core';
+          const log=readFileSync('fixture-index-3-inspection.log','utf8');
+          const get=(key)=>log.match(new RegExp(key+':\\s*(\\S+)'))?.[1]??null;
+          const nft=get('S07_09_EXPECTED_NFT_ADDRESS');
+          const expectedOwner=get('S07_09_NFT_OWNER');
+          const deployer='0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu';
+          const treasury='0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0';
+          const result={source:'testnet.tonapi.io',nft,expectedOwner,deployer,treasury,transactions:[],deployMessages:[],transfers:[],errors:[],conclusion:'unverified'};
+          const same=(a,b)=>{try{return Address.parse(a).equals(Address.parse(b));}catch{return false;}};
+          async function getJson(path){
+            let error;
+            for(let i=0;i<3;i++){
+              try{
+                const response=await fetch('https://testnet.tonapi.io'+path,{signal:AbortSignal.timeout(18000)});
+                if(!response.ok)throw Error('HTTP '+response.status);
+                return await response.json();
+              }catch(e){error=e;await new Promise(resolve=>setTimeout(resolve,4500));}
+            }
+            throw error;
+          }
+          function decodeBody(msg){
+            const boc=msg?.raw_body??msg?.body?.raw_body??msg?.body?.boc??null;
+            if(!boc)return {status:'raw_body_unavailable'};
+            try{
+              const slice=Cell.fromBoc(Buffer.from(boc,'base64'))[0].beginParse();
+              const op=slice.loadUint(32);
+              if(op===0x299a3e15){
+                const owner=slice.loadAddress().toString();
+                return {op:'DeployMockNFTItemV3',owner,ownerIsDeployer:same(owner,deployer),ownerIsTreasury:same(owner,treasury)};
+              }
+              if(op===0x5fcc3d14){
+                slice.loadUintBig(64);
+                const newOwner=slice.loadAddress().toString();
+                return {op:'NftTransfer',newOwner};
+              }
+              return {op:'0x'+op.toString(16)};
+            }catch(e){return {status:'decode_failed',error:String(e)};}
+          }
+          if(nft){
+            try{
+              const data=await getJson('/v2/blockchain/accounts/'+encodeURIComponent(nft)+'/transactions?limit=100');
+              const transactions=Array.isArray(data)?data:(data.transactions??[]);
+              result.transactions=transactions.map(tx=>{
+                const inbound=tx.in_msg??tx.in_message??null;
+                const decoded=decodeBody(inbound);
+                const row={hash:tx.hash,lt:tx.lt,utime:tx.utime,success:tx.success,inbound:{source:inbound?.source?.address??inbound?.source??null,decoded},outboundCount:(tx.out_msgs??[]).length};
+                if(decoded.op==='DeployMockNFTItemV3')result.deployMessages.push(row);
+                if(decoded.op==='NftTransfer')result.transfers.push(row);
+                return row;
+              });
+              if(result.deployMessages.length){
+                const initial=result.deployMessages[result.deployMessages.length-1];
+                result.conclusion=initial.inbound.decoded.ownerIsDeployer?'initial_owner_deployer':'initial_owner_not_deployer';
+              }else result.conclusion='initialization_message_not_decoded';
+            }catch(e){result.errors.push('TonAPI transaction lookup: '+e);}
+            try{
+              const events=await getJson('/v2/accounts/'+encodeURIComponent(nft)+'/events?limit=20');
+              result.events=(events.events??[]).map(e=>({event_id:e.event_id,actions:(e.actions??[]).map(a=>({type:a.type,status:a.status,nft_transfer:a.NftItemTransfer??a.nft_item_transfer??null}))}));
+            }catch(e){result.errors.push('TonAPI event lookup: '+e);}
+          }else result.errors.push('NFT address missing');
+          writeFileSync('fixture-index-3-tonapi-evidence.json',JSON.stringify(result,null,2));
+          console.log(JSON.stringify({nft,transactionCount:result.transactions.length,deployMessages:result.deployMessages,transfers:result.transfers,eventCount:result.events?.length??0,conclusion:result.conclusion,errors:result.errors},null,2));
+          NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -131,4 +198,5 @@ jobs:
             fixture-index-3-inspection.log
             fixture-index-3-transactions.json
             fixture-index-3-code-history.json
+            fixture-index-3-tonapi-evidence.json
           if-no-files-found: warn
