@@ -48,3 +48,13 @@ Inspected `ReserveVaultV3.tolk` and `ReserveCoordinatorV3.tolk`.
 5. Approve Mainnet only after all mandatory gates and explicit owner authorization.
 
 **No mainnet transactions, no re-deployment, no new testnet purchases in this audit stage.**
+
+## S07-05 evidence seal — 2026-11-16 (read-only, provisional)
+
+**Source receipts:** [S07-05 Actions 43846903009](https://github.com/jill0010/ton-marketplace/actions/runs/43846903009), [immutable run artifact 14214914977](https://github.com/jill0010/ton-marketplace/actions/runs/43846903009/artifacts/14214914977). The independent read-only check found the four exact transaction hashes in returned history and validated expected incoming amounts (buyer 200000000 nanotons; seller 9700000; platform 300000). No RPC errors; all 15 checks true. It is a provider-history verification, **not cryptographic finality**, and does not prove canonical source/destination or NFT ownership.
+
+**Production Escrow evidence:** [production-role proof 43700721551](https://github.com/jill0010/ton-marketplace/actions/runs/43700721551), [artifact 14155533907](https://github.com/jill0010/ton-marketplace/actions/runs/43700721551/artifacts/14155533907). Production Escrow address `kQBdX2PpCASy50dZOmspilaHrnPa6mgJ-DhuzBpNR4LJpQOP`; initialized with Marketplace `kQB9Q03obJYKG84bfXFrpL6OtUcX41z54A3m4LFGf_0a14D_`. Fixture order 1 Marketplace is `kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF`, and fixture Escrow is `kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm`. **The production Escrow is not bound to the Marketplace used by successful fixture order 1.** Its standalone code-hash check must not be treated as production end-to-end acceptance.
+
+**Failure-path evidence:** [static and emulator gate 43845676276](https://github.com/jill0010/ton-marketplace/actions/runs/43845676276) reports 155 tests passing. This supports emulator-level controls but is not independent adversarial review of a production-bound contract deployment.
+
+**Seal status:** PARTIAL. Archived run links above; preserve copies of artifacts before expiry. Still open: independently confirm canonical sender/recipient and matching message hashes; verify NFT owner and receipt chain linkage; verify production code **cell hash** against pinned compiled artifact and inspect both sides of Marketplace↔Escrow binding; independent TON/Tolk security audit and signed findings. **MAINNET NO-GO.**
