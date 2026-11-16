@@ -27,8 +27,8 @@ jobs:
         run: |
           set -uo pipefail
           acton build
-          acton script scripts/s07-09-inspect-fixture-index-3.tolk --net testnet > "$GITHUB_WORKSPACE/fixture-index-3-inspection.log" 2>&1
-          result=$?
+          result=0
+          acton script scripts/s07-09-inspect-fixture-index-3.tolk --net testnet > "$GITHUB_WORKSPACE/fixture-index-3-inspection.log" 2>&1 || result=$?
           cat "$GITHUB_WORKSPACE/fixture-index-3-inspection.log"
           echo "Inspector exit status: $result (getter may fail if NFT not initialized)" | tee -a "$GITHUB_WORKSPACE/fixture-index-3-inspection.log"
           exit 0
