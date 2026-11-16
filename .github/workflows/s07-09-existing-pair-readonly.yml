@@ -1,0 +1,38 @@
+name: S07-09 Existing Pair Read-only Evidence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - name: Verify existing S07-08 production code hashes and bindings without transactions
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { verifyV3ProductionTestnet } from './contracts/marketplace/scripts/verify-v3-production-testnet.mjs';
+          import { verifyV3ProductionBindings } from './contracts/marketplace/scripts/verify-v3-production-testnet-bindings.mjs';
+          const addresses = {
+            marketplace:'kQCjpxlAc67afGlrC27CGbZzQxjOg8ME42URSFyY3aEL5gCg',
+            escrow:'kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8',
+            coordinator:'kQCUs3jh8gTQtlAE3FgLVsiM5_j9TOTLKZUJgqacUFiO5_je',
+            verifier:'kQALNPtOZ5AIkaEwf4hoDTdJwgVttAwDq2ONZwuJTTzrZy-k'
+          };
+          const code = await verifyV3ProductionTestnet(addresses);
+          const bindings = await verifyV3ProductionBindings(addresses,'d5225b3d77a5700476a3046d663a66907162849989c49caa4b98412ace60be1e');
+          console.log(JSON.stringify({network:'testnet',addresses,allActive:code.allActive,bindingsVerified:bindings.bindingsVerified,transactionSent:false,mainnetApproved:false},null,2));
+          if(!code.allActive || !bindings.bindingsVerified) process.exitCode=1;
+          NODE
