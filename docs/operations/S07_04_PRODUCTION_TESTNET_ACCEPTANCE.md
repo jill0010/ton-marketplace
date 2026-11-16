@@ -1,41 +1,44 @@
-# S07-04 — Production testnet safety and transaction acceptance
+# S07 — Mainnet pre-release acceptance (evidence ledger)
 
-Status: **IN PROGRESS / NOT APPROVED FOR MAINNET**
-Candidate source: `feature/reserve-refund-v3-audit` (pin exact SHA before executing transaction acceptance).
-Network: **TON TESTNET ONLY**. No mainnet signing, deployment, purchase, or customer funds.
+Status: **BLOCKED / NO MAINNET AUTHORIZATION**. Network: **TON TESTNET ONLY**.
 
-## S07-03 proven baseline (do not repeat deployment)
-- Workflow: https://github.com/jill0010/ton-marketplace/actions/runs/43754276063
-- Artifact: https://github.com/jill0010/ton-marketplace/actions/runs/43754276063/artifacts/14176958667
-- Independent postflight: `candidateAccountsActive=true`, `codeHashesVerified=true`, `bindingsVerified=true`, `mainnetApproved=false`.
-- Marketplace: `kQC_UhR2wStYmFmPl_W2acYW7aeLUMBWn7GgQN4b1GmxqCyA`
-- Escrow: `kQBMWX9agczB5MGgqHQTBU2yhVS7ApWAjhgaeoFHdkQBRsCy`
-- Coordinator: `kQAxUi7LTfvy02mzY_d3odgbIklni0lNtOn5VEwta4ZMFowc`
-- Verifier: `kQB91R0ihPflIhFRFrfEKq0IhIQfzcoazsf6BPUa01_27Xu0`
-- Reserve Vault is **per-order**: do not infer an actual deployed instance from its embedded code hash.
+## Verified successful fixture testnet order (2026-11-16)
 
-## S07-04 acceptance gates
+- Settlement workflow: https://github.com/jill0010/ton-marketplace/actions/runs/43844621546
+- Settlement evidence artifact: https://github.com/jill0010/ton-marketplace/actions/runs/43844621546/artifacts/14214781336 (30-day retention; archive before expiry).
+- Candidate source checked out in this run: `47c4e56620b41cf49c033bb006ceedd4190a8958`.
+- Marketplace: `kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF`.
+- Escrow: `kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm` (**NFTEscrowV2Testnet fixture variant, NOT production NFTEscrowV2**).
+- Coordinator: `kQByrR9dHWfBsVYsF-F_G5zXk8xnp2T1gI6hQ-NHl6kjeVmQ`.
+- Verifier: `kQDH2CEuo0bVVQm35V15cD75fm1kb3bXJH8TSXEdfR_Y8C4h`.
+- Item: `kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr`; product 1, order 1.
+- Per-order Vault: `kQAEE6nrpZDqAReQQLgqPwxvP17dmiEO3bgsSY6U-x4nn0PY`.
+- Attestor output: `validatorQuorum=3/3`, `vaultStatus=3`, `paidNano=200000000`.
+- Buyer reserve receipt hash (TON Center Base64): `B5CJbAf4ibz/cKJIxvYItMF7J2D4E0N9dlqk30VOhYM=`.
+- Vault reserve dispatch hash: `BA1meAxcnBo1lm/2RLVl8MMA5XaYZFgEtw7ywd05Na4=`.
+- Seller payout receipt hash: `1dJEcuRK0/5oOk74jPAczYZGoU7qOVyd9elDODapfQg=`.
+- Platform payout receipt hash: `OUAyMw6JksgMDo5GwlmCS+2vpSFxkkFGzVXpq4MYluk=`.
+- Final on-chain state verifier reports buyer NFT ownership, reserve paid, in-flight 0, available 0. Its own output explicitly states **independent transfer finality not attested**; do not misrepresent this as an independent external audit.
 
-| Gate | Required evidence | Status |
+## Mandatory mainnet gates
+
+| Gate | Status | Remaining action |
 | --- | --- | --- |
-| A. Exact candidate and privileges | Pinned source SHA; bytecode provenance; owners, authorized setters, 3-of-3 validator configuration, immutable role bindings | PARTIAL: deployed code/bindings verified; independent privilege review pending |
-| B. Real payment | Fresh testnet order on the four addresses above; buyer transaction hash, amount, order ID, acceptance and finality evidence | NOT VERIFIED |
-| C. NFT custody and delivery | Item address, escrow ownership before release, buyer ownership after, transaction traces | NOT VERIFIED |
-| D. Seller/platform settlement | On-chain receipts, exact expected amounts, one-time execution/replay protection | NOT VERIFIED |
-| E. 0.2 TON reserve | Concrete order-specific Vault address and code hash, funding, fees, final refund amount, buyer receipt, conservation check | NOT VERIFIED |
-| F. Failure recovery | Failed purchase / failed NFT transfer / bounce and retry behavior with evidence that funds cannot be paid or refunded twice | NOT VERIFIED |
-| G. Independent audit | External TON/Tolk reviewer identity, report, findings, remediation, independent re-review | BLOCKED: independent audit not performed |
-| H. Release authorization | Explicit owner approval only after all mandatory gates pass | NOT APPROVED |
+| A. Exact production source/bytecode/roles | PARTIAL | Pin release SHA, reproduce hashes and review privileged setters/validator authority independently |
+| B. Fixture testnet purchase | PASS FOR FIXTURE ONLY | Do not generalize to real Fragment item |
+| C. Fixture NFT custody and delivery | PASS FOR FIXTURE ONLY | Production Escrow and authentic item compatibility remain unverified end-to-end |
+| D. Seller/platform settlement | PASS FOR FIXTURE RECEIPTS | Independent trace/finality review remains |
+| E. 0.2 TON reserve refund | PASS FOR THIS FIXTURE ORDER | Verify conservation/fees across failure paths and other orders |
+| F. Failure recovery / bounce / replay | NOT ACCEPTED | Evidence for failed purchase, failed NFT transfer, double refund and retry protection; do not send funds until scenario reviewed |
+| G. Independent security audit | BLOCKED | Independent TON/Tolk reviewer, findings, remediation and re-review report |
+| H. Explicit release authorization | BLOCKED | Owner approval after A–G; no mainnet deployment or transfer before that |
 
-## Execution order (minimal mainline)
-1. **Read-only baseline:** rerun existing S07-03 read-only verification on the exact four addresses; retain timestamped evidence.
-2. **Fresh testnet-only transaction:** review any existing end-to-end workflow before running it. It must target **these exact four addresses**, use production `NFTEscrowV2` rather than fixture, require explicit testnet confirmation, and refuse any mainnet address. If not, adapt that workflow before execution. Do not reuse historical order evidence as proof of this candidate.
-3. **Independent read-only receipts:** verify payment, NFT transfer, seller/platform amounts, per-order Vault code hash and refund, and 3-of-3 attestations. Save raw transaction IDs and JSON evidence.
-4. **Safety review:** inspect privileged operations, authorization, bounce/replay, accounting invariants, and recoverability. Arrange independent review before declaring launch-ready.
-5. **Gate decision:** fail closed on missing evidence; no mainnet action.
+## Next actions (minimal S07 path)
 
-## Known scope boundary
-Historical S07 audit handoff: `docs/security/S07_V3_INDEPENDENT_AUDIT_HANDOFF.md`. That handoff explicitly says it is **not** an independent audit or mainnet authorization. The earlier S07-03 postflight sets `fundedPurchaseVerified=false` and `settlementVerified=false`, so it cannot be used as a transaction-closure certificate.
+1. Archive the run artifact and exact transaction receipts before 30-day retention expires; record source commit and deployed code hashes.
+2. Independently validate NFT transfer and all three recipient receipts against chain transaction traces; reconcile order-specific Vault principal and fees.
+3. Review production `NFTEscrowV2.tolk` separately from `NFTEscrowV2Testnet.tolk`; synthetic code hash `0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f` must not be allowed in production.
+4. Produce failure-path evidence without replaying settled order 1; complete independent audit and remediation.
+5. Issue a signed-off go/no-go decision; until then **NO-GO**.
 
-## Outcome
-S07-04 is **NOT COMPLETE** until the fresh candidate order, full reserve/refund accounting, failure recovery, and independent security review are evidenced.
+This record supersedes stale S07-04 candidate addresses in earlier draft acceptance notes; historical S07-03 testnet candidate remains separate evidence, not proof for the fixture order above.
