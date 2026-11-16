@@ -163,7 +163,7 @@ async function toncenter(path, params = {}) {
   const url = new URL(API + "/" + path);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
   let response;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     response = await fetch(url, {
       headers: process.env.TONCENTER_API_KEY ? { "X-API-Key": process.env.TONCENTER_API_KEY } : {},
       redirect: "error",
@@ -171,10 +171,10 @@ async function toncenter(path, params = {}) {
     if (response.ok) break;
     // TON Center may report transient gateway/shard errors as nonstandard 542.
     // Retry read-only RPC failures, but never retry transaction submissions.
-    if (![429, 500, 502, 503, 504, 520, 522, 524, 542].includes(response.status) || attempt === 5) {
+    if (![429, 500, 502, 503, 504, 520, 522, 524, 542].includes(response.status) || attempt === 9) {
       throw new Error(path + " RPC HTTP " + response.status);
     }
-    await sleep(response.status === 429 ? Math.min(2000 * 2 ** attempt, 20000) : Math.min(1000 * 2 ** attempt, 10000));
+    await sleep(response.status === 429 ? Math.min(2000 * 2 ** attempt, 20000) : Math.min(1500 * 2 ** attempt, 15000));
   }
   const data = await response.json();
   if (data.ok !== true) throw new Error(path + " RPC returned ok=false");
