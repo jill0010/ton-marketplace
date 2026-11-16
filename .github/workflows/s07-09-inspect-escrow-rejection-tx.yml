@@ -1,0 +1,28 @@
+name: S07-09 Inspect Escrow Rejection Transaction (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: "kQBxNyuqr-Ab5_LUzCc6KsXUEN9Q7vGT-HlDslDvBEuEDLK8"
+      S07_09_FAILED_QUERY_ID: "43855669637"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Read existing Escrow transactions and compute exit codes
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/s07-09-inspect-escrow-tx.mjs | tee s07-09-escrow-tx.log
+      - name: Preserve transaction diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-09-escrow-tx-${{ github.run_id }}
+          path: s07-09-escrow-tx.log
+          if-no-files-found: ignore
