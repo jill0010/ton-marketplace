@@ -17,11 +17,11 @@ fun main() {
     // Recovery calculation is read-only and does not require deployment approval.
     val expectedDeployer = env<address>("V3_TESTNET_DEPLOYER_ADDRESS");
     assert (expectedDeployer != null) throw 821;
-    val deployer = scripts.wallet("deployer");
-    assert (deployer.address == expectedDeployer!) throw 821;
-    val treasuryAddress = env<address>("PLATFORM_TREASURY_ADDRESS") ??
-        scripts.wallet("treasury").address;
-    assert (deployer.address != treasuryAddress) throw 822;
+    val deployer = expectedDeployer!;
+    val treasuryInput = env<address>("PLATFORM_TREASURY_ADDRESS");
+    assert (treasuryInput != null) throw 822;
+    val treasuryAddress = treasuryInput!;
+    assert (deployer != treasuryAddress) throw 822;
 
     val validator0 = env<int>("V3_VALIDATOR_0_PUBLIC_KEY");
     val validator1 = env<int>("V3_VALIDATOR_1_PUBLIC_KEY");
@@ -38,8 +38,8 @@ fun main() {
     val freshNonce = env<int>("V3_FRESH_DEPLOYMENT_NONCE") ?? 1;
     assert (freshNonce > 0 && freshNonce < 9223372036854775807) throw 839;
     val initial = MarketplaceReserveStorageV3 {
-        owner: deployer.address,
-        escrow: deployer.address,
+        owner: deployer,
+        escrow: deployer,
         escrowConfigured: false,
         nextProductId: 1,
         nextQueryId: freshNonce,
@@ -47,7 +47,7 @@ fun main() {
         assetListings: [],
         queryToProduct: [],
         purchaseStorage: MarketplaceReservePurchaseStorageV3 {
-            coordinator: deployer.address,
+            coordinator: deployer,
             coordinatorConfigured: false,
             reserves: [],
             schemaVersion: 3,
@@ -80,7 +80,7 @@ fun main() {
     };
 
     val escrow = NFTEscrowV2Testnet.fromStorage(NFTEscrowV2Storage {
-        owner: deployer.address,
+        owner: deployer,
         marketplace: marketplace.address,
         records: [],
         assetToEscrow: [],
@@ -111,7 +111,7 @@ fun main() {
     val verifierState: ContractState = {
         code: build("SettlementAttestationVerifierV3"),
         data: SettlementVerifierStorageV3 {
-            owner: deployer.address,
+            owner: deployer,
             marketplace: marketplace.address,
             networkGlobalId: -3,
             epoch: 1,
@@ -129,7 +129,7 @@ fun main() {
     val coordinatorState: ContractState = {
         code: build("ReserveCoordinatorV3"),
         data: ReserveCoordinatorStorageV3 {
-            owner: deployer.address,
+            owner: deployer,
             marketplace: marketplace.address,
             verifier,
             vaultCode: build("ReserveVaultV3"),
