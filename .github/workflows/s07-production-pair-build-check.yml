@@ -66,6 +66,58 @@ jobs:
             contracts/marketplace/s07-07-bound-escrow-code.b64
           if-no-files-found: warn
           retention-days: 30
+      - name: S07-08 production pairing preflight (no wallet, no transactions)
+        env:
+          S07_08_FRESH_NONCE: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,re,pathlib,json
+          source=pathlib.Path('scripts/deploy-v3-production-testnet.tolk').read_text()
+          nonce=int(os.environ['S07_08_FRESH_NONCE'])
+          assert 0<nonce<9223372036854775807, 'nonce outside uint63 range'
+          requirements={
+            'testnet_only_approval':'V3_PRODUCTION_TESTNET_DEPLOY_APPROVED',
+            'explicit_deployer':'V3_TESTNET_DEPLOYER_ADDRESS',
+            'treasury':'PLATFORM_TREASURY_ADDRESS',
+            'validator_0':'V3_VALIDATOR_0_PUBLIC_KEY',
+            'validator_1':'V3_VALIDATOR_1_PUBLIC_KEY',
+            'validator_2':'V3_VALIDATOR_2_PUBLIC_KEY',
+            'fresh_nonce':'V3_FRESH_DEPLOYMENT_NONCE',
+            'nonce_in_state_init':'nextQueryId: freshNonce',
+            'marketplace_code':'build("MarketplaceReserveV3")',
+            'production_escrow_code':'build("NFTEscrowV2")',
+            'production_escrow_storage':'NFTEscrowV2.fromStorage',
+            'escrow_reverse_binding':'marketplace: marketplace.address',
+            'verifier_marketplace_binding':'marketplace: marketplace.address',
+            'coordinator_marketplace_binding':'marketplace: marketplace.address',
+            'coordinator_verifier_binding':'verifier,',
+            'testnet_global_id':'networkGlobalId: -3',
+            'escrow_config_message':'SetMarketplaceV2Escrow { escrow: escrow.address }',
+            'coordinator_config_message':'SetReserveCoordinatorV3 { coordinator }',
+            'escrow_persisted_read':'marketplace.escrowV2()',
+            'escrow_reverse_read':'escrow.marketplace()',
+          }
+          checks={k:v in source for k,v in requirements.items()}
+          checks['no_fixture_escrow']='NFTEscrowV2Testnet' not in source
+          checks['no_mainnet_invocation']='--net mainnet' not in source
+          checks['unique_validator_guard']='validator0!! != validator1!!' in source and 'validator0!! != validator2!!' in source and 'validator1!! != validator2!!' in source
+          checks['initial_escrow_unconfigured']='escrowConfigured: false' in source
+          checks['initial_coordinator_unconfigured']='coordinatorConfigured: false' in source
+          checks['deployment_nonce_valid']=True
+          output={'stage':'S07-08','branch':'feature/reserve-refund-v3-audit','nonce_candidate':nonce,'checks':checks,'all_static_checks_passed':all(checks.values()),'address_derivation_verified':False,'historical_address_collision_checked':False,'deployed':False,'mainnet_approved':False,'limitations':['Static source checks do not prove actual derived addresses or on-chain identities.','No wallet or deploy transaction is invoked.']}
+          pathlib.Path('s07-08-preflight.json').write_text(json.dumps(output,indent=2))
+          print(json.dumps(output,indent=2))
+          if not all(checks.values()): raise SystemExit('S07-08 static preflight failed')
+          PY
+      - name: Upload S07-08 preflight evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-08-preflight-${{ github.run_id }}
+          path: contracts/marketplace/s07-08-preflight.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Confirm production build without transaction execution
         run: |
           set -euo pipefail
