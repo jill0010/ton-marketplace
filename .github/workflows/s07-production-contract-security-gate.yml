@@ -1,0 +1,65 @@
+name: S07 Production Contract Security Gate (No Transactions)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Compile production contracts
+        run: |
+          set -euo pipefail
+          acton build
+      - name: Production Escrow allowlist, permissions and replay static gate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('contracts/NFTEscrowV2.tolk').read_text()
+          fixture=Path('contracts/NFTEscrowV2Testnet.tolk').read_text()
+          vault=Path('contracts/ReserveVaultV3.tolk').read_text()
+          coordinator=Path('contracts/ReserveCoordinatorV3.tolk').read_text()
+          fake='6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f'
+          checks={
+            'fixture hash excluded from production':fake not in p,
+            'fixture hash allowed only in testnet':fake in fixture,
+            'production trusted hash A':'8b711e6809672c0335dc61d1da1dcc4059c973248af707bd586245085ea70b32' in p,
+            'production trusted hash B':'30dcd7d5b6fcf5968c2791e1e31ad732f2672f2986e1d6970eb03cca22d23251' in p,
+            'collection owner guard':'in.senderAddress == storage.owner' in p,
+            'marketplace escrow guard':'in.senderAddress == storage.marketplace' in p,
+            'NFT callback sender guard':'in.senderAddress == record.nftItem' in p,
+            'escrow pending release map':'pendingReleases' in p,
+            'escrow pending refund map':'pendingRefunds' in p,
+            'vault refund state lock':'balances.inFlight = balances.available' in vault and 'balances.available = 0' in vault,
+            'vault attestation replay guard':'consumedStatements' in vault,
+            'vault verifier sender guard':'in.senderAddress == parties.verifier' in vault,
+            'vault retry bound':'operation.retryCount == 0' in vault,
+            'coordinator source guard':'in.senderAddress == storage.marketplace' in coordinator,
+            'coordinator order uniqueness':'!storage.bindings.get(msg.orderId).isFound' in coordinator,
+          }
+          for name,passed in checks.items():
+            print(('PASS' if passed else 'FAIL')+' '+name)
+          assert all(checks.values()), 'Production contract static gate failed'
+          print('SOURCE_STATIC_GATE_PASSED=true')
+          print('INDEPENDENT_AUDIT_PASSED=false')
+          print('MAINNET_APPROVED=false')
+          PY
+      - name: Run production emulator tests
+        run: |
+          set -euo pipefail
+          acton test
+      - name: Confirm evidence and no mainnet authorization
+        run: |
+          test -f ../../docs/security/S07_PRODUCTION_CONTRACT_SECURITY_ACCEPTANCE_2026-11-16.md
+          echo 'S07_STATIC_AND_EMULATOR_GATE_COMPLETE=true'
+          echo 'S07_INDEPENDENT_FINALITY_REVIEW_PENDING=true'
+          echo 'S07_MAINNET_APPROVED=false'
