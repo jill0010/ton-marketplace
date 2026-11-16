@@ -64,11 +64,11 @@ jobs:
           set -euo pipefail
           acton script scripts/s07-09-list-compatible-nft.tolk --net testnet 2>&1 | tee s07-09-compatible-listing.log
           grep -Fq 'S07_09_COMPATIBLE_NFT_LISTED_AND_CUSTODIED: true' s07-09-compatible-listing.log
-          grep -Fq 'Product ID:' s07-09-compatible-listing.log
-          grep -Fq 'Escrow ID:' s07-09-compatible-listing.log
+          grep -Fq 'Test listing active; product ID:' s07-09-compatible-listing.log
+          grep -Fq 'Test listing escrow ID:' s07-09-compatible-listing.log
           {
             echo '## S07-09 existing NFT listing and custody'
-            grep -E '^(NFT Item:|Product ID:|Escrow ID:|S07_09_COMPATIBLE_NFT)' s07-09-compatible-listing.log
+            grep -E '^(Test listing active; product ID:|Test listing escrow ID:|NFT custody verified:|S07_09_COMPATIBLE_NFT)' s07-09-compatible-listing.log
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve listing evidence
         if: always()
