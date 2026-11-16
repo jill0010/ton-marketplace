@@ -9,9 +9,11 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Compare production and fixture roles against live testnet
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
         run: |
           python3 - <<'PY'
-          import json,urllib.request,urllib.parse,datetime,pathlib,sys
+          import json,urllib.request,urllib.parse,urllib.error,datetime,pathlib,sys,time,os
           endpoint='https://testnet.toncenter.com/api/v2/getAddressInformation'
           addresses={
             'production_escrow':'kQBdX2PpCASy50dZOmspilaHrnPa6mgJ-DhuzBpNR4LJpQOP',
@@ -23,8 +25,15 @@ jobs:
           result={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'endpoint':endpoint,'accounts':{},'binding':{},'mainnetApproved':False}
           for role,address in addresses.items():
             try:
-              req=urllib.request.Request(endpoint+'?'+urllib.parse.urlencode({'address':address}))
-              with urllib.request.urlopen(req,timeout=18) as resp: payload=json.load(resp)
+              req=urllib.request.Request(endpoint+'?'+urllib.parse.urlencode({'address':address}),headers={'X-API-Key':os.environ['TONCENTER_API_KEY']} if os.environ.get('TONCENTER_API_KEY') else {})
+              for attempt in range(7):
+                try:
+                  with urllib.request.urlopen(req,timeout=18) as resp: payload=json.load(resp)
+                  break
+                except urllib.error.HTTPError as error:
+                  if error.code not in (429,500,502,503,504,542) or attempt==6:raise
+                  time.sleep(min(3*2**attempt,30))
+              time.sleep(1.5)
               if not payload.get('ok'):raise ValueError(str(payload.get('error')))
               data=payload['result']
               result['accounts'][role]={'address':address,'state':data.get('state'),'last_transaction_id':data.get('last_transaction_id'),'has_code':bool(data.get('code'))}
