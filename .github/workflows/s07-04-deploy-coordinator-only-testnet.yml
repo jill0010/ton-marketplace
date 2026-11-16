@@ -1,0 +1,134 @@
+name: S07-04 Deploy Coordinator Only and Bind Existing Suite (Testnet)
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_coordinator_only_testnet:
+        description: "Preserve active Marketplace Escrow and Verifier; deploy Coordinator only and bind. TESTNET only."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s07-04-fixture-suite-recovery-43828407746
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_coordinator_only_testnet == true && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: contracts/marketplace
+    env:
+      DEPLOYER_MNEMONIC: ${{ secrets.TESTNET_DEPLOYER_MNEMONIC }}
+      SELLER_MNEMONIC: ${{ secrets.TESTNET_SELLER_MNEMONIC }}
+      TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+      V3_VALIDATOR_0_SEED: ${{ secrets.V3_VALIDATOR_0_SEED }}
+      V3_VALIDATOR_1_SEED: ${{ secrets.V3_VALIDATOR_1_SEED }}
+      V3_VALIDATOR_2_SEED: ${{ secrets.V3_VALIDATOR_2_SEED }}
+      S07_04_TESTNET_COORDINATOR_ONLY_APPROVED: "true"
+      V3_TESTNET_DEPLOYER_ADDRESS: "0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu"
+      PLATFORM_TREASURY_ADDRESS: "0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0"
+      V3_FRESH_DEPLOYMENT_NONCE: '43828407746'
+      S07_04_EXISTING_MARKETPLACE_ADDRESS: kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF
+      S07_04_EXISTING_ESCROW_ADDRESS: kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm
+      S07_04_EXISTING_VERIFIER_ADDRESS: kQDH2CEuo0bVVQm35V15cD75fm1kb3bXJH8TSXEdfR_Y8C4h
+    steps:
+      - name: Checkout S07-04 feature branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          persist-credentials: false
+      - name: Guard isolated TESTNET fixture deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$DEPLOYER_MNEMONIC"
+          test -n "$SELLER_MNEMONIC"
+          test -n "$TONCENTER_API_KEY"
+          for name in V3_VALIDATOR_0_SEED V3_VALIDATOR_1_SEED V3_VALIDATOR_2_SEED; do
+            value="${!name:-}"
+            [[ "$value" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "::error::Missing or invalid $name"; exit 1; }
+          done
+          grep -Fq 'NFTEscrowV2Testnet.fromStorage' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          grep -Fq 'S07_04_MARKETPLACE_REDEPLOYED: false' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          grep -Fq 'S07_04_ESCROW_REDEPLOYED: false' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          grep -Fq 'S07_04_VERIFIER_REDEPLOYED: false' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          ! grep -Fq 'verifierDeploy' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          ! grep -Fq 'escrow.deploy(' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          ! grep -Fq 'marketplace.deploy(' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          grep -Fq 'S07_04_TESTNET_COORDINATOR_ONLY_APPROVED' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+          grep -Fq '0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f' contracts/NFTEscrowV2Testnet.tolk
+          ! grep -Fq '0x6118df7fb1be9e18008b31600472fe22b8e1d26339fe54099cb5f868736bac6f' contracts/NFTEscrowV2.tolk
+          ! grep -Fq 'codeHash == codeHash ==' contracts/NFTEscrowV2Testnet.tolk
+          ! grep -Fq -- '--net mainnet' scripts/s07-04-deploy-coordinator-only-testnet.tolk
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        working-directory: .
+        run: npm ci --ignore-scripts
+      - name: Derive public validator keys
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node contracts/marketplace/scripts/derive-v3-validator-keys.mjs > "$RUNNER_TEMP/s07-04-validator-keys.env"
+          cat "$RUNNER_TEMP/s07-04-validator-keys.env" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/s07-04-validator-keys.env"
+      - name: Check TESTNET funding before transactions
+        run: node scripts/preflight-v3-testnet-funding.mjs
+      - name: Setup Acton
+        uses: ton-blockchain/setup-acton@0f9f436843d740466cae2d7411ff59072dde942e
+      - name: Configure ephemeral TESTNET wallets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > wallets.toml <<'WALLETS'
+          [wallets.deployer]
+          kind = "v5r1"
+          workchain = 0
+          keys = { mnemonic-env = "DEPLOYER_MNEMONIC" }
+
+          [wallets.treasury]
+          kind = "v5r1"
+          mnemonic-scheme = "bip39"
+          workchain = 0
+          keys = { mnemonic-env = "SELLER_MNEMONIC" }
+          WALLETS
+          chmod 600 wallets.toml
+          acton script scripts/check-v3-production-testnet-wallets.tolk --net testnet
+      - name: Build compatible suite
+        run: acton build
+      - name: Deploy TESTNET suite and verify on-chain reciprocal bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          acton script scripts/s07-04-deploy-coordinator-only-testnet.tolk --net testnet > s07-04-coordinator-only.log 2>&1 || {
+            tail -100 s07-04-coordinator-only.log
+            exit 1
+          }
+          grep -Fq "S07_04_EXISTING_THREE_CONTRACTS_SUITE_BOUND: true" s07-04-coordinator-only.log
+          for name in marketplace escrow coordinator verifier; do
+            grep -Fq "V3 testnet candidate $name:" s07-04-coordinator-only.log
+          done
+          grep -F 'V3 testnet candidate ' s07-04-coordinator-only.log
+          grep -F 'V3 trusted compiled ' s07-04-coordinator-only.log
+          echo "S07_04_EXISTING_SUITE_RESUMED_AND_BOUND=true"
+      - name: Upload deployment and binding evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s07-04-coordinator-only-${{ github.run_id }}
+          path: contracts/marketplace/s07-04-coordinator-only.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove temporary wallet profiles
+        if: always()
+        run: rm -f wallets.toml
