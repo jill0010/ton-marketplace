@@ -195,17 +195,24 @@ fun main() {
         }
     }
 
-    val coordinatorDeploy = net.send(
-        deployer.address,
-        createMessage({
-            bounce: false,
-            value: grams("0.1"),
-            dest: coordinatorDestination,
-        }),
-    );
-    if (coordinatorDeploy.waitForFirstTransaction() == null) {
-        println("Reserve coordinator deployment transaction missing");
-        throw 827;
+    // This exact Coordinator was confirmed active after the Acton wait timed out.
+    if (env<bool>("V3_RESUME_EXISTING_COORDINATOR_TESTNET") ?? false) {
+        assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorMarketplaceV3") == marketplace.address) throw 843;
+        assert (net.runGetMethod<address>(coordinator, "reserveCoordinatorVerifierV3") == verifier) throw 843;
+        println("Existing production Reserve Coordinator V3 verified; skipping duplicate deployment.");
+    } else {
+        val coordinatorDeploy = net.send(
+            deployer.address,
+            createMessage({
+                bounce: false,
+                value: grams("0.1"),
+                dest: coordinatorDestination,
+            }),
+        );
+        if (coordinatorDeploy.waitForFirstTransaction() == null) {
+            println("Reserve coordinator deployment transaction missing");
+            throw 827;
+        }
     }
 
     // Send the canonical V2 escrow-binding message directly. This avoids
