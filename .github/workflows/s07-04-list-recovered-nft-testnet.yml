@@ -1,4 +1,4 @@
-name: S07-04 List Recovered NFT on Production Escrow (Testnet)
+name: S07-04 List Existing NFT on Bound V3 Testnet Suite
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: s07-04-recovered-nft-listing-43819564334
+  group: s07-04-recovered-nft-listing-bound-v3
   cancel-in-progress: false
 jobs:
   list:
@@ -26,8 +26,8 @@ jobs:
       TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
       S07_04_CONFIRM_RECOVERED_NFT_LISTING: 'true'
       S07_04_RECOVERED_NFT_ADDRESS: kQADbJlooYUmz6-iT8a9tQ3nJJIq3vO7gdnAFmdgNOu0FJpr
-      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: kQC_UhR2wStYmFmPl_W2acYW7aeLUMBWn7GgQN4b1GmxqCyA
-      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: kQBMWX9agczB5MGgqHQTBU2yhVS7ApWAjhgaeoFHdkQBRsCy
+      V3_PRODUCTION_TESTNET_MARKETPLACE_ADDRESS: kQAU4RhS-YlpOickiI4iSGlM0da0B2s68xuFhqaRwDtDFGkF
+      V3_PRODUCTION_TESTNET_ESCROW_ADDRESS: kQC0LGltRDIVp7FxjHZhYX-FBgHAD1MP1afFSgkYjkhuwycm
       V3_TESTNET_DEPLOYER_ADDRESS: 0QDQEewIr69mGcq6uDIlAtibxW37gm7rJfKWru7o4_hSPbzu
       PLATFORM_TREASURY_ADDRESS: 0QASRB4XGtN81Pwaef6fWnSJyRwwJEvbbPn-ksz0KQI-bFa0
     steps:
@@ -63,7 +63,7 @@ jobs:
           acton script scripts/s07-04-check-recovered-nft-readonly.tolk --net testnet 2>&1 | tee ../../s07-04-listing-before.log
           grep -Fq 'S07_04_PRODUCT_ID: null' ../../s07-04-listing-before.log
           grep -Fq 'S07_04_OWNER_IS_SELLER: true' ../../s07-04-listing-before.log
-      - name: Publish and transfer ORIGINAL NFT into existing production Escrow
+      - name: Publish and transfer ORIGINAL NFT into bound testnet-compatible Escrow
         run: |
           set -euo pipefail
           acton script scripts/s07-04-list-recovered-nft-testnet.tolk --net testnet 2>&1 | tee ../../s07-04-recovered-nft-listing.log
