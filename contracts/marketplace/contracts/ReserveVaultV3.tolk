@@ -3,6 +3,7 @@ import "SettlementAttestationVerifierV3"
 struct ReserveVaultFundingIdentityV3 {
     fundingSource: address
     marketplace: address
+    networkGlobalId: int32
 }
 
 struct ReserveVaultPartiesV3 {
@@ -191,7 +192,8 @@ fun onInternalMessage(in: InMessage) {
             val statementIdentity = root.identity.load();
             val statementOperation = root.operation.load();
             val statementDispatch = root.dispatch.load();
-            assert (root.networkGlobalId == -3) throw 769;
+            assert (funding.networkGlobalId == -3 || funding.networkGlobalId == -239) throw 769;
+            assert (root.networkGlobalId == funding.networkGlobalId) throw 769;
             assert (statementIdentity.marketplace == funding.marketplace) throw 769;
             assert (statementIdentity.vault == contract.getAddress()) throw 769;
             assert (statementIdentity.buyer == parties.buyer) throw 769;
