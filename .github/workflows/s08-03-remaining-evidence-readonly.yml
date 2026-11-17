@@ -1,0 +1,56 @@
+name: S08-03 Remaining Evidence Only (Read Only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  remaining-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact V3 implementation
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feature/reserve-refund-v3-audit
+          fetch-depth: 0
+      - name: Install read-only TON cell decoder
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compare settled order Vault code and record final-candidate provenance
+        env:
+          TONCENTER_API_KEY: ${{ secrets.TONCENTER_TESTNET_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p s08-03-evidence
+          node --input-type=module <<'NODE' | tee s08-03-evidence/order-vault-code-hash.txt
+          import {Cell} from '@ton/core';
+          const address='kQCFPrbZgKoPgZlBCmWDxWgyfHJdS18-rvkE-PkrzlCcGRu_';
+          const expected=96403339264512730204843696723697573046015770335637526243123230074643027115550n;
+          const response=await fetch('https://testnet.toncenter.com/api/v2/getAddressInformation?address='+encodeURIComponent(address),{headers:process.env.TONCENTER_API_KEY?{'X-API-Key':process.env.TONCENTER_API_KEY}:{},redirect:'error'});
+          if(!response.ok)throw Error('RPC HTTP '+response.status);
+          const json=await response.json();
+          if(!json.ok||json.result?.state!=='active'||!json.result.code)throw Error('Order Vault missing active code');
+          const actual=BigInt('0x'+Cell.fromBase64(json.result.code).hash().toString('hex'));
+          console.log(JSON.stringify({network:'testnet',address,observedAt:new Date().toISOString(),state:json.result.state,expectedDecimal:expected.toString(),actualDecimal:actual.toString(),match:actual===expected},null,2));
+          if(actual!==expected)throw Error('Order Vault code hash does not match pinned production hash');
+          NODE
+          {
+            echo "S08-03 final-candidate provenance (not an independent audit)"
+            echo "Checked out commit: $(git rev-parse HEAD)"
+            echo "Historical pinned candidate: 4d97607a6bd22494e105852a3c375fc905a9d219"
+            echo "Historical settled order: S07-09 (Actions 43902102867)"
+            echo "Current source SHA256:"
+            sha256sum contracts/marketplace/contracts/{MarketplaceReserveV3,NFTEscrowV2,ReserveCoordinatorV3,ReserveVaultV3,SettlementAttestationVerifierV3}.tolk
+            echo "Differences from pinned candidate for five production contract sources:"
+            git diff --name-status 4d97607a6bd22494e105852a3c375fc905a9d219 HEAD -- contracts/marketplace/contracts/{MarketplaceReserveV3,NFTEscrowV2,ReserveCoordinatorV3,ReserveVaultV3,SettlementAttestationVerifierV3}.tolk
+          } | tee s08-03-evidence/provenance.txt
+          if [ -n "$(git diff --name-only 4d97607a6bd22494e105852a3c375fc905a9d219 HEAD -- contracts/marketplace/contracts/{MarketplaceReserveV3,NFTEscrowV2,ReserveCoordinatorV3,ReserveVaultV3,SettlementAttestationVerifierV3}.tolk)" ]; then
+            echo "::warning::Production source changed since historical pinned candidate; final compiled bytecode provenance is NOT established."
+          else
+            echo "Five production contract source files unchanged since pinned candidate; toolchain/build equivalence still requires release gate review."
+          fi
+      - name: Upload only remaining evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s08-03-remaining-evidence
+          path: s08-03-evidence/
+          if-no-files-found: warn
