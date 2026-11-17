@@ -12,6 +12,7 @@ struct ReserveCoordinatorStorageV3 {
     owner: address
     marketplace: address
     verifier: address
+    networkGlobalId: int32
     vaultCode: cell
     bindings: map<uint64, Cell<ReserveCoordinatorBindingV3>>
 }
@@ -92,6 +93,7 @@ fun onInternalMessage(in: InMessage) {
             // separate per-order vault operational budget; network execution
             // fees are paid from the coordinator's independently funded balance.
             assert (in.valueCoins == grams("0.28")) throw 784;
+            assert (storage.networkGlobalId == -3 || storage.networkGlobalId == -239) throw 785;
             val vaultState: ContractState = {
                 code: storage.vaultCode,
                 data: ReserveVaultStorageV3 {
@@ -100,6 +102,7 @@ fun onInternalMessage(in: InMessage) {
                         funding: ReserveVaultFundingIdentityV3 {
                             fundingSource: contract.getAddress(),
                             marketplace: storage.marketplace,
+                            networkGlobalId: storage.networkGlobalId,
                         }.toCell(),
                         parties: ReserveVaultPartiesV3 {
                             verifier: storage.verifier,
