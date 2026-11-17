@@ -130,6 +130,7 @@ fun main() {
             owner: deployerAddress,
             marketplace: marketplace.address,
             verifier,
+            networkGlobalId: -3,
             vaultCode: build("ReserveVaultV3"),
             bindings: [],
         }.toCell(),

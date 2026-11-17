@@ -16,6 +16,7 @@ fun productionCoordinatorSetup(vaultCode: cell? = null): (address, address, addr
             owner,
             marketplace,
             verifier,
+            networkGlobalId: -3,
             vaultCode: vaultCode ?? build("ReserveVaultV3"),
             bindings: [],
         }.toCell(),

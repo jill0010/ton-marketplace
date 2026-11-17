@@ -288,6 +288,7 @@ fun main() {
             owner: deployer.address,
             marketplace: marketplace.address,
             verifier,
+            networkGlobalId: -3,
             vaultCode: badVault ? build("Empty") : build("ReserveVaultV3"),
             bindings: [],
         }.toCell(),

@@ -6,7 +6,7 @@ import "@acton/testing/expect"
 import "@contracts/ReserveVaultV3"
 import "@contracts/SettlementAttestationVerifierV3"
 
-fun productionReserveSetup(): (address, address, address, address, address, KeyPair, KeyPair) {
+fun productionReserveSetup(networkGlobalId: int32 = -3): (address, address, address, address, address, KeyPair, KeyPair) {
     testing.setNow(1700000000);
     val owner = testing.treasury("productionReserveOwner").address;
     val marketplace = testing.treasury("productionReserveMarketplace").address;
@@ -24,7 +24,7 @@ fun productionReserveSetup(): (address, address, address, address, address, KeyP
         data: SettlementVerifierStorageV3 {
             owner,
             marketplace,
-            networkGlobalId: -3,
+            networkGlobalId,
             epoch: 4,
             threshold: 2,
             validatorKeys,
@@ -50,6 +50,7 @@ fun productionReserveSetup(): (address, address, address, address, address, KeyP
                 funding: ReserveVaultFundingIdentityV3 {
                     fundingSource: funder,
                     marketplace,
+                    networkGlobalId,
                 }.toCell(),
                 parties: ReserveVaultPartiesV3 {
                     verifier,
@@ -129,6 +130,7 @@ fun productionReserveStatement(
     outcome: uint8,
     settledAmount: coins,
     dispatchMessageHash: uint256,
+    networkGlobalId: int32 = -3,
 ): cell {
     val identity = beginCell()
         .storeAddress(marketplace)
@@ -151,7 +153,7 @@ fun productionReserveStatement(
     return beginCell()
         .storeUint(0x56523301, 32)
         .storeUint(1, 16)
-        .storeInt(-3, 32)
+        .storeInt(networkGlobalId, 32)
         .storeRef(identity)
         .storeRef(operation)
         .storeRef(dispatch)
@@ -210,6 +212,32 @@ get fun `test production reserve vault funds dispatches and settles only after v
     expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
     expect(net.runGetMethod<coins>(vault, "reserveVaultPaidV3")).toEqual(grams("0.2"));
     expect(net.runGetMethod<coins>(vault, "reserveVaultInFlightV3")).toEqual(0);
+}
+
+get fun `test production reserve vault accepts mainnet-domain quorum proof in emulation`() {
+    val (vault, verifier, owner, marketplace, funder, key0, key1) = productionReserveSetup(-239);
+    productionReserveFund(vault, funder);
+    productionReserveDispatch(vault, marketplace);
+    val buyer = testing.treasury("productionReserveBuyer").address;
+    val dispatchMessageHash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
+    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"), dispatchMessageHash, -239);
+    val signatures = productionReserveSignatures(statement, key0, key1);
+    val result = productionReserveSubmit(vault, owner, statement, signatures);
+    expect(result).toHaveSuccessfulTx<SettlementAttestationVerifiedV3>({ from: verifier, to: vault });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(3);
+}
+
+get fun `test production reserve vault rejects cross-network quorum proof`() {
+    val (vault, _, owner, marketplace, funder, key0, key1) = productionReserveSetup(-239);
+    productionReserveFund(vault, funder);
+    productionReserveDispatch(vault, marketplace);
+    val buyer = testing.treasury("productionReserveBuyer").address;
+    val dispatchMessageHash = net.runGetMethod<uint256>(vault, "reserveVaultDispatchMessageHashV3");
+    val statement = productionReserveStatement(vault, marketplace, buyer, 1, 1, 1, grams("0.2"), dispatchMessageHash, -3);
+    val signatures = productionReserveSignatures(statement, key0, key1);
+    expect(productionReserveSubmit(vault, owner, statement, signatures)).toHaveSuccessfulTx({ to: vault });
+    expect(net.runGetMethod<uint8>(vault, "reserveVaultStatusV3")).toEqual(2);
+    expect(net.runGetMethod<coins>(vault, "reserveVaultPaidV3")).toEqual(0);
 }
 
 get fun `test production reserve vault quarantines returned principal and requires exact topup before one retry`() {

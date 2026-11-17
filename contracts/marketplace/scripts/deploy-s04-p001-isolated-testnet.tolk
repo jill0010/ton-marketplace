@@ -68,6 +68,7 @@ fun main() {
                 funding: ReserveVaultFundingIdentityV3 {
                     fundingSource: owner,
                     marketplace: owner,
+                    networkGlobalId: -3,
                 }.toCell(),
                 parties: ReserveVaultPartiesV3 {
                     verifier,
